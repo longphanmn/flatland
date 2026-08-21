@@ -40,6 +40,18 @@ class Config:
     wander_turn: float = 0.35  # max heading change (rad) when wandering
     steer_turn: float = 0.45  # max heading change when steering to food
 
+    # Life / hunger
+    hungry_ratio: float = 0.35  # energy/max at or below -> hungry
+    starving_ratio: float = 0.15  # energy/max at or below -> starving
+    hungry_perceive_mult: float = 1.3  # hungry creatures notice food farther away
+    desperate_perceive_mult: float = 1.6  # starving: even farther
+    desperate_speed_mult: float = 1.35  # starving: move faster
+
+    # Houses
+    house_min_size: float = 6.0
+    house_max_size: float = 10.0
+    door_clearance: float = 1.5  # door width = clearance * largest creature diameter
+
     @classmethod
     def from_env(cls) -> "Config":
         return cls(

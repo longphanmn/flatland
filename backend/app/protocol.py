@@ -35,6 +35,10 @@ class EntityState(BaseModel):
     caste: Optional[str] = None
     energy: Optional[float] = None
     size: Optional[float] = None
+    status: Optional[Literal["", "hungry", "starving"]] = None
+    radius: Optional[float] = None
+    door_width: Optional[float] = None
+    door_offset: Optional[float] = None
 
 
 class StateMessage(BaseModel):

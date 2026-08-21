@@ -7,6 +7,28 @@ from .config import Config
 from .entities import Creature, Entity
 
 
+def _cross(ax: float, ay: float, bx: float, by: float) -> float:
+    return ax * by - ay * bx
+
+
+def segments_intersect(
+    p1: tuple[float, float],
+    p2: tuple[float, float],
+    q1: tuple[float, float],
+    q2: tuple[float, float],
+) -> bool:
+    """True if segment p1-p2 intersects segment q1-q2."""
+    rx, ry = p2[0] - p1[0], p2[1] - p1[1]
+    sx, sy = q2[0] - q1[0], q2[1] - q1[1]
+    denom = _cross(rx, ry, sx, sy)
+    if abs(denom) < 1e-12:
+        return False  # parallel: treated as non-crossing
+    qpx, qpy = q1[0] - p1[0], q1[1] - p1[1]
+    t = _cross(qpx, qpy, sx, sy) / denom
+    u = _cross(qpx, qpy, rx, ry) / denom
+    return 0.0 <= t <= 1.0 and 0.0 <= u <= 1.0
+
+
 class World:
     def __init__(self, config: Config):
         self.config = config

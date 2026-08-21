@@ -63,30 +63,39 @@ export default function CanvasRenderer({ stateRef }: Props) {
         return
       }
       if (e.kind === 'house') {
-        const size = e.size ?? 6
+        const size = e.size ?? 8
         const half = size / 2
+        const dw = (e.door_width ?? 3) / 2
+        const dcx = e.x + (e.door_offset ?? 0)
         ctx.strokeStyle = '#8b949e'
         ctx.lineWidth = 0.35
-        ctx.strokeRect(e.x - half, e.y - half, size, size)
-        // door notch on the south wall
-        ctx.fillStyle = '#0b0f14'
-        ctx.fillRect(e.x - 0.8, e.y + half - 0.35, 1.6, 0.7)
+        ctx.beginPath()
+        // outline with a gap for the south-wall door
+        ctx.moveTo(e.x - half, e.y - half)
+        ctx.lineTo(e.x + half, e.y - half)
+        ctx.lineTo(e.x + half, e.y + half)
+        ctx.lineTo(dcx + dw, e.y + half)
+        ctx.moveTo(dcx - dw, e.y + half)
+        ctx.lineTo(e.x - half, e.y + half)
+        ctx.closePath()
+        ctx.stroke()
         return
       }
       const color = creatureColor(e)
+      const r = e.radius ?? 1.2
       ctx.save()
       ctx.translate(e.x, e.y)
       ctx.rotate(e.angle)
       if (e.shape === 'line') {
         ctx.strokeStyle = color
-        ctx.lineWidth = 0.8
+        ctx.lineWidth = 0.7 * Math.max(0.75, r / 1.2)
         ctx.beginPath()
-        ctx.moveTo(-2.4, 0)
-        ctx.lineTo(2.4, 0)
+        const len = Math.max(1.8, r * 2.4)
+        ctx.moveTo(-len, 0)
+        ctx.lineTo(len, 0)
         ctx.stroke()
       } else {
         const sides = e.sides ?? 4
-        const r = 1.9
         ctx.beginPath()
         if (sides >= PRIEST_SIDES) ctx.arc(0, 0, r, 0, TAU)
         else tracePolygon(ctx, sides, r)
@@ -95,10 +104,28 @@ export default function CanvasRenderer({ stateRef }: Props) {
         ctx.fill()
         ctx.globalAlpha = 1
         ctx.strokeStyle = color
-        ctx.lineWidth = 0.35
+        ctx.lineWidth = 0.3
         ctx.stroke()
       }
       ctx.restore()
+      if (e.status === 'hungry') {
+        ctx.globalAlpha = 0.65
+        ctx.strokeStyle = '#d29922'
+        ctx.lineWidth = 0.22
+        ctx.beginPath()
+        ctx.arc(e.x, e.y, r + 0.7, 0, TAU)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      } else if (e.status === 'starving') {
+        const pulse = 0.35 + 0.45 * Math.sin(performance.now() / 120)
+        ctx.globalAlpha = pulse
+        ctx.strokeStyle = '#f85149'
+        ctx.lineWidth = 0.4
+        ctx.beginPath()
+        ctx.arc(e.x, e.y, r + 0.9, 0, TAU)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
     }
 
     const draw = () => {

@@ -4,9 +4,17 @@ import math
 import random
 
 from .config import Config
-from .entities import PRIEST_SIDES, Creature, Entity, Food, House, caste_name
+from .entities import (
+    DEFAULT_RADIUS,
+    PRIEST_SIDES,
+    Creature,
+    Entity,
+    Food,
+    House,
+    caste_name,
+)
 from .protocol import EntityState, StateMessage
-from .world import World
+from .world import World, segments_intersect
 
 # Caste -> movement speed (grid units per tick).
 SPEEDS = {
@@ -66,9 +74,14 @@ class Simulation:
         for _ in range(cfg.num_food):
             x, y = self._rand_pos()
             self.world.add(Food(x=x, y=y))
+        max_radius = max(
+            (c.radius for c in self.world.creatures()), default=DEFAULT_RADIUS
+        )
         for _ in range(cfg.num_houses):
             x, y = self._rand_pos()
-            self.world.add(House(x=x, y=y, size=self.rng.uniform(4.0, 8.0)))
+            size = self.rng.uniform(cfg.house_min_size, cfg.house_max_size)
+            door_width = min(size * 0.8, 2.0 * max_radius * cfg.door_clearance)
+            self.world.add(House(x=x, y=y, size=size, door_width=door_width))
 
     # ------------------------------------------------------------------ tick
     def step(self) -> None:
@@ -83,11 +96,29 @@ class Simulation:
 
     def _update_creature(self, c: Creature, houses: list[Entity]) -> None:
         cfg, w = self.config, self.world
+        c.ticks_since_meal += 1
+
+        # Hunger state drives perception range and urgency.
+        ratio = c.energy / cfg.energy_max if cfg.energy_max > 0 else 0.0
+        if ratio <= cfg.starving_ratio:
+            c.status = "starving"
+        elif ratio <= cfg.hungry_ratio:
+            c.status = "hungry"
+        else:
+            c.status = ""
+
+        perceive = cfg.perceive_radius
+        speed_mult = 1.0
+        if c.status == "hungry":
+            perceive *= cfg.hungry_perceive_mult
+        elif c.status == "starving":
+            perceive *= cfg.desperate_perceive_mult
+            speed_mult = cfg.desperate_speed_mult
 
         # 1. Perceive the nearest food.
         target: Food | None = None
         best = math.inf
-        for e in w.query_radius(c.x, c.y, cfg.perceive_radius):
+        for e in w.query_radius(c.x, c.y, perceive):
             if e.kind != "food" or e.id in self._eaten:
                 continue
             d = w.distance(c.x, c.y, e.x, e.y)
@@ -104,9 +135,11 @@ class Simulation:
         else:
             c.angle += self.rng.uniform(-cfg.wander_turn, cfg.wander_turn)
 
-        # 3. Move (with boundary handling).
-        nx = c.x + math.cos(c.angle) * c.speed
-        ny = c.y + math.sin(c.angle) * c.speed
+        # 3. Move (hunger speeds up the desperate).
+        step_len = c.speed * speed_mult
+        px, py = c.x, c.y
+        nx = c.x + math.cos(c.angle) * step_len
+        ny = c.y + math.sin(c.angle) * step_len
         if cfg.boundary == "clamp":
             hit_x = nx <= 0 or nx >= cfg.width
             hit_y = ny <= 0 or ny >= cfg.height
@@ -116,26 +149,25 @@ class Simulation:
                 c.angle = -c.angle
         c.x, c.y = w.normalize(nx, ny)
 
-        # 4. Eat.
+        # 4. House walls block movement except through the doorway.
+        mdx, mdy = w.delta(c.x, c.y, px, py)
+        if math.hypot(mdx, mdy) <= step_len * 1.5:  # skip wrap teleports
+            for h in houses:
+                assert isinstance(h, House)
+                if _path_crosses_wall(px, py, px + mdx, py + mdy, h):
+                    c.x, c.y = w.normalize(px, py)
+                    c.angle += math.pi + self.rng.uniform(-0.3, 0.3)
+                    break
+
+        # 5. Eat.
         if target is not None and best <= cfg.eat_radius:
             w.remove(target.id)
             self._eaten.add(target.id)
+            c.ticks_since_meal = 0
+            c.meals += 1
             c.energy = min(cfg.energy_max, c.energy + cfg.energy_from_food)
 
-        # 5. Houses are solid: push out and face away.
-        for h in houses:
-            d = w.distance(c.x, c.y, h.x, h.y)
-            min_d = h.size / 2 + 0.8
-            if d < min_d:
-                ux, uy = w.delta(c.x, c.y, h.x, h.y)
-                if abs(ux) < 1e-6 and abs(uy) < 1e-6:
-                    ang = self.rng.uniform(0, 2 * math.pi)
-                    ux, uy = math.cos(ang), math.sin(ang)
-                norm = math.hypot(ux, uy) or 1.0
-                c.x, c.y = w.normalize(h.x + ux / norm * min_d, h.y + uy / norm * min_d)
-                c.angle = math.atan2(uy, ux)
-
-        # 6. Metabolism; starvation removes the creature.
+        # 6. Metabolism; starving to death removes the creature.
         c.energy -= cfg.energy_decay_per_tick
         if c.energy <= 0:
             w.remove(c.id)
@@ -168,7 +200,39 @@ class Simulation:
     def _entity_state(e: Entity) -> EntityState:
         base = dict(id=e.id, kind=e.kind, x=round(e.x, 3), y=round(e.y, 3), angle=round(e.angle, 4))
         if isinstance(e, Creature):
-            return EntityState(**base, shape=e.shape, sides=e.sides, caste=e.caste, energy=round(e.energy, 2))  # type: ignore[arg-type]
+            return EntityState(
+                **base,
+                shape=e.shape,
+                sides=e.sides,
+                caste=e.caste,
+                energy=round(e.energy, 2),
+                status=e.status,  # type: ignore[arg-type]
+                radius=round(e.radius, 3),
+            )
         if isinstance(e, House):
-            return EntityState(**base, size=round(e.size, 2))  # type: ignore[arg-type]
+            return EntityState(
+                **base,
+                size=round(e.size, 2),
+                door_width=round(e.door_width, 2),
+                door_offset=round(e.door_offset, 2),
+            )
         return EntityState(**base)  # type: ignore[arg-type]
+
+
+def _path_crosses_wall(
+    px: float, py: float, qx: float, qy: float, h: House
+) -> bool:
+    """True if the movement path p->q crosses a house wall (door is passable)."""
+    half = h.size / 2
+    x0, y0 = h.x - half, h.y - half
+    x1, y1 = h.x + half, h.y + half
+    door_lo = h.x + h.door_offset - h.door_width / 2
+    door_hi = h.x + h.door_offset + h.door_width / 2
+    walls = (
+        ((x0, y0), (x1, y0)),  # north
+        ((x0, y0), (x0, y1)),  # west
+        ((x1, y0), (x1, y1)),  # east
+        ((x0, y1), (door_lo, y1)),  # south, left of the door
+        ((door_hi, y1), (x1, y1)),  # south, right of the door
+    )
+    return any(segments_intersect((px, py), (qx, qy), a, b) for a, b in walls)

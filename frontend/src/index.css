@@ -75,6 +75,14 @@ body {
   padding: 1px 6px;
 }
 
+.chip.hungry b {
+  color: #d29922;
+}
+
+.chip.starving b {
+  color: #f85149;
+}
+
 .stage {
   flex: 1;
   position: relative;

@@ -2,7 +2,16 @@
 
 A 2D world simulation inspired by Edwin A. Abbott's *Flatland*: geometric beings
 (soldiers, gentlemen, professionals, nobles, priests, women) wander a bounded
-plane, seek food, collide with houses, and starve without energy.
+plane, seek food, shelter in houses through creature-sized doorways, and die of
+starvation when deprived of food too long.
+
+- **Life logic:** energy decays every tick; eating restores it. Low energy makes
+  a creature `hungry` (notices food farther away), very low makes it `starving`
+  (farther perception + faster movement, pulsing red marker). Energy at zero =
+  death.
+- **Houses:** square outlines with a doorway on the south wall; walls block
+  movement but the door is passable. Door width scales with the largest
+  creature's body size, so big castes need big doors.
 
 - **Backend:** Python 3.12 · FastAPI · deterministic fixed-tick loop over WebSocket
 - **Frontend:** React 18 + Vite + TypeScript · HTML5 Canvas renderer

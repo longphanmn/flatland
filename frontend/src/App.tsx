@@ -60,6 +60,9 @@ export default function App() {
         .join(' · ')
     : '—'
 
+  const hungryCount = state?.entities.filter((e) => e.status === 'hungry').length ?? 0
+  const starvingCount = state?.entities.filter((e) => e.status === 'starving').length ?? 0
+
   return (
     <div className="app">
       <header className="hud">
@@ -73,6 +76,16 @@ export default function App() {
         <span className="chip">
           entities <b>{state?.entities.length ?? 0}</b>
         </span>
+        {hungryCount > 0 && (
+          <span className="chip hungry">
+            hungry <b>{hungryCount}</b>
+          </span>
+        )}
+        {starvingCount > 0 && (
+          <span className="chip starving">
+            starving <b>{starvingCount}</b>
+          </span>
+        )}
         {hello && (
           <span className="chip">
             seed <b>{hello.seed}</b> · {hello.width}×{hello.height} · {hello.boundary}

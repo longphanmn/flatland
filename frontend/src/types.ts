@@ -2,6 +2,7 @@
 
 export type EntityKind = 'creature' | 'food' | 'house'
 export type EntityShape = 'polygon' | 'line'
+export type HungerStatus = '' | 'hungry' | 'starving'
 
 export interface EntityState {
   id: number
@@ -14,6 +15,10 @@ export interface EntityState {
   caste?: string
   energy?: number
   size?: number
+  status?: HungerStatus
+  radius?: number
+  door_width?: number
+  door_offset?: number
 }
 
 export interface StateMessage {
