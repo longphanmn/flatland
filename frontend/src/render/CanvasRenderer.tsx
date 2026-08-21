@@ -77,7 +77,8 @@ export default function CanvasRenderer({ stateRef }: Props) {
         ctx.lineTo(dcx + dw, e.y + half)
         ctx.moveTo(dcx - dw, e.y + half)
         ctx.lineTo(e.x - half, e.y + half)
-        ctx.closePath()
+        // west wall drawn explicitly: closePath would close the door subpath
+        ctx.lineTo(e.x - half, e.y - half)
         ctx.stroke()
         return
       }

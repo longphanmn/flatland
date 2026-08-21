@@ -71,7 +71,7 @@ class Simulation:
             self._spawn_creature("polygon", PRIEST_SIDES)
         for _ in range(cfg.num_women):
             self._spawn_creature("line", 2)
-        for _ in range(cfg.num_food):
+        for _ in range(cfg.food_count):
             x, y = self._rand_pos()
             self.world.add(Food(x=x, y=y))
         max_radius = max(
@@ -91,7 +91,7 @@ class Simulation:
         houses = [e for e in self.world.entities.values() if e.kind == "house"]
         for creature in self.world.creatures():  # snapshot list; removals are safe
             self._update_creature(creature, houses)
-        self._replenish_food()
+        self._enforce_food_law()
         self.tick += 1
 
     def _update_creature(self, c: Creature, houses: list[Entity]) -> None:
@@ -172,10 +172,17 @@ class Simulation:
         if c.energy <= 0:
             w.remove(c.id)
 
-    def _replenish_food(self) -> None:
-        for _ in self._eaten:
-            x, y = self._rand_pos()
-            self.world.add(Food(x=x, y=y))
+    def _enforce_food_law(self) -> None:
+        """God's bounty or famine: keep food population at the law's target."""
+        foods = [e for e in self.world.entities.values() if e.kind == "food"]
+        deficit = self.config.food_count - len(foods)
+        if deficit > 0:
+            for _ in range(deficit):
+                x, y = self._rand_pos()
+                self.world.add(Food(x=x, y=y))
+        elif deficit < 0:
+            for victim in self.rng.sample(foods, -deficit):
+                self.world.remove(victim.id)
 
     # ------------------------------------------------------------------ output
     def snapshot(self) -> StateMessage:

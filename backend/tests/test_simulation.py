@@ -18,7 +18,7 @@ def minimal_cfg(**kw) -> Config:
         num_hexagons=0,
         num_priests=0,
         num_women=0,
-        num_food=0,
+        food_count=0,
         num_houses=0,
     )
     base.update(kw)
@@ -52,7 +52,7 @@ def test_initial_population_counts():
         num_hexagons=1,
         num_priests=1,
         num_women=2,
-        num_food=9,
+        food_count=9,
         num_houses=3,
     )
     snap = Simulation(cfg).snapshot()
@@ -92,7 +92,7 @@ def test_starvation_removes_creature():
 
 
 def test_eating_increases_energy_and_replenishes_food():
-    s = Simulation(minimal_cfg(width=40, height=40, seed=3, num_food=1))
+    s = Simulation(minimal_cfg(width=40, height=40, seed=3, food_count=1))
     food = next(e for e in s.world.entities.values() if e.kind == "food")
     c = s.world.add(Creature(x=(food.x + 0.1) % 40, y=food.y, energy=50.0))
     s.step()
@@ -168,9 +168,11 @@ def test_hunger_status_stages():
 
 
 def test_starving_creature_finds_food_beyond_normal_range():
-    s = Simulation(minimal_cfg(width=60, height=60, seed=6))
-    food = s.world.add(Food(x=48.0, y=30.0))  # 18 away: > perceive 12, < 12*1.6
-    c = s.world.add(Creature(x=30.0, y=30.0, angle=0.0, speed=0.85, energy=10.0))
+    s = Simulation(minimal_cfg(width=60, height=60, seed=6, food_count=1))
+    food = next(e for e in s.world.entities.values() if e.kind == "food")
+    c = s.world.add(
+        Creature(x=(food.x - 18.0) % 60.0, y=food.y, angle=0.0, speed=0.85, energy=10.0)
+    )
     s.step()
     assert c.status == "starving"
     for _ in range(40):
@@ -180,7 +182,7 @@ def test_starving_creature_finds_food_beyond_normal_range():
 
 
 def test_ticks_since_meal_resets_on_eating():
-    s = Simulation(minimal_cfg(width=40, height=40, seed=7, num_food=1))
+    s = Simulation(minimal_cfg(width=40, height=40, seed=7, food_count=1))
     food = next(e for e in s.world.entities.values() if e.kind == "food")
     c = s.world.add(Creature(x=(food.x + 0.1) % 40, y=food.y, energy=50.0))
     s.step()

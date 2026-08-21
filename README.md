@@ -59,6 +59,17 @@ curl -X POST localhost:8000/api/control -H 'content-type: application/json' \
 curl localhost:8000/api/state
 ```
 
+**God screen** (`⚖ God` button): set the laws of nature and the world obeys —
+food abundance (bounty/famine), energy metabolism, hunger thresholds,
+perception, movement rules, door clearance, world edge. God never intervenes in
+an individual creature's life:
+
+```bash
+curl localhost:8000/api/laws
+curl -X POST localhost:8000/api/laws -H 'content-type: application/json' \
+     -d '{"food_count": 5}'   # famine
+```
+
 ## Configuration (env vars)
 
 | Variable | Default | Description |

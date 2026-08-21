@@ -27,7 +27,7 @@ class Config:
     num_hexagons: int = 2  # nobility
     num_priests: int = 1  # near-circles (priesthood)
     num_women: int = 5  # line segments
-    num_food: int = 24
+    food_count: int = 24  # god's law: the world maintains this much food
     num_houses: int = 6
 
     # Behaviour tuning

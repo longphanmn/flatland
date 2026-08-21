@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import CanvasRenderer from './render/CanvasRenderer'
+import GodPanel from './god/GodPanel'
 import { WorldSocket, type ConnStatus } from './websocket'
 import type { HelloMessage, StateMessage } from './types'
 
@@ -17,6 +18,7 @@ export default function App() {
   const [state, setState] = useState<StateMessage | null>(null)
   const [paused, setPaused] = useState(false)
   const [speed, setSpeed] = useState(10)
+  const [godOpen, setGodOpen] = useState(false)
 
   const stateRef = useRef<StateMessage | null>(null)
   const sockRef = useRef<WorldSocket | null>(null)
@@ -67,6 +69,9 @@ export default function App() {
     <div className="app">
       <header className="hud">
         <span className="title">Flatland</span>
+        <button className="god-btn" onClick={() => setGodOpen(true)}>
+          ⚖ God
+        </button>
         <span className={`dot ${status}`} title={STATUS_LABEL[status]} />
         <span className="chip">{STATUS_LABEL[status]}</span>
         {paused && <span className="chip paused">PAUSED</span>}
@@ -121,6 +126,8 @@ export default function App() {
         </select>
         <span className="chip legend">{populationSummary}</span>
       </footer>
+
+      <GodPanel open={godOpen} onClose={() => setGodOpen(false)} />
     </div>
   )
 }

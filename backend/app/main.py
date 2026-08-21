@@ -3,14 +3,14 @@
 import asyncio
 import json
 from contextlib import asynccontextmanager, suppress
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 
 from .config import Config
-from .protocol import ControlAction, ControlMessage, HelloMessage, StateMessage
+from .protocol import ControlAction, ControlMessage, GodLaws, HelloMessage, StateMessage
 from .simulation import Simulation
 
 MIN_SPEED = 0.5  # ticks per second
@@ -120,10 +120,57 @@ def hello_payload() -> dict:
     return HelloMessage(
         seed=CONFIG.seed,
         tick_rate=RT.speed,
-        width=CONFIG.width,
-        height=CONFIG.height,
-        boundary=CONFIG.boundary,
+        width=RT.config.width,
+        height=RT.config.height,
+        boundary=RT.config.boundary,
     ).model_dump(mode="json")
+
+
+# --------------------------------------------------------------------- laws
+LAW_FIELDS = (
+    "boundary",
+    "food_count",
+    "energy_max",
+    "energy_decay_per_tick",
+    "energy_from_food",
+    "hungry_ratio",
+    "starving_ratio",
+    "perceive_radius",
+    "eat_radius",
+    "wander_turn",
+    "steer_turn",
+    "hungry_perceive_mult",
+    "desperate_perceive_mult",
+    "desperate_speed_mult",
+    "door_clearance",
+    "house_min_size",
+    "house_max_size",
+)
+
+
+def get_laws() -> dict:
+    return {name: getattr(RT.config, name) for name in LAW_FIELDS}
+
+
+def apply_laws(laws: GodLaws) -> dict:
+    """God sets the rules; the world and every creature must obey them."""
+    updates = {
+        k: v for k, v in laws.model_dump(exclude_unset=True).items() if v is not None
+    }
+    if updates:
+        hungry = updates.get("hungry_ratio", RT.config.hungry_ratio)
+        starving = updates.get("starving_ratio", RT.config.starving_ratio)
+        if starving > hungry:
+            raise HTTPException(422, "starving_ratio must be <= hungry_ratio")
+        hmin = updates.get("house_min_size", RT.config.house_min_size)
+        hmax = updates.get("house_max_size", RT.config.house_max_size)
+        if hmax < hmin:
+            raise HTTPException(422, "house_max_size must be >= house_min_size")
+    cfg = replace(RT.config, **updates)
+    RT.config = cfg
+    RT.sim.config = cfg  # the living world follows the new law immediately
+    RT.sim.world.config = cfg
+    return get_laws()
 
 
 # ---------------------------------------------------------------- websocket
@@ -154,7 +201,19 @@ async def healthz() -> dict:
 
 @app.get("/api/config")
 async def get_config() -> dict:
-    return asdict(CONFIG)
+    return asdict(RT.config)
+
+
+@app.get("/api/laws")
+async def read_laws() -> dict:
+    """Current laws of nature (god-readable)."""
+    return get_laws()
+
+
+@app.post("/api/laws")
+async def write_laws(laws: GodLaws) -> dict:
+    """Set new laws of nature (god-writable). Applies to the live world."""
+    return apply_laws(laws)
 
 
 @app.get("/api/state", response_model=StateMessage)

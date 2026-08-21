@@ -134,3 +134,112 @@ select {
   font: inherit;
   font-size: 13px;
 }
+
+/* ---- god screen ---- */
+
+.god-btn {
+  border-color: #7e6325;
+  color: #e3b341;
+  background: #1f1a0a;
+}
+
+.god-btn:hover {
+  background: #2d2408;
+}
+
+.god-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  max-width: 92vw;
+  background: #0d1117;
+  border-left: 1px solid #30363d;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.55);
+  padding: 14px 16px;
+  overflow-y: auto;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.god-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.god-head h2 {
+  margin: 0;
+  font-size: 15px;
+  color: #e3b341;
+  letter-spacing: 0.04em;
+}
+
+.god-close {
+  padding: 2px 10px;
+  font-size: 16px;
+}
+
+.god-note {
+  margin: 0;
+  font-size: 12px;
+  color: #8b949e;
+  font-style: italic;
+}
+
+.god-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: #c9d1d9;
+}
+
+.god-row input {
+  width: 96px;
+  background: #161b22;
+  color: #e6edf3;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.god-row input:focus,
+.god-row select:focus {
+  outline: 1px solid #e3b341;
+}
+
+.god-foot {
+  margin-top: auto;
+  padding-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #21262d;
+}
+
+.god-foot button {
+  border-color: #7e6325;
+  color: #e3b341;
+}
+
+.god-foot button:hover {
+  background: #2d2408;
+}
+
+.god-error {
+  color: #f85149;
+  font-size: 12px;
+}
+
+.god-saved {
+  color: #3fb950;
+  font-size: 12px;
+}
