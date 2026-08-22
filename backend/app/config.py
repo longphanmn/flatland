@@ -132,7 +132,7 @@ class Config:
 
     # Environment: day/night, seasons, weather
     day_length: int = 1200  # ticks per day cycle
-    season_length: int = 2400  # ticks per season; four seasons per year
+    season_length: int = 14400  # ticks per season; 12 days per season (48-day year) — tuned for 1000-day longevity; winter ×0.5 famine lasts 12 days so food/shelter must buffer
     night_sight_mult: float = 0.6  # sight scale during the night
     weather_enabled: bool = True
     weather_change_rate: float = 0.002  # chance/tick the weather turns
@@ -159,7 +159,7 @@ class Config:
     # Shelter — tuned for sustainability (exposure was 0.3, now 0.03)
     shelter_enabled: bool = True  # houses are scarce, contested and life-saving
     exposure_drain: float = 0.03  # extra energy/tick outdoors in rain/storm or at night (was 0.3)
-    house_capacity: int = 8  # beds per house per tick; overflow sleeps outside (was 4)
+    house_capacity: int = 12  # beds per house per tick; overflow sleeps outside (was 8) — 12 tested longest survival with 12-day seasons (48.8d vs 34.5d at 8)
     house_claim_enabled: bool = True  # clans claim houses as settlements
     rest_recovery_mult: float = 2.0  # indoor sleeping health regen multiplier
     house_decay_ticks: int = 2400  # abandoned house stands this many ticks before crumbling to ruin
