@@ -116,7 +116,8 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
       age/lifespan, energy/health bars, meals, irregularity, lineage) and its
       personal chronicle from `GET /api/creature/{id}`; auto-refreshes 1 Hz;
       survives death (status + full history remain)
-- [ ] [P2] DB-backed history pagination + world run selector
+- [x] [P2] DB-backed history pagination + world run selector (landed with the
+      Chronicle pagination + HUD run dropdown, commit 9fed747)
 
 ## H. Food ecosystem & ecological balance  [P2]
 - [ ] Plants replace inert food — `Plant` entity grows toward maturity
