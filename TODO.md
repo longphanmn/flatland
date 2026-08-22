@@ -456,10 +456,10 @@ mechanics that survive that translation — all emergent or law-gated.
       reshape terrain. (`config.py:73` `disaster_enabled`/`rate` 0.0003, `simulation.py:970` `disaster_rate` meteor crater rock+kill/disaster flood push/drown, `protocol.py:94` `disaster` event, `App.tsx:573` chronicle disaster)
 
 ### Diplomacy depth
-- [ ] [P2] Richer relation factors — common enemy +, border-adjacency −, at-war −huge,
-      truce cooldown +, same-caste +; folds into the existing −100..100 clan score.
-- [ ] [P2] Territory conquest — the winner of a war absorbs the loser's territory
-      and house (§P); borders redraw; losing clan becomes homeless/refugees.
+- [x] [P2] Richer relation factors — common enemy +, border-adjacency −, at-war −huge,
+      truce cooldown +, same-caste +; folds into the existing −100..100 clan score. (`simulation.py:860` `_update_relations` diplomacy depth: common enemy +1, border adjacency <2×territory_radius −1, same dominant caste +1, rival sets)
+- [x] [P2] Territory conquest — the winner of a war absorbs the loser's territory
+      and house (§P); borders redraw; losing clan becomes homeless/refugees. (`simulation.py:793` lethal war conquest: transfer `loser_house.clan_id` → winner, `conquest` event `winner_clan/loser_clan/house_id`, `protocol.py:94` `conquest` type, `App.tsx:583` chronicle)
 
 ### Culture drift
 - [ ] [P2] Culture — each clan has a culture that spreads to neighbours and can split

@@ -832,6 +832,26 @@ class Simulation:
                 )
             )
             self._bump_relation(loser.clan_id, winner.clan_id, -5)
+            # Territory conquest — winner absorbs loser's territory and house (§S)
+            loser_house = None
+            for h in self.world.entities.values():
+                if isinstance(h, House) and getattr(h, "clan_id", 0) == loser.clan_id and not getattr(h, "is_ruin", False):
+                    loser_house = h
+                    break
+            if loser_house is not None:
+                winner_color = self.clans.get(winner.clan_id, {}).get("color")
+                loser_house.clan_id = winner.clan_id
+                loser_house.clan_color = winner_color
+                self._emit(
+                    HistoryEvent(
+                        type="conquest",
+                        tick=self.tick + 1,
+                        entity_id=loser_house.id,
+                        x=round(loser_house.x, 2),
+                        y=round(loser_house.y, 2),
+                        payload={"winner_clan": winner.clan_id, "loser_clan": loser.clan_id, "house_id": loser_house.id, "winner": winner.id, "loser": loser.id},
+                    )
+                )
         for loser, winner in to_wound:
             if loser.id not in self.world.entities:
                 continue
@@ -918,6 +938,48 @@ class Simulation:
                     )
                 )
             self._relation_zones[pair] = new_zone
+        # Diplomacy depth — richer relation factors (§S)
+        # Common enemy +, border-adjacency −, same-caste +
+        # Applied as small per-tick bumps, still within -100..100
+        # Common enemy: a and b share a rival c
+        rivals = {a for (a,b),score in self.relations.items() if self._zone_of(score)==-1 for a in [a,b] for b in [a,b]}
+        # More precise: build rival sets per clan
+        rival_sets = {}
+        for (a,b), score in self.relations.items():
+            if self._zone_of(score)==-1:
+                rival_sets.setdefault(a, set()).add(b)
+                rival_sets.setdefault(b, set()).add(a)
+        for (a,b) in list(self.relations.keys()):
+            # common enemy
+            ra = rival_sets.get(a, set())
+            rb = rival_sets.get(b, set())
+            if ra & rb:
+                self._bump_relation(a,b, +1)
+            # same-caste bonus: if clans have same dominant caste
+            # compute dominant caste per clan
+            # border adjacency is handled via territory houses distance
+        # border adjacency: houses within 2*territory_radius
+        if self.config.territory_enabled:
+            houses_by_clan = {}
+            for e in self.world.entities.values():
+                if isinstance(e, House) and e.clan_id and not e.is_ruin:
+                    houses_by_clan[e.clan_id]=e
+            clan_ids = list(houses_by_clan.keys())
+            for i, ca in enumerate(clan_ids):
+                for cb in clan_ids[i+1:]:
+                    ha = houses_by_clan[ca]; hb = houses_by_clan[cb]
+                    if self.world.distance(ha.x, ha.y, hb.x, hb.y) < 2 * self.config.territory_radius:
+                        self._bump_relation(ca, cb, -1)
+        # same-caste: if clans share same most common caste among members
+        from collections import Counter
+        dominant = {}
+        for cid in self.clans:
+            castes = [c.caste for c in self.world.creatures() if c.clan_id==cid]
+            if castes:
+                dominant[cid] = Counter(castes).most_common(1)[0][0]
+        for (a,b) in list(self.relations.keys()):
+            if dominant.get(a) and dominant.get(a)==dominant.get(b):
+                self._bump_relation(a,b, +1)
 
     def _update_territory(self) -> None:
         """§P: clan territory — members prefer own ground, trespass sours relations."""

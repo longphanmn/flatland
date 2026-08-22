@@ -82,7 +82,7 @@ export interface StateMessage {
 export interface HistoryEvent {
   /** Present only on events fetched from GET /api/history; absent on live-streamed ones. */
   id?: number
-  type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war' | 'ruin' | 'settlement' | 'succession' | 'schism' | 'fire' | 'disaster'
+  type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war' | 'ruin' | 'settlement' | 'succession' | 'schism' | 'fire' | 'disaster' | 'conquest'
   tick: number
   entity_id: number
   caste?: string | null

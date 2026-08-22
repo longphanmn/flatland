@@ -103,7 +103,7 @@ class HistoryEvent(BaseModel):
     type: Literal[
         "death", "birth", "promotion", "demotion", "outbreak", "recovery",
         "bloom", "alliance", "rivalry", "predation", "war", "ruin", "settlement", "succession", "schism",
-        "fire", "disaster",
+        "fire", "disaster", "conquest",
     ] = ("death")
     tick: int
     entity_id: int

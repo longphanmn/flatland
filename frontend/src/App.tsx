@@ -604,6 +604,14 @@ export default function App() {
                     </li>
                   )
                 }
+                if (ev.type === 'conquest') {
+                  const p = (ev.payload ?? {}) as { winner_clan?: number; loser_clan?: number; house_id?: number }
+                  return (
+                    <li key={key} className="ev-bloom" style={{ color: '#ff7b72' }}>
+                      conquest: clan {p.winner_clan} seized house {p.house_id} from clan {p.loser_clan} at tick {ev.tick}
+                    </li>
+                  )
+                }
                 if (ev.type === 'bloom') {
                   return (
                     <li key={key} className="ev-bloom" style={{ color: '#3fb950' }}>
