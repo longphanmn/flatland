@@ -3,6 +3,7 @@
 import math
 import random
 from collections import deque
+from typing import Callable
 
 from .config import Config
 from .entities import (
@@ -41,6 +42,9 @@ class Simulation:
         self.deaths = 0
         # Chronicle of the world; survives resets when handed back in.
         self.history: deque[HistoryEvent] = history or deque(maxlen=self.config.history_max)
+        # Optional sink for durable storage (set by the app layer); must never
+        # touch the rng — determinism is unaffected by observers.
+        self.on_event: Callable[[HistoryEvent], None] | None = None
         self._eaten: set[int] = set()
         self._events_this_tick: list[HistoryEvent] = []
         self._spawn_initial()
@@ -210,6 +214,8 @@ class Simulation:
             )
             self.history.append(event)
             self._events_this_tick.append(event)
+            if self.on_event is not None:
+                self.on_event(event)
 
     def _enforce_food_law(self) -> None:
         """God's bounty or famine: keep food population at the law's target."""

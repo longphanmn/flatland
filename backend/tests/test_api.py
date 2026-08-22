@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Config
-from app.main import RT, app
+from app.main import DB, RT, app, start_world
 from app.simulation import Simulation
 
 
@@ -14,6 +14,7 @@ def fresh_runtime():
     RT.paused = False
     RT.speed = RT.config.tick_rate
     RT.sim = Simulation(RT.config)
+    start_world()  # fresh DB world row per test
     yield
 
 

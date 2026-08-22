@@ -89,6 +89,18 @@ curl -X POST localhost:8000/api/laws -H 'content-type: application/json' \
   tick 512 …"); the full log also lives at `GET /api/history` and survives
   world resets.
 
+## Persistence
+
+The backend stores its chronicle in SQLite at `backend/flatland.db`
+(override with `FLATWORLD_DB=/path/to.db`). Every world run gets a row in
+`worlds`; deaths are written to `events` as they happen; every god-law change
+is recorded in `law_changes`. History survives restarts and world resets.
+
+```bash
+curl localhost:8000/api/history?limit=100   # durable chronicle (paginated)
+curl localhost:8000/api/worlds              # all recorded world runs
+```
+
 ## Architecture
 
 ```

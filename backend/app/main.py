@@ -2,14 +2,17 @@
 
 import asyncio
 import json
+import os
 from contextlib import asynccontextmanager, suppress
 from dataclasses import asdict, replace
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 
 from .config import Config
+from .db import Database
 from .protocol import ControlAction, ControlMessage, GodLaws, HelloMessage, StateMessage
 from .simulation import Simulation
 
@@ -52,20 +55,35 @@ class RuntimeState:
         self.sim = Simulation(self.config)
         self.paused = False
         self.speed = self.config.tick_rate
+        self.world_id: int | None = None
 
 
 CONFIG = Config.from_env()
 RT = RuntimeState(CONFIG)
 HUB = Hub()
+DB = Database(os.environ.get("FLATWORLD_DB", str(Path(__file__).resolve().parent.parent / "flatworld.db")))
+
+
+def start_world() -> None:
+    """Register a fresh world row and attach the durable event sink."""
+    if RT.world_id is not None:
+        DB.end_world(RT.world_id)
+    RT.world_id = DB.new_world(RT.config)
+    RT.sim.on_event = lambda e: DB.add_events(RT.world_id, [e])
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    DB.connect()
+    start_world()
     task = asyncio.create_task(tick_loop(RT, HUB))
     yield
     task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
+    with suppress(asyncio.CancelledError):
         await task
+    if RT.world_id is not None:
+        DB.end_world(RT.world_id)
+    DB.close()
 
 
 app = FastAPI(title="Flatland World Simulation", version="0.1.0", lifespan=lifespan)
@@ -103,8 +121,9 @@ async def apply_control(msg: ControlMessage) -> dict:
         RT.sim.step()
         await HUB.broadcast(RT.sim.snapshot().model_dump(mode="json"))
     elif msg.action is ControlAction.RESET:
-        # A new world is born, but the chronicle of the old one endures.
+        # A new world is born, but the chronicle endures in the database.
         RT.sim = Simulation(RT.config, history=RT.sim.history)
+        start_world()
         await HUB.broadcast(RT.sim.snapshot().model_dump(mode="json"))
     elif msg.action is ControlAction.SET_SPEED:
         if msg.value is not None:
@@ -171,6 +190,9 @@ def apply_laws(laws: GodLaws) -> dict:
     RT.config = cfg
     RT.sim.config = cfg  # the living world follows the new law immediately
     RT.sim.world.config = cfg
+    if updates and RT.world_id is not None:
+        for name, value in updates.items():
+            DB.add_law_change(RT.world_id, RT.sim.tick, name, value)
     return get_laws()
 
 
@@ -218,12 +240,20 @@ async def write_laws(laws: GodLaws) -> dict:
 
 
 @app.get("/api/history")
-async def get_history() -> dict:
-    """The full chronicle: every recorded death since the first world."""
+async def get_history(since: int = 0, limit: int = 500) -> dict:
+    """The durable chronicle for the current world (paginated by event id)."""
+    limit = max(1, min(limit, 2000))
     return {
-        "total_deaths": RT.sim.deaths,
-        "events": [e.model_dump(mode="json") for e in RT.sim.history],
+        "world_id": RT.world_id,
+        "total_deaths": DB.death_count(RT.world_id) if RT.world_id else 0,
+        "events": DB.history(RT.world_id, since_id=since, limit=limit) if RT.world_id else [],
     }
+
+
+@app.get("/api/worlds")
+async def get_worlds() -> dict:
+    """All world runs recorded in the database (newest first)."""
+    return {"worlds": DB.worlds()}
 
 
 @app.get("/api/state", response_model=StateMessage)

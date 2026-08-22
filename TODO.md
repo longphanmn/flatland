@@ -4,15 +4,17 @@ God model: god sets **laws**, never touches individual creatures. Everything els
 Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observability
 
 ## F. Infrastructure — Database  [P0]
-- [ ] SQLite via SQLAlchemy 2.0 + aiosqlite; file `flatland.db`
-- [ ] Tables: `worlds`(id,seed,width,height,boundary,started_at,ended_at),
-      `events`(id,world_id,tick,type,entity_id,caste,cause,x,y,payload JSON,created_at),
-      `law_changes`(id,world_id,tick,name,value JSON,created_at),
-      `snapshots`(id,world_id,tick,payload JSON) — optional, for replay
-- [ ] Buffered background writer (asyncio task) so DB I/O never blocks a tick
-- [ ] Chronicle + law history survive server restart; `reset` => new `worlds` row
-- [ ] Endpoints: `GET /api/history?since=&limit=&world=`, `GET /api/worlds`
-- [ ] `app/db.py`, `app/repository.py`; deps `sqlalchemy`, `aiosqlite`
+- [x] ~~SQLite via SQLAlchemy 2.0 + aiosqlite~~ → **stdlib `sqlite3`** behind a thin
+      repository interface (`app/db.py`); file `flatworld.db` (env `FLATWORLD_DB`).
+      Decision: local single-writer file needs no ORM/async driver yet; swap later
+      without touching callers.
+- [x] Tables: `worlds`, `events`, `law_changes`; `snapshots` deferred (replay is P2)
+- [x] Writes are tiny batched inserts from the tick loop (WAL mode, thread-safe);
+      measured cost per tick ≈ 0 — dedicated writer task unnecessary so far
+- [x] Chronicle + law history survive server restart; `reset` closes the old
+      `worlds` row and opens a new one
+- [x] Endpoints: `GET /api/history?since=&limit=` (paginated), `GET /api/worlds`
+- [ ] Genealogy table (`creatures`) when reproduction lands (§B)
 
 ## A. Life cycle
 - [ ] [P0] Age & lifespan — Creature.age (ticks) + caste-based lifespan
