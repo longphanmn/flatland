@@ -80,7 +80,7 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [x] Effect — infected lose `disease_energy_drain`/tick + health decays at
       2×`disease_lethality`; recovery at `recovery_rate`; death when health → 0
       (cause `disease`). Disabling the law freezes all sickness instantly.
-- [ ] Season synergy — winter raises `disease_rate` (lands with §E)
+- [x] Season synergy — winter raises `disease_rate` ×1.5 (outbreak & contagion, §E)
 - [x] GodLaws: Plagues toggle + outbreak/rate/radius/drain/recovery/lethality
       in a "Disease" panel group
 - [x] Events: `outbreak`, `recovery` (+ death cause `disease`); HUD "infected N"
@@ -119,40 +119,40 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [x] [P2] DB-backed history pagination + world run selector (landed with the
       Chronicle pagination + HUD run dropdown, commit 9fed747)
 
-## H. Food ecosystem & ecological balance  [P2]
-- [ ] Plants replace inert food — `Plant` entity grows toward maturity
-      (`plant_growth_rate`), spreads to nearby empty cells (`plant_spread_rate`,
-      season-gated), dies back in winter (reuses `SEASON_FOOD_MULT`); rendered green,
-      size ∝ growth; `food_count` law becomes the plant bounty target (name kept)
-- [ ] Carcasses — every death leaves a `Carcass` decaying over
-      `carcass_decay_ticks`; scavengers/predators eat it before it vanishes
-- [ ] Nutrient cycle — decayed carcasses refill a nutrient pool that accelerates
-      plant regrowth (`nutrient_cycle_rate`): death fertilises new life
-- [ ] Ecological balance — track plant/prey/predator counts (trophic levels);
-      boom–bust oscillation and collapse are expected, not bugs (Lotka–Volterra)
-- [ ] GodLaws: plant_growth_rate, plant_spread_rate, plant_mature_size,
-      carcass_decay_ticks, nutrient_cycle_rate (+ predator laws in §I)
-- [ ] Events: `bloom` (plant reaches maturity), `carcass` (spawn/consumed)
+## H. Food ecosystem & ecological balance  [P2] — ✅ implemented
+- [x] Plants replace inert food — `Food` is a living plant with `growth` 0.15→1.0
+       (`plant_growth_rate`), spreads to nearby empty cells (`plant_spread_rate`,
+       season-gated), dies back in winter (reuses `SEASON_FOOD_MULT`); rendered green,
+       size ∝ growth; `food_count` law is the seasonal bounty target (name kept)
+- [x] Carcasses — every death leaves a `Corpse` (`corpse_ttl`, `corpse_energy`);
+       creatures scavenge them like food; decay → vanishes
+- [x] Nutrient cycle — decayed corpses refill nutrient pool that accelerates
+       nearby plant regrowth (`nutrient_cycle_rate` × `NUTRIENT_BOOST`): death fertilises new life
+- [x] Ecological balance — plant counts oscillate with seasonal bounty; boom–bust via
+       `SEASON_FOOD_MULT` + nutrient boost (Lotka–Volterra placeholder until §I predators)
+- [x] GodLaws: plant_growth_rate, plant_spread_rate, nutrient_cycle_rate (plant_mature gated)
+- [x] Events: `bloom` (plant reaches maturity)
 
 ## I. Society: clans, interaction & conflict
 - [x] [P1] Clans (base identity) — landed in §C: one clan per caste at founding,
       children inherit mother's clan, clan crest ring + inspector + genealogy.
       What remains below is the *social* layer on top of that identity.
-- [ ] [P1] Clan relations — pairwise score −100..+100 drifting toward 0; ally /
-      neutral / rival thresholds; shared kills & feeding raise it, kills lower it
-- [ ] [P2] Creature interaction (boids) — separation / cohesion / alignment
-      steering blended after food-seeking (social yielding already landed in §C);
-      "Interaction" law group
+- [x] [P1] Clan relations — pairwise score −100..+100 drifting toward 0; ally /
+       neutral / rival thresholds; shared feeding raises it (+2 within `flock_radius`),
+       drift `relation_drift_rate` toward 0; `alliance`/`rivalry` events
+- [x] [P2] Creature interaction (boids) — separation / cohesion / alignment
+       steering blended after food-seeking (social yielding already landed in §C);
+       "Interaction" law group (`cohesion_weight`, `alignment_weight`, `separation_weight`, `flock_radius`)
 - [ ] [P2] Predation — a Carnivore predator caste with behaviour priority
       flee → hunt → forage → reproduce → rest; bite-on-contact kills prey (death
       cause `predation`), leaves a carcass, feeds the predator; prey flee within
       `fear_radius`
 - [ ] [P2] Clan war — rival-clan creatures fight on contact (`attack_radius`,
       `attack_damage`); loser dies (cause `war`) → carcass + relation penalty
-- [ ] GodLaws: predator_ratio, hunt_radius, bite_damage, bite_cooldown,
-      energy_from_prey, fear_radius, war_enabled, attack_radius, attack_damage,
-      relation_drift_rate, alliance_threshold, rivalry_threshold
-- [ ] Events: `predation`, `war`, `attack`, `clan_founded`, `alliance`, `rivalry`
+- [x] GodLaws (partial): relation_drift_rate, alliance_threshold, rivalry_threshold,
+       cohesion_weight, alignment_weight, separation_weight, flock_radius
+       (predator laws deferred: predator_ratio, hunt_radius, bite_damage, …)
+- [x] Events (partial): `alliance`, `rivalry` (predation/war deferred to §I predation)
 
 ## J. Creature profile & genealogy  [P0] — ✅ implemented
 - [x] Genealogy table — landed in §F (creatures rows: parents, caste, generation,
@@ -192,56 +192,55 @@ always matches the running code). No Vite/frontend dependency.
       route is mentioned in the docs, so the guide can't silently go stale; roadmap
       section links back to TODO.md
 
-## L. Shelter — make houses matter  [P1]
+## L. Shelter — make houses matter  [P1] — ✅ backend delivered
 Houses today are ~5 empty squares: walls block movement and creatures nap inside
 after dark (§N night rest). Shelter should be scarce, contested and life-saving.
-- [ ] [P1] Exposure — rain/storm and winter nights drain energy (or health) on the
-      open plain (`exposure_drain`); being indoors cancels it. Shelter becomes
-      survival, not convenience.
-- [ ] [P1] House capacity — each house shelters at most `house_capacity` creatures
-      (∝ size); the overflow sleeps outside and suffers exposure. Five houses is a
-      real housing shortage.
-- [ ] [P1] Clan claim — each clan claims a house as its settlement (clan crest on
-      the wall; members prefer their own house). Rival clans may contest a claim
-      once §I clan war lands.
-- [ ] [P2] Rest & recovery — indoors: energy regen + `rest_recovery_mult` disease
-      recovery; births happen at home (infants born outside are exposed/weakened).
+- [x] [P1] Exposure — rain/storm and winter nights drain `exposure_drain` energy on the
+       open plain; being indoors cancels it. Shelter becomes survival, not convenience.
+- [x] [P1] House capacity — each house shelters at most `house_capacity` creatures
+       (∝ size); the overflow sleeps outside and suffers exposure. Five houses is a
+       real housing shortage (beds re-contested every tick in id order).
+- [x] [P1] Clan claim — each clan claims a house as its settlement (clan crest on
+       the wall via `House.clan_id`/`clan_color`; members prefer own house via `_house_for`);
+       founding clans claim distinct houses; new clans claim first free house; toggle via law
+- [x] [P2] Rest & recovery — indoors: energy regen halved via `sleep_energy_mult` +
+       `rest_recovery_mult` (×0.15 health/tick) disease recovery; shelter law toggle
 - [ ] [P2] Predator refuge — the doorway is too small for the Carnivore caste (§I);
-      a house is the only safe haven once predators hunt.
+       a house is the only safe haven once predators hunt.
 - [ ] [P2] Settlement economy — houses scale with population (house_density tied to
-      carrying capacity); abandoned houses crumble to ruins; new clans found new ones.
-- [ ] GodLaws: shelter_enabled, exposure_drain, house_capacity, house_claim_enabled,
-      rest_recovery_mult (new "Shelter" law group)
+       carrying capacity); abandoned houses crumble to ruins; new clans found new ones.
+- [x] GodLaws: shelter_enabled, exposure_drain, house_capacity, house_claim_enabled,
+       rest_recovery_mult (Shelter group)
 
 ## Cross-system synergies (emergent depth)
 Not features — acceptance criteria. Tick only after the behaviour is observable in a
 live run (or a seeded test passes). `needs` = prerequisite systems; `verify` =
 observable signal; `tune` = god laws that push it over the edge.
 
-### Verifiable now (systems landed)
-- [ ] Winter + disease = famine/plague cascades
-      needs §D+§E · verify: winter → infected & starving spike together, deaths by
-      starvation+disease climb · tune: season_length, disease_rate, food_count
-- [ ] High mutation = irregularity purges
-      needs §B+§C · verify: mutation_rate↑ → euthanasia/demotion events surge at
-      adulthood · tune: mutation_rate, euthanasia_threshold
-- [ ] Overpopulation = lower fertility + higher disease spread
-      needs §B+§D · verify: pop past carrying_capacity → births fade, contagion rises
-      · tune: carrying_capacity, max_population, disease_radius
-- [ ] Night + fog = blindness
-      needs §E · verify: fog at night collapses sight (starving rate rises) · tune:
-      night_sight_mult, fog_sight_mult
-- [ ] Seeded tests — backend/tests/test_synergies.py: one deterministic test per
-      verifiable-now synergy (winter+plague, mutation→purge, overcrowd→fertility+
-      disease, night+fog blindness), reusing the fixed-tick RNG pattern from
-      test_disease.py / test_environment.py
+### Verifiable now (systems landed) — ✅ tested
+- [x] Winter + disease = famine/plague cascades
+       needs §D+§E · verify: winter → infected & starving spike together, deaths by
+       starvation+disease climb · tune: season_length, disease_rate, food_count
+- [x] High mutation = irregularity purges
+       needs §B+§C · verify: mutation_rate↑ → euthanasia/demotion events surge at
+       adulthood · tune: mutation_rate, euthanasia_threshold
+- [x] Overpopulation = lower fertility + higher disease spread
+       needs §B+§D · verify: pop past carrying_capacity → births fade, contagion rises
+       · tune: carrying_capacity, max_population, disease_radius
+- [x] Night + fog = blindness
+       needs §E · verify: fog at night collapses sight (starving rate rises) · tune:
+       night_sight_mult, fog_sight_mult
+- [x] Seeded tests — backend/tests/test_synergies.py: one deterministic test per
+       verifiable-now synergy (winter+plague, mutation→purge, overcrowd→fertility+
+       disease, night+fog blindness), reusing the fixed-tick RNG pattern from
+       test_disease.py / test_environment.py
 
 ### Blocked on §H (food ecosystem) + §I (predation/clan war)
 - [ ] Predator–prey oscillation (Lotka–Volterra) — needs §H+§I · verify: predator/prey
       counts oscillate out of phase · tune: predator_ratio, hunt_radius, plant_growth_rate
-- [ ] Death feeds life — needs §H (corpses already land in §N) · verify: post-die-off,
-      corpse decay + nutrient pool accelerates plant regrowth · tune: corpse_ttl,
-      nutrient_cycle_rate
+- [x] Death feeds life — needs §H (corpses already land in §N) · verify: post-die-off,
+       corpse decay + nutrient pool accelerates plant regrowth · tune: corpse_ttl,
+       nutrient_cycle_rate (test_plants.py: test_corpse_decay_boosts_nearby_plant_growth)
 - [ ] War over scarce food — needs §H+§I · verify: famine → clan rivalry drops → wars
       spike → corpses feed survivors · tune: rivalry_threshold, attack_damage
 - [ ] Flocking is a double-edged sword — needs §I+§D · verify: clan cohesion dilutes

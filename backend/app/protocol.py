@@ -78,12 +78,14 @@ class StateMessage(BaseModel):
     weather: Literal["clear", "rain", "fog", "storm"] = "clear"
     terrain_fertile: list[dict[str, float]] = Field(default_factory=list)
     terrain_rocks: list[dict[str, float]] = Field(default_factory=list)
+    relations: list[dict[str, int]] = Field(default_factory=list)
     events: list["HistoryEvent"] = Field(default_factory=list)
 
 
 class HistoryEvent(BaseModel):
     type: Literal[
-        "death", "birth", "promotion", "demotion", "outbreak", "recovery", "bloom"
+        "death", "birth", "promotion", "demotion", "outbreak", "recovery",
+        "bloom", "alliance", "rivalry",
     ] = ("death")
     tick: int
     entity_id: int
@@ -161,6 +163,15 @@ class GodLaws(BaseModel):
     fog_sight_mult: Optional[float] = Field(None, ge=0.05, le=2)
     rain_speed_mult: Optional[float] = Field(None, ge=0.1, le=2)
     storm_wander_bonus: Optional[float] = Field(None, ge=0, le=3.2)
+
+    # Society — interaction & clan relations
+    cohesion_weight: Optional[float] = Field(None, ge=0, le=3)
+    alignment_weight: Optional[float] = Field(None, ge=0, le=3)
+    separation_weight: Optional[float] = Field(None, ge=0, le=3)
+    flock_radius: Optional[float] = Field(None, ge=1, le=40)
+    relation_drift_rate: Optional[float] = Field(None, ge=0, le=10)
+    alliance_threshold: Optional[int] = Field(None, ge=-100, le=100)
+    rivalry_threshold: Optional[int] = Field(None, ge=-100, le=100)
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
     house_min_size: Optional[float] = Field(None, ge=3, le=60)
     house_max_size: Optional[float] = Field(None, ge=3, le=80)
@@ -169,4 +180,5 @@ class GodLaws(BaseModel):
     shelter_enabled: Optional[bool] = None
     exposure_drain: Optional[float] = Field(None, ge=0, le=10)
     house_capacity: Optional[int] = Field(None, ge=1, le=64)
+    house_claim_enabled: Optional[bool] = None
     rest_recovery_mult: Optional[float] = Field(None, ge=0, le=10)

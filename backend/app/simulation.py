@@ -78,6 +78,9 @@ class Simulation:
         self.weather = "clear"
         self.clans: dict[int, dict] = {}  # id -> {name, founder_id, born_tick, color}
         self._next_clan_id = 1
+        self.relations: dict[tuple[int, int], int] = {}  # clan pair -> -100..100
+        self._relation_zones: dict[tuple[int, int], int] = {}  # last seen zone
+        self._eaters_this_tick: list[int] = []
         self.fertile: list[dict] = []  # {x,y,r} — food prefers these grounds
         self.rocks: list[dict] = []  # {x,y,r} — solid circles that block movement
         self._spawn_initial()
@@ -118,6 +121,10 @@ class Simulation:
 
     def env_speed_mult(self) -> float:
         return self.config.rain_speed_mult if self.weather in ("rain", "storm") else 1.0
+
+    def distance(self, ax: float, ay: float, bx: float, by: float) -> float:
+        """Proxy to world distance (convenience for tests)."""
+        return self.world.distance(ax, ay, bx, by)
 
     def _inside_house(self, c: Creature, h: House) -> bool:
         return (
@@ -232,6 +239,8 @@ class Simulation:
             "born_tick": self.tick,
             "color": CLAN_COLORS[(cid - 1) % len(CLAN_COLORS)],
         }
+        if self.config.house_claim_enabled:
+            self._claim_house_for_clan(cid)
         return cid
 
     def _found_founding_clans(self) -> None:
@@ -244,6 +253,68 @@ class Simulation:
             for c in self.world.creatures():
                 if c.caste == caste:
                     c.clan_id = cid
+        self._assign_house_claims()
+
+    def _assign_house_claims(self) -> None:
+        """Each clan claims a distinct house as its settlement (distinct if enough houses)."""
+        if not self.config.house_claim_enabled:
+            return
+        houses = sorted(
+            [e for e in self.world.entities.values() if isinstance(e, House)],
+            key=lambda h: h.id,
+        )
+        if not houses:
+            return
+        # Clear stale claims from previous world generation / disabled period
+        for h in houses:
+            if h.clan_id and h.clan_id not in self.clans:
+                h.clan_id = 0
+                h.clan_color = None
+        # Assign each unclaimed clan a free house round-robin
+        free = [h for h in houses if h.clan_id == 0]
+        for cid in sorted(self.clans.keys()):
+            if any(h.clan_id == cid for h in houses):
+                continue  # already has a settlement
+            if not free:
+                break  # housing shortage: some clans remain homeless
+            h = free.pop(0)
+            h.clan_id = cid
+            h.clan_color = self.clans[cid]["color"]
+
+    def _claim_house_for_clan(self, clan_id: int) -> None:
+        """Give a newly founded clan the first free house, if any."""
+        if not self.config.house_claim_enabled:
+            return
+        houses = sorted(
+            [e for e in self.world.entities.values() if isinstance(e, House)],
+            key=lambda h: h.id,
+        )
+        for h in houses:
+            if h.clan_id == 0:
+                h.clan_id = clan_id
+                h.clan_color = self.clans[clan_id]["color"]
+                return
+
+    def _refresh_house_claims(self) -> None:
+        """Sync house crests with the current law (enable/disable)."""
+        houses = [e for e in self.world.entities.values() if isinstance(e, House)]
+        if not self.config.house_claim_enabled:
+            for h in houses:  # type: ignore[union-attr]
+                h.clan_id = 0
+                h.clan_color = None
+        else:
+            self._assign_house_claims()
+
+    def _house_for(self, c: Creature, houses: list[Entity]) -> House | None:
+        """Preferred shelter: clan's claimed house if enabled, else nearest."""
+        if not houses:
+            return None
+        if self.config.house_claim_enabled and c.clan_id:
+            for h in houses:
+                if isinstance(h, House) and h.clan_id == c.clan_id:
+                    return h  # type: ignore[return-value]
+        # Fall back to nearest house by wrap-aware distance
+        return min(houses, key=lambda h: self.world.distance(c.x, c.y, h.x, h.y))  # type: ignore[arg-type]
 
     # --------------------------------------------------------------- terrain
     def _generate_terrain(self) -> None:
@@ -331,6 +402,7 @@ class Simulation:
         self._eaten.clear()
         self._beds.clear()  # beds are re-contested every tick, in id order
         self._events_this_tick = []
+        self._eaters_this_tick = []
         self._update_weather()
         self._update_plants()
         self.world.rebuild_index()
@@ -339,9 +411,94 @@ class Simulation:
             self._update_creature(creature, houses)
         self._update_disease()
         self._reproduce()
+        self._update_relations()
         self._enforce_food_law()
         self._update_corpses()
         self.tick += 1
+
+    # ---------------------------------------------------------------- society
+    @staticmethod
+    def _relation_pair(a: int, b: int) -> tuple[int, int]:
+        return (a, b) if a < b else (b, a)
+
+    def _bump_relation(self, clan_a: int, clan_b: int, delta: int) -> None:
+        if not clan_a or not clan_b or clan_a == clan_b:
+            return
+        pair = self._relation_pair(clan_a, clan_b)
+        score = max(-100, min(100, self.relations.get(pair, 0) + delta))
+        self.relations[pair] = score
+
+    def _zone_of(self, score: int) -> int:
+        if score >= self.config.alliance_threshold:
+            return 1  # allies
+        if score <= self.config.rivalry_threshold:
+            return -1  # rivals
+        return 0  # neutral
+
+    def _update_relations(self) -> None:
+        """Clan scores rise when strangers feast together and drift toward peace."""
+        cfg = self.config
+
+        # Old zones are what the chronicle last saw (neutral for unseen pairs).
+        old_zones: dict[tuple[int, int], int] = dict(self._relation_zones)
+
+        eaters = sorted(self._eaters_this_tick)
+        for i, aid in enumerate(eaters):
+            ea = self.world.entities.get(aid)
+            for bid in eaters[i + 1:]:
+                eb = self.world.entities.get(bid)
+                if ea is None or eb is None or not isinstance(ea, Creature) or not isinstance(eb, Creature):
+                    continue
+                if not ea.clan_id or not eb.clan_id or ea.clan_id == eb.clan_id:
+                    continue
+                if self.world.distance(ea.x, ea.y, eb.x, eb.y) <= cfg.flock_radius:
+                    self._bump_relation(ea.clan_id, eb.clan_id, +2)
+
+        # Emit events for bumps that crossed a threshold (including bumps done
+        # outside this tick via _bump_relation).
+        for pair in sorted(list(self.relations.keys())):
+            old = old_zones.get(pair, 0)
+            new = self._zone_of(self.relations[pair])
+            if new != old and new != 0:
+                a, b = pair
+                self._emit(
+                    HistoryEvent(
+                        type="alliance" if new == 1 else "rivalry",
+                        tick=self.tick + 1,
+                        entity_id=0,
+                        caste=None,
+                        x=0.0,
+                        y=0.0,
+                        payload={"a": a, "b": b, "score": self.relations[pair]},
+                    )
+                )
+            old_zones[pair] = new
+
+        # Scores relax toward neutrality; crossing a threshold is news.
+        rate = int(round(cfg.relation_drift_rate))
+        for pair in sorted(list(self.relations.keys())):
+            score = self.relations[pair]
+            prev_zone = old_zones.get(pair, self._zone_of(score))
+            if score > 0:
+                score = max(0, score - rate)
+            elif score < 0:
+                score = min(0, score + rate)
+            self.relations[pair] = score
+            new_zone = self._zone_of(score)
+            if new_zone != prev_zone and new_zone != 0:
+                a, b = pair
+                self._emit(
+                    HistoryEvent(
+                        type="alliance" if new_zone == 1 else "rivalry",
+                        tick=self.tick + 1,
+                        entity_id=0,
+                        caste=None,
+                        x=0.0,
+                        y=0.0,
+                        payload={"a": a, "b": b, "score": score},
+                    )
+                )
+            self._relation_zones[pair] = new_zone
 
     # ------------------------------------------------------------------ flora
     def _update_plants(self) -> None:
@@ -654,7 +811,7 @@ class Simulation:
             and self._is_night(tod)
             and houses
         ):
-            home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
+            home = self._house_for(c, houses)
             inside = (
                 abs(c.x - home.x) < home.size / 2 - 0.3
                 and abs(c.y - home.y) < home.size / 2 - 0.3
@@ -734,7 +891,9 @@ class Simulation:
 
         # 2. Steer toward food or wander — unless heading home for the night.
         if cfg.sleep_enabled and self._is_night(self._time_of_day()) and houses:
-            home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
+            home = self._house_for(c, houses)
+            if home is None:
+                home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
             dx, dy = w.delta(home.x, home.y, c.x, c.y)
             desired = math.atan2(dy, dx)
             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
@@ -764,6 +923,30 @@ class Simulation:
                     cap = cfg.steer_turn * 0.6
                     c.angle += max(-cap, min(cap, diff))
                     break
+
+        # 2c. Flock instincts: keep your distance, and hold formation with kin.
+        if cfg.cohesion_weight or cfg.alignment_weight or cfg.separation_weight:
+            fx = fy = 0.0
+            for o in w.query_radius(c.x, c.y, cfg.flock_radius):
+                if not isinstance(o, Creature) or o.id == c.id:
+                    continue
+                dxo, dyo = w.delta(o.x, o.y, c.x, c.y)
+                d = math.hypot(dxo, dyo) or 1e-6
+                if d < 1.5:
+                    fx -= (dxo / d) * cfg.separation_weight
+                    fy -= (dyo / d) * cfg.separation_weight
+                else:
+                    # cohesion only with kin; alignment with any nearby flock-mate
+                    if o.clan_id and o.clan_id == c.clan_id:
+                        fx += (dxo / d) * cfg.cohesion_weight
+                        fy += (dyo / d) * cfg.cohesion_weight
+                    fx += math.cos(o.angle) * cfg.alignment_weight
+                    fy += math.sin(o.angle) * cfg.alignment_weight
+            if fx or fy:
+                desired = math.atan2(fy, fx)
+                diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                cap = cfg.steer_turn * 0.5
+                c.angle += max(-cap, min(cap, diff))
 
         # 3. Move (hunger speeds up the desperate; rain slows every body).
         step_len = c.speed * speed_mult * stage_speed * self.env_speed_mult()
@@ -799,6 +982,7 @@ class Simulation:
             self._eaten.add(target.id)
             c.ticks_since_meal = 0
             c.meals += 1
+            self._eaters_this_tick.append(c.id)
             gain = cfg.energy_from_food
             if isinstance(target, Food):
                 gain *= target.growth  # immature plants feed proportionally less
@@ -812,7 +996,7 @@ class Simulation:
             and not self._is_night(tod)
             and self.weather in ("rain", "storm")
         ):
-            home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
+            home = self._house_for(c, houses)
             if self._inside_house(c, home) and self._claim_bed(home):
                 c.indoors = True
 
@@ -883,6 +1067,10 @@ class Simulation:
             weather=self.weather,
             terrain_fertile=self.fertile,
             terrain_rocks=self.rocks,
+            relations=[
+                {"a": a, "b": b, "score": s}
+                for (a, b), s in sorted(self.relations.items())
+            ],
             events=list(self._events_this_tick),
         )
 
@@ -920,6 +1108,8 @@ class Simulation:
                 door_width=round(e.door_width, 2),
                 door_offset=round(e.door_offset, 2),
                 door_side=e.door_side,  # type: ignore[arg-type]
+                clan_id=e.clan_id or None,
+                clan_color=e.clan_color,
             )
         if isinstance(e, Food):
             return EntityState(**base, growth=round(e.growth, 3))

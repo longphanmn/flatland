@@ -219,12 +219,20 @@ LAW_FIELDS = (
     "fog_sight_mult",
     "rain_speed_mult",
     "storm_wander_bonus",
+    "cohesion_weight",
+    "alignment_weight",
+    "separation_weight",
+    "flock_radius",
+    "relation_drift_rate",
+    "alliance_threshold",
+    "rivalry_threshold",
     "door_clearance",
     "house_min_size",
     "house_max_size",
     "shelter_enabled",
     "exposure_drain",
     "house_capacity",
+    "house_claim_enabled",
     "rest_recovery_mult",
 )
 
@@ -251,6 +259,8 @@ def apply_laws(laws: GodLaws) -> dict:
     RT.config = cfg
     RT.sim.config = cfg  # the living world follows the new law immediately
     RT.sim.world.config = cfg
+    if "house_claim_enabled" in updates:
+        RT.sim._refresh_house_claims()
     if updates and RT.world_id is not None:
         for name, value in updates.items():
             DB.add_law_change(RT.world_id, RT.sim.tick, name, value)

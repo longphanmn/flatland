@@ -108,12 +108,22 @@ class Config:
     shelter_enabled: bool = True  # houses are scarce, contested and life-saving
     exposure_drain: float = 0.3  # extra energy/tick outdoors in rain/storm or at night
     house_capacity: int = 4  # beds per house per tick; overflow sleeps outside
+    house_claim_enabled: bool = True  # clans claim houses as settlements
     rest_recovery_mult: float = 2.0  # indoor sleeping health regen multiplier
 
     # Terrain (-1 => auto-scale from area)
     fertile_patches: int = -1  # green grounds where food prefers to grow
     rock_count: int = -1  # solid stone circles that block movement
     fertile_food_bias: float = 0.7  # fraction of food spawned on fertile ground
+
+    # Society — interaction & clan relations
+    cohesion_weight: float = 0.0  # pull toward same-clan flock centre
+    alignment_weight: float = 0.0  # match neighbours' heading
+    separation_weight: float = 0.0  # personal-space push from any neighbour
+    flock_radius: float = 6.0  # interaction perception range
+    relation_drift_rate: float = 1.0  # points/tick clan scores relax toward 0
+    alliance_threshold: int = 50  # score at/above which two clans are allies
+    rivalry_threshold: int = -50  # score at/below which two clans are rivals
 
     # Houses
     house_min_size: float = 6.0
