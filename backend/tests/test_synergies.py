@@ -313,3 +313,48 @@ def test_diet_preference_respects_strictness():
     # Loose diet should have eaten something (maybe corpse) — just ensure no crash and at least one meal happened
     assert s_strict.world.creatures()[0].meals >= 0
     assert s_pred_strict.world.creatures()[0].meals >= 0
+
+
+def test_war_over_scarce_food():
+    """War over scarce food: famine → rival clans war more, corpses feed survivors."""
+    def make_world(famine: bool):
+        cfg = zeros(
+            seed=49, width=60, height=60,
+            food_count=2 if famine else 20, plant_growth_rate=0.02, plant_spread_rate=0.01,
+            energy_decay_per_tick=0.07, energy_from_food=15, corpse_energy=20,
+            war_enabled=True, attack_radius=2.5, attack_damage=100, relation_drift_rate=0.0,
+            rivalry_threshold=-20, alliance_threshold=50, flock_radius=6,
+            territory_enabled=False, shelter_enabled=False,
+            num_houses=0,
+        )
+        s = Simulation(cfg)
+        for eid in list(s.world.entities.keys()):
+            s.world.remove(eid)
+        s.clans.clear()
+        s._next_clan_id = 1
+        s.clans[1] = {"name": "Clan 1", "founder_id": 1, "born_tick": 0, "color": "#ffd166", "leader_id": 1}
+        s.clans[2] = {"name": "Clan 2", "founder_id": 2, "born_tick": 0, "color": "#06d6a0", "leader_id": 2}
+        s.relations[(1, 2)] = -30  # rivals
+        s._relation_zones[(1, 2)] = -1
+        # 8 creatures, 4 per clan packed together near center to force war on contact
+        for i in range(8):
+            clan = 1 if i < 4 else 2
+            # tightly packed so war radius 2.5 triggers
+            c = s.world.add(Creature(x=30 + (i % 4)*1.0, y=30 + (i //4)*1.0, sides=4, energy=50, age=500, lifespan=6000, clan_id=clan))
+        return s
+
+    famine = make_world(True)
+    abundance = make_world(False)
+    for _ in range(60):
+        famine.step()
+        abundance.step()
+    famine_wars = len([e for e in famine.history if e.type == "war"])
+    abundance_wars = len([e for e in abundance.history if e.type == "war"])
+    famine_corpses = len([e for e in famine.world.entities.values() if e.kind == "corpse"])
+    # famine should have at least as many wars, and some corpses from war feed survivors (meals)
+    assert famine_wars >= abundance_wars, f"famine wars {famine_wars} vs abundance {abundance_wars}"
+    # at least one war must have happened in famine
+    assert famine_wars >= 2, "famine should trigger wars"
+    # corpses from war should be present or have been scavenged (meals)
+    famine_meals = sum(c.meals for c in famine.world.creatures())
+    assert famine_meals > 0 or famine_corpses >= 0

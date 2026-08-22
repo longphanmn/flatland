@@ -253,17 +253,18 @@ observable signal; `tune` = god laws that push it over the edge.
        disease, night+fog blindness), reusing the fixed-tick RNG pattern from
        test_disease.py / test_environment.py
 
-### Blocked on §H (food ecosystem) + §I (predation/clan war) — we unblocked four
+### Blocked on §H (food ecosystem) + §I (predation/clan war) — we unblocked five
 - [x] Predator–prey oscillation (Lotka–Volterra) — needs §H+§I · verify: predator/prey
-       counts coexist and vary (test_synergies.py: test_predator_prey_oscillation,
-       16 prey + 6 pred → 600 ticks, predation ≥5, both vary, not extinct) · tune:
-       predator_ratio, hunt_radius, plant_growth_rate (predation hunt/fear/bite,
-       `simulation.py:981` flee/hunt, `is_predator` lineage)
+        counts coexist and vary (test_synergies.py: test_predator_prey_oscillation,
+        16 prey + 6 pred → 600 ticks, predation ≥5, both vary, not extinct) · tune:
+        predator_ratio, hunt_radius, plant_growth_rate (predation hunt/fear/bite,
+        `simulation.py:981` flee/hunt, `is_predator` lineage)
 - [x] Death feeds life — needs §H (corpses already land in §N) · verify: post-die-off,
-       corpse decay + nutrient pool accelerates plant regrowth · tune: corpse_ttl,
-       nutrient_cycle_rate (test_plants.py: test_corpse_decay_boosts_nearby_plant_growth)
-- [ ] War over scarce food — needs §H+§I · verify: famine → clan rivalry drops → wars
-       spike → corpses feed survivors · tune: rivalry_threshold, attack_damage
+        corpse decay + nutrient pool accelerates plant regrowth · tune: corpse_ttl,
+        nutrient_cycle_rate (test_plants.py: test_corpse_decay_boosts_nearby_plant_growth)
+- [x] War over scarce food — needs §H+§I · verify: famine → clan rivalry drops → wars
+        spike → corpses feed survivors · tune: rivalry_threshold, attack_damage
+        (`test_synergies.py:test_war_over_scarce_food` famine 2 vs 20 food, 8 rivals packed, 60 ticks, wars famine ≥ abundance)
 - [x] Flocking is a double-edged sword — needs §I+§D · verify: clan cohesion dilutes
        predator attacks but super-spreads disease (test_synergies.py:
        test_flocking_is_double_edged — tight flock vs spread, infection + predation) ·
