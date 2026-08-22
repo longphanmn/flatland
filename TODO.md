@@ -433,9 +433,9 @@ WorldBox's god intervenes; Flatland's god only sets laws. These are the WorldBox
 mechanics that survive that translation — all emergent or law-gated.
 
 ### Ages (super-seasons)
-- [ ] [P2] World ages — a long era over seasons (`age_length`); each age bends the
+- [x] [P2] World ages — a long era over seasons (`age_length`); each age bends the
       world: Ice (winter food ×0.3 + chill), Chaos (mutation ↑), Plague (disease ↑),
-      Golden (bounty + birth ↑). Chosen/cycled by law; `age` in snapshot + HUD.
+      Golden (bounty + birth ↑). Chosen/cycled by law; `age` in snapshot + HUD. (`config.py:64` `age_enabled`/`age_length` 12000, `simulation.py:125` `AGES`/`AGE_*MULT`, `_age()` cycle, `snapshot` `age`/`age_tick`, `CanvasRenderer.tsx:470` tint, `App.tsx:353` HUD age, `GodPanel.tsx:66` Ages group)
 
 ### Rebellion & clan schism
 - [x] [P1] Schism — a clan's unhappy members (starving, homeless, or low relations)

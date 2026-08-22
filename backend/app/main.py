@@ -200,6 +200,8 @@ LAW_FIELDS = (
     "food_call_rate",
     "alarm_call_rate",
     "food_memory_ttl",
+    "age_enabled",
+    "age_length",
     "energy_max",
     "energy_decay_per_tick",
     "energy_from_food",

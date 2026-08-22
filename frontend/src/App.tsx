@@ -355,6 +355,11 @@ export default function App() {
             {state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}
           </span>
         )}
+        {state && state.age && (
+          <span className="chip" title={`Age ${state.age} — super-season bending world: Ice (food×0.55 chill×1.4), Chaos (mutation×1.8), Plague (disease×1.8), Golden (food×1.25 birth×1.3). God sets age_length.`}>
+            🗓 age <b>{state.age}</b> · tick {state.age_tick}
+          </span>
+        )}
         {state && (
           <span className="chip" title={`Time of day ${state.time_of_day} — night (0-0.22, 0.78-1) dims sight 0.6×, fog 0.6× stack; season ${state.season} changes Food target and disease. Weather ${state.weather}: rain slows 0.85×, storm adds wander.`}>
             {isNight ? '🌙' : '☀'} day <b>{state.day}</b> · {state.season}

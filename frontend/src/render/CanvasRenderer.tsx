@@ -526,6 +526,20 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       }
       ctx.fillStyle = seasonTint[state.season] ?? 'rgba(0,0,0,0)'
       ctx.fillRect(0, 0, cw, ch)
+      // age tint — super-season bend
+      if ((state as any).age) {
+        const ageTint: Record<string, string> = {
+          Golden: 'rgba(255,215,80,0.07)',
+          Ice: 'rgba(150,200,255,0.09)',
+          Chaos: 'rgba(180,80,255,0.06)',
+          Plague: 'rgba(80,200,80,0.06)',
+        }
+        const at = ageTint[(state as any).age]
+        if (at) {
+          ctx.fillStyle = at
+          ctx.fillRect(0, 0, cw, ch)
+        }
+      }
       drawWeather(ctx, state.weather, cw, ch)
 
       ctx.strokeStyle = 'rgba(110,118,129,0.45)'

@@ -74,6 +74,8 @@ export interface StateMessage {
   clans: Record<string, { name: string; founder_id: number; born_tick: number; color: string }>
   events: HistoryEvent[]
   signals: { x: number; y: number; kind: 'food' | 'alarm'; sender: number; clan_id: number | null; ttl: number }[]
+  age: string | null
+  age_tick: number
 }
 
 export interface HistoryEvent {
@@ -256,6 +258,8 @@ export interface GodLaws {
   food_call_rate?: number
   alarm_call_rate?: number
   food_memory_ttl?: number
+  age_enabled?: boolean
+  age_length?: number
 
   schism_enabled?: boolean
   schism_threshold?: number

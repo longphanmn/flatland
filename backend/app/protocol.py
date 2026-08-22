@@ -94,6 +94,8 @@ class StateMessage(BaseModel):
     clans: dict[str, dict[str, Any]] = Field(default_factory=dict)
     events: list["HistoryEvent"] = Field(default_factory=list)
     signals: list[dict[str, Any]] = Field(default_factory=list)
+    age: Optional[str] = None
+    age_tick: int = 0
 
 
 class HistoryEvent(BaseModel):
@@ -202,6 +204,8 @@ class GodLaws(BaseModel):
     food_call_rate: Optional[float] = Field(None, ge=0, le=1)
     alarm_call_rate: Optional[float] = Field(None, ge=0, le=1)
     food_memory_ttl: Optional[int] = Field(None, ge=20, le=5000)
+    age_enabled: Optional[bool] = None
+    age_length: Optional[int] = Field(None, ge=100, le=1000000)
 
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
     schism_enabled: Optional[bool] = None

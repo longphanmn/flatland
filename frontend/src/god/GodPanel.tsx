@@ -106,6 +106,8 @@ const NUMBER_LAWS: LawSpec[] = [
   // Rebellion — clan schism (§S)
   { key: 'schism_threshold', label: 'Schism threshold', min: 0, max: 1, step: 0.05, group: 'Rebellion' },
   { key: 'schism_min_pop', label: 'Schism min pop', min: 2, max: 100, step: 1, group: 'Rebellion' },
+  // Ages — super-seasons (§S)
+  { key: 'age_length', label: 'Age length (ticks)', min: 100, max: 1000000, step: 100, group: 'Ages' },
   // Clan war — rival blood
   { key: 'attack_radius', label: 'Attack radius', min: 0.5, max: 10, step: 0.1, group: 'Clan War' },
   { key: 'attack_damage', label: 'Attack damage', min: 0, max: 200, step: 10, group: 'Clan War' },
@@ -124,6 +126,7 @@ const GROUP_ORDER = [
   'Reproduction',
   'Disease',
   'Sky & Seasons',
+  'Ages',
   'Weather & Crops',
   'Weather Sickness',
   'Shelter',
@@ -174,6 +177,7 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   chill_threshold: 'chill at which creature sickens (12) — shelter sheds 2.5× faster',
   chill_drain: 'health drain per tick when chilled (0.18) — death cause chill',
   wet_disease_mult: 'wet/cold catch disease faster and recover slower (1.5×)',
+  age_length: 'ticks per age (12000 = 5 seasons) — Golden×1.25 food, Ice×0.55 food + chill, Chaos×1.8 mutation, Plague×1.8 disease',
   signal_radius: 'heard within this range (12) — clan-mates respond strongly, strangers weakly',
   food_call_rate: 'well-fed finds food → calls with this chance/tick (0.08)',
   alarm_call_rate: 'sees predator → alarm call chance/tick (0.12)',
@@ -380,6 +384,20 @@ export default function GodPanel({ open, onClose }: Props) {
                     value={String(laws.communication_enabled ?? false)}
                     onChange={(e) =>
                       setLaws((l) => ({ ...l, communication_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
+              )}
+              {group === 'Ages' && (
+                <label className="god-row">
+                  <span title="super-seasons: Golden/ Ice/ Chaos/ Plague — each bends food/mutation/disease/chill. God sets length, world cycles.">Ages</span>
+                  <select
+                    value={String(laws.age_enabled ?? false)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, age_enabled: e.target.value === 'true' }))
                     }
                   >
                     <option value="true">yes</option>

@@ -38,6 +38,11 @@ SEASON_FOOD_MULT = {"spring": 1.0, "summer": 1.2, "autumn": 1.0, "winter": 0.5}
 SPRING_BIRTH_MULT = 1.25
 WINTER_DISEASE_MULT = 1.5
 WEATHER_STATES = ("clear", "rain", "fog", "storm")
+AGES = ("Golden", "Ice", "Chaos", "Plague")
+AGE_FOOD_MULT = {"Golden": 1.25, "Ice": 0.55, "Chaos": 0.95, "Plague": 0.9}
+AGE_MUTATION_MULT = {"Golden": 0.9, "Ice": 1.1, "Chaos": 1.8, "Plague": 1.0}
+AGE_DISEASE_MULT = {"Golden": 0.8, "Ice": 1.1, "Chaos": 1.0, "Plague": 1.8}
+AGE_BIRTH_MULT = {"Golden": 1.3, "Ice": 0.85, "Chaos": 1.0, "Plague": 0.9}
 
 YIELD_RADIUS = 2.5  # lower castes step aside within this range
 
@@ -165,6 +170,17 @@ class Simulation:
 
     def _season(self) -> str:
         return SEASONS[(self.tick // max(1, self.config.season_length)) % 4]
+
+    def _age(self) -> str | None:
+        if not self.config.age_enabled:
+            return None
+        idx = (self.tick // max(1, self.config.age_length)) % len(AGES)
+        return AGES[idx]
+
+    def _age_tick(self) -> int:
+        if not self.config.age_enabled:
+            return 0
+        return self.tick % max(1, self.config.age_length)
 
     @property
     def day(self) -> int:
@@ -1181,12 +1197,15 @@ class Simulation:
         creatures = self.world.creatures()
         active = [c for c in creatures if c.infected]
 
+        age = self._age()
+        age_disease = AGE_DISEASE_MULT.get(age, 1.0) if age is not None else 1.0
         if (
             not any(c.infected for c in creatures)
             and creatures
             and self.rng.random()
             < cfg.disease_outbreak_rate
             * (WINTER_DISEASE_MULT if self._season() == "winter" else 1.0)
+            * age_disease
         ):
             patient = self.rng.choice(creatures)
             self.disease_id += 1
@@ -1226,10 +1245,10 @@ class Simulation:
                     )
                 )
                 continue
-            # Contagion to healthy neighbours (winter air carries further) — wet catches faster (§R)
+            # Contagion to healthy neighbours (winter air carries further) — wet catches faster (§R) — age plague (§S)
             base_spread = cfg.disease_rate * (
                 WINTER_DISEASE_MULT if self._season() == "winter" else 1.0
-            )
+            ) * (AGE_DISEASE_MULT.get(age, 1.0) if age is not None else 1.0)
             for n in self.world.query_radius(c.x, c.y, cfg.disease_radius):
                 if n.kind == "creature" and not n.infected and n.id != c.id:
                     rate = base_spread
@@ -1286,6 +1305,9 @@ class Simulation:
                 * room
             )
             rate = cfg.birth_rate
+            age2 = self._age()
+            if age2 is not None:
+                rate = min(1.0, rate * AGE_BIRTH_MULT.get(age2, 1.0))
             if self._season() == "spring":
                 rate = min(1.0, rate * SPRING_BIRTH_MULT)  # spring quickens the blood
             if self.rng.random() >= min(rate * fert, 1.0):
@@ -1395,7 +1417,11 @@ class Simulation:
                 sides = min(father.sides + 1, cfg.max_sides)
                 iso = 60.0
             irregularity = 0.0
-            if self.rng.random() < cfg.mutation_rate:
+            mut_rate = cfg.mutation_rate
+            age = self._age()
+            if age is not None:
+                mut_rate = min(1.0, mut_rate * AGE_MUTATION_MULT.get(age, 1.0))
+            if self.rng.random() < mut_rate:
                 # A deformed child: sides deviate AND the irregularity is scored.
                 sides = min(cfg.max_sides, max(3, sides + self.rng.choice((-1, 1))))
                 if sides != 3:
@@ -1968,17 +1994,19 @@ class Simulation:
             and (self._is_night(tod) or self.weather in ("rain", "storm"))
         ):
             c.energy -= cfg.exposure_drain
-        # §R Chill
+        # §R Chill — Ice age chills deeper (§S)
         if cfg.weather_sickness_enabled:
             is_wet = self.weather in ("rain", "storm")
             is_winter_night = self._season() == "winter" and self._is_night(tod)
+            age = self._age()
+            chill_mult = 1.4 if age == "Ice" else 1.0
             if not c.indoors and (is_wet or is_winter_night):
-                c.chill = min(cfg.chill_threshold * 2, c.chill + cfg.chill_rate)
+                c.chill = min(cfg.chill_threshold * 2, c.chill + cfg.chill_rate * chill_mult)
             else:
-                shed = cfg.chill_rate * (2.5 if c.indoors else 1.0)
+                shed = cfg.chill_rate * (2.5 if c.indoors else 1.0) * (0.8 if age == "Ice" else 1.0)
                 c.chill = max(0.0, c.chill - shed)
             if c.chill >= cfg.chill_threshold:
-                c.health -= cfg.chill_drain
+                c.health -= cfg.chill_drain * (1.2 if age == "Ice" else 1.0)
                 if c.health <= 0:
                     self._kill(c, "chill")
                     return
@@ -2000,9 +2028,12 @@ class Simulation:
             self._kill(c, "old_age")
 
     def _enforce_food_law(self) -> None:
-        """God's bounty or famine, bent by the season: winter starves the land."""
+        """God's bounty or famine, bent by the season and age: winter starves the land."""
         season = self._season()
         target = round(self.config.food_count * SEASON_FOOD_MULT[season])
+        age = self._age()
+        if age is not None:
+            target = round(target * AGE_FOOD_MULT.get(age, 1.0))
         foods = [e for e in self.world.entities.values() if e.kind == "food"]
         deficit = target - len(foods)
         if deficit > 0:
@@ -2051,6 +2082,8 @@ class Simulation:
             clans={str(k): v for k, v in self.clans.items()},
             events=list(self._events_this_tick),
             signals=[dict(sg) for sg in self.signals],
+            age=self._age(),
+            age_tick=self._age_tick(),
         )
 
     def _entity_state(self, e: Entity) -> EntityState:

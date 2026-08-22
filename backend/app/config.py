@@ -60,6 +60,10 @@ class Config:
     schism_threshold: float = 0.4  # fraction unhappy (starving/homeless) to trigger split
     schism_min_pop: int = 4  # minimum clan population to consider schism
 
+    # Ages — super-seasons (§S)
+    age_enabled: bool = False  # long era bending world: Ice/Chaos/Plague/Golden
+    age_length: int = 12000  # ticks per age (5 seasons)
+
     # Communication & Care (§Q)
     communication_enabled: bool = False  # food + alarm calls, clan recruitment
     signal_radius: float = 12.0  # heard within this range
