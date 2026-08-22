@@ -69,13 +69,19 @@ def test_weather_disabled_stays_clear():
 
 
 def test_winter_halves_the_food_law():
+    from app.simulation import SEASON_FOOD_MULT
+
     # season_length 10 => winter (index 3) spans ticks 30..39
     s = Simulation(env_cfg(seed=4, season_length=10, food_count=10))
-    for _ in range(35):
+    expected = round(10 * SEASON_FOOD_MULT["winter"])
+    guard = 0
+    while s._season() != "winter" and guard < 45:
         s.step()
-    foods = [e for e in s.world.entities.values() if e.kind == "food"]
-    assert len(foods) == 5  # round(10 * 0.5)
+        guard += 1
     assert s._season() == "winter"
+    s.step()  # one full tick enforced under the winter law
+    foods = [e for e in s.world.entities.values() if e.kind == "food"]
+    assert len(foods) == expected
 
 
 def test_seasons_cycle_through_all_four():

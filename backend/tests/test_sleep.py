@@ -40,18 +40,22 @@ def test_creatures_sleep_inside_houses_at_night():
 
 
 def test_sleeping_halves_hunger():
+    """Non-vacuous: hard-precondition a night tick indoors, then assert the halved loss."""
     s = Simulation(sleep_cfg(seed=2))
     s.world.add(House(x=25.0, y=25.0, size=10.0))
     c = s.world.add(Creature(x=25.0, y=25.0, energy=50.0))
-    # advance to just before a night tick (tick 5 of 8 is night)
-    for _ in range(5):
-        s.step()
-    assert c.sleeping or s._is_night(s._time_of_day())
+    guard = 0
+    while not s._is_night(s._time_of_day()) and guard < 10:
+        s.step()  # stay day; the house keeps them centred
+        guard += 1
+    assert s._is_night(s._time_of_day())
     e_before = c.energy
-    s.step()
+    s.step()  # the first night tick
+    assert c.sleeping is True and c.indoors is True
     loss = e_before - c.energy
-    if s._is_night(s._time_of_day()):
-        assert loss <= s.config.energy_decay_per_tick * 0.5 + 0.01
+    assert loss == pytest.approx(
+        s.config.energy_decay_per_tick * s.config.sleep_energy_mult, abs=0.01
+    )
 
 
 def test_no_house_no_sleep():
