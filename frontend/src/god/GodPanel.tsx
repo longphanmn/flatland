@@ -61,6 +61,15 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'fog_sight_mult', label: 'Fog sight ×', min: 0.05, max: 2, step: 0.05, group: 'Sky & Seasons' },
   { key: 'rain_speed_mult', label: 'Rain speed ×', min: 0.1, max: 2, step: 0.05, group: 'Sky & Seasons' },
   { key: 'storm_wander_bonus', label: 'Storm wander +', min: 0, max: 3.2, step: 0.05, group: 'Sky & Seasons' },
+  // Weather & Crops — rain waters, fog favours mushrooms, storms damage (§R)
+  { key: 'rain_growth_mult', label: 'Rain growth ×', min: 0.5, max: 3, step: 0.05, group: 'Weather & Crops' },
+  { key: 'fog_mushroom_mult', label: 'Fog mushroom ×', min: 0.5, max: 3, step: 0.05, group: 'Weather & Crops' },
+  { key: 'storm_plant_damage', label: 'Storm plant damage', min: 0, max: 1, step: 0.005, group: 'Weather & Crops' },
+  // Weather Sickness — chill and wet contagion (§R)
+  { key: 'chill_rate', label: 'Chill rate / tick', min: 0, max: 1, step: 0.005, group: 'Weather Sickness' },
+  { key: 'chill_threshold', label: 'Chill threshold', min: 1, max: 100, step: 1, group: 'Weather Sickness' },
+  { key: 'chill_drain', label: 'Chill drain / tick', min: 0, max: 5, step: 0.05, group: 'Weather Sickness' },
+  { key: 'wet_disease_mult', label: 'Wet disease ×', min: 1, max: 5, step: 0.1, group: 'Weather Sickness' },
   // Shelter — roofs against the sky
   { key: 'exposure_drain', label: 'Exposure drain / tick', min: 0, max: 2, step: 0.05, group: 'Shelter' },
   { key: 'house_capacity', label: 'House capacity', min: 1, max: 20, step: 1, group: 'Shelter' },
@@ -107,6 +116,8 @@ const GROUP_ORDER = [
   'Reproduction',
   'Disease',
   'Sky & Seasons',
+  'Weather & Crops',
+  'Weather Sickness',
   'Shelter',
   'Territory',
   'Clan',
@@ -146,6 +157,13 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   rest_recovery_mult: 'health regen multiplier when sleeping indoors (2.0)',
   totems_enabled: 'each clan bears Wolf/Tree/Shield/Eye with buffs',
   succession_enabled: 'leader succession on death emits succession event',
+  rain_growth_mult: 'rain/storm boost to plant growth (1.25) — soaked ground regrows faster',
+  fog_mushroom_mult: 'fog boost to mushroom growth (1.35) — the decomposer tier loves mist',
+  storm_plant_damage: 'chance a storm strips growth from exposed plants (0.02) — occasionally uproots',
+  chill_rate: 'chill built per tick unsheltered in rain/storm/winter night (0.04)',
+  chill_threshold: 'chill at which creature sickens (12) — shelter sheds 2.5× faster',
+  chill_drain: 'health drain per tick when chilled (0.18) — death cause chill',
+  wet_disease_mult: 'wet/cold catch disease faster and recover slower (1.5×)',
 }
 
 interface Props {
@@ -318,6 +336,20 @@ export default function GodPanel({ open, onClose }: Props) {
                     value={String(laws.territory_enabled ?? true)}
                     onChange={(e) =>
                       setLaws((l) => ({ ...l, territory_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
+              )}
+              {group === 'Weather Sickness' && (
+                <label className="god-row">
+                  <span title="chill and wet contagion — rain/storm/winter nights build chill, past threshold drains health; wet catches disease faster">Weather sickness</span>
+                  <select
+                    value={String(laws.weather_sickness_enabled ?? false)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, weather_sickness_enabled: e.target.value === 'true' }))
                     }
                   >
                     <option value="true">yes</option>

@@ -469,6 +469,16 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         ctx.stroke()
         ctx.globalAlpha = 1
       }
+      // chilled — pale blue ring when cold (§R)
+      if ((e.chill ?? 0) >= 12) {
+        ctx.globalAlpha = 0.55
+        ctx.strokeStyle = '#79c0ff'
+        ctx.lineWidth = 0.35
+        ctx.beginPath()
+        ctx.arc(e.x, e.y, r + 0.5, 0, TAU)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
       // soul-code glyph — tiny rune inside body, always visible but brighter when selected (§Q)
       if (e.glyph) {
         const isSel = selectedRef?.current === e.id

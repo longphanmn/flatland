@@ -38,6 +38,7 @@ export interface EntityState {
   hue_shift?: number
   scale_jitter?: number
   angle_jitter?: number
+  chill?: number
   door_width?: number
   door_offset?: number
   door_side?: 'north' | 'east' | 'south' | 'west'
@@ -232,6 +233,14 @@ export interface GodLaws {
   storm_wander_bonus?: number
   sleep_enabled?: boolean
   sleep_energy_mult?: number
+  rain_growth_mult?: number
+  fog_mushroom_mult?: number
+  storm_plant_damage?: number
+  weather_sickness_enabled?: boolean
+  chill_rate?: number
+  chill_threshold?: number
+  chill_drain?: number
+  wet_disease_mult?: number
 
   // Shelter — roofs against the sky
   shelter_enabled?: boolean

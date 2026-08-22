@@ -110,6 +110,7 @@ export default function Inspector({ id, onClose, onNavigate }: Props) {
   if (e?.status === 'starving') statusChips.push({ text: 'starving', cls: 'st-starving' })
   if (e?.infected) statusChips.push({ text: 'sick', cls: 'st-sick' })
   if (e?.sleeping) statusChips.push({ text: 'asleep', cls: 'st-asleep' })
+  if ((e?.chill ?? 0) >= 12) statusChips.push({ text: `chilled ${(e?.chill ?? 0).toFixed(1)}`, cls: 'st-asleep' })
 
   return (
     <aside className="inspector">
@@ -142,6 +143,9 @@ export default function Inspector({ id, onClose, onNavigate }: Props) {
           )}
           <Bar label="energy" value={e.energy ?? 0} max={100} color="#d29922" />
           <Bar label="health" value={e.health ?? 0} max={100} color="#3fb950" />
+          {typeof e.chill === 'number' && e.chill > 0.5 && (
+            <Bar label="chill" value={e.chill} max={24} color="#79c0ff" />
+          )}
           <div className="insp-grid">
             <span className="chip">
               age <b>{e.age ?? 0}</b> / {Math.round(e.lifespan ?? 0)} · {e.stage}

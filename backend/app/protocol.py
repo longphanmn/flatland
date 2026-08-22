@@ -63,6 +63,7 @@ class EntityState(BaseModel):
     hue_shift: Optional[float] = None
     scale_jitter: Optional[float] = None
     angle_jitter: Optional[float] = None
+    chill: Optional[float] = None
     door_width: Optional[float] = None
     door_offset: Optional[float] = None
     door_side: Optional[Literal["north", "east", "south", "west"]] = None
@@ -198,6 +199,18 @@ class GodLaws(BaseModel):
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
     house_min_size: Optional[float] = Field(None, ge=3, le=60)
     house_max_size: Optional[float] = Field(None, ge=3, le=80)
+
+    # Weather → crops (§R)
+    rain_growth_mult: Optional[float] = Field(None, ge=0.5, le=3)
+    fog_mushroom_mult: Optional[float] = Field(None, ge=0.5, le=3)
+    storm_plant_damage: Optional[float] = Field(None, ge=0, le=1)
+
+    # Weather → sickness (§R)
+    weather_sickness_enabled: Optional[bool] = None
+    chill_rate: Optional[float] = Field(None, ge=0, le=1)
+    chill_threshold: Optional[float] = Field(None, ge=1, le=100)
+    chill_drain: Optional[float] = Field(None, ge=0, le=5)
+    wet_disease_mult: Optional[float] = Field(None, ge=1, le=5)
 
     # Shelter
     shelter_enabled: Optional[bool] = None

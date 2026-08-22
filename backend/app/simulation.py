@@ -905,7 +905,7 @@ class Simulation:
 
     # ------------------------------------------------------------------ flora
     def _update_plants(self) -> None:
-        """§H: every plant grows toward maturity; the mature ones spread. §O variant rhythms."""
+        """§H: every plant grows toward maturity; the mature ones spread. §O variant rhythms. §R weather waters/damages."""
         cfg = self.config
         if cfg.plant_growth_rate > 0:
             for e in self.world.entities.values():
@@ -915,9 +915,23 @@ class Simulation:
                         sm = VARIANT_SEASON_MULT.get(e.variant, {}).get(self._season(), 1.0)
                     else:
                         vm, sm = 1.0, 1.0
-                    e.growth = min(1.0, e.growth + cfg.plant_growth_rate * vm * sm)
+                    wm = 1.0
+                    if self.weather in ("rain", "storm"):
+                        wm = cfg.rain_growth_mult
+                    elif self.weather == "fog" and e.variant == "mushroom":
+                        wm = cfg.fog_mushroom_mult
+                    e.growth = min(1.0, e.growth + cfg.plant_growth_rate * vm * sm * wm)
                     if e.growth >= 1.0:
                         self._emit_bloom(e)
+        # Storm damage: exposed plants stripped, occasionally uprooted (§R)
+        if self.weather == "storm" and cfg.storm_plant_damage > 0:
+            for e in list(self.world.entities.values()):
+                if not isinstance(e, Food):
+                    continue
+                if self.rng.random() < cfg.storm_plant_damage:
+                    e.growth = max(0.0, e.growth - self.rng.uniform(0.2, 0.5))
+                    if e.growth <= 0.05 and self.rng.random() < 0.5:
+                        self.world.remove(e.id)
         if cfg.plant_spread_rate > 0:
             target = round(cfg.food_count * SEASON_FOOD_MULT[self._season()])
             total = sum(1 for e in self.world.entities.values() if e.kind == "food")
@@ -1020,8 +1034,13 @@ class Simulation:
         for c in active:
             if not c.infected or c.id not in self.world.entities:
                 continue  # died or recovered earlier this tick
-            # Recovery
-            if cfg.recovery_rate > 0 and self.rng.random() < cfg.recovery_rate:
+            # Recovery — wet/cold slows recovery (§R)
+            eff_recovery = cfg.recovery_rate
+            if cfg.weather_sickness_enabled:
+                wet_c = (self.weather in ("rain", "storm") and not c.indoors) or c.chill >= cfg.chill_threshold * 0.5
+                if wet_c:
+                    eff_recovery = cfg.recovery_rate / max(1.0, cfg.wet_disease_mult)
+            if eff_recovery > 0 and self.rng.random() < eff_recovery:
                 c.infected = False
                 self._emit(
                     HistoryEvent(
@@ -1035,13 +1054,18 @@ class Simulation:
                     )
                 )
                 continue
-            # Contagion to healthy neighbours (winter air carries further)
-            spread_rate = cfg.disease_rate * (
+            # Contagion to healthy neighbours (winter air carries further) — wet catches faster (§R)
+            base_spread = cfg.disease_rate * (
                 WINTER_DISEASE_MULT if self._season() == "winter" else 1.0
             )
             for n in self.world.query_radius(c.x, c.y, cfg.disease_radius):
                 if n.kind == "creature" and not n.infected and n.id != c.id:
-                    if self.rng.random() < min(spread_rate, 1.0):
+                    rate = base_spread
+                    if cfg.weather_sickness_enabled:
+                        wet_n = (self.weather in ("rain", "storm") and not getattr(n, "indoors", False)) or getattr(n, "chill", 0) >= cfg.chill_threshold * 0.5
+                        if wet_n:
+                            rate *= cfg.wet_disease_mult
+                    if self.rng.random() < min(rate, 1.0):
                         self._infect(n)  # type: ignore[arg-type]
 
     # ----------------------------------------------------------- reproduction
@@ -1683,7 +1707,7 @@ class Simulation:
             if self._inside_house(c, home) and self._claim_bed(home):
                 c.indoors = True
 
-        # 6. Metabolism, sickness and mortality.
+        # 6. Metabolism, sickness and mortality. §R chill builds when cold & wet
         c.energy -= cfg.energy_decay_per_tick
         if (
             cfg.shelter_enabled
@@ -1691,6 +1715,22 @@ class Simulation:
             and (self._is_night(tod) or self.weather in ("rain", "storm"))
         ):
             c.energy -= cfg.exposure_drain
+        # §R Chill
+        if cfg.weather_sickness_enabled:
+            is_wet = self.weather in ("rain", "storm")
+            is_winter_night = self._season() == "winter" and self._is_night(tod)
+            if not c.indoors and (is_wet or is_winter_night):
+                c.chill = min(cfg.chill_threshold * 2, c.chill + cfg.chill_rate)
+            else:
+                shed = cfg.chill_rate * (2.5 if c.indoors else 1.0)
+                c.chill = max(0.0, c.chill - shed)
+            if c.chill >= cfg.chill_threshold:
+                c.health -= cfg.chill_drain
+                if c.health <= 0:
+                    self._kill(c, "chill")
+                    return
+        else:
+            c.chill = max(0.0, c.chill - 0.05)
         if cfg.disease_enabled and c.infected:
             c.energy -= cfg.disease_energy_drain
             c.health -= 2.0 * cfg.disease_lethality
@@ -1794,6 +1834,7 @@ class Simulation:
                 hue_shift=v["hue_shift"],
                 scale_jitter=v["scale_jitter"],
                 angle_jitter=v["angle_jitter"],
+                chill=round(e.chill, 2),
             )
         if isinstance(e, House):
             return EntityState(

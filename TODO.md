@@ -411,21 +411,21 @@ Weather today only slows movement and dims sight. Make it a force on the land an
 the body: rain feeds the fields, storms wreck them, and the cold gets into the bones.
 
 ### Weather → crops
-- [ ] [P2] Rain waters the land — rain/storm apply `rain_growth_mult` to plant growth
-      (+ a small seed-spread boost); fog favours mushrooms (the decomposer tier).
-- [ ] [P2] Storms damage crops — a storm strips growth from exposed plants
+- [x] [P2] Rain waters the land — rain/storm apply `rain_growth_mult` to plant growth
+      (+ a small seed-spread boost); fog favours mushrooms (the decomposer tier). (`simulation.py:906` `rain_growth_mult` 1.25 on rain/storm, `fog_mushroom_mult` 1.35 for mushroom in fog, `config.py:118` defaults, `protocol.py:178` GodLaws)
+- [x] [P2] Storms damage crops — a storm strips growth from exposed plants
       (`storm_plant_damage` chance to lose growth, occasionally uproot/die); soaked
-      ground then grows back faster.
-- [ ] GodLaws: rain_growth_mult, fog_mushroom_mult, storm_plant_damage
+      ground then grows back faster. (`simulation.py:926` `storm_plant_damage` 0.02 strips 0.2-0.5 growth, 50% uproot at ≤0.05, `config.py:120` `GodPanel.tsx:16` Weather & Crops)
+- [x] GodLaws: rain_growth_mult, fog_mushroom_mult, storm_plant_damage
       (new "Weather & Crops" law group)
 
 ### Weather → sickness
-- [ ] [P2] Chill — rain/storm/winter nights build `chill` on the unsheltered; past a
+- [x] [P2] Chill — rain/storm/winter nights build `chill` on the unsheltered; past a
       threshold the creature is `sick` (drains health, death cause `chill`); shelter
-      shakes it off.
-- [ ] [P2] Cold contagion — wet/cold creatures catch disease faster
-      (`wet_disease_mult`) and recover slower: catch your death in the rain.
-- [ ] GodLaws: weather_sickness_enabled, chill_rate, chill_threshold, chill_drain,
+      shakes it off. (`entities.py:132` `Creature.chill`, `config.py:123` `chill_rate` 0.04/`threshold` 12/`drain` 0.18, `simulation.py:1708` build/shed 2.5× indoors, `protocol.py:54` `chill`, `CanvasRenderer.tsx:410` blue ring, `Inspector.tsx:115` chip + bar, `App.tsx:343` HUD 🥶 chilled)
+- [x] [P2] Cold contagion — wet/cold creatures catch disease faster
+      (`wet_disease_mult`) and recover slower: catch your death in the rain. (`simulation.py:1034` `wet_disease_mult` 1.5 multiplies spread if wet/chilled ≥50% threshold, `recovery_rate`/1.5 slows recovery, `config.py:126` `GodPanel.tsx:22` Weather Sickness)
+- [x] GodLaws: weather_sickness_enabled, chill_rate, chill_threshold, chill_drain,
       wet_disease_mult (new "Weather Sickness" law group)
 
 ## S. WorldBox inspirations — ages, plots & disasters  [P2]

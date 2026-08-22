@@ -339,6 +339,11 @@ export default function App() {
             infected <b>{state?.infected_count}</b>
           </span>
         )}
+        {(state?.entities.filter((e) => (e.chill ?? 0) >= 12).length ?? 0) > 0 && (
+          <span className="chip" style={{ color: '#79c0ff' }} title="Chilled: built rain/storm/winter-night outside, past 12 drains health 0.18/tick (death cause chill). Shelter sheds 2.5× faster.">
+            🥶 chilled <b>{state?.entities.filter((e) => (e.chill ?? 0) >= 12).length}</b>
+          </span>
+        )}
         {raining && exposedCount > 0 && (
           <span className="chip exposed" title="Exposed: awake, outdoors, not in a House during rain/storm or winter night — loses 0.03 energy/tick extra. Shelter is scarce.">
             ⛈ exposed <b>{exposedCount}</b>

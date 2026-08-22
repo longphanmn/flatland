@@ -112,6 +112,18 @@ class Config:
     rain_speed_mult: float = 0.85  # movement scale in rain/storm
     storm_wander_bonus: float = 0.35  # extra heading chaos in storms
 
+    # Weather → crops (§R)
+    rain_growth_mult: float = 1.25  # rain/storm boost to plant growth
+    fog_mushroom_mult: float = 1.35  # fog boost to mushroom growth
+    storm_plant_damage: float = 0.02  # chance/tick storm strips growth from exposed plants
+
+    # Weather → sickness (§R) chill / wet contagion
+    weather_sickness_enabled: bool = False  # chill + wet contagion; disabled by default
+    chill_rate: float = 0.04  # chill built per tick unsheltered in rain/storm/winter night
+    chill_threshold: float = 12.0  # chill at which creature is sick
+    chill_drain: float = 0.18  # health drain per tick when chilled
+    wet_disease_mult: float = 1.5  # wet/cold catch disease faster, recover slower
+
     # Night rest
     sleep_enabled: bool = True  # creatures shelter in houses after dark
     sleep_energy_mult: float = 0.5  # energy decay while asleep

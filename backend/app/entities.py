@@ -130,6 +130,7 @@ class Creature(Entity):
     ticks_since_meal: int = 0
     meals: int = 0
     status: str = ""  # "" | "hungry" | "starving"
+    chill: float = 0.0  # §R: cold built when unsheltered in rain/storm/winter night; threshold → sick
 
     def __post_init__(self) -> None:
         if not self.caste:
