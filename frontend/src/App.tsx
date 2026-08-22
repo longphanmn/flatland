@@ -23,6 +23,7 @@ export default function App() {
   const [chronicleOpen, setChronicleOpen] = useState(true)
   const [log, setLog] = useState<HistoryEvent[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [aliveHist, setAliveHist] = useState<number[]>([])
 
   const stateRef = useRef<StateMessage | null>(null)
   const sockRef = useRef<WorldSocket | null>(null)
@@ -43,6 +44,7 @@ export default function App() {
       onState: (msg) => {
         stateRef.current = msg
         setState(msg)
+        setAliveHist((prev) => [...prev.slice(-119), msg.creatures_alive])
         const fresh = msg.events.filter((ev) => {
           const key = `${ev.tick}:${ev.entity_id}:${ev.type}`
           if (seenEventsRef.current.has(key)) return false
@@ -182,6 +184,22 @@ export default function App() {
           ))}
         </select>
         <span className="chip legend">{populationSummary}</span>
+        <span className="spark-wrap" title="alive creatures, recent ticks">
+          <svg viewBox="0 0 100 22" className="spark">
+            {aliveHist.length > 1 && (
+              <polyline
+                points={aliveHist
+                  .map(
+                    (v, i) =>
+                      `${(i / (aliveHist.length - 1)) * 100},${
+                        21 - ((v - Math.min(...aliveHist)) / (Math.max(...aliveHist, 1) - Math.min(...aliveHist) || 1)) * 20
+                      }`,
+                  )
+                  .join(' ')}
+              />
+            )}
+          </svg>
+        </span>
       </footer>
 
       {chronicleOpen && (

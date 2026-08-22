@@ -53,6 +53,18 @@ def traits_for(caste: str) -> CasteTraits:
     return CASTE_TRAITS.get(caste, DEFAULT_TRAITS)
 
 
+# Social ladder for yielding: the lowly give way to their betters.
+YIELD_RANK = {
+    "Woman": 0,
+    "Soldier": 1,
+    "Artisan": 2,
+    "Gentleman": 3,
+    "Professional": 4,
+    "Noble": 5,
+    "Priest": 6,
+}
+
+
 def caste_name(sides: int, shape: str, iso_angle: float = 60.0) -> str:
     """Map a creature's geometry to its Flatland social caste."""
     if shape == "line":

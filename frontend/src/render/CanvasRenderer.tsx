@@ -300,6 +300,14 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature }:
         ctx.moveTo(-len, 0)
         ctx.lineTo(len, 0)
         ctx.stroke()
+        // peace-cry: women announce themselves as they move (Flatland law)
+        const phase = ((performance.now() / 900 + e.id * 0.37) % 1)
+        ctx.globalAlpha = alphaF * 0.35 * (1 - phase)
+        ctx.lineWidth = 0.25
+        ctx.beginPath()
+        ctx.arc(0, 0, r * 1.6 + phase * 3.5, 0, TAU)
+        ctx.stroke()
+        ctx.globalAlpha = alphaF
       } else {
         const sides = e.sides ?? 4
         ctx.beginPath()

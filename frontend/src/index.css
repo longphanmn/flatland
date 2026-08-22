@@ -249,6 +249,18 @@ body {
   margin-left: auto;
 }
 
+.spark {
+  width: 90px;
+  height: 22px;
+  flex: none;
+}
+
+.spark polyline {
+  fill: none;
+  stroke: #79c0ff;
+  stroke-width: 1.5;
+}
+
 button {
   background: #21262d;
   color: #e6edf3;

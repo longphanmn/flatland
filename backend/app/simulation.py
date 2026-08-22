@@ -9,6 +9,7 @@ from .config import Config
 from .entities import (
     DEFAULT_RADIUS,
     PRIEST_SIDES,
+    YIELD_RANK,
     Creature,
     Entity,
     Food,
@@ -36,6 +37,8 @@ SEASON_FOOD_MULT = {"spring": 1.0, "summer": 1.2, "autumn": 1.0, "winter": 0.5}
 SPRING_BIRTH_MULT = 1.25
 WINTER_DISEASE_MULT = 1.5
 WEATHER_STATES = ("clear", "rain", "fog", "storm")
+
+YIELD_RADIUS = 2.5  # lower castes step aside within this range
 
 
 class Simulation:
@@ -510,6 +513,20 @@ class Simulation:
             if self.weather == "storm":
                 wander += cfg.storm_wander_bonus  # storms fling the lost about
             c.angle += self.rng.uniform(-wander, wander)
+
+        # 2b. Social yielding: the lowly give way to their betters.
+        my_rank = YIELD_RANK.get(c.caste, 0)
+        if my_rank < 6:
+            for o in w.query_radius(c.x, c.y, YIELD_RADIUS):
+                if o is c or o.kind != "creature":
+                    continue
+                if YIELD_RANK.get(o.caste, 0) > my_rank:  # type: ignore[union-attr]
+                    dx, dy = w.delta(c.x, c.y, o.x, o.y)
+                    away = math.atan2(dy, dx)
+                    diff = (away - c.angle + math.pi) % (2 * math.pi) - math.pi
+                    cap = cfg.steer_turn * 0.6
+                    c.angle += max(-cap, min(cap, diff))
+                    break
 
         # 3. Move (hunger speeds up the desperate; rain slows every body).
         step_len = c.speed * speed_mult * stage_speed * self.env_speed_mult()
