@@ -85,7 +85,9 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [ ] HUD — day/season/time-of-day + weather icon + clock
 
 ## G. God-law & observability
-- [ ] [P0] Consolidate ALL new laws into GodLaws + God screen UI (grouped by section)
+- [x] [P0] Consolidate ALL new laws into GodLaws + God screen UI (grouped by
+      section: World / Food & Energy / Hunger & Sight / Movement / Life &
+      Death / Bodies & Houses; grows as §B/§D/§E laws arrive)
 - [ ] [P2] Population/caste sparkline chart in HUD
 - [ ] [P2] Chronicle shows all event types (birth/promotion/euthanasia/outbreak/death)
 - [ ] [P2] DB-backed history pagination + world run selector

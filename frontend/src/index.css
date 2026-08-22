@@ -243,6 +243,19 @@ select {
   font-style: italic;
 }
 
+.god-group {
+  border-top: 1px solid #21262d;
+  padding-top: 8px;
+}
+
+.god-group h3 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: #e3b341;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .god-row {
   display: flex;
   align-items: center;
