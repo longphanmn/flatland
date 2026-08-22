@@ -715,6 +715,7 @@ class Simulation:
         self._reproduce()
         self._update_relations()
         self._update_territory()
+        self._update_schism()
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
@@ -902,6 +903,100 @@ class Simulation:
                         if self.rng.random() < cfg.trespass_decay:
                             self._bump_relation(c.clan_id, h.clan_id, -1)
                     break  # one rival territory per tick is enough
+
+    def _update_schism(self) -> None:
+        """§S Schism — unhappy members split off as new clan and war parent."""
+        cfg = self.config
+        if not cfg.schism_enabled:
+            return
+        # One schism per tick max to keep determinism smooth
+        for cid, info in list(self.clans.items()):
+            members = [c for c in self.world.creatures() if c.clan_id == cid]
+            pop = len(members)
+            if pop < cfg.schism_min_pop:
+                continue
+            # Unhappy: starving or homeless (no house)
+            has_house = any(h.clan_id == cid and not h.is_ruin for h in self.world.entities.values() if isinstance(h, House))
+            unhappy = 0
+            for c in members:
+                ratio = c.energy / cfg.energy_max if cfg.energy_max else 1
+                if ratio <= cfg.starving_ratio:
+                    unhappy += 1
+                elif not has_house:
+                    unhappy += 1
+            if pop == 0 or unhappy / pop < cfg.schism_threshold:
+                continue
+            # Trigger schism: split unhappy half
+            # Pick members to split: prioritize unhappy, then oldest
+            def is_unhappy(c):
+                ratio = c.energy / cfg.energy_max if cfg.energy_max else 1
+                return ratio <= cfg.starving_ratio or not has_house
+            unhappy_members = [c for c in members if is_unhappy(c)]
+            other_members = [c for c in members if not is_unhappy(c)]
+            # sort unhappy by age desc, others also
+            unhappy_members.sort(key=lambda c: (-c.age, c.id))
+            other_members.sort(key=lambda c: (-c.age, c.id))
+            # take at least 1, at most pop//2
+            take = max(1, min(pop // 2, len(unhappy_members) if unhappy_members else pop // 2))
+            movers = unhappy_members[:take]
+            if len(movers) < take:
+                need = take - len(movers)
+                movers += other_members[:need]
+            if not movers:
+                continue
+            # Create new clan
+            founder = sorted(movers, key=lambda c: (c.id))[0]
+            new_cid = self._next_clan_id
+            self._next_clan_id += 1
+            adj = CLAN_ADJECTIVES[(new_cid * 13 + self.config.seed) % len(CLAN_ADJECTIVES)]
+            noun = CLAN_NOUNS[(new_cid * 29 + self.config.seed) % len(CLAN_NOUNS)]
+            if (new_cid * 7 + self.config.seed) % 10 < 3:
+                name = f"Clan of the {adj} {noun}"
+            else:
+                name = f"{adj} {noun}"
+            totem = None
+            if self.config.totems_enabled:
+                totem = TOTEMS[(new_cid * 17 + self.config.seed) % len(TOTEMS)]
+            self.clans[new_cid] = {
+                "name": name,
+                "founder_id": founder.id,
+                "born_tick": self.tick + 1,
+                "color": CLAN_COLORS[(new_cid - 1) % len(CLAN_COLORS)],
+                "totem": totem,
+                "leader_id": founder.id,
+            }
+            for c in movers:
+                c.clan_id = new_cid
+            # House for new clan — claim free or spawn settlement
+            if self.config.house_claim_enabled:
+                self._claim_house_for_clan(new_cid)
+                # if still homeless (no free house and num_houses pinned), new clan stays homeless (still schismed)
+            # Rivalry with parent
+            self.relations[self._relation_pair(cid, new_cid)] = -60
+            self._relation_zones[self._relation_pair(cid, new_cid)] = -1
+            self._emit(
+                HistoryEvent(
+                    type="schism",
+                    tick=self.tick + 1,
+                    entity_id=founder.id,
+                    caste=founder.caste,
+                    x=round(founder.x, 2),
+                    y=round(founder.y, 2),
+                    payload={"parent": cid, "new_clan": new_cid, "parent_name": info.get("name"), "new_name": name, "members": [c.id for c in movers]},
+                )
+            )
+            self._emit(
+                HistoryEvent(
+                    type="rivalry",
+                    tick=self.tick + 1,
+                    entity_id=0,
+                    caste=None,
+                    x=0.0,
+                    y=0.0,
+                    payload={"a": cid, "b": new_cid, "score": -60},
+                )
+            )
+            break  # only one schism per tick
 
     # ------------------------------------------------------------------ flora
     def _update_plants(self) -> None:

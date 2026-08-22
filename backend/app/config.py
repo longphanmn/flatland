@@ -55,6 +55,11 @@ class Config:
     totems_enabled: bool = True  # §P: each clan bears a totem (Wolf/Tree/Shield/Eye) with subtle buff
     succession_enabled: bool = True  # §P: leader succession on death emits succession event
 
+    # Schism — WorldBox rebellion (§S P1)
+    schism_enabled: bool = False  # unhappy members split to found new clan, then war parent
+    schism_threshold: float = 0.4  # fraction unhappy (starving/homeless) to trigger split
+    schism_min_pop: int = 4  # minimum clan population to consider schism
+
     # Corpses & scavenging
     corpses_enabled: bool = True
     corpse_ttl: int = 600  # ticks before a corpse decays away

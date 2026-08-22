@@ -98,7 +98,7 @@ class StateMessage(BaseModel):
 class HistoryEvent(BaseModel):
     type: Literal[
         "death", "birth", "promotion", "demotion", "outbreak", "recovery",
-        "bloom", "alliance", "rivalry", "predation", "war", "ruin", "settlement", "succession",
+        "bloom", "alliance", "rivalry", "predation", "war", "ruin", "settlement", "succession", "schism",
     ] = ("death")
     tick: int
     entity_id: int
@@ -197,6 +197,10 @@ class GodLaws(BaseModel):
     alliance_threshold: Optional[int] = Field(None, ge=-100, le=100)
     rivalry_threshold: Optional[int] = Field(None, ge=-100, le=100)
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
+    schism_enabled: Optional[bool] = None
+    schism_threshold: Optional[float] = Field(None, ge=0, le=1)
+    schism_min_pop: Optional[int] = Field(None, ge=2, le=100)
+
     house_min_size: Optional[float] = Field(None, ge=3, le=60)
     house_max_size: Optional[float] = Field(None, ge=3, le=80)
 

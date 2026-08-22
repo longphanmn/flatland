@@ -438,9 +438,9 @@ mechanics that survive that translation — all emergent or law-gated.
       Golden (bounty + birth ↑). Chosen/cycled by law; `age` in snapshot + HUD.
 
 ### Rebellion & clan schism
-- [ ] [P1] Schism — a clan's unhappy members (starving, homeless, or low relations)
+- [x] [P1] Schism — a clan's unhappy members (starving, homeless, or low relations)
       split off to found a new clan (new name/totem/territory), then war the parent
-      (`schism_threshold`); success/failure recorded. Extends §I war + §P succession.
+      (`schism_threshold`); success/failure recorded. Extends §I war + §P succession. (`config.py:60` `schism_enabled`/`threshold` 0.4/`min_pop` 4, `simulation.py:905` `_update_schism` homeless/starving ≥threshold → split 50% to new clan, new house, rivalry -60, `schism` + `rivalry` events, `protocol.py:94` `schism` type, `GodPanel.tsx:66` Rebellion, `App.tsx:568` chronicle)
 
 ### Plots (foreshadowing)
 - [ ] [P2] Plots panel — god sees *upcoming* war/rebellion/schism plans as progress

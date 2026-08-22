@@ -98,6 +98,9 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'bite_cooldown', label: 'Bite cooldown', min: 0, max: 100, step: 1, group: 'Predation' },
   { key: 'energy_from_prey', label: 'Energy from prey', min: 0, max: 200, step: 5, group: 'Predation' },
   { key: 'fear_radius', label: 'Fear radius', min: 1, max: 40, step: 1, group: 'Predation' },
+  // Rebellion — clan schism (§S)
+  { key: 'schism_threshold', label: 'Schism threshold', min: 0, max: 1, step: 0.05, group: 'Rebellion' },
+  { key: 'schism_min_pop', label: 'Schism min pop', min: 2, max: 100, step: 1, group: 'Rebellion' },
   // Clan war — rival blood
   { key: 'attack_radius', label: 'Attack radius', min: 0.5, max: 10, step: 0.1, group: 'Clan War' },
   { key: 'attack_damage', label: 'Attack damage', min: 0, max: 200, step: 10, group: 'Clan War' },
@@ -121,6 +124,7 @@ const GROUP_ORDER = [
   'Shelter',
   'Territory',
   'Clan',
+  'Rebellion',
   'Interaction',
   'Predation',
   'Clan War',
@@ -164,6 +168,8 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   chill_threshold: 'chill at which creature sickens (12) — shelter sheds 2.5× faster',
   chill_drain: 'health drain per tick when chilled (0.18) — death cause chill',
   wet_disease_mult: 'wet/cold catch disease faster and recover slower (1.5×)',
+  schism_threshold: 'fraction unhappy (starving/homeless) to split (0.4)',
+  schism_min_pop: 'minimum clan population to consider schism (4)',
 }
 
 interface Props {
@@ -350,6 +356,20 @@ export default function GodPanel({ open, onClose }: Props) {
                     value={String(laws.weather_sickness_enabled ?? false)}
                     onChange={(e) =>
                       setLaws((l) => ({ ...l, weather_sickness_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
+              )}
+              {group === 'Rebellion' && (
+                <label className="god-row">
+                  <span title="unhappy members (starving/homeless) split off to found new clan then war parent — schism_threshold fraction to trigger">Schism allowed</span>
+                  <select
+                    value={String(laws.schism_enabled ?? false)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, schism_enabled: e.target.value === 'true' }))
                     }
                   >
                     <option value="true">yes</option>

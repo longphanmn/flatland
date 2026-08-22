@@ -575,6 +575,14 @@ export default function App() {
                     </li>
                   )
                 }
+                if (ev.type === 'schism') {
+                  const p = (ev.payload ?? {}) as { parent?: number; new_clan?: number; parent_name?: string; new_name?: string; members?: number[] }
+                  return (
+                    <li key={key} className="ev-schism" style={{ color: '#e3b341' }}>
+                      schism: {p.parent_name ?? `#${p.parent}`} → {p.new_name ?? `#${p.new_clan}`} ({(p.members as number[])?.length ?? 0} broke away) at tick {ev.tick}
+                    </li>
+                  )
+                }
                 if (ev.type === 'bloom') {
                   return (
                     <li key={key} className="ev-bloom" style={{ color: '#3fb950' }}>
