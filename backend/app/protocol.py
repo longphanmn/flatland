@@ -51,6 +51,7 @@ class EntityState(BaseModel):
     father_id: Optional[int] = None
     clan_id: Optional[int] = None
     clan_color: Optional[str] = None
+    clan_name: Optional[str] = None
     is_predator: Optional[bool] = None
     is_herbivore: Optional[bool] = None
     sleeping: Optional[bool] = None
@@ -84,6 +85,7 @@ class StateMessage(BaseModel):
     terrain_fertile: list[dict[str, float]] = Field(default_factory=list)
     terrain_rocks: list[dict[str, float]] = Field(default_factory=list)
     relations: list[dict[str, int]] = Field(default_factory=list)
+    clans: dict[str, dict[str, Any]] = Field(default_factory=dict)
     events: list["HistoryEvent"] = Field(default_factory=list)
 
 

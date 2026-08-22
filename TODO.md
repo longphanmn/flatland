@@ -349,8 +349,8 @@ beyond one house, no leaders. Deepen the social fabric.
 - [ ] [P2] Totem — each clan picks a totem at founding with a subtle buff: Wolf
       (hunt), Tree (harvest/growth), Shield (defense), Eye (sight); drawn as a totem
       pole beside the clan's house; buff applied to its members.
-- [ ] [P2] Procedural clan names — "Ash Wolves", "Clan of the Long Shadow" instead of
-      "Clan N" (seeded adjective + noun table).
+- [x] [P2] Procedural clan names — "Ash Wolves", "Clan of the Long Shadow" instead of
+      "Clan N" (seeded adjective + noun table) (`simulation.py:68` `CLAN_ADJECTIVES/NOUNS`, `simulation.py:315` deterministic `seed+cid` → `Ash Wolves` 70% / `Clan of the Long Shadow` 30%, `protocol.py:64` `EntityState.clan_name` + `StateMessage.clans`, `frontend/src/inspect/Inspector.tsx:155` shows name).
 - [x] [P1] Territory — a clan claims a zone (radius around its house) with a painted
       border; members prefer their own territory; foreign trespass slowly sours
       relations; rivals contest borders (ties into §I war) (`config.py:49`

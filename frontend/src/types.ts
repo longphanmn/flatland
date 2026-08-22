@@ -26,6 +26,7 @@ export interface EntityState {
   meals?: number
   clan_id?: number
   clan_color?: string
+  clan_name?: string
   is_predator?: boolean
   is_herbivore?: boolean
   sleeping?: boolean
@@ -63,6 +64,8 @@ export interface StateMessage {
   weather: 'clear' | 'rain' | 'fog' | 'storm'
   terrain_fertile: { x: number; y: number; r: number }[]
   terrain_rocks: { x: number; y: number; r: number }[]
+  relations: { a: number; b: number; score: number }[]
+  clans: Record<string, { name: string; founder_id: number; born_tick: number; color: string }>
   events: HistoryEvent[]
 }
 

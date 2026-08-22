@@ -65,6 +65,20 @@ CLAN_COLORS = (
     "#c77dff", "#f4a261", "#90be6d", "#e0aaff",
 )
 
+# Procedural clan names — seeded adjective + noun table (§P)
+CLAN_ADJECTIVES = (
+    "Ash", "Stone", "Long", "Silent", "Red", "Grey", "White", "Black", "Bright", "Cold",
+    "Wild", "High", "Low", "Dawn", "Dusk", "River", "Mountain", "Forest", "Sun", "Moon",
+    "Star", "Wind", "Iron", "Bronze", "Golden", "Silver", "Shadow", "Storm", "Fire", "Ice",
+    "Ember", "Frost", "Thorn", "Hollow", "Grim", "Bold", "Swift", "Keen",
+)
+CLAN_NOUNS = (
+    "Wolves", "Hawks", "Shadows", "Blades", "Stewards", "Wardens", "Keepers", "Hunters",
+    "Striders", "Sentinels", "Weavers", "Masons", "Reavers", "Echoes", "Thorns", "Flames",
+    "Stones", "Winds", "Tides", "Crowns", "Spears", "Shields", "Eyes", "Hands", "Voices",
+    "Wings", "Fangs", "Roots", "Branches", "Stars", "Sands", "Waters", "Fires",
+)
+
 
 class Simulation:
     def __init__(
@@ -301,8 +315,15 @@ class Simulation:
     def _found_clan(self, founder: Creature) -> int:
         cid = self._next_clan_id
         self._next_clan_id += 1
+        # Procedural name: deterministic adj+noun from seed+cid (no rng consumption to keep determinism)
+        adj = CLAN_ADJECTIVES[(cid * 13 + self.config.seed) % len(CLAN_ADJECTIVES)]
+        noun = CLAN_NOUNS[(cid * 29 + self.config.seed) % len(CLAN_NOUNS)]
+        if (cid * 7 + self.config.seed) % 10 < 3:
+            name = f"Clan of the {adj} {noun}"
+        else:
+            name = f"{adj} {noun}"
         self.clans[cid] = {
-            "name": f"Clan {cid}",
+            "name": name,
             "founder_id": founder.id,
             "born_tick": self.tick,
             "color": CLAN_COLORS[(cid - 1) % len(CLAN_COLORS)],
@@ -1611,6 +1632,7 @@ class Simulation:
                 {"a": a, "b": b, "score": s}
                 for (a, b), s in sorted(self.relations.items())
             ],
+            clans={str(k): v for k, v in self.clans.items()},
             events=list(self._events_this_tick),
         )
 
@@ -1636,6 +1658,7 @@ class Simulation:
                 father_id=e.father_id or None,
                 clan_id=e.clan_id or None,
                 clan_color=self.clans.get(e.clan_id, {}).get("color"),
+                clan_name=self.clans.get(e.clan_id, {}).get("name"),
                 is_predator=e.is_predator or None,
                 is_herbivore=e.is_herbivore or None,
                 sleeping=e.sleeping,

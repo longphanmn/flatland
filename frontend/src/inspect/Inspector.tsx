@@ -147,12 +147,12 @@ export default function Inspector({ id, onClose, onNavigate }: Props) {
               </span>
             )}
             {e.clan_id != null && e.clan_id > 0 && (
-              <span className="chip">
+              <span className="chip" title={e.clan_name ?? undefined}>
                 <span
                   className="dot-inline"
                   style={{ background: e.clan_color ?? '#8b949e', marginRight: 4 }}
                 />
-                Clan {e.clan_id}
+                {e.clan_name ?? `Clan ${e.clan_id}`}
               </span>
             )}
           </div>
