@@ -17,6 +17,8 @@ export interface EntityState {
   size?: number
   status?: HungerStatus
   radius?: number
+  age?: number
+  lifespan?: number
   door_width?: number
   door_offset?: number
   door_side?: 'north' | 'east' | 'south' | 'west'
@@ -32,6 +34,7 @@ export interface StateMessage {
   entities: EntityState[]
   creatures_alive: number
   creatures_dead: number
+  dead_by_cause: Record<string, number>
   events: HistoryEvent[]
 }
 

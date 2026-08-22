@@ -46,6 +46,7 @@ class Config:
     hungry_perceive_mult: float = 1.3  # hungry creatures notice food farther away
     desperate_perceive_mult: float = 1.6  # starving: even farther
     desperate_speed_mult: float = 1.35  # starving: move faster
+    lifespan_mult: float = 1.0  # god's law: scale every caste's natural lifespan
 
     # Houses
     house_min_size: float = 6.0

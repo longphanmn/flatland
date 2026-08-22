@@ -21,6 +21,7 @@ const NUMBER_LAWS: {
   { key: 'hungry_perceive_mult', label: 'Hungry sight ×', min: 1, max: 3, step: 0.1 },
   { key: 'desperate_perceive_mult', label: 'Starving sight ×', min: 1, max: 3, step: 0.1 },
   { key: 'desperate_speed_mult', label: 'Starving speed ×', min: 1, max: 3, step: 0.05 },
+  { key: 'lifespan_mult', label: 'Lifespan ×', min: 0.05, max: 5, step: 0.05 },
 ]
 
 type NumberLawKey = Exclude<keyof GodLaws, 'boundary'>

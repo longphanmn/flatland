@@ -37,6 +37,8 @@ class EntityState(BaseModel):
     size: Optional[float] = None
     status: Optional[Literal["", "hungry", "starving"]] = None
     radius: Optional[float] = None
+    age: Optional[int] = None
+    lifespan: Optional[float] = None
     door_width: Optional[float] = None
     door_offset: Optional[float] = None
     door_side: Optional[Literal["north", "east", "south", "west"]] = None
@@ -52,6 +54,7 @@ class StateMessage(BaseModel):
     entities: list[EntityState] = Field(default_factory=list)
     creatures_alive: int = 0
     creatures_dead: int = 0
+    dead_by_cause: dict[str, int] = Field(default_factory=dict)
     events: list["HistoryEvent"] = Field(default_factory=list)
 
 
@@ -91,6 +94,7 @@ class GodLaws(BaseModel):
     desperate_perceive_mult: Optional[float] = Field(None, ge=1, le=4)
     hungry_perceive_mult: Optional[float] = Field(None, ge=1, le=4)
     desperate_speed_mult: Optional[float] = Field(None, ge=1, le=4)
+    lifespan_mult: Optional[float] = Field(None, ge=0.01, le=100)
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
     house_min_size: Optional[float] = Field(None, ge=3, le=60)
     house_max_size: Optional[float] = Field(None, ge=3, le=80)

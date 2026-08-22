@@ -88,6 +88,15 @@ def test_partial_law_update_keeps_other_laws(client):
         assert after[key] == before[key]
 
 
+def test_lifespan_mult_law_scales_new_creatures(client):
+    client.post("/api/laws", json={"lifespan_mult": 0.5})
+    client.post("/api/control", json={"action": "reset"})
+    state = client.get("/api/state").json()
+    lifespans = {e["lifespan"] for e in state["entities"] if e["kind"] == "creature"}
+    # CASTE_LIFESPAN × 0.5 for every caste present in the initial population
+    assert lifespans == {2400.0, 2700.0, 3000.0, 3300.0, 3600.0, 4500.0}
+
+
 def test_deaths_appear_in_history_api(client):
     # famine + fast decay: starvation is inevitable under these laws
     client.post("/api/laws", json={"food_count": 0, "energy_decay_per_tick": 2.0})

@@ -162,6 +162,7 @@ LAW_FIELDS = (
     "hungry_perceive_mult",
     "desperate_perceive_mult",
     "desperate_speed_mult",
+    "lifespan_mult",
     "door_clearance",
     "house_min_size",
     "house_max_size",

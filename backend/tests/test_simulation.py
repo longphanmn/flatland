@@ -243,6 +243,32 @@ def test_history_survives_reset():
     assert b.history[0].cause == "starvation"
 
 
+def test_aging_and_death_by_old_age():
+    s = Simulation(minimal_cfg(seed=13))
+    c = s.world.add(Creature(x=10.0, y=10.0, energy=100.0, lifespan=3.0))
+    s.step()
+    assert c.age == 1 and c.id in s.world.entities
+    s.step()
+    s.step()
+    assert c.age >= c.lifespan
+    assert c.id not in s.world.entities  # died of old age
+    assert s.deaths == 1
+    snap = s.snapshot()
+    assert snap.creatures_dead == 1
+    assert snap.dead_by_cause == {"old_age": 1}
+    assert s.history[-1].cause == "old_age"
+
+
+def test_starvation_and_old_age_counts_are_separate():
+    s = Simulation(minimal_cfg(seed=14))
+    s.world.add(Creature(x=1.0, y=1.0, energy=0.01))  # starves this tick
+    elder = s.world.add(Creature(x=2.0, y=2.0, energy=100.0, lifespan=1.0))
+    s.step()
+    assert elder.id not in s.world.entities
+    assert s._death_counts == {"starvation": 1, "old_age": 1}
+    assert s.snapshot().dead_by_cause == {"starvation": 1, "old_age": 1}
+
+
 def test_food_count_stable_over_many_ticks():
     s = Simulation(Config(seed=9, width=60, height=60))
     for _ in range(30):

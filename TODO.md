@@ -17,12 +17,14 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [ ] Genealogy table (`creatures`) when reproduction lands (§B)
 
 ## A. Life cycle
-- [ ] [P0] Age & lifespan — Creature.age (ticks) + caste-based lifespan
-      (Woman shortest → Priest longest); death cause `old_age`
+- [x] [P0] Age & lifespan — Creature.age (ticks) + caste-based lifespan
+      (Woman shortest → Priest longest); death cause `old_age`;
+      god law `lifespan_mult`; snapshot exposes age/lifespan + dead_by_cause
 - [ ] [P1] Life stages — infant/juvenile/adult/elder scale speed, sight, fertility;
       render size/alpha by stage; elder = faded outline, infant = small + dim
-- [ ] [P0] Death-cause chronicle — HistoryEvent.cause ∈
-      {starvation, old_age, disease, euthanasia, …}; HUD "dead" split by cause
+- [x] [P0] Death-cause chronicle — HistoryEvent.cause ∈
+      {starvation, old_age, …}; HUD "dead" chip shows per-cause breakdown
+      (tooltip); counts tracked in sim and persisted via DB events
 
 ## B. Reproduction & inheritance  [P1]
 - [ ] Sex model — males = polygons (sides ≥ 3), females = lines (women);

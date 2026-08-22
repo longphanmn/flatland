@@ -16,6 +16,18 @@ RADIUS_BY_CASTE = {
 }
 DEFAULT_RADIUS = 1.2
 
+# Caste traits: natural lifespan in ticks (at 10 ticks/s: 4800 = 8 minutes).
+# Flatland: higher polygons are rarer and longer-lived than the lower orders.
+CASTE_LIFESPAN = {
+    "Woman": 4800,
+    "Soldier": 5400,
+    "Gentleman": 6000,
+    "Professional": 6600,
+    "Noble": 7200,
+    "Priest": 9000,
+}
+DEFAULT_LIFESPAN = 6000
+
 
 def caste_name(sides: int, shape: str) -> str:
     """Map a creature's geometry to its Flatland social caste."""
@@ -52,6 +64,8 @@ class Creature(Entity):
     energy: float = 80.0
     caste: str = ""
     radius: float = 0.0  # body radius; derived from caste when unset
+    age: int = 0  # ticks lived
+    lifespan: float = 0.0  # 0 => derived from caste table
     ticks_since_meal: int = 0
     meals: int = 0
     status: str = ""  # "" | "hungry" | "starving"
@@ -61,6 +75,8 @@ class Creature(Entity):
             self.caste = caste_name(self.sides, self.shape)
         if not self.radius:
             self.radius = RADIUS_BY_CASTE.get(self.caste, DEFAULT_RADIUS)
+        if not self.lifespan:
+            self.lifespan = CASTE_LIFESPAN.get(self.caste, DEFAULT_LIFESPAN)
 
 
 @dataclass

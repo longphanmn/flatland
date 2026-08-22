@@ -76,6 +76,12 @@ export default function App() {
 
   const hungryCount = state?.entities.filter((e) => e.status === 'hungry').length ?? 0
   const starvingCount = state?.entities.filter((e) => e.status === 'starving').length ?? 0
+  const deadBreakdown = state
+    ? Object.entries(state.dead_by_cause)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cause, n]) => `${cause}: ${n}`)
+        .join(' · ') || 'no deaths yet'
+    : ''
 
   return (
     <div className="app">
@@ -96,7 +102,7 @@ export default function App() {
         <span className="chip alive">
           alive <b>{state?.creatures_alive ?? 0}</b>
         </span>
-        <span className="chip dead">
+        <span className="chip dead" title={deadBreakdown}>
           dead <b>{state?.creatures_dead ?? 0}</b>
         </span>
         {hungryCount > 0 && (

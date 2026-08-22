@@ -7,6 +7,8 @@ from typing import Callable
 
 from .config import Config
 from .entities import (
+    CASTE_LIFESPAN,
+    DEFAULT_LIFESPAN,
     DEFAULT_RADIUS,
     PRIEST_SIDES,
     Creature,
@@ -47,6 +49,7 @@ class Simulation:
         self.on_event: Callable[[HistoryEvent], None] | None = None
         self._eaten: set[int] = set()
         self._events_this_tick: list[HistoryEvent] = []
+        self._death_counts: dict[str, int] = {}
         self._spawn_initial()
 
     # ------------------------------------------------------------------ setup
@@ -58,6 +61,7 @@ class Simulation:
         cfg = self.config
         x, y = self._rand_pos()
         caste = caste_name(sides, shape)
+        lifespan = CASTE_LIFESPAN.get(caste, DEFAULT_LIFESPAN) * cfg.lifespan_mult
         self.world.add(
             Creature(
                 shape=shape,
@@ -67,6 +71,7 @@ class Simulation:
                 angle=self.rng.uniform(0, 2 * math.pi),
                 speed=SPEEDS.get(caste, 0.6),
                 energy=cfg.energy_start,
+                lifespan=lifespan,
             )
         )
 
@@ -125,9 +130,29 @@ class Simulation:
         self._enforce_food_law()
         self.tick += 1
 
+    def _kill(self, c: Creature, cause: str) -> None:
+        """Remove a creature from the world and record it in the chronicle."""
+        self.world.remove(c.id)
+        self.deaths += 1
+        self._death_counts[cause] = self._death_counts.get(cause, 0) + 1
+        event = HistoryEvent(
+            type="death",
+            tick=self.tick + 1,  # the tick being completed
+            entity_id=c.id,
+            caste=c.caste,
+            cause=cause,
+            x=round(c.x, 2),
+            y=round(c.y, 2),
+        )
+        self.history.append(event)
+        self._events_this_tick.append(event)
+        if self.on_event is not None:
+            self.on_event(event)
+
     def _update_creature(self, c: Creature, houses: list[Entity]) -> None:
         cfg, w = self.config, self.world
         c.ticks_since_meal += 1
+        c.age += 1
 
         # Hunger state drives perception range and urgency.
         ratio = c.energy / cfg.energy_max if cfg.energy_max > 0 else 0.0
@@ -198,24 +223,13 @@ class Simulation:
             c.meals += 1
             c.energy = min(cfg.energy_max, c.energy + cfg.energy_from_food)
 
-        # 6. Metabolism; starving to death removes the creature.
+        # 6. Metabolism and mortality.
         c.energy -= cfg.energy_decay_per_tick
         if c.energy <= 0:
-            w.remove(c.id)
-            self.deaths += 1
-            event = HistoryEvent(
-                type="death",
-                tick=self.tick + 1,  # the tick being completed
-                entity_id=c.id,
-                caste=c.caste,
-                cause="starvation",
-                x=round(c.x, 2),
-                y=round(c.y, 2),
-            )
-            self.history.append(event)
-            self._events_this_tick.append(event)
-            if self.on_event is not None:
-                self.on_event(event)
+            self._kill(c, "starvation")
+            return
+        if c.age >= c.lifespan:
+            self._kill(c, "old_age")
 
     def _enforce_food_law(self) -> None:
         """God's bounty or famine: keep food population at the law's target."""
@@ -248,6 +262,7 @@ class Simulation:
             entities=entities,
             creatures_alive=len(self.world.creatures()),
             creatures_dead=self.deaths,
+            dead_by_cause=dict(self._death_counts),
             events=list(self._events_this_tick),
         )
 
@@ -263,6 +278,8 @@ class Simulation:
                 energy=round(e.energy, 2),
                 status=e.status,  # type: ignore[arg-type]
                 radius=round(e.radius, 3),
+                age=e.age,
+                lifespan=round(e.lifespan, 1),
             )
         if isinstance(e, House):
             return EntityState(
