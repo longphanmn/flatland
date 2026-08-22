@@ -642,6 +642,7 @@ class Simulation:
         self._update_war()
         self._reproduce()
         self._update_relations()
+        self._update_territory()
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
@@ -776,6 +777,32 @@ class Simulation:
                     )
                 )
             self._relation_zones[pair] = new_zone
+
+    def _update_territory(self) -> None:
+        """§P: clan territory — members prefer own ground, trespass sours relations."""
+        cfg = self.config
+        if not cfg.territory_enabled:
+            return
+        # functional claimed houses are territory anchors
+        houses = [h for h in self.world.entities.values() if isinstance(h, House) and not h.is_ruin and h.clan_id != 0]
+        if not houses:
+            return
+        # Trespass: each creature inside a rival's radius slightly sours the two clans
+        for c in self.world.creatures():
+            if not c.clan_id or c.is_predator or c.is_herbivore:
+                continue
+            for h in houses:
+                if h.clan_id == c.clan_id:
+                    continue
+                if self.world.distance(c.x, c.y, h.x, h.y) <= cfg.territory_radius:
+                    # probabilistic decay if <1, deterministic if >=1
+                    if cfg.trespass_decay >= 1:
+                        delta = -int(round(cfg.trespass_decay))
+                        self._bump_relation(c.clan_id, h.clan_id, delta)
+                    else:
+                        if self.rng.random() < cfg.trespass_decay:
+                            self._bump_relation(c.clan_id, h.clan_id, -1)
+                    break  # one rival territory per tick is enough
 
     # ------------------------------------------------------------------ flora
     def _update_plants(self) -> None:
@@ -1404,6 +1431,22 @@ class Simulation:
                 diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
                 cap = cfg.steer_turn * 0.5
                 c.angle += max(-cap, min(cap, diff))
+
+        # 2d. Territory preference — members drift toward own settlement when outside radius (§P)
+        if cfg.territory_enabled and c.clan_id and not c.is_predator and not c.is_herbivore:
+            own_house = None
+            for h in houses:
+                if isinstance(h, House) and h.clan_id == c.clan_id and not h.is_ruin:
+                    own_house = h
+                    break
+            if own_house is not None:
+                dist_home = w.distance(c.x, c.y, own_house.x, own_house.y)
+                if dist_home > cfg.territory_radius:
+                    dx, dy = w.delta(own_house.x, own_house.y, c.x, c.y)
+                    desired = math.atan2(dy, dx)
+                    diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                    cap = cfg.steer_turn * 0.35
+                    c.angle += max(-cap, min(cap, diff))
 
         # 3. Move (hunger speeds up the desperate; rain slows every body).
         step_len = c.speed * speed_mult * stage_speed * self.env_speed_mult()

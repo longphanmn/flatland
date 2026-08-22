@@ -126,6 +126,11 @@ class GodLaws(BaseModel):
     beast_ratio: Optional[float] = Field(None, ge=0, le=1)
     diet_strictness: Optional[float] = Field(None, ge=0, le=1)
 
+    # Territory & clan depth (§P)
+    territory_enabled: Optional[bool] = None
+    territory_radius: Optional[float] = Field(None, ge=1, le=50)
+    trespass_decay: Optional[float] = Field(None, ge=0, le=5)
+
     energy_decay_per_tick: Optional[float] = Field(None, ge=0, le=2)
     energy_from_food: Optional[float] = Field(None, ge=0, le=1000)
     hungry_ratio: Optional[float] = Field(None, gt=0, le=1)

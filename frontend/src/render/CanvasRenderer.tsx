@@ -512,6 +512,27 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         ctx.stroke()
       }
 
+      // ---- territory: clan zones as faint circles around claimed houses (§P)
+      for (const e of state.entities) {
+        if (e.kind === 'house' && e.clan_id && !e.is_ruin && e.clan_color) {
+          const tr = 14 // territory_radius default; matches config.py: territory_radius
+          ctx.fillStyle = e.clan_color
+          ctx.globalAlpha = 0.07
+          ctx.beginPath()
+          ctx.arc(cam.ox + e.x * cam.scale, cam.oy + e.y * cam.scale, tr * cam.scale, 0, TAU)
+          ctx.fill()
+          ctx.globalAlpha = 0.18
+          ctx.strokeStyle = e.clan_color
+          ctx.lineWidth = 1
+          ctx.setLineDash([5, 4])
+          ctx.beginPath()
+          ctx.arc(cam.ox + e.x * cam.scale, cam.oy + e.y * cam.scale, tr * cam.scale, 0, TAU)
+          ctx.stroke()
+          ctx.setLineDash([])
+          ctx.globalAlpha = 1
+        }
+      }
+
       ctx.setTransform(cam.scale, 0, 0, cam.scale, cam.ox, cam.oy)
       for (const e of state.entities) drawEntity(ctx, e)
       // selection halo

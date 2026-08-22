@@ -170,6 +170,9 @@ export interface GodLaws {
   poison_rate?: number
   beast_ratio?: number
   diet_strictness?: number
+  territory_enabled?: boolean
+  territory_radius?: number
+  trespass_decay?: number
   energy_max?: number
   energy_decay_per_tick?: number
   energy_from_food?: number

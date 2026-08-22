@@ -66,6 +66,9 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'house_capacity', label: 'House capacity', min: 1, max: 20, step: 1, group: 'Shelter' },
   { key: 'rest_recovery_mult', label: 'Rest healing ×', min: 0.5, max: 5, step: 0.25, group: 'Shelter' },
   { key: 'house_decay_ticks', label: 'House decay ticks', min: 100, max: 100000, step: 100, group: 'Shelter' },
+  // Territory — clan land and trespass
+  { key: 'territory_radius', label: 'Territory radius', min: 1, max: 50, step: 1, group: 'Territory' },
+  { key: 'trespass_decay', label: 'Trespass decay / tick', min: 0, max: 5, step: 0.05, group: 'Territory' },
   { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction' },
   { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction' },
   { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction' },
@@ -105,6 +108,7 @@ const GROUP_ORDER = [
   'Disease',
   'Sky & Seasons',
   'Shelter',
+  'Territory',
   'Interaction',
   'Predation',
   'Clan War',
@@ -283,6 +287,20 @@ export default function GodPanel({ open, onClose }: Props) {
                     value={String(laws.shelter_enabled ?? true)}
                     onChange={(e) =>
                       setLaws((l) => ({ ...l, shelter_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
+              )}
+              {group === 'Territory' && (
+                <label className="god-row">
+                  <span title="clans claim a circle around their house; disabling removes borders">Territory claimed</span>
+                  <select
+                    value={String(laws.territory_enabled ?? true)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, territory_enabled: e.target.value === 'true' }))
                     }
                   >
                     <option value="true">yes</option>

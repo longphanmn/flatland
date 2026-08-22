@@ -351,9 +351,13 @@ beyond one house, no leaders. Deepen the social fabric.
       pole beside the clan's house; buff applied to its members.
 - [ ] [P2] Procedural clan names — "Ash Wolves", "Clan of the Long Shadow" instead of
       "Clan N" (seeded adjective + noun table).
-- [ ] [P1] Territory — a clan claims a zone (radius around its house) with a painted
+- [x] [P1] Territory — a clan claims a zone (radius around its house) with a painted
       border; members prefer their own territory; foreign trespass slowly sours
-      relations; rivals contest borders (ties into §I war).
+      relations; rivals contest borders (ties into §I war) (`config.py:49`
+      `territory_enabled`/`territory_radius` 14/`trespass_decay` 1.0,
+      `simulation.py:1410` territory steering `0.35×steer` when outside radius,
+      `simulation.py:793` `_update_territory` probabilistic `trespass_decay` → `_bump_relation` -1,
+      `protocol.py:127` GodLaws, `frontend/CanvasRenderer.tsx:514` faint clan-color circles + dashed border).
 - [ ] [P2] Leadership & roles — clan leader (founder, then succession on death),
       champion warrior, shaman; a leader's death emits a `succession` event.
 - [ ] [P2] War refinement — skirmishes need not be lethal (`attack_damage` < 100 →
@@ -363,5 +367,4 @@ beyond one house, no leaders. Deepen the social fabric.
       / scavenger roles from environment + totem; reflected in behaviour.
 - [ ] [P2] Clan stats & history — leader lineage, war record, territory, population;
       a clan panel in the inspector/HUD.
-- [ ] GodLaws: totems_enabled, territory_radius, trespass_decay, war_lethality,
-      succession_enabled (new "Clan" law group)
+- [x] GodLaws: territory_enabled, territory_radius, trespass_decay (Territory `config.py:49` `protocol.py:127` `main.py:191` `GodPanel.tsx:15`); totems_enabled, war_lethality, succession_enabled still [P2] pending (new "Clan" law group)

@@ -47,6 +47,11 @@ class Config:
     beast_ratio: float = 0.0  # §O: fraction of creature_density that are wild herbivores (grazers)
     diet_strictness: float = 0.0  # §O: 0=omnivore, 1=strict diet preference (herbivore vs carnivore)
 
+    # Territory & clan depth (§P)
+    territory_enabled: bool = True  # §P: clans claim zone around house, trespass sours relations
+    territory_radius: float = 14.0  # radius of clan territory circle
+    trespass_decay: float = 1.0  # relation points lost per tick per trespasser inside rival territory (probabilistic if <1)
+
     # Corpses & scavenging
     corpses_enabled: bool = True
     corpse_ttl: int = 600  # ticks before a corpse decays away
