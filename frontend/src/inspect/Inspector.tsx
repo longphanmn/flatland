@@ -1,6 +1,70 @@
 import { useEffect, useState } from 'react'
 import type { EntityState, HistoryEvent } from '../types'
 
+const CASTE_COLORS: Record<string, string> = {
+  Soldier: '#ff7b72',
+  Artisan: '#f2cc60',
+  Gentleman: '#ffa657',
+  Professional: '#d2a8ff',
+  Noble: '#79c0ff',
+  Priest: '#e6edf3',
+  Woman: '#ff9bce',
+  Predator: '#ff3838',
+  Herbivore: '#90be6d',
+}
+
+function CreatureAvatar({ e }: { e: EntityState }) {
+  const color = (e.caste && CASTE_COLORS[e.caste]) || '#8b949e'
+  const sides = e.sides ?? 4
+  const isLine = e.shape === 'line'
+  const isPriest = sides >= 24
+  const cx = 40
+  const cy = 40
+  const r = 18 * (e.scale_jitter ?? 1) * (e.stage === 'infant' ? 0.55 : e.stage === 'juvenile' ? 0.8 : 1)
+  // hue shift for avatar border? keep simple use base color
+  const points = isLine
+    ? null
+    : isPriest
+      ? null
+      : Array.from({ length: sides }, (_, i) => {
+          const a = (i / sides) * Math.PI * 2 - Math.PI / 2 + ((e.angle_jitter ?? 0))
+          return `${cx + Math.cos(a) * r},${cy + Math.sin(a) * r}`
+        }).join(' ')
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 4px' }}>
+      <svg width={80} height={80} viewBox="0 0 80 80" style={{ background: '#161b22', borderRadius: 10, border: `1px solid ${e.clan_color ?? '#30363d'}` }}>
+        {/* clan ring */}
+        {e.clan_color && <circle cx={cx} cy={cy} r={r + 6} fill="none" stroke={e.clan_color} strokeWidth={1.2} opacity={0.9} />}
+        {/* body */}
+        {isLine ? (
+          <line x1={cx - r * 1.3} y1={cy} x2={cx + r * 1.3} y2={cy} stroke={color} strokeWidth={3} strokeLinecap="round" />
+        ) : isPriest ? (
+          <circle cx={cx} cy={cy} r={r} fill={color} fillOpacity={0.22} stroke={color} strokeWidth={1.2} />
+        ) : (
+          <polygon points={points!} fill={color} fillOpacity={0.22} stroke={color} strokeWidth={1.2} strokeLinejoin="round" />
+        )}
+        {/* glyph in center */}
+        {e.glyph && (
+          <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" fontSize={r * 0.85} fill="#e6edf3" style={{ fontFamily: 'ui-monospace, monospace' }}>
+            {e.glyph}
+          </text>
+        )}
+        {/* status dots */}
+        {e.infected && <circle cx={cx + 22} cy={cy - 22} r={4} fill="#3fb950" stroke="#0d1117" strokeWidth={1} />}
+        {e.status === 'starving' && <circle cx={cx + 22} cy={cy - 22} r={4} fill="#f85149" stroke="#0d1117" strokeWidth={1} />}
+        {e.status === 'hungry' && <circle cx={cx + 22} cy={cy - 22} r={4} fill="#d29922" stroke="#0d1117" strokeWidth={1} />}
+        {(e.chill ?? 0) >= 12 && <circle cx={cx - 22} cy={cy - 22} r={4} fill="#79c0ff" stroke="#0d1117" strokeWidth={1} />}
+        {/* trait glyph corner */}
+        {e.trait && (
+          <text x={cx} y={72} textAnchor="middle" fontSize={7} fill="#8b949e">
+            {e.trait === 'greedy' ? '⬔ greedy' : e.trait === 'peaceful' ? '◯ peaceful' : e.trait === 'paranoid' ? '⬥ paranoid' : e.trait === 'bold' ? '▲ bold' : e.trait}
+          </text>
+        )}
+      </svg>
+    </div>
+  )
+}
+
 interface KinCard {
   id: number
   caste: string | null
@@ -128,6 +192,7 @@ export default function Inspector({ id, onClose, onNavigate }: Props) {
           {e.personal_name} · {e.caste} #{id} {e.glyph} · scale {(e.scale_jitter ?? 1).toFixed(2)} · hue {(e.hue_shift ?? 0) > 0 ? '+' : ''}{e.hue_shift ?? 0}°
         </div>
       )}
+      {e && <CreatureAvatar e={e} />}
 
       {!e && data && <p className="god-note">no longer among the living — their chronicle remains.</p>}
       {e && (

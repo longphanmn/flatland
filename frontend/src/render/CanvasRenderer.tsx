@@ -212,7 +212,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       const ratio = dpr()
       const px = clientX * ratio
       const py = clientY * ratio
-      const pickRadiusWorld = Math.max(4.0, 24 / cam.scale)
+      const pickRadiusWorld = Math.max(6.0, 44 / cam.scale)
       let bestId: number | null = null
       let bestD = Infinity
       for (const e of state.entities) {
@@ -225,7 +225,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
           bestId = e.id
         }
       }
-      if (bestId !== null && bestD <= pickRadiusWorld * cam.scale) return bestId
+      if (bestId !== null && bestD <= Math.max(28, pickRadiusWorld * cam.scale)) return bestId
       return null
     }
 

@@ -1,5 +1,6 @@
 interface Props {
   history: Array<Record<string, number>>
+  showLegend?: boolean
 }
 
 const TROPHIC_COLORS: Record<string, string> = {
@@ -10,7 +11,7 @@ const TROPHIC_COLORS: Record<string, string> = {
 }
 
 /** Trophic pyramid history: plants → herbivores → predators, client-side only. */
-export default function TrophicChart({ history }: Props) {
+export default function TrophicChart({ history, showLegend = true }: Props) {
   if (history.length < 2) return <p className="chip">collecting trophic…</p>
   const trophics = ['Food', 'Herbivore', 'Predator'] as const
   // only show those that ever appeared
@@ -35,14 +36,16 @@ export default function TrophicChart({ history }: Props) {
           return <polyline key={k} points={pts} fill="none" stroke={TROPHIC_COLORS[k]} strokeWidth={0.9} />
         })}
       </svg>
-      <div className="caste-legend">
-        {shown.map((k) => (
-          <span key={k} className="chip">
-            <span className="dot-inline" style={{ background: TROPHIC_COLORS[k] }} />
-            {k}
-          </span>
-        ))}
-      </div>
+      {showLegend !== false && (
+        <div className="caste-legend">
+          {shown.map((k) => (
+            <span key={k} className="chip">
+              <span className="dot-inline" style={{ background: TROPHIC_COLORS[k] }} />
+              {k}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

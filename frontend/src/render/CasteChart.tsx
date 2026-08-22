@@ -2,10 +2,11 @@ import { CASTE_COLORS } from '../render/CanvasRenderer'
 
 interface Props {
   history: Array<Record<string, number>>
+  showLegend?: boolean
 }
 
 /** Stacked-line population history per caste, client-side only. */
-export default function CasteChart({ history }: Props) {
+export default function CasteChart({ history, showLegend = true }: Props) {
   if (history.length < 2) {
     return <p className="chip">collecting history…</p>
   }
@@ -45,14 +46,16 @@ export default function CasteChart({ history }: Props) {
           )
         })}
       </svg>
-      <div className="caste-legend">
-        {castes.map((c) => (
-          <span key={c} className="chip">
-            <span className="dot-inline" style={{ background: CASTE_COLORS[c] }} />
-            {c}
-          </span>
-        ))}
-      </div>
+      {showLegend && (
+        <div className="caste-legend">
+          {castes.map((c) => (
+            <span key={c} className="chip">
+              <span className="dot-inline" style={{ background: CASTE_COLORS[c] }} />
+              {c}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

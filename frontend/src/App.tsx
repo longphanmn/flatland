@@ -36,6 +36,7 @@ export default function App() {
   const [speed, setSpeed] = useState(10)
   const [godOpen, setGodOpen] = useState(false)
   const [chronicleOpen, setChronicleOpen] = useState(true)
+  const [helpOpen, setHelpOpen] = useState(false)
   const [log, setLog] = useState<HistoryEvent[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [aliveHist, setAliveHist] = useState<number[]>([])
@@ -72,6 +73,20 @@ export default function App() {
   useEffect(() => {
     archiveModeRef.current = archiveMode
   }, [archiveMode])
+
+  // Tap hint: clicking any HUD chip with title shows it (mobile where hover doesn't work)
+  useEffect(() => {
+    const onChipClick = (e: Event) => {
+      const t = e.target as HTMLElement
+      const chip = t.closest('.chip[title]') as HTMLElement | null
+      if (chip?.title) {
+        // use alert for mobile, but avoid spamming when selecting text
+        alert(chip.title)
+      }
+    }
+    document.addEventListener('click', onChipClick)
+    return () => document.removeEventListener('click', onChipClick)
+  }, [])
 
   // Keyboard controls: space pause · S step · R reset · +/- zoom · F fit.
   useEffect(() => {
@@ -310,10 +325,13 @@ export default function App() {
         <button className="god-btn" onClick={() => setGodOpen(true)}>
           ⚖ God
         </button>
+        <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls" style={{ padding: '6px 10px' }}>
+          ?
+        </button>
         <span className={`dot ${status}`} title={STATUS_LABEL[status]} />
         <span className="chip">{STATUS_LABEL[status]}</span>
         {paused && <span className="chip paused">PAUSED</span>}
-        <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Same seed ⇒ same world.">
+        <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Same seed ⇒ same world." onClick={(e) => alert((e.currentTarget as HTMLElement).title)} style={{ cursor: 'help' }}>
           tick <b>{state?.tick ?? 0}</b>
         </span>
         <span className="chip" title="Total entities in world (creatures + Food plants + Houses + Corpses).">
@@ -482,7 +500,7 @@ export default function App() {
                 </svg>
               </span>
             </div>
-            <CasteChart history={popHist} />
+            <CasteChart history={popHist} showLegend={false} />
             <h4
               style={{ margin: '10px 0 4px', fontSize: '0.85em', opacity: 0.8 }}
               title="Trophic pyramid: stacked history of Food (plants, variant colors) → Herbivore (wild grazers, beast_ratio) → Predator (carnivores). Shows Lotka-Volterra oscillation: plants feed herbivores, herbivores feed predators. Spikes mean blooms or hunts."
@@ -490,7 +508,7 @@ export default function App() {
               Trophic pyramid — Food · Herbivore · Predator{' '}
               <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span>
             </h4>
-            <TrophicChart history={popHist} />
+            <TrophicChart history={popHist} showLegend={false} />
             <ClanPanel />
             <PlotsPanel />
           </aside>
@@ -516,11 +534,7 @@ export default function App() {
                   : 'load older'}
             </button>
           )}
-          {log.length === 0 ? (
-            <p className="chip">nothing recorded yet</p>
-          ) : (
-            <ul>
-              {log.map((ev) => {
+          {(() => { const filtered = log.filter((ev) => ev.type !== 'bloom'); if (filtered.length === 0) return <p className="chip">no major events yet — blooms hidden</p>; return (<ul>{filtered.map((ev) => {
                 const key = `${ev.tick}:${ev.entity_id}:${ev.type}`
                 if (ev.type === 'birth') {
                   const p = (ev.payload ?? {}) as { mother?: number; father?: number; generation?: number; personal_name?: string; glyph?: string }
@@ -643,8 +657,8 @@ export default function App() {
                   )
                 }
               })}
-            </ul>
-          )}
+            </ul>)
+          })()}
         </aside>
         </div>
       )}
@@ -659,6 +673,32 @@ export default function App() {
 
       <GodPanel open={godOpen} onClose={() => setGodOpen(false)} />
 
+      {helpOpen && (
+        <div className="help-backdrop" onClick={() => setHelpOpen(false)}>
+          <div className="help-panel" onClick={(e) => e.stopPropagation()}>
+            <header className="god-head">
+              <h3>Hints</h3>
+              <button className="god-close" onClick={() => setHelpOpen(false)}>×</button>
+            </header>
+            <p className="god-note">Tap any chip to see its hint. God never touches a single life — only laws.</p>
+            <ul>
+              <li><b>tick</b>: step count, 10/s by default, same seed ⇒ same world</li>
+              <li><b>entities</b>: creatures + Food plants + Houses + Corpses</li>
+              <li><b>alive/dead</b>: alive castes + predators/herbivores; dead per-cause breakdown on hover/tap</li>
+              <li><b>hungry/starving</b>: ≤35%/15% energy, see farther, starving 1.35× speed pulsing red</li>
+              <li><b>infected</b>: 0.15 energy +1 health/tick drain, winter 1.5× spread, green ring</li>
+              <li><b>exposed</b>: awake outdoors rain/storm/winter night −0.03 energy, shelter scarce</li>
+              <li><b>chilled</b>: rain/storm/winter-night builds chill ≥12 → −0.18 health/tick, shelter sheds 2.5×</li>
+              <li><b>seed·WxH·boundary</b>: seed determines world, Reset rolls new seed</li>
+              <li><b>day/season/weather</b>: night 0.6× sight, fog 0.6×, rain 0.85× speed, storm +wander; seasons change Food target</li>
+              <li><b>age</b>: super-season Golden/Ice/Chaos/Plague bends food/mut/disease</li>
+              <li><b>Overview</b>: alive spark + caste/trophic graphs + ClanPanel + Plots; Chronicle below is history only (blooms hidden)</li>
+              <li><b>Tap creature</b>: works at any zoom (44px hit radius), shows dossier left, gold halo + name glyph</li>
+              <li><b>Controls</b>: space pause, S step, R reset, F fit, +/- zoom, drag pan, pinch zoom</li>
+            </ul>
+          </div>
+        </div>
+      )}
       {worlds.length > 0 && (
         <div className="run-switcher">
           <label className="chip run-label" htmlFor="run-bottom">
