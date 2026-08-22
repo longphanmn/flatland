@@ -405,3 +405,72 @@ Give each a name, a face, and a voice — then let kin lead the hungry to food.
 - [ ] [P2] Recruitment — a sated clan-mate within `flock_radius` of a starving
       one calls toward its remembered food; the starving one follows the call
       (kin guide the hungry home)
+
+## R. Weather as life — crops & chill  [P2]
+Weather today only slows movement and dims sight. Make it a force on the land and
+the body: rain feeds the fields, storms wreck them, and the cold gets into the bones.
+
+### Weather → crops
+- [ ] [P2] Rain waters the land — rain/storm apply `rain_growth_mult` to plant growth
+      (+ a small seed-spread boost); fog favours mushrooms (the decomposer tier).
+- [ ] [P2] Storms damage crops — a storm strips growth from exposed plants
+      (`storm_plant_damage` chance to lose growth, occasionally uproot/die); soaked
+      ground then grows back faster.
+- [ ] GodLaws: rain_growth_mult, fog_mushroom_mult, storm_plant_damage
+      (new "Weather & Crops" law group)
+
+### Weather → sickness
+- [ ] [P2] Chill — rain/storm/winter nights build `chill` on the unsheltered; past a
+      threshold the creature is `sick` (drains health, death cause `chill`); shelter
+      shakes it off.
+- [ ] [P2] Cold contagion — wet/cold creatures catch disease faster
+      (`wet_disease_mult`) and recover slower: catch your death in the rain.
+- [ ] GodLaws: weather_sickness_enabled, chill_rate, chill_threshold, chill_drain,
+      wet_disease_mult (new "Weather Sickness" law group)
+
+## S. WorldBox inspirations — ages, plots & disasters  [P2]
+WorldBox's god intervenes; Flatland's god only sets laws. These are the WorldBox
+mechanics that survive that translation — all emergent or law-gated.
+
+### Ages (super-seasons)
+- [ ] [P2] World ages — a long era over seasons (`age_length`); each age bends the
+      world: Ice (winter food ×0.3 + chill), Chaos (mutation ↑), Plague (disease ↑),
+      Golden (bounty + birth ↑). Chosen/cycled by law; `age` in snapshot + HUD.
+
+### Rebellion & clan schism
+- [ ] [P1] Schism — a clan's unhappy members (starving, homeless, or low relations)
+      split off to found a new clan (new name/totem/territory), then war the parent
+      (`schism_threshold`); success/failure recorded. Extends §I war + §P succession.
+
+### Plots (foreshadowing)
+- [ ] [P2] Plots panel — god sees *upcoming* war/rebellion/schism plans as progress
+      ("Ash Wolves is planning war on Long Shadow — 3/10") before they fire; icons
+      on the plotters. Extends §G observability.
+
+### Wildfire & disaster laws
+- [ ] [P2] Wildfire — fire ignites (storm lightning / `fire_rate`) and spreads
+      grass→plant→house; kills creatures/plants, leaves ash that fertilizes
+      regrowth; renderer flame overlay.
+- [ ] [P2] Disaster laws — meteor/comet strike, flood — stochastic events gated by
+      `disaster_rate` (god sets frequency, never a specific strike); craters/water
+      reshape terrain.
+
+### Diplomacy depth
+- [ ] [P2] Richer relation factors — common enemy +, border-adjacency −, at-war −huge,
+      truce cooldown +, same-caste +; folds into the existing −100..100 clan score.
+- [ ] [P2] Territory conquest — the winner of a war absorbs the loser's territory
+      and house (§P); borders redraw; losing clan becomes homeless/refugees.
+
+### Culture drift
+- [ ] [P2] Culture — each clan has a culture that spreads to neighbours and can split
+      (like WorldBox); culture grants a small collective bonus and can diverge into
+      rival traditions.
+
+### Behavioral genetic traits
+- [ ] [P2] Genetic traits — mutation may add a heritable behaviour trait (greedy /
+      peaceful / paranoid / bold) that nudges food choice, flee threshold, war
+      eagerness; shown as a glyph in the profile (§Q). Distinct from the cosmetic
+      identity already scoped.
+- [ ] GodLaws: age_enabled, age_length, schism_enabled, schism_threshold, fire_rate,
+      fire_spread_rate, disaster_rate, culture_enabled, trait_mutation_rate
+      (new "Ages & Disasters" + "Society II" law groups)

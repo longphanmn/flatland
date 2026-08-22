@@ -27,20 +27,21 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-echo "[backend] installing deps + starting on :8000"
+echo "[backend] installing deps + starting on :8000 (0.0.0.0)"
 cd "$ROOT/backend"
 [ -d .venv ] || uv sync --quiet
-uv run uvicorn app.main:app --reload --port 8000 &
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
 PIDS+=("$!")
 
-echo "[frontend] installing deps + starting on :5173"
+echo "[frontend] installing deps + starting on :5173 (0.0.0.0)"
 cd "$ROOT/frontend"
 [ -d node_modules ] || npm install --silent
-npm run dev &
+npm run dev -- --host 0.0.0.0 --port 5173 &
 PIDS+=("$!")
 
 echo ""
-echo "  World UI : http://localhost:5173"
+echo "  World UI : http://localhost:5173  (or http://\$(ipconfig getifaddr en0 2>/dev/null || echo 192.168.1.21):5173 on LAN)"
 echo "  API docs : http://localhost:8000/docs"
+echo "  Remote   : http://192.168.1.21:5173 (if deployed)"
 echo ""
 wait

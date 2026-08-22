@@ -36,16 +36,15 @@ class Config:
     house_density: float = 0.00015  # ~6 houses
     spawn_variance: float = 0.25  # ±25% around the density target
 
-    food_count: int = 48  # god's law: the world maintains this much food (tuned for 30-day survival)
-
+    food_count: int = 70  # was 48 — 70 sustains 30d with §O variants + territory/totems (tested 30d alive 20)
     # Plants & nutrient cycle (§H) + biodiversity (§O)
-    plant_growth_rate: float = 0.04  # growth/tick toward maturity (1.0) — faster regrowth
-    plant_spread_rate: float = 0.005  # chance/tick a mature plant seeds nearby
-    nutrient_cycle_rate: float = 0.6  # scales the boost a decayed corpse grants
-    plant_variants_enabled: bool = True  # §O: grass/berry/mushroom/poisonous diversity
-    poison_rate: float = 0.03  # §O: chance a new sprout is poisonous (mutates in)
-    beast_ratio: float = 0.0  # §O: fraction of creature_density that are wild herbivores (grazers)
-    diet_strictness: float = 0.0  # §O: 0=omnivore, 1=strict diet preference (herbivore vs carnivore)
+    plant_growth_rate: float = 0.05  # was 0.04 — a bit faster for winter
+    plant_spread_rate: float = 0.006  # was 0.005
+    nutrient_cycle_rate: float = 0.65  # was 0.6
+    plant_variants_enabled: bool = True
+    poison_rate: float = 0.01  # was 0.03 — 1% keeps 30d alive
+    beast_ratio: float = 0.0
+    diet_strictness: float = 0.0
 
     # Territory & clan depth (§P)
     territory_enabled: bool = True  # §P: clans claim zone around house, trespass sours relations
@@ -62,11 +61,11 @@ class Config:
     corpse_energy: float = 25.0  # energy a fresh corpse holds
 
     # Behaviour tuning
-    perceive_radius: float = 18.0  # tuned for 30-day survival on 200×200
+    perceive_radius: float = 20.0  # was 18 — fog/night + variants (tested 20)
     eat_radius: float = 1.4
     energy_max: float = 100.0
-    energy_start: float = 80.0
-    energy_decay_per_tick: float = 0.05  # tuned: was 0.08, too harsh with shelter
+    energy_start: float = 85.0
+    energy_decay_per_tick: float = 0.025  # was 0.05 — 0.025 sustains 30d (tested)
     energy_from_food: float = 32.0
     wander_turn: float = 0.35  # max heading change (rad) when wandering
     steer_turn: float = 0.45  # max heading change when steering to food

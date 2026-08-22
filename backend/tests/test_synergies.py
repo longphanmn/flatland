@@ -149,13 +149,13 @@ def test_predator_prey_oscillation():
         carrying_capacity=200, max_population=200,
     )
     s = Simulation(cfg)
-    # seed prey (mixed sexes) and predators close by as adults
+    # seed prey (mixed sexes) and predators close by as adults (adult stage: age ≥ 0.3×lifespan)
     for i in range(8):
-        s.world.add(Creature(x=10 + i * 1.0, y=10, sides=4, energy=90, age=1000, lifespan=6000, is_predator=False))
-        s.world.add(Creature(x=11 + i * 1.0, y=12, shape="line", sides=2, energy=90, age=1000, lifespan=6000, is_predator=False))
+        s.world.add(Creature(x=10 + i * 1.0, y=10, sides=4, energy=90, age=3000, lifespan=6000, is_predator=False))
+        s.world.add(Creature(x=11 + i * 1.0, y=12, shape="line", sides=2, energy=90, age=3000, lifespan=6000, is_predator=False))
     for i in range(3):
-        s.world.add(Creature(x=12 + i * 1.0, y=11, sides=6, energy=120, age=1000, lifespan=6600, is_predator=True, caste="Predator"))
-        s.world.add(Creature(x=13 + i * 1.0, y=13, shape="line", sides=2, energy=120, age=1000, lifespan=6600, is_predator=True, caste="Predator"))
+        s.world.add(Creature(x=12 + i * 1.0, y=11, sides=6, energy=120, age=3000, lifespan=6600, is_predator=True, caste="Predator"))
+        s.world.add(Creature(x=13 + i * 1.0, y=13, shape="line", sides=2, energy=120, age=3000, lifespan=6600, is_predator=True, caste="Predator"))
 
     prey_counts, pred_counts = [], []
     for _ in range(600):
