@@ -94,6 +94,7 @@ class StateMessage(BaseModel):
     clans: dict[str, dict[str, Any]] = Field(default_factory=dict)
     events: list["HistoryEvent"] = Field(default_factory=list)
     signals: list[dict[str, Any]] = Field(default_factory=list)
+    fires: list[dict[str, Any]] = Field(default_factory=list)
     age: Optional[str] = None
     age_tick: int = 0
 
@@ -102,6 +103,7 @@ class HistoryEvent(BaseModel):
     type: Literal[
         "death", "birth", "promotion", "demotion", "outbreak", "recovery",
         "bloom", "alliance", "rivalry", "predation", "war", "ruin", "settlement", "succession", "schism",
+        "fire", "disaster",
     ] = ("death")
     tick: int
     entity_id: int
@@ -206,6 +208,11 @@ class GodLaws(BaseModel):
     food_memory_ttl: Optional[int] = Field(None, ge=20, le=5000)
     age_enabled: Optional[bool] = None
     age_length: Optional[int] = Field(None, ge=100, le=1000000)
+    wildfire_enabled: Optional[bool] = None
+    fire_rate: Optional[float] = Field(None, ge=0, le=0.05)
+    fire_spread_rate: Optional[float] = Field(None, ge=0, le=1)
+    disaster_enabled: Optional[bool] = None
+    disaster_rate: Optional[float] = Field(None, ge=0, le=0.05)
 
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
     schism_enabled: Optional[bool] = None

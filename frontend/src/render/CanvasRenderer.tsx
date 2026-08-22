@@ -625,6 +625,27 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       }
 
       ctx.setTransform(cam.scale, 0, 0, cam.scale, cam.ox, cam.oy)
+      // §S wildfire — flame overlay at burning plants
+      if ((state as any).fires) {
+        for (const f of (state as any).fires) {
+          const alpha = Math.max(0.35, Math.min(0.9, f.ttl / 28))
+          ctx.globalAlpha = alpha
+          ctx.fillStyle = '#ff6b35'
+          ctx.beginPath()
+          ctx.arc(f.x, f.y, f.r * 0.9, 0, TAU)
+          ctx.fill()
+          ctx.strokeStyle = '#ffd166'
+          ctx.lineWidth = 0.25
+          ctx.stroke()
+          // inner flame
+          ctx.fillStyle = '#ffd166'
+          ctx.globalAlpha = alpha * 0.85
+          ctx.beginPath()
+          ctx.arc(f.x, f.y, f.r * 0.45, 0, TAU)
+          ctx.fill()
+          ctx.globalAlpha = 1
+        }
+      }
       for (const e of state.entities) drawEntity(ctx, e)
       // totem poles — small marker beside each claimed house (§P)
       for (const e of state.entities) {

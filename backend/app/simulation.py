@@ -156,6 +156,7 @@ class Simulation:
         self.fertile: list[dict] = []  # {x,y,r} — food prefers these grounds
         self.rocks: list[dict] = []  # {x,y,r} — solid circles that block movement
         self.signals: list[dict] = []  # §Q: {x,y,kind,sender,clan_id,ttl}
+        self.fires: list[dict] = []  # §S wildfire: {x,y,r,ttl}
         self._spawn_initial()
         self._generate_terrain()
 
@@ -738,6 +739,8 @@ class Simulation:
         self.signals = [sg for sg in self.signals if sg["ttl"] > 1]
         for sg in self.signals:
             sg["ttl"] -= 1
+        self._update_fires()
+        self._update_disasters()
         self._update_plants()
         self.world.rebuild_index()
         houses = [e for e in self.world.entities.values() if e.kind == "house" and not e.is_ruin]  # type: ignore[union-attr]
@@ -1041,6 +1044,101 @@ class Simulation:
                 )
             )
             break  # only one schism per tick
+
+    def _update_fires(self) -> None:
+        """§S Wildfire — ignites via storm lightning / fire_rate, spreads, kills."""
+        cfg = self.config
+        if not cfg.wildfire_enabled:
+            # decay existing fires even when disabled? keep them fading
+            self.fires = [f for f in self.fires if f["ttl"] > 1]
+            for f in self.fires:
+                f["ttl"] -= 1
+            return
+        # Decay
+        new_fires = []
+        for f in self.fires:
+            f["ttl"] -= 1
+            if f["ttl"] > 0:
+                new_fires.append(f)
+            else:
+                # ash fertilizes nearby plants (nutrient boost)
+                for e in self.world.entities.values():
+                    if isinstance(e, Food) and self.world.distance(e.x, e.y, f["x"], f["y"]) < 8:
+                        e.growth = min(1.0, e.growth + 0.15)
+        self.fires = new_fires
+        # Ignition: storm lightning or random fire_rate
+        ignite_chance = cfg.fire_rate
+        if self.weather == "storm":
+            ignite_chance = max(ignite_chance, 0.002)  # lightning
+        if self.rng.random() < ignite_chance:
+            foods = [e for e in self.world.entities.values() if isinstance(e, Food) and e.growth > 0.5]
+            if foods:
+                victim = self.rng.choice(foods)
+                self.fires.append({"x": victim.x, "y": victim.y, "r": 3.0, "ttl": 28})
+                self.world.remove(victim.id)
+                self._emit(HistoryEvent(type="fire", tick=self.tick+1, entity_id=0, x=round(victim.x,2), y=round(victim.y,2), payload={"kind": "ignite", "r": 3.0}))
+        # Spread to neighboring plants
+        if self.fires and self.rng.random() < cfg.fire_spread_rate * len(self.fires):
+            for f in list(self.fires):
+                for e in list(self.world.entities.values()):
+                    if not isinstance(e, Food):
+                        continue
+                    if self.world.distance(e.x, e.y, f["x"], f["y"]) < 6 and self.rng.random() < 0.35:
+                        self.fires.append({"x": e.x, "y": e.y, "r": 2.5, "ttl": 22})
+                        self.world.remove(e.id)
+                        break
+        # Burn creatures and plants within fire radius
+        for f in list(self.fires):
+            for e in list(self.world.entities.values()):
+                if isinstance(e, Creature) and self.world.distance(e.x, e.y, f["x"], f["y"]) < f["r"] + 1.2:
+                    # chance to burn
+                    if self.rng.random() < 0.18:
+                        self._kill(e, "fire")
+                elif isinstance(e, Food) and self.world.distance(e.x, e.y, f["x"], f["y"]) < f["r"]:
+                    if self.rng.random() < 0.25:
+                        self.world.remove(e.id)
+            # also burn houses? small chance to ignite house (is_ruin)
+            for h in [h for h in self.world.entities.values() if isinstance(h, House) and not h.is_ruin]:
+                if self.world.distance(h.x, h.y, f["x"], f["y"]) < f["r"] + h.size/2:
+                    if self.rng.random() < 0.03:
+                        h.is_ruin = True
+                        h.clan_id = 0
+                        h.clan_color = None
+                        self._emit(HistoryEvent(type="fire", tick=self.tick+1, entity_id=h.id, x=round(h.x,2), y=round(h.y,2), payload={"kind": "house_burn"}))
+
+    def _update_disasters(self) -> None:
+        """§S Disaster laws — meteor/flood stochastic, gated by disaster_rate."""
+        cfg = self.config
+        if not cfg.disaster_enabled or cfg.disaster_rate <= 0:
+            return
+        if self.rng.random() >= cfg.disaster_rate:
+            return
+        kind = self.rng.choice(["meteor", "flood"])
+        cx, cy = self._rand_pos()
+        r = self.rng.uniform(6, 12) if kind == "meteor" else self.rng.uniform(10, 18)
+        if kind == "meteor":
+            # crater kills, removes plants, adds rock
+            self.rocks.append({"x": cx, "y": cy, "r": r*0.6})
+            for e in list(self.world.entities.values()):
+                if self.world.distance(e.x, e.y, cx, cy) < r:
+                    if isinstance(e, Creature) and self.rng.random() < 0.85:
+                        self._kill(e, "disaster")
+                    elif isinstance(e, Food) and self.rng.random() < 0.9:
+                        self.world.remove(e.id)
+            self._emit(HistoryEvent(type="disaster", tick=self.tick+1, entity_id=0, x=round(cx,2), y=round(cy,2), payload={"kind": "meteor", "r": round(r,2)}))
+        else:
+            # flood: pushes creatures, drowns some, washes plants?
+            for e in list(self.world.entities.values()):
+                if self.world.distance(e.x, e.y, cx, cy) < r:
+                    if isinstance(e, Creature):
+                        # push out
+                        ang = self.rng.uniform(0, 2*3.14159)
+                        e.x, e.y = self.world.normalize(cx + math.cos(ang)*(r+2), cy + math.sin(ang)*(r+2))
+                        if self.rng.random() < 0.15:
+                            self._kill(e, "disaster")
+                    elif isinstance(e, Food) and self.rng.random() < 0.4:
+                        self.world.remove(e.id)
+            self._emit(HistoryEvent(type="disaster", tick=self.tick+1, entity_id=0, x=round(cx,2), y=round(cy,2), payload={"kind": "flood", "r": round(r,2)}))
 
     def _update_clan_specialization(self) -> None:
         """§P Clan specialization — drift toward warrior/farmer/scavenger."""
@@ -2082,6 +2180,7 @@ class Simulation:
             clans={str(k): v for k, v in self.clans.items()},
             events=list(self._events_this_tick),
             signals=[dict(sg) for sg in self.signals],
+            fires=[dict(f) for f in self.fires],
             age=self._age(),
             age_tick=self._age_tick(),
         )

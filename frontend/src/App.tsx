@@ -588,6 +588,22 @@ export default function App() {
                     </li>
                   )
                 }
+                if (ev.type === 'fire') {
+                  const p = (ev.payload ?? {}) as { kind?: string; r?: number }
+                  return (
+                    <li key={key} className="ev-bloom" style={{ color: '#ff6b35' }}>
+                      fire {p.kind ?? ''} at ({Math.round(ev.x)}, {Math.round(ev.y)}) tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'disaster') {
+                  const p = (ev.payload ?? {}) as { kind?: string; r?: number }
+                  return (
+                    <li key={key} className="ev-bloom" style={{ color: '#e3b341' }}>
+                      disaster {p.kind ?? ''} r{p.r ?? ''} at ({Math.round(ev.x)}, {Math.round(ev.y)}) tick {ev.tick}
+                    </li>
+                  )
+                }
                 if (ev.type === 'bloom') {
                   return (
                     <li key={key} className="ev-bloom" style={{ color: '#3fb950' }}>

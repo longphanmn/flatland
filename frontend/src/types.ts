@@ -74,6 +74,7 @@ export interface StateMessage {
   clans: Record<string, { name: string; founder_id: number; born_tick: number; color: string }>
   events: HistoryEvent[]
   signals: { x: number; y: number; kind: 'food' | 'alarm'; sender: number; clan_id: number | null; ttl: number }[]
+  fires: { x: number; y: number; r: number; ttl: number }[]
   age: string | null
   age_tick: number
 }
@@ -81,7 +82,7 @@ export interface StateMessage {
 export interface HistoryEvent {
   /** Present only on events fetched from GET /api/history; absent on live-streamed ones. */
   id?: number
-  type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war' | 'ruin' | 'settlement' | 'succession' | 'schism'
+  type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war' | 'ruin' | 'settlement' | 'succession' | 'schism' | 'fire' | 'disaster'
   tick: number
   entity_id: number
   caste?: string | null
@@ -260,6 +261,11 @@ export interface GodLaws {
   food_memory_ttl?: number
   age_enabled?: boolean
   age_length?: number
+  wildfire_enabled?: boolean
+  fire_rate?: number
+  fire_spread_rate?: number
+  disaster_enabled?: boolean
+  disaster_rate?: number
 
   schism_enabled?: boolean
   schism_threshold?: number

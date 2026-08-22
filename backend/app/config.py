@@ -64,6 +64,13 @@ class Config:
     age_enabled: bool = False  # long era bending world: Ice/Chaos/Plague/Golden
     age_length: int = 12000  # ticks per age (5 seasons)
 
+    # Wildfire & Disasters (§S)
+    wildfire_enabled: bool = False  # fire ignites via storm lightning, spreads
+    fire_rate: float = 0.0005  # chance/tick to ignite random plant
+    fire_spread_rate: float = 0.08  # spread to neighboring plants
+    disaster_enabled: bool = False  # meteor/flood stochastic
+    disaster_rate: float = 0.0003  # chance/tick for disaster
+
     # Communication & Care (§Q)
     communication_enabled: bool = False  # food + alarm calls, clan recruitment
     signal_radius: float = 12.0  # heard within this range

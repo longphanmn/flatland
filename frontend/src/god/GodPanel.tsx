@@ -108,6 +108,10 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'schism_min_pop', label: 'Schism min pop', min: 2, max: 100, step: 1, group: 'Rebellion' },
   // Ages — super-seasons (§S)
   { key: 'age_length', label: 'Age length (ticks)', min: 100, max: 1000000, step: 100, group: 'Ages' },
+  // Wildfire & Disasters (§S)
+  { key: 'fire_rate', label: 'Fire ignite / tick', min: 0, max: 0.05, step: 0.0001, group: 'Wildfire & Disasters' },
+  { key: 'fire_spread_rate', label: 'Fire spread / tick', min: 0, max: 1, step: 0.01, group: 'Wildfire & Disasters' },
+  { key: 'disaster_rate', label: 'Disaster / tick', min: 0, max: 0.05, step: 0.0001, group: 'Wildfire & Disasters' },
   // Clan war — rival blood
   { key: 'attack_radius', label: 'Attack radius', min: 0.5, max: 10, step: 0.1, group: 'Clan War' },
   { key: 'attack_damage', label: 'Attack damage', min: 0, max: 200, step: 10, group: 'Clan War' },
@@ -127,6 +131,7 @@ const GROUP_ORDER = [
   'Disease',
   'Sky & Seasons',
   'Ages',
+  'Wildfire & Disasters',
   'Weather & Crops',
   'Weather Sickness',
   'Shelter',
@@ -178,6 +183,9 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   chill_drain: 'health drain per tick when chilled (0.18) — death cause chill',
   wet_disease_mult: 'wet/cold catch disease faster and recover slower (1.5×)',
   age_length: 'ticks per age (12000 = 5 seasons) — Golden×1.25 food, Ice×0.55 food + chill, Chaos×1.8 mutation, Plague×1.8 disease',
+  fire_rate: 'chance a random mature plant ignites each tick (0.0005) — storm lightning raises to 0.002',
+  fire_spread_rate: 'spread to neighboring plants within 6 (0.08) — kills creatures/plants, ash fertilizes',
+  disaster_rate: 'meteor/flood stochastic gated by this per tick (0.0003) — crater/water reshapes terrain',
   signal_radius: 'heard within this range (12) — clan-mates respond strongly, strangers weakly',
   food_call_rate: 'well-fed finds food → calls with this chance/tick (0.08)',
   alarm_call_rate: 'sees predator → alarm call chance/tick (0.12)',
@@ -390,6 +398,34 @@ export default function GodPanel({ open, onClose }: Props) {
                     <option value="false">no</option>
                   </select>
                 </label>
+              )}
+              {group === 'Wildfire & Disasters' && (
+                <>
+                  <label className="god-row">
+                    <span title="fire ignites via storm lightning / fire_rate and spreads grass→plant→house; ash fertilizes">Wildfire</span>
+                    <select
+                      value={String(laws.wildfire_enabled ?? false)}
+                      onChange={(e) =>
+                        setLaws((l) => ({ ...l, wildfire_enabled: e.target.value === 'true' }))
+                      }
+                    >
+                      <option value="true">yes</option>
+                      <option value="false">no</option>
+                    </select>
+                  </label>
+                  <label className="god-row">
+                    <span title="meteor/flood stochastic — god sets frequency, never a specific strike">Disasters</span>
+                    <select
+                      value={String(laws.disaster_enabled ?? false)}
+                      onChange={(e) =>
+                        setLaws((l) => ({ ...l, disaster_enabled: e.target.value === 'true' }))
+                      }
+                    >
+                      <option value="true">yes</option>
+                      <option value="false">no</option>
+                    </select>
+                  </label>
+                </>
               )}
               {group === 'Ages' && (
                 <label className="god-row">

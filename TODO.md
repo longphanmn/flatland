@@ -448,12 +448,12 @@ mechanics that survive that translation — all emergent or law-gated.
       on the plotters. Extends §G observability.
 
 ### Wildfire & disaster laws
-- [ ] [P2] Wildfire — fire ignites (storm lightning / `fire_rate`) and spreads
+- [x] [P2] Wildfire — fire ignites (storm lightning / `fire_rate`) and spreads
       grass→plant→house; kills creatures/plants, leaves ash that fertilizes
-      regrowth; renderer flame overlay.
-- [ ] [P2] Disaster laws — meteor/comet strike, flood — stochastic events gated by
+      regrowth; renderer flame overlay. (`config.py:70` `wildfire_enabled`/`fire_rate` 0.0005/`spread` 0.08, `simulation.py:930` `fires` ttl 28/22 ignition storm 0.002, spread 0.35 within 6, burn creatures 0.18/plants 0.25, house 0.03 ruin, ash growth +0.15, `protocol.py:94` `fire` event, `GodPanel.tsx:66` Wildfire & Disasters, `CanvasRenderer.tsx:536` flame `r0.9`/`r0.45`)
+- [x] [P2] Disaster laws — meteor/comet strike, flood — stochastic events gated by
       `disaster_rate` (god sets frequency, never a specific strike); craters/water
-      reshape terrain.
+      reshape terrain. (`config.py:73` `disaster_enabled`/`rate` 0.0003, `simulation.py:970` `disaster_rate` meteor crater rock+kill/disaster flood push/drown, `protocol.py:94` `disaster` event, `App.tsx:573` chronicle disaster)
 
 ### Diplomacy depth
 - [ ] [P2] Richer relation factors — common enemy +, border-adjacency −, at-war −huge,
