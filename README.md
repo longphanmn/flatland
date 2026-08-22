@@ -93,6 +93,11 @@ curl -X POST localhost:8000/api/laws -H 'content-type: application/json' \
 | `FLATWORLD_SEED` | `42` | RNG seed (same seed ⇒ identical simulation) |
 | `FLATWORLD_TICK_RATE` | `10` | Initial ticks per second |
 
+**World generation:** population and houses scale with map area (densities ×
+area, ±25% jitter, Flatland social pyramid). **Reset** rolls a fresh random
+seed — every reset is a brand-new world; the seed is shown in the HUD and
+recorded with that world run in the database.
+
 ## Viewport & Chronicle
 
 - **Zoom:** mouse wheel or pinch; **pan:** drag with mouse/finger; **Fit view**

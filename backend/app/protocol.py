@@ -49,6 +49,7 @@ class EntityState(BaseModel):
 class StateMessage(BaseModel):
     type: Literal["state"] = "state"
     tick: int
+    seed: int = 0
     width: float
     height: float
     boundary: str

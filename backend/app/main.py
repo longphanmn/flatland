@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import random
 from contextlib import asynccontextmanager, suppress
 from dataclasses import asdict, replace
 from pathlib import Path
@@ -121,8 +122,11 @@ async def apply_control(msg: ControlMessage) -> dict:
         RT.sim.step()
         await HUB.broadcast(RT.sim.snapshot().model_dump(mode="json"))
     elif msg.action is ControlAction.RESET:
-        # A new world is born, but the chronicle endures in the database.
-        RT.sim = Simulation(RT.config, history=RT.sim.history)
+        # A new world is born with fresh laws of chance: a new random seed.
+        # The chronicle endures in the database.
+        new_cfg = replace(RT.config, seed=random.SystemRandom().randint(0, 2**31 - 1))
+        RT.config = new_cfg
+        RT.sim = Simulation(new_cfg, history=RT.sim.history)
         start_world()
         await HUB.broadcast(RT.sim.snapshot().model_dump(mode="json"))
     elif msg.action is ControlAction.SET_SPEED:

@@ -118,7 +118,8 @@ export default function App() {
         )}
         {hello && (
           <span className="chip">
-            seed <b>{hello.seed}</b> · {hello.width}×{hello.height} · {hello.boundary}
+            seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×
+            {state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}
           </span>
         )}
       </header>

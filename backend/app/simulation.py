@@ -71,17 +71,39 @@ class Simulation:
 
     def _spawn_initial(self) -> None:
         cfg = self.config
-        for _ in range(cfg.num_triangles):
+        area = cfg.width * cfg.height
+
+        # Founding generation scale with the map unless explicitly pinned.
+        total = (
+            self._jittered(area * cfg.creature_density) if cfg.num_triangles < 0 else 0
+        )
+        # Flatland's social pyramid: many soldiers and women, few nobles.
+        shares = {
+            "triangles": 0.30,
+            "women": 0.25,
+            "squares": 0.18,
+            "pentagons": 0.12,
+            "hexagons": 0.09,
+            "priests": 0.06,
+        }
+        n_triangles = self._count(cfg.num_triangles, shares["triangles"], total)
+        n_squares = self._count(cfg.num_squares, shares["squares"], total)
+        n_pentagons = self._count(cfg.num_pentagons, shares["pentagons"], total)
+        n_hexagons = self._count(cfg.num_hexagons, shares["hexagons"], total)
+        n_priests = self._count(cfg.num_priests, shares["priests"], total)
+        n_women = self._count(cfg.num_women, shares["women"], total)
+
+        for _ in range(n_triangles):
             self._spawn_creature("polygon", 3)
-        for _ in range(cfg.num_squares):
+        for _ in range(n_squares):
             self._spawn_creature("polygon", 4)
-        for _ in range(cfg.num_pentagons):
+        for _ in range(n_pentagons):
             self._spawn_creature("polygon", 5)
-        for _ in range(cfg.num_hexagons):
+        for _ in range(n_hexagons):
             self._spawn_creature("polygon", 6)
-        for _ in range(cfg.num_priests):
+        for _ in range(n_priests):
             self._spawn_creature("polygon", PRIEST_SIDES)
-        for _ in range(cfg.num_women):
+        for _ in range(n_women):
             self._spawn_creature("line", 2)
         for _ in range(cfg.food_count):
             x, y = self._rand_pos()
@@ -89,7 +111,12 @@ class Simulation:
         max_radius = max(
             (c.radius for c in self.world.creatures()), default=DEFAULT_RADIUS
         )
-        for _ in range(cfg.num_houses):
+        n_houses = (
+            self._jittered(area * cfg.house_density)
+            if cfg.num_houses < 0
+            else cfg.num_houses
+        )
+        for _ in range(n_houses):
             size = self.rng.uniform(cfg.house_min_size, cfg.house_max_size)
             x, y = self._rand_house_pos(size)
             door_width = min(size * 0.8, 2.0 * max_radius * cfg.door_clearance)
@@ -102,6 +129,16 @@ class Simulation:
                     door_side=self.rng.choice(("north", "east", "south", "west")),
                 )
             )
+
+    def _jittered(self, target: float) -> int:
+        v = self.config.spawn_variance
+        return max(0, round(self.rng.uniform(target * (1 - v), target * (1 + v))))
+
+    def _count(self, override: int, share: float, total: int) -> int:
+        """Explicit override wins; otherwise take this caste's slice of the pyramid."""
+        if override >= 0:
+            return override
+        return max(0, round(total * share))
 
     def _rand_house_pos(self, size: float) -> tuple[float, float]:
         """Position keeping the whole house inside the world edge."""
@@ -372,6 +409,7 @@ class Simulation:
         return StateMessage(
             type="state",
             tick=self.tick,
+            seed=cfg.seed,
             width=cfg.width,
             height=cfg.height,
             boundary=cfg.boundary,

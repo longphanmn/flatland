@@ -20,15 +20,23 @@ class Config:
     seed: int = 42
     tick_rate: float = 10.0  # ticks per second
 
-    # Initial population (Flatland castes)
-    num_triangles: int = 6  # soldiers / workmen (isosceles triangles)
-    num_squares: int = 4  # gentlemen
-    num_pentagons: int = 2  # professionals
-    num_hexagons: int = 2  # nobility
-    num_priests: int = 1  # near-circles (priesthood)
-    num_women: int = 5  # line segments
+    # Initial population (Flatland castes).
+    # -1 => auto-scale from map area × density with ±spawn_variance jitter;
+    # any value >= 0 pins that group explicitly (used by tests/scenarios).
+    num_triangles: int = -1  # soldiers/workmen (isosceles triangles)
+    num_squares: int = -1  # gentlemen
+    num_pentagons: int = -1  # professionals
+    num_hexagons: int = -1  # nobility
+    num_priests: int = -1  # near-circles (priesthood)
+    num_women: int = -1  # line segments
+    num_houses: int = -1
+
+    # World generation densities (per grid unit²) and spawn jitter.
+    creature_density: float = 0.0005  # ~20 creatures on a 200×200 map
+    house_density: float = 0.00015  # ~6 houses
+    spawn_variance: float = 0.25  # ±25% around the density target
+
     food_count: int = 24  # god's law: the world maintains this much food
-    num_houses: int = 6
 
     # Behaviour tuning
     perceive_radius: float = 12.0

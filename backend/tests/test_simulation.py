@@ -333,7 +333,18 @@ def test_food_count_stable_over_many_ticks():
 
 
 def test_snapshot_roundtrip_via_protocol():
-    s = Simulation(Config(seed=11))
+    s = Simulation(
+        Config(
+            seed=11,
+            num_triangles=6,
+            num_squares=4,
+            num_pentagons=2,
+            num_hexagons=2,
+            num_priests=1,
+            num_women=5,
+            num_houses=6,
+        )
+    )
     snap = s.snapshot()
     dumped = snap.model_dump(mode="json")
     assert dumped["type"] == "state"

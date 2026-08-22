@@ -101,3 +101,11 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 ## Cross-system synergies (emergent depth)
 - Winter + disease = famine/plague cascades · high mutation = irregularity purges ·
   overpopulation = lower fertility + higher disease spread · night + fog = blindness
+
+## W. World generation  — ✅ implemented
+- [x] Population & houses scale with map area: `creature_density`,
+      `house_density` (per unit²) with ±`spawn_variance` jitter; Flatland
+      social pyramid shares (soldiers/women many, nobles/priests few);
+      explicit `num_*` overrides still win (scenarios/tests)
+- [x] Reset rolls a fresh random seed — every reset is a new world, recorded
+      (with its seed) in the DB and shown in the HUD; same seed ⇒ same world

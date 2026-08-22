@@ -29,6 +29,7 @@ export interface EntityState {
 export interface StateMessage {
   type: 'state'
   tick: number
+  seed: number
   width: number
   height: number
   boundary: 'wrap' | 'clamp'
