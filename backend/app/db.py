@@ -59,6 +59,13 @@ CREATE TABLE IF NOT EXISTS creatures (
     born_tick INTEGER,
     died_tick INTEGER
 );
+CREATE TABLE IF NOT EXISTS snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    world_id INTEGER NOT NULL,
+    tick INTEGER NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_events_world ON events(world_id, id);
 CREATE INDEX IF NOT EXISTS idx_creatures_world ON creatures(world_id, entity_id);
 """
@@ -239,3 +246,33 @@ class Database:
                     (world_id, entity_id, died_tick),
                 )
             self._conn.commit()  # type: ignore[union-attr]
+
+    # -------------------------------------------------------------- snapshots
+    def save_snapshot(self, world_id: int, tick: int, payload: str) -> int:
+        with self._lock:
+            cur = self._require().execute(
+                "INSERT INTO snapshots(world_id,tick,payload,created_at) VALUES (?,?,?,?)",
+                (world_id, tick, payload, _now()),
+            )
+            self._conn.commit()  # type: ignore[union-attr]
+            return int(cur.lastrowid)
+
+    def list_snapshots(self, world_id: int, limit: int = 50) -> list[dict]:
+        with self._lock:
+            rows = self._require().execute(
+                "SELECT id,world_id,tick,created_at FROM snapshots"
+                " WHERE world_id=? ORDER BY id DESC LIMIT ?",
+                (world_id, limit),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_snapshot(self, snapshot_id: int) -> dict | None:
+        with self._lock:
+            row = self._require().execute(
+                "SELECT * FROM snapshots WHERE id=?", (snapshot_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        d = dict(row)
+        d["payload"] = json.loads(d["payload"])
+        return d

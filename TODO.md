@@ -237,8 +237,8 @@ always matches the running code). No Vite/frontend dependency.
       auto-scaled by area or pinned; drawn under entities; in snapshot
 - [x] [P2] Keyboard controls — space pause/resume · S step · R reset ·
           +/- zoom · F fit view (ignored while typing in inputs)
-- [ ] [P2] Caste population chart — client-side history panel: stacked lines
-          per caste over recent ticks next to the sparkline
-- [ ] [P2] Snapshot album — 📷 button stores a frozen full-state photo into
-          the DB `snapshots` table; album list lets you re-view any moment on
-          the canvas without touching the live simulation
+- [x] [P2] Caste population chart — stacked per-caste lines (caste colors)
+      over the last ~240 ticks, inside the Chronicle panel
+- [x] [P2] Snapshot album — 📷 freezes the full state into the DB
+      `snapshots` table; Album lists them and clicking one re-renders that
+      frozen moment on the canvas (banner to return to the living world)

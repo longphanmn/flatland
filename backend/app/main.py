@@ -309,6 +309,31 @@ async def get_worlds() -> dict:
     return {"worlds": DB.worlds()}
 
 
+@app.post("/api/snapshot")
+async def take_snapshot() -> dict:
+    """Freeze the current world state into the album (god's photo, not a hand)."""
+    if RT.world_id is None:
+        raise HTTPException(409, "no active world")
+    payload = json.dumps(RT.sim.snapshot().model_dump(mode="json"), separators=(",", ":"))
+    sid = DB.save_snapshot(RT.world_id, RT.sim.tick, payload)
+    return {"id": sid, "tick": RT.sim.tick}
+
+
+@app.get("/api/snapshots")
+async def list_snapshots() -> dict:
+    if RT.world_id is None:
+        return {"snapshots": []}
+    return {"snapshots": DB.list_snapshots(RT.world_id)}
+
+
+@app.get("/api/snapshot/{snapshot_id}")
+async def get_snapshot(snapshot_id: int) -> dict:
+    snap = DB.get_snapshot(snapshot_id)
+    if snap is None or (RT.world_id is not None and snap["world_id"] != RT.world_id):
+        raise HTTPException(404, "snapshot not found")
+    return {"id": snap["id"], "tick": snap["tick"], "state": snap["payload"]}
+
+
 @app.get("/api/creature/{creature_id}")
 async def get_creature(creature_id: int) -> dict:
     """Live status + personal chronicle for one creature."""

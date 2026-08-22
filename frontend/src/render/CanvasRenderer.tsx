@@ -10,7 +10,7 @@ const PRIEST_SIDES = 24
 const MIN_SCALE_FACTOR = 0.4 // can zoom out to half fit-size
 const MAX_SCALE = 80 // device px per world unit
 
-const CASTE_COLORS: Record<string, string> = {
+export const CASTE_COLORS: Record<string, string> = {
   Soldier: '#ff7b72',
   Artisan: '#f2cc60',
   Gentleman: '#ffa657',
@@ -74,9 +74,11 @@ interface Props {
   stateRef: React.RefObject<StateMessage | null>
   selectedRef?: React.RefObject<number | null>
   onTapCreature?: (id: number | null) => void
+  /** When set, the canvas renders this frozen snapshot instead of the live world. */
+  overrideRef?: React.RefObject<StateMessage | null>
 }
 
-export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature }: Props) {
+export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, overrideRef }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const camRef = useRef<Camera>({ scale: 1, ox: 0, oy: 0, initialized: false })
 
@@ -400,7 +402,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature }:
 
     const draw = () => {
       raf = requestAnimationFrame(draw)
-      const state = stateRef.current
+      const state = overrideRef?.current ?? stateRef.current
       const cw = canvas.width
       const ch = canvas.height
 

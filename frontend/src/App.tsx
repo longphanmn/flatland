@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import CanvasRenderer from './render/CanvasRenderer'
+import CasteChart from './render/CasteChart'
 import GodPanel from './god/GodPanel'
 import Inspector from './inspect/Inspector'
 import { WorldSocket, type ConnStatus } from './websocket'
@@ -24,11 +25,16 @@ export default function App() {
   const [log, setLog] = useState<HistoryEvent[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [aliveHist, setAliveHist] = useState<number[]>([])
+  const [popHist, setPopHist] = useState<Array<Record<string, number>>>([])
+  const [album, setAlbum] = useState<Array<{ id: number; tick: number }>>([])
+  const [albumOpen, setAlbumOpen] = useState(false)
+  const [viewSnapTick, setViewSnapTick] = useState<number | null>(null)
 
   const stateRef = useRef<StateMessage | null>(null)
   const sockRef = useRef<WorldSocket | null>(null)
   const seenEventsRef = useRef(new Set<string>())
   const selectedRef = useRef<number | null>(null)
+  const overrideRef = useRef<StateMessage | null>(null)
   useEffect(() => {
     selectedRef.current = selectedId
   }, [selectedId])
@@ -81,6 +87,7 @@ export default function App() {
         stateRef.current = msg
         setState(msg)
         setAliveHist((prev) => [...prev.slice(-119), msg.creatures_alive])
+        setPopHist((prev) => [...prev.slice(-239), msg.population])
         const fresh = msg.events.filter((ev) => {
           const key = `${ev.tick}:${ev.entity_id}:${ev.type}`
           if (seenEventsRef.current.has(key)) return false
@@ -111,6 +118,30 @@ export default function App() {
   const changeSpeed = useCallback((v: number) => {
     setSpeed(v)
     sockRef.current?.send({ action: 'set_speed', value: v })
+  }, [])
+
+  const takeSnapshot = useCallback(async () => {
+    await fetch('/api/snapshot', { method: 'POST' })
+    const list = await fetch('/api/snapshots').then((r) => r.json())
+    setAlbum(list.snapshots)
+  }, [])
+
+  const openAlbum = useCallback(async () => {
+    const list = await fetch('/api/snapshots').then((r) => r.json())
+    setAlbum(list.snapshots)
+    setAlbumOpen((o) => !o)
+  }, [])
+
+  const viewSnapshot = useCallback(async (id: number) => {
+    const data = await fetch(`/api/snapshot/${id}`).then((r) => r.json())
+    overrideRef.current = data.state as StateMessage
+    setViewSnapTick(data.tick)
+    setAlbumOpen(false)
+  }, [])
+
+  const exitSnapshot = useCallback(() => {
+    overrideRef.current = null
+    setViewSnapTick(null)
   }, [])
 
   const populationSummary = state
@@ -205,6 +236,10 @@ export default function App() {
         <button onClick={() => setChronicleOpen((o) => !o)}>
           {chronicleOpen ? 'Hide' : 'Show'} chronicle
         </button>
+        <button onClick={takeSnapshot} title="freeze the current moment into the album">
+          📷
+        </button>
+        <button onClick={openAlbum}>Album</button>
         <label className="chip" htmlFor="speed">
           ticks/s
         </label>
@@ -238,9 +273,33 @@ export default function App() {
         </span>
       </footer>
 
+      {viewSnapTick !== null && (
+        <button className="snap-banner" onClick={exitSnapshot}>
+          viewing snapshot from tick {viewSnapTick} — click to return to the living
+        </button>
+      )}
+
+      {albumOpen && (
+        <aside className="album">
+          <h3>Snapshot album</h3>
+          {album.length === 0 ? (
+            <p className="chip">no photos yet — press 📷</p>
+          ) : (
+            <ul>
+              {album.map((s) => (
+                <li key={s.id}>
+                  <button onClick={() => viewSnapshot(s.id)}>tick {s.tick}</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+      )}
+
       {chronicleOpen && (
         <aside className="chronicle">
           <h3>Chronicle</h3>
+          <CasteChart history={popHist} />
           {log.length === 0 ? (
             <p className="chip">nothing recorded yet</p>
           ) : (
