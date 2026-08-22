@@ -27,6 +27,7 @@ export interface EntityState {
   clan_id?: number
   clan_color?: string
   sleeping?: boolean
+  indoors?: boolean
   generation?: number
   born_tick?: number
   door_width?: number
@@ -202,6 +203,12 @@ export interface GodLaws {
   storm_wander_bonus?: number
   sleep_enabled?: boolean
   sleep_energy_mult?: number
+
+  // Shelter — roofs against the sky
+  shelter_enabled?: boolean
+  exposure_drain?: number
+  house_capacity?: number
+  rest_recovery_mult?: number
 
   door_clearance?: number
   house_min_size?: number

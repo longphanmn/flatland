@@ -54,6 +54,10 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'fog_sight_mult', label: 'Fog sight ×', min: 0.05, max: 2, step: 0.05, group: 'Sky & Seasons' },
   { key: 'rain_speed_mult', label: 'Rain speed ×', min: 0.1, max: 2, step: 0.05, group: 'Sky & Seasons' },
   { key: 'storm_wander_bonus', label: 'Storm wander +', min: 0, max: 3.2, step: 0.05, group: 'Sky & Seasons' },
+  // Shelter — roofs against the sky
+  { key: 'exposure_drain', label: 'Exposure drain / tick', min: 0, max: 2, step: 0.05, group: 'Shelter' },
+  { key: 'house_capacity', label: 'House capacity', min: 1, max: 20, step: 1, group: 'Shelter' },
+  { key: 'rest_recovery_mult', label: 'Rest healing ×', min: 0.5, max: 5, step: 0.25, group: 'Shelter' },
   { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction' },
   { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction' },
   { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction' },
@@ -73,6 +77,7 @@ const GROUP_ORDER = [
   'Reproduction',
   'Disease',
   'Sky & Seasons',
+  'Shelter',
   'Bodies & Houses',
 ]
 
@@ -235,6 +240,22 @@ export default function GodPanel({ open, onClose }: Props) {
                     </select>
                   </label>
                 </>
+              )}
+              {group === 'Shelter' && (
+                <label className="god-row">
+                  <span title="creatures may claim roofs; disabling leaves all exposed">
+                    Shelter allowed
+                  </span>
+                  <select
+                    value={String(laws.shelter_enabled ?? true)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, shelter_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
               )}
               {NUMBER_LAWS.filter((l) => l.group === group).map(({ key, label, min, max, step }) => (
                 <label className="god-row" key={key}>

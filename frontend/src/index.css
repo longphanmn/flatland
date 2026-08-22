@@ -87,6 +87,10 @@ body {
   color: #3fb950;
 }
 
+.chip.exposed b {
+  color: #e3b341;
+}
+
 .stage {
   flex: 1;
   position: relative;

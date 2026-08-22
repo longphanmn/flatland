@@ -271,6 +271,12 @@ export default function App() {
     : ''
 
   const isNight = state ? state.time_of_day < 0.22 || state.time_of_day > 0.78 : false
+  const raining = state?.weather === 'rain' || state?.weather === 'storm'
+  const exposedCount = raining
+    ? (state?.entities.filter(
+        (e) => e.kind === 'creature' && e.sleeping === false && e.indoors === false && e.infected === false,
+      ).length ?? 0)
+    : 0
   const weatherIcon =
     state?.weather === 'rain' ? '🌧' : state?.weather === 'fog' ? '🌫' : state?.weather === 'storm' ? '⛈' : ''
 
@@ -309,6 +315,11 @@ export default function App() {
         {(state?.infected_count ?? 0) > 0 && (
           <span className="chip sick">
             infected <b>{state?.infected_count}</b>
+          </span>
+        )}
+        {raining && exposedCount > 0 && (
+          <span className="chip exposed" title="awake creatures outdoors in the rain">
+            ⛈ exposed <b>{exposedCount}</b>
           </span>
         )}
         {hello && (
