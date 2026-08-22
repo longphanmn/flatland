@@ -106,11 +106,13 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
       section: World / Food & Energy / Hunger & Sight / Movement / Life &
       Death / Bodies & Houses; grows as §B/§D/§E laws arrive)
 - [ ] [P2] Population/caste sparkline chart in HUD
-- [ ] [P2] Chronicle shows all event types (birth/promotion/euthanasia/outbreak/death)
-- [ ] [P2] Creature inspector — click/tap a creature to select it; side panel shows
-      live status (caste, sex, age/lifespan, energy, hunger, generation, parents)
-      plus its personal history from the chronicle/DB (born, promotions, meals,
-      children, death); highlight selected entity on canvas
+- [x] [P2] Chronicle shows all event types (birth/promotion/demotion/recovery/
+      outbreak/death — color-coded in the panel)
+- [x] [P2] Creature inspector — tap/click a creature (works on touch too):
+      gold halo marks it; left panel shows live status (caste, sex, stage,
+      age/lifespan, energy/health bars, meals, irregularity, lineage) and its
+      personal chronicle from `GET /api/creature/{id}`; auto-refreshes 1 Hz;
+      survives death (status + full history remain)
 - [ ] [P2] DB-backed history pagination + world run selector
 
 ## Cross-system synergies (emergent depth)

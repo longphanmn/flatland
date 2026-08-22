@@ -289,6 +289,23 @@ async def get_worlds() -> dict:
     return {"worlds": DB.worlds()}
 
 
+@app.get("/api/creature/{creature_id}")
+async def get_creature(creature_id: int) -> dict:
+    """Live status + personal chronicle for one creature."""
+    ent = RT.sim.world.entities.get(creature_id)
+    entity = Simulation._entity_state(ent).model_dump(mode="json") if ent else None
+    events = (
+        [
+            e
+            for e in DB.history(RT.world_id, since_id=0, limit=2000)
+            if e["entity_id"] == creature_id
+        ]
+        if RT.world_id
+        else []
+    )
+    return {"entity": entity, "events": events}
+
+
 @app.get("/api/state", response_model=StateMessage)
 async def get_state() -> StateMessage:
     return RT.sim.snapshot()

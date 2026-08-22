@@ -72,9 +72,11 @@ interface Camera {
 
 interface Props {
   stateRef: React.RefObject<StateMessage | null>
+  selectedRef?: React.RefObject<number | null>
+  onTapCreature?: (id: number | null) => void
 }
 
-export default function CanvasRenderer({ stateRef }: Props) {
+export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const camRef = useRef<Camera>({ scale: 1, ox: 0, oy: 0, initialized: false })
 
@@ -141,6 +143,7 @@ export default function CanvasRenderer({ stateRef }: Props) {
     const pointers = new Map<number, P>()
     let lastPinchDist = 0
     let lastMid: P | null = null
+    let tapStart: { x: number; y: number; t: number } | null = null
 
     const dist = (a: P, b: P): number => Math.hypot(a.x - b.x, a.y - b.y)
     const mid = (a: P, b: P): P => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })
@@ -158,7 +161,32 @@ export default function CanvasRenderer({ stateRef }: Props) {
         lastPinchDist = dist(a, b)
         lastMid = mid(a, b)
       }
+      tapStart = { x: ev.clientX, y: ev.clientY, t: performance.now() }
       canvas.style.cursor = 'grabbing'
+    }
+
+    /** Screen-tap → nearest creature within a forgiving pick radius. */
+    const pickCreature = (clientX: number, clientY: number): number | null => {
+      const state = stateRef.current
+      if (!state) return null
+      const ratio = dpr()
+      const px = clientX * ratio
+      const py = clientY * ratio
+      const pickRadiusWorld = Math.max(2.0, 14 / cam.scale)
+      let bestId: number | null = null
+      let bestD = Infinity
+      for (const e of state.entities) {
+        if (e.kind !== 'creature') continue
+        const sx = cam.ox + e.x * cam.scale
+        const sy = cam.oy + e.y * cam.scale
+        const d = Math.hypot(sx - px, sy - py)
+        if (d < bestD) {
+          bestD = d
+          bestId = e.id
+        }
+      }
+      if (bestId !== null && bestD <= pickRadiusWorld * cam.scale) return bestId
+      return null
     }
 
     const onPointerMove = (ev: PointerEvent) => {
@@ -198,6 +226,17 @@ export default function CanvasRenderer({ stateRef }: Props) {
         lastMid = null
       }
       if (pointers.size === 0) canvas.style.cursor = 'grab'
+      // A short, still press is a tap → select the nearest creature.
+      if (
+        tapStart &&
+        onTapCreature &&
+        performance.now() - tapStart.t < 400 &&
+        Math.hypot(ev.clientX - tapStart.x, ev.clientY - tapStart.y) * dpr() <
+          6 * dpr()
+      ) {
+        onTapCreature(pickCreature(ev.clientX, ev.clientY))
+      }
+      tapStart = null
     }
 
     const onWheel = (ev: WheelEvent) => {
@@ -356,6 +395,20 @@ export default function CanvasRenderer({ stateRef }: Props) {
 
       ctx.setTransform(cam.scale, 0, 0, cam.scale, cam.ox, cam.oy)
       for (const e of state.entities) drawEntity(ctx, e)
+      // selection halo
+      const sel = selectedRef?.current ?? null
+      if (sel !== null) {
+        const selEnt = state.entities.find((e) => e.id === sel)
+        if (selEnt) {
+          ctx.strokeStyle = '#e3b341'
+          ctx.lineWidth = 0.4
+          ctx.setLineDash([1.2, 0.8])
+          ctx.beginPath()
+          ctx.arc(selEnt.x, selEnt.y, (selEnt.radius ?? 1.2) + 2.0, 0, TAU)
+          ctx.stroke()
+          ctx.setLineDash([])
+        }
+      }
       ctx.setTransform(1, 0, 0, 1, 0, 0)
     }
     raf = requestAnimationFrame(draw)

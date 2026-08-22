@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import CanvasRenderer from './render/CanvasRenderer'
 import GodPanel from './god/GodPanel'
+import Inspector from './inspect/Inspector'
 import { WorldSocket, type ConnStatus } from './websocket'
 import type { HelloMessage, HistoryEvent, StateMessage } from './types'
 
@@ -21,10 +22,15 @@ export default function App() {
   const [godOpen, setGodOpen] = useState(false)
   const [chronicleOpen, setChronicleOpen] = useState(true)
   const [log, setLog] = useState<HistoryEvent[]>([])
+  const [selectedId, setSelectedId] = useState<number | null>(null)
 
   const stateRef = useRef<StateMessage | null>(null)
   const sockRef = useRef<WorldSocket | null>(null)
   const seenEventsRef = useRef(new Set<string>())
+  const selectedRef = useRef<number | null>(null)
+  useEffect(() => {
+    selectedRef.current = selectedId
+  }, [selectedId])
 
   useEffect(() => {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
@@ -140,7 +146,11 @@ export default function App() {
       </header>
 
       <main className="stage">
-        <CanvasRenderer stateRef={stateRef} />
+        <CanvasRenderer
+          stateRef={stateRef}
+          selectedRef={selectedRef}
+          onTapCreature={(id) => setSelectedId(id)}
+        />
       </main>
 
       <footer className="controls">
@@ -219,6 +229,10 @@ export default function App() {
             </ul>
           )}
         </aside>
+      )}
+
+      {selectedId !== null && (
+        <Inspector id={selectedId} onClose={() => setSelectedId(null)} />
       )}
 
       <GodPanel open={godOpen} onClose={() => setGodOpen(false)} />

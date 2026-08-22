@@ -23,6 +23,7 @@ export interface EntityState {
   irregularity?: number
   health?: number
   infected?: boolean
+  meals?: number
   generation?: number
   born_tick?: number
   door_width?: number
@@ -51,7 +52,7 @@ export interface StateMessage {
 }
 
 export interface HistoryEvent {
-  type: 'death' | 'birth' | 'promotion' | 'demotion'
+  type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery'
   tick: number
   entity_id: number
   caste?: string | null

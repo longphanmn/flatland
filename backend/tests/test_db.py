@@ -98,6 +98,37 @@ def test_law_changes_recorded(client):
     assert sorted(names) == ["boundary", "food_count"]
 
 
+def test_creature_endpoint_status_and_history(client):
+    from app.entities import Creature
+
+    c = RT.sim.world.add(Creature(x=5.0, y=5.0, sides=4, energy=77.0))
+    DB.add_events(
+        RT.world_id,
+        [
+            HistoryEvent(tick=1, entity_id=c.id, caste="Gentleman", cause="",
+                         x=5.0, y=5.0,
+                         payload={"mother": 2, "father": 3, "generation": 1},
+                         type="birth"),
+        ],
+    )
+    data = client.get(f"/api/creature/{c.id}").json()
+    assert data["entity"]["caste"] == "Gentleman"
+    assert data["entity"]["energy"] == pytest.approx(77.0)
+    assert len(data["events"]) == 1
+    assert data["events"][0]["type"] == "birth"
+    assert data["events"][0]["payload"]["mother"] == 2
+
+    # unknown / dead creature: entity null, chronicle still answers
+    DB.add_events(
+        RT.world_id,
+        [HistoryEvent(tick=2, entity_id=c.id, caste="Gentleman", cause="starvation", x=5.0, y=5.0)],
+    )
+    RT.sim.world.remove(c.id)
+    data = client.get(f"/api/creature/{c.id}").json()
+    assert data["entity"] is None
+    assert len(data["events"]) == 2
+
+
 def test_events_survive_world_reset_in_db(client):
     wid_before = RT.world_id
     DB.add_events(wid_before, [HistoryEvent(tick=1, entity_id=9, caste="Priest", cause="old_age", x=5.0, y=5.0)])
