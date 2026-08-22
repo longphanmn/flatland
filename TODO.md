@@ -165,32 +165,32 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
       above, "you are here", children below; every node opens that dossier
       with click-to-navigate
 
-## K. Documentation — living guide  [P2]
+## K. Documentation — living guide  [P2] — ✅ implemented
 Serve a full reference independent of the React game UI (backend-rendered, so it
 always matches the running code). No Vite/frontend dependency.
-- [ ] Backend serves the docs — FastAPI route(s) at `/guide` that render
-      `docs/*.md` to HTML (stdlib `markdown` + a minimal template); nav sidebar;
-      anchor links. Reachable at http://localhost:8000/guide
-- [ ] "How the world works" — the God model (god sets laws, never touches a life),
-      the deterministic fixed-tick loop, emergence; each system explained: life
-      cycle & stages, Nature's Law inheritance (sides/sex/mutation), irregularity &
-      caste judgement, disease, environment (day/night, seasons, weather), clans &
-      social order, food economy
-- [ ] Codebase map — module tour with file:line anchors: backend
-      (config/entities/world/simulation/protocol/db/main) + frontend
-      (App/CanvasRenderer/GodPanel/Inspector); data-flow diagram of the tick
-- [ ] Data model & protocol — creature/caste/food/house/clan/genealogy entities;
-      `EntityState`/`StateMessage`/`HistoryEvent` schemas; WebSocket message flow
-      (hello → state snapshots, client control actions)
-- [ ] API reference — auto-generated from the live OpenAPI schema (`/openapi.json`):
-      every REST route, request/response model, control action, and every God law
-      with type/range/default; link out to the interactive Swagger `/docs`
-- [ ] Configuration & ops — env var table (`FLATWORLD_*`), persistence (SQLite
-      `flatworld.db`, `worlds`/`events`/`law_changes`/`creatures` tables), run &
-      deploy, test commands
-- [ ] Anti-rot check — a small test asserts every `GodLaws` field and every REST
-      route is mentioned in the docs, so the guide can't silently go stale; roadmap
-      section links back to TODO.md
+- [x] Backend serves the docs — FastAPI route(s) at `/guide` that render
+       markdown to HTML (tiny `md_to_html` + minimal template); nav sidebar;
+       anchor links. Reachable at http://localhost:8000/guide (`guide.py:307`)
+- [x] "How the world works" — the God model (god sets laws, never touches a life),
+       the deterministic fixed-tick loop, emergence; each system explained: life
+       cycle & stages, Nature's Law inheritance (sides/sex/mutation), irregularity &
+       caste judgement, disease, environment (day/night, seasons, weather), clans &
+       social order, food economy (`guide.py:172`)
+- [x] Codebase map — module tour with file:line anchors: backend
+       (config/entities/world/simulation/protocol/db/main) + frontend
+       (App/CanvasRenderer/GodPanel/Inspector); data-flow diagram of the tick (`guide.py:205`)
+- [x] Data model & protocol — creature/caste/food/house/clan/genealogy entities;
+       `EntityState`/`StateMessage`/`HistoryEvent` schemas; WebSocket message flow
+       (hello → state snapshots, client control actions) (`guide.py:229`)
+- [x] API reference — auto-generated from the live OpenAPI schema (`/openapi.json`):
+       every REST route, request/response model, control action, and every God law
+       with type/range/default; link out to the interactive Swagger `/docs` (`guide.py:144`)
+- [x] Configuration & ops — env var table (`FLATWORLD_*`), persistence (SQLite
+       `flatworld.db`, `worlds`/`events`/`law_changes`/`creatures` tables), run &
+       deploy, test commands (`guide.py:246`)
+- [x] Anti-rot check — `tests/test_guide.py`: asserts every `GodLaws` field and every REST
+       route is mentioned in the docs, so the guide can't silently go stale; roadmap
+       section links back to TODO.md (`guide.py:330`)
 
 ## L. Shelter — make houses matter  [P1] — ✅ backend delivered
 Houses today are ~5 empty squares: walls block movement and creatures nap inside

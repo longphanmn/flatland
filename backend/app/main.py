@@ -10,6 +10,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import ValidationError
 
 from .config import Config
@@ -415,6 +416,21 @@ async def get_creature(creature_id: int) -> dict:
 @app.get("/api/state", response_model=StateMessage)
 async def get_state() -> StateMessage:
     return RT.sim.snapshot()
+
+
+@app.get("/guide", response_class=HTMLResponse)
+async def get_guide(format: str | None = None):
+    """Living guide — backend-rendered, always matches the running code."""
+    if format == "json":
+        return JSONResponse(
+            {
+                "laws": list(GodLaws.model_fields.keys()),
+                "routes": [getattr(r, "path", "") for r in app.routes],
+            }
+        )
+    from .guide import build_guide_html
+
+    return HTMLResponse(build_guide_html(app))
 
 
 @app.post("/api/control")
