@@ -26,7 +26,7 @@ class ControlMessage(BaseModel):
 
 class EntityState(BaseModel):
     id: int
-    kind: Literal["creature", "food", "house"]
+    kind: Literal["creature", "food", "house", "corpse"]
     x: float
     y: float
     angle: float

@@ -33,6 +33,42 @@ export default function App() {
     selectedRef.current = selectedId
   }, [selectedId])
 
+  // Keyboard controls: space pause · S step · R reset · +/- zoom · F fit.
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const t = ev.target as HTMLElement | null
+      if (t && ['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName)) return
+      switch (ev.code) {
+        case 'Space':
+          ev.preventDefault()
+          setPaused((p) => {
+            sockRef.current?.send({ action: p ? 'resume' : 'pause' })
+            return !p
+          })
+          break
+        case 'KeyS':
+          sockRef.current?.send({ action: 'step' })
+          break
+        case 'KeyR':
+          sockRef.current?.send({ action: 'reset' })
+          break
+        case 'KeyF':
+          window.dispatchEvent(new Event('flatworld-fit'))
+          break
+        case 'Equal':
+        case 'NumpadAdd':
+          window.dispatchEvent(new CustomEvent('flatworld-zoom', { detail: { factor: 1.25 } }))
+          break
+        case 'Minus':
+        case 'NumpadSubtract':
+          window.dispatchEvent(new CustomEvent('flatworld-zoom', { detail: { factor: 0.8 } }))
+          break
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   useEffect(() => {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
     const sock = new WorldSocket(`${proto}://${location.host}/ws`, {

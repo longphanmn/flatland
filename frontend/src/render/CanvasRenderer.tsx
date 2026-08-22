@@ -135,6 +135,15 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature }:
     }
     window.addEventListener('flatworld-fit', onFit)
 
+    /** Keyboard zoom: window dispatches 'flatworld-zoom' with {factor}. */
+    const onZoomEvent = (ev: Event) => {
+      const state = stateRef.current
+      if (!state || !cam.initialized) return
+      const factor = (ev as CustomEvent<{ factor?: number }>).detail?.factor ?? 1.2
+      zoomAt(state, factor, canvas.width / 2, canvas.height / 2)
+    }
+    window.addEventListener('flatworld-zoom', onZoomEvent)
+
     // ---- unified pointer interaction: drag pan, wheel zoom, pinch zoom ----
     interface P {
       x: number
@@ -261,6 +270,23 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature }:
         ctx.beginPath()
         ctx.arc(e.x, e.y, 0.7, 0, TAU)
         ctx.fill()
+        return
+      }
+      if (e.kind === 'corpse') {
+        // small remains: a dim cross that fades with its remaining life
+        ctx.strokeStyle = '#6e7681'
+        ctx.globalAlpha = 0.8
+        ctx.lineWidth = 0.3
+        ctx.beginPath()
+        ctx.moveTo(e.x - 1.1, e.y - 1.1)
+        ctx.lineTo(e.x + 1.1, e.y + 1.1)
+        ctx.moveTo(e.x - 1.1, e.y + 1.1)
+        ctx.lineTo(e.x + 1.1, e.y - 1.1)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.arc(e.x, e.y, 0.5, 0, TAU)
+        ctx.stroke()
+        ctx.globalAlpha = 1
         return
       }
       if (e.kind === 'house') {
@@ -435,6 +461,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature }:
       cancelAnimationFrame(raf)
       ro.disconnect()
       window.removeEventListener('flatworld-fit', onFit)
+      window.removeEventListener('flatworld-zoom', onZoomEvent)
       canvas.removeEventListener('pointerdown', onPointerDown)
       canvas.removeEventListener('pointermove', onPointerMove)
       canvas.removeEventListener('pointerup', onPointerUp)

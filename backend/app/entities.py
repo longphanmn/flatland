@@ -159,6 +159,15 @@ class Food(Entity):
 
 
 @dataclass
+class Corpse(Entity):
+    """The remains of the fallen — edible, and fading with every tick."""
+
+    kind: str = "corpse"
+    ttl: int = 600  # ticks until fully decayed
+    energy: float = 25.0  # what's left to scavenge
+
+
+@dataclass
 class House(Entity):
     kind: str = "house"
     size: float = 6.0  # square side length

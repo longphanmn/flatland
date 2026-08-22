@@ -10,6 +10,7 @@ from .entities import (
     DEFAULT_RADIUS,
     PRIEST_SIDES,
     YIELD_RANK,
+    Corpse,
     Creature,
     Entity,
     Food,
@@ -252,7 +253,18 @@ class Simulation:
         self._update_disease()
         self._reproduce()
         self._enforce_food_law()
+        self._update_corpses()
         self.tick += 1
+
+    def _update_corpses(self) -> None:
+        """Corpses rot away once their ttl runs out."""
+        if not self.config.corpses_enabled:
+            return
+        for e in list(self.world.entities.values()):
+            if isinstance(e, Corpse):
+                e.ttl -= 1
+                if e.ttl <= 0:
+                    self.world.remove(e.id)
 
     # ---------------------------------------------------------------- disease
     def _emit(self, event: HistoryEvent) -> None:
@@ -458,6 +470,11 @@ class Simulation:
     def _kill(self, c: Creature, cause: str) -> None:
         """Remove a creature from the world and record it in the chronicle."""
         self.world.remove(c.id)
+        if self.config.corpses_enabled:
+            self.world.add(
+                Corpse(x=c.x, y=c.y, ttl=self.config.corpse_ttl,
+                       energy=self.config.corpse_energy)
+            )
         self.deaths += 1
         self._death_counts[cause] = self._death_counts.get(cause, 0) + 1
         event = HistoryEvent(
@@ -527,11 +544,11 @@ class Simulation:
             perceive *= cfg.desperate_perceive_mult
             speed_mult = cfg.desperate_speed_mult
 
-        # 1. Perceive the nearest food.
-        target: Food | None = None
+        # 1. Perceive the nearest meal — food or the fallen.
+        target: Entity | None = None
         best = math.inf
         for e in w.query_radius(c.x, c.y, perceive):
-            if e.kind != "food" or e.id in self._eaten:
+            if e.kind not in ("food", "corpse") or e.id in self._eaten:
                 continue
             d = w.distance(c.x, c.y, e.x, e.y)
             if d < best:

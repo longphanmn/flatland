@@ -1,6 +1,6 @@
 /** Mirrors backend/app/protocol.py. Keep in sync. */
 
-export type EntityKind = 'creature' | 'food' | 'house'
+export type EntityKind = 'creature' | 'food' | 'house' | 'corpse'
 export type EntityShape = 'polygon' | 'line'
 export type HungerStatus = '' | 'hungry' | 'starving'
 

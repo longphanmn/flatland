@@ -224,18 +224,17 @@ always matches the running code). No Vite/frontend dependency.
       (with its seed) in the DB and shown in the HUD; same seed ⇒ same world
 
 ## N. New frontiers — round two
-- [ ] [P1] Corpses & scavenging — the dead feed the living: death leaves a
-      corpse holding part of the fallen's energy; creatures perceive and eat
-      corpses like food; corpses decay (`corpse_ttl`) and vanish; god laws:
-      `corpses_enabled`, `corpse_ttl`, `corpse_energy`; renderer draws small
-      remains; famine now has a second chance built in
+- [x] [P1] Corpses & scavenging — death leaves a corpse (`corpse_energy`,
+      fading cross renderer); creatures perceive and eat them like food;
+      corpses decay after `corpse_ttl`; god laws: corpses toggle + ttl +
+      energy; famine now has a second chance built in
 - [ ] [P2] Night rest — at night creatures seek the nearest house and sleep
       inside: movement stops, energy decay halves, health regenerates faster;
       they leave at sunrise; `sleeping` flag in snapshot + zzz renderer cue
 - [ ] [P2] Terrain — seeded map features: fertile patches bias food spawns;
       rocky circles block movement (radial push-out); drawn under entities
-- [ ] [P2] Keyboard controls — space pause/resume · S step · R reset ·
-          +/− zoom · F fit view (ignored while typing in inputs)
+- [x] [P2] Keyboard controls — space pause/resume · S step · R reset ·
+          +/- zoom · F fit view (ignored while typing in inputs)
 - [ ] [P2] Caste population chart — client-side history panel: stacked lines
           per caste over recent ticks next to the sparkline
 - [ ] [P2] Snapshot album — 📷 button stores a frozen full-state photo into

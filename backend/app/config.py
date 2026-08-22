@@ -38,6 +38,11 @@ class Config:
 
     food_count: int = 24  # god's law: the world maintains this much food
 
+    # Corpses & scavenging
+    corpses_enabled: bool = True
+    corpse_ttl: int = 600  # ticks before a corpse decays away
+    corpse_energy: float = 25.0  # energy a fresh corpse holds
+
     # Behaviour tuning
     perceive_radius: float = 12.0
     eat_radius: float = 1.4
