@@ -24,6 +24,8 @@ export interface EntityState {
   health?: number
   infected?: boolean
   meals?: number
+  clan_id?: number
+  clan_color?: string
   generation?: number
   born_tick?: number
   door_width?: number

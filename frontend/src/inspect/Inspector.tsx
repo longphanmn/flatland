@@ -83,6 +83,23 @@ export default function Inspector({ id, onClose }: Props) {
             {e.stage}
             {e.infected && ' · 🤒 infected'}
           </p>
+          {e.clan_id != null && e.clan_id > 0 && (
+            <p className="god-note">
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  background: e.clan_color ?? '#8b949e',
+                  marginRight: 6,
+                }}
+              />
+              {e.clan_color && typeof e.clan_id === 'number'
+                ? `of Clan ${e.clan_id}`
+                : 'clanless'}
+            </p>
+          )}
           <Bar label="energy" value={e.energy ?? 0} max={100} color="#d29922" />
           <Bar label="health" value={e.health ?? 0} max={100} color="#3fb950" />
           <div className="insp-grid">

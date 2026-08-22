@@ -322,6 +322,16 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature }:
         ctx.stroke()
       }
       ctx.restore()
+      // clan crest: a thin tinted ring for those who belong to a line
+      if (e.clan_color) {
+        ctx.globalAlpha = 0.85
+        ctx.strokeStyle = e.clan_color
+        ctx.lineWidth = 0.18
+        ctx.beginPath()
+        ctx.arc(e.x, e.y, (e.radius ?? 1.2) * sizeF + 0.45, 0, TAU)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
       if (e.infected) {
         const pulse = 0.4 + 0.3 * Math.sin(performance.now() / 180)
         ctx.globalAlpha = pulse

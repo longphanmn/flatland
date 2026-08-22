@@ -47,7 +47,20 @@ CREATE TABLE IF NOT EXISTS law_changes (
     value TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS creatures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    world_id INTEGER NOT NULL,
+    entity_id INTEGER NOT NULL,
+    caste TEXT,
+    clan_id INTEGER,
+    generation INTEGER,
+    mother_id INTEGER,
+    father_id INTEGER,
+    born_tick INTEGER,
+    died_tick INTEGER
+);
 CREATE INDEX IF NOT EXISTS idx_events_world ON events(world_id, id);
+CREATE INDEX IF NOT EXISTS idx_creatures_world ON creatures(world_id, entity_id);
 """
 
 
@@ -190,3 +203,39 @@ class Database:
                 (world_id, limit),
             ).fetchall()
         return [dict(r) for r in rows]
+
+    # ------------------------------------------------------------- genealogy
+    def add_creature(
+        self,
+        world_id: int,
+        entity_id: int,
+        caste: str,
+        clan_id: int,
+        generation: int,
+        mother_id: int,
+        father_id: int,
+        born_tick: int,
+    ) -> None:
+        with self._lock:
+            self._require().execute(
+                "INSERT INTO creatures(world_id,entity_id,caste,clan_id,generation,"
+                "mother_id,father_id,born_tick,died_tick) VALUES (?,?,?,?,?,?,?,?,NULL)",
+                (world_id, entity_id, caste, clan_id, generation,
+                 mother_id or None, father_id or None, born_tick),
+            )
+            self._conn.commit()  # type: ignore[union-attr]
+
+    def mark_death(self, world_id: int, entity_id: int, died_tick: int) -> None:
+        with self._lock:
+            cur = self._require().execute(
+                "UPDATE creatures SET died_tick=? WHERE world_id=? AND entity_id=?"
+                " AND died_tick IS NULL",
+                (died_tick, world_id, entity_id),
+            )
+            if cur.rowcount == 0:  # founder with no birth record: insert minimal row
+                self._require().execute(
+                    "INSERT INTO creatures(world_id,entity_id,born_tick,died_tick)"
+                    " VALUES (?,?,NULL,?)",
+                    (world_id, entity_id, died_tick),
+                )
+            self._conn.commit()  # type: ignore[union-attr]

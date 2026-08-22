@@ -70,7 +70,27 @@ def start_world() -> None:
     if RT.world_id is not None:
         DB.end_world(RT.world_id)
     RT.world_id = DB.new_world(RT.config)
-    RT.sim.on_event = lambda e: DB.add_events(RT.world_id, [e])
+    RT.sim.on_event = _on_event
+
+
+def _on_event(e) -> None:
+    """Durable sinks for chronicle events: events feed the genealogy table."""
+    if RT.world_id is None:
+        return
+    DB.add_events(RT.world_id, [e])
+    if e.type == "birth":
+        DB.add_creature(
+            RT.world_id,
+            entity_id=e.entity_id,
+            caste=e.caste or "",
+            clan_id=int(e.payload.get("clan_id") or 0),
+            generation=int(e.payload.get("generation") or 0),
+            mother_id=int(e.payload.get("mother") or 0),
+            father_id=int(e.payload.get("father") or 0),
+            born_tick=e.tick,
+        )
+    elif e.type == "death":
+        DB.mark_death(RT.world_id, e.entity_id, e.tick)
 
 
 @asynccontextmanager
@@ -293,7 +313,7 @@ async def get_worlds() -> dict:
 async def get_creature(creature_id: int) -> dict:
     """Live status + personal chronicle for one creature."""
     ent = RT.sim.world.entities.get(creature_id)
-    entity = Simulation._entity_state(ent).model_dump(mode="json") if ent else None
+    entity = RT.sim._entity_state(ent).model_dump(mode="json") if ent else None
     events = (
         [
             e

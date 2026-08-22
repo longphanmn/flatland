@@ -115,6 +115,7 @@ class Creature(Entity):
     health: float = 100.0  # 0..100; disease drains it, time heals it
     infected: bool = False
     disease_id: int = 0
+    clan_id: int = 0  # 0 = clanless (assigned at birth / world creation)
     ticks_since_meal: int = 0
     meals: int = 0
     status: str = ""  # "" | "hungry" | "starving"

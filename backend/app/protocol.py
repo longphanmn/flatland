@@ -43,6 +43,9 @@ class EntityState(BaseModel):
     irregularity: Optional[float] = None
     health: Optional[float] = None
     infected: Optional[bool] = None
+    meals: Optional[int] = None
+    clan_id: Optional[int] = None
+    clan_color: Optional[str] = None
     generation: Optional[int] = None
     born_tick: Optional[int] = None
     door_width: Optional[float] = None

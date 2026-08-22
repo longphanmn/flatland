@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from app.config import Config
 from app.db import Database
-from app.main import DB, RT, app, start_world
+from app.main import DB, RT, _on_event, app, start_world
 from app.protocol import HistoryEvent
 from app.simulation import Simulation
 
@@ -127,6 +127,48 @@ def test_creature_endpoint_status_and_history(client):
     data = client.get(f"/api/creature/{c.id}").json()
     assert data["entity"] is None
     assert len(data["events"]) == 2
+
+
+def test_genealogy_table_written(client):
+    from app.entities import Creature
+
+    # a birth writes the lineage row; a death closes it
+    c = RT.sim.world.add(Creature(x=5.0, y=5.0, sides=4, energy=100.0))
+    DB.add_events(
+        RT.world_id,
+        [
+            HistoryEvent(
+                type="birth", tick=3, entity_id=c.id, caste="Gentleman",
+                x=5.0, y=5.0,
+                payload={"mother": 2, "father": 1, "generation": 4, "clan_id": 7},
+            )
+        ],
+    )
+    _on_event(HistoryEvent(
+        type="birth", tick=3, entity_id=c.id, caste="Gentleman",
+        x=5.0, y=5.0,
+        payload={"mother": 2, "father": 1, "generation": 4, "clan_id": 7},
+    ))
+    conn = sqlite3.connect(DB.path)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT * FROM creatures WHERE world_id=? AND entity_id=?",
+            (RT.world_id, c.id),
+        ).fetchone()
+        assert row is not None
+        assert row["mother_id"] == 2 and row["father_id"] == 1
+        assert row["generation"] == 4 and row["clan_id"] == 7
+        assert row["died_tick"] is None
+
+        RT.sim._kill(c, "starvation")  # records death via on_event too
+        row = conn.execute(
+            "SELECT died_tick FROM creatures WHERE world_id=? AND entity_id=?",
+            (RT.world_id, c.id),
+        ).fetchone()
+        assert row["died_tick"] is not None
+    finally:
+        conn.close()
 
 
 def test_events_survive_world_reset_in_db(client):

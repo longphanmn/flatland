@@ -14,7 +14,9 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [x] Chronicle + law history survive server restart; `reset` closes the old
       `worlds` row and opens a new one
 - [x] Endpoints: `GET /api/history?since=&limit=` (paginated), `GET /api/worlds`
-- [ ] Genealogy table (`creatures`) when reproduction lands (§B)
+- [x] Genealogy table (`creatures`): births write lineage rows (clan,
+      generation, parents, born tick); deaths close them; founders get
+      minimal rows on death
 
 ## A. Life cycle
 - [x] [P0] Age & lifespan — Creature.age (ticks) + caste-based lifespan
@@ -52,13 +54,12 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [x] Events: birth (payload parents/sides/generation), promotion
 
 ## C. Irregularity, caste & social order
-- [ ] [P1] Family/clan identity — every creature belongs to a clan:
-      founding generation seeds the first clans; children inherit their
-      mother's clan; clanless newcomers found new clans (`clan_id`, registry
-      {id, name, founder_id, color, born_tick}); inspector/HUD show clan name;
-      creature outline tinted by clan color; DB `clans` table + `clan` on
-      events; god laws: `clans_enabled`, `max_clans`; future: rivalries,
-      alliances, clan-level famine stats
+- [x] [P1] Family/clan identity — founding generation seeds one clan per caste;
+      children inherit their mother's clan (orphans found new ones);
+      `clan_id` + crest color on every creature snapshot; thin colored crest
+      ring in the renderer; clan shown in the inspector; birth events carry
+      clan_id; DB genealogy table records lineage per world (entity, caste,
+      clan, generation, parents, born/died ticks)
 - [x] [P1] Irregularity — mutated children score `irregularity` (0.3–1.0);
       at adulthood the world judges them: ≥ `euthanasia_threshold` → consumed
       (death cause `euthanasia`), below → demoted to Soldier (lowest regular
@@ -67,8 +68,9 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
       Sight Recognition (`sight_mult` applied to perception), fertility
       (reserved for §B); women see least, priests see farthest and are
       nearly sterile (Nature's Law)
-- [ ] [P2] Peace-cry — women emit a visible ripple while moving (renderer effect)
-- [ ] [P2] Social yielding — lower castes steer away from higher castes (repulsion)
+- [x] [P2] Peace-cry — women emit a periodic ripple while moving (Flatland law)
+- [x] [P2] Social yielding — lower castes deflect away from higher castes
+      within a small radius (deference as steering force)
 
 ## D. Health & disease  [P2] — ✅ implemented
 - [x] Creature.health (0–100, regenerates when healthy) + .infected/.disease_id

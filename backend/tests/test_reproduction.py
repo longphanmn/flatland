@@ -193,6 +193,33 @@ def test_grossly_irregular_child_consumed_at_maturity():
     assert s._death_counts.get("euthanasia") == 1
 
 
+def test_clans_founded_per_caste_and_inherited():
+    s = Simulation(Config(seed=77))  # default world, full pyramid
+    founders = s.world.creatures()
+    assert all(c.clan_id > 0 for c in founders)
+    castes = {c.caste for c in founders}
+    assert len(s.clans) == len(castes)  # one founding clan per caste
+    assert all(cl["color"].startswith("#") for cl in s.clans.values())
+
+    # a child inherits its mother's clan
+    mother = next(c for c in founders if c.sex == "female")
+    father = next(c for c in founders if c.sex == "male")
+    # bring an adult pair together
+    father.x = (mother.x + 1.0) % s.config.width
+    father.y = mother.y
+    mother.repro_cooldown = father.repro_cooldown = 0
+    mother.age = int(mother.lifespan * 0.4)
+    father.age = int(father.lifespan * 0.4)
+    s.world.rebuild_index()
+    before = len(s.world.creatures())
+    for _ in range(30):
+        s.step()
+        if len(s.world.creatures()) > before:
+            break
+    children = [c for c in s.world.creatures() if c.generation >= 1]
+    assert children and all(ch.clan_id == mother.clan_id for ch in children)
+
+
 def test_isosceles_promotion_to_artisan():
     s = Simulation(empty_cfg(sex_ratio=1.0, mutation_rate=0.0))
     father = s.world.add(

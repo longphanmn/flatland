@@ -40,6 +40,12 @@ WEATHER_STATES = ("clear", "rain", "fog", "storm")
 
 YIELD_RADIUS = 2.5  # lower castes step aside within this range
 
+# Clan crest colors, assigned round-robin as clans are founded.
+CLAN_COLORS = (
+    "#ffd166", "#06d6a0", "#118ab2", "#ef476f",
+    "#c77dff", "#f4a261", "#90be6d", "#e0aaff",
+)
+
 
 class Simulation:
     def __init__(
@@ -62,6 +68,8 @@ class Simulation:
         self._death_counts: dict[str, int] = {}
         self.disease_id = 0
         self.weather = "clear"
+        self.clans: dict[int, dict] = {}  # id -> {name, founder_id, born_tick, color}
+        self._next_clan_id = 1
         self._spawn_initial()
 
     # ------------------------------------------------------------- the sky
@@ -188,6 +196,29 @@ class Simulation:
                     door_side=self.rng.choice(("north", "east", "south", "west")),
                 )
             )
+        self._found_founding_clans()
+
+    def _found_clan(self, founder: Creature) -> int:
+        cid = self._next_clan_id
+        self._next_clan_id += 1
+        self.clans[cid] = {
+            "name": f"Clan {cid}",
+            "founder_id": founder.id,
+            "born_tick": self.tick,
+            "color": CLAN_COLORS[(cid - 1) % len(CLAN_COLORS)],
+        }
+        return cid
+
+    def _found_founding_clans(self) -> None:
+        """The founding generation seeds one clan per caste."""
+        by_caste: dict[str, Creature] = {}
+        for c in self.world.creatures():
+            by_caste.setdefault(c.caste, c)
+        for caste, first in sorted(by_caste.items()):
+            cid = self._found_clan(first)
+            for c in self.world.creatures():
+                if c.caste == caste:
+                    c.clan_id = cid
 
     def _jittered(self, target: float) -> int:
         v = self.config.spawn_variance
@@ -389,6 +420,14 @@ class Simulation:
             )
 
         self.world.add(child)
+        if child.clan_id == 0:
+            # Children belong to their mother's clan; orphans found new ones.
+            child.clan_id = mother.clan_id or father.clan_id or self._found_clan(child)
+        event_payload = {
+            "mother": mother.id, "father": father.id,
+            "sides": child.sides, "generation": gen, "sex": child.sex,
+            "clan_id": child.clan_id,
+        }
 
         # The parents pay for it dearly.
         for p in (mother, father):
@@ -398,10 +437,7 @@ class Simulation:
         event = HistoryEvent(
             type="birth", tick=tick, entity_id=child.id, caste=child.caste,
             x=round(child.x, 2), y=round(child.y, 2),
-            payload={
-                "mother": mother.id, "father": father.id,
-                "sides": child.sides, "generation": gen, "sex": child.sex,
-            },
+            payload=event_payload,
         )
         self.history.append(event)
         self._events_this_tick.append(event)
@@ -619,8 +655,7 @@ class Simulation:
             events=list(self._events_this_tick),
         )
 
-    @staticmethod
-    def _entity_state(e: Entity) -> EntityState:
+    def _entity_state(self, e: Entity) -> EntityState:
         base = dict(id=e.id, kind=e.kind, x=round(e.x, 3), y=round(e.y, 3), angle=round(e.angle, 4))
         if isinstance(e, Creature):
             return EntityState(
@@ -637,6 +672,8 @@ class Simulation:
                 irregularity=e.irregularity,
                 health=round(e.health, 1),
                 infected=e.infected,
+                clan_id=e.clan_id or None,
+                clan_color=self.clans.get(e.clan_id, {}).get("color"),
                 generation=e.generation,
                 born_tick=e.born_tick,
             )
