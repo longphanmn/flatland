@@ -133,7 +133,7 @@ class Database:
                         e.cause,
                         e.x,
                         e.y,
-                        "{}",
+                        json.dumps(e.payload),
                         _now(),
                     )
                     for e in events
@@ -159,6 +159,7 @@ class Database:
                 "cause": r["cause"],
                 "x": r["x"],
                 "y": r["y"],
+                "payload": json.loads(r["payload"] or "{}"),
             }
             for r in rows
         ]

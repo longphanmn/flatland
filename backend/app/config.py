@@ -48,6 +48,20 @@ class Config:
     desperate_speed_mult: float = 1.35  # starving: move faster
     lifespan_mult: float = 1.0  # god's law: scale every caste's natural lifespan
 
+    # Reproduction & inheritance (Nature's Law)
+    birth_enabled: bool = True
+    adult_age: float = 600.0  # ticks before a creature may mate
+    mate_radius: float = 3.0  # max distance between parents
+    mate_energy_min: float = 50.0  # both parents must hold this much energy
+    birth_rate: float = 0.15  # chance per eligible pair per tick (× fertility)
+    sex_ratio: float = 0.5  # probability a child is a son
+    mutation_rate: float = 0.05  # chance a son's side count deviates ±1
+    max_sides: int = 24  # sons stop gaining sides here (= Circle)
+    birth_energy_cost: float = 25.0  # each parent pays
+    reproduction_cooldown: int = 300  # ticks both parents wait after a birth
+    carrying_capacity: int = 60  # soft cap: fertility fades above it
+    max_population: int = 120  # hard cap: no births beyond it
+
     # Houses
     house_min_size: float = 6.0
     house_max_size: float = 10.0

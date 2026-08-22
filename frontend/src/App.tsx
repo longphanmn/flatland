@@ -38,7 +38,7 @@ export default function App() {
         stateRef.current = msg
         setState(msg)
         const fresh = msg.events.filter((ev) => {
-          const key = `${ev.tick}:${ev.entity_id}`
+          const key = `${ev.tick}:${ev.entity_id}:${ev.type}`
           if (seenEventsRef.current.has(key)) return false
           seenEventsRef.current.add(key)
           return true
@@ -47,6 +47,7 @@ export default function App() {
           setLog((prev) => [...fresh.reverse(), ...prev].slice(0, 200))
         }
       },
+
     })
     sock.connect()
     sockRef.current = sock
@@ -161,15 +162,36 @@ export default function App() {
         <aside className="chronicle">
           <h3>Chronicle</h3>
           {log.length === 0 ? (
-            <p className="chip">no deaths recorded yet</p>
+            <p className="chip">nothing recorded yet</p>
           ) : (
             <ul>
-              {log.map((ev) => (
-                <li key={`${ev.tick}:${ev.entity_id}`}>
-                  <b>{ev.caste}</b> #{ev.entity_id} died of {ev.cause} at tick{' '}
-                  {ev.tick} ({Math.round(ev.x)}, {Math.round(ev.y)})
-                </li>
-              ))}
+              {log.map((ev) => {
+                const key = `${ev.tick}:${ev.entity_id}:${ev.type}`
+                if (ev.type === 'birth') {
+                  const p = (ev.payload ?? {}) as { mother?: number; father?: number; generation?: number }
+                  return (
+                    <li key={key} className="ev-birth">
+                      <b>{ev.caste}</b> #{ev.entity_id} born to #{p.mother} × #
+                      {p.father} (gen {p.generation}) at tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'promotion') {
+                  const p = (ev.payload ?? {}) as { from?: string; to?: string }
+                  return (
+                    <li key={key} className="ev-promo">
+                      <b>#{ev.entity_id}</b> rose {String(p.from ?? 'Soldier')} →{' '}
+                      {String(p.to ?? ev.caste)} at tick {ev.tick}
+                    </li>
+                  )
+                }
+                return (
+                  <li key={key}>
+                    <b>{ev.caste}</b> #{ev.entity_id} died of {ev.cause} at tick{' '}
+                    {ev.tick} ({Math.round(ev.x)}, {Math.round(ev.y)})
+                  </li>
+                )
+              })}
             </ul>
           )}
         </aside>

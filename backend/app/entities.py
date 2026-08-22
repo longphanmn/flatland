@@ -38,6 +38,8 @@ class CasteTraits:
 CASTE_TRAITS = {
     "Woman": CasteTraits(lifespan=4800, speed=0.75, sight_mult=0.80, fertility=1.20),
     "Soldier": CasteTraits(lifespan=5400, speed=0.85, sight_mult=0.90, fertility=1.10),
+    # Equilateral triangle — an Isosceles who reached 60° and became a Regular.
+    "Artisan": CasteTraits(lifespan=5700, speed=0.70, sight_mult=0.95, fertility=1.05),
     "Gentleman": CasteTraits(lifespan=6000, speed=0.55, sight_mult=1.00, fertility=1.00),
     "Professional": CasteTraits(lifespan=6600, speed=0.50, sight_mult=1.10, fertility=0.90),
     "Noble": CasteTraits(lifespan=7200, speed=0.45, sight_mult=1.20, fertility=0.80),
@@ -51,14 +53,15 @@ def traits_for(caste: str) -> CasteTraits:
     return CASTE_TRAITS.get(caste, DEFAULT_TRAITS)
 
 
-def caste_name(sides: int, shape: str) -> str:
+def caste_name(sides: int, shape: str, iso_angle: float = 60.0) -> str:
     """Map a creature's geometry to its Flatland social caste."""
     if shape == "line":
         return "Woman"
     if sides < 3:
         return "Irregular"
     if sides == 3:
-        return "Soldier"
+        # Isosceles soldiers rise to equilateral Artisans at 60 degrees.
+        return "Artisan" if iso_angle >= 60.0 else "Soldier"
     if sides == 4:
         return "Gentleman"
     if sides == 5:
@@ -80,7 +83,7 @@ class Entity:
 @dataclass
 class Creature(Entity):
     kind: str = "creature"
-    shape: str = "polygon"  # "polygon" | "line"
+    shape: str = "polygon"  # "polygon" (male) | "line" (female)
     sides: int = 4
     speed: float = 0.6  # grid units per tick
     energy: float = 80.0
@@ -89,13 +92,19 @@ class Creature(Entity):
     age: int = 0  # ticks lived
     lifespan: float = 0.0  # 0 => derived from caste table
     sight_mult: float = 0.0  # 0 => derived from caste table
+    iso_angle: float = 59.5  # isosceles triangles: smallest angle, degrees
+    generation: int = 0
+    born_tick: int = 0
+    mother_id: int = 0
+    father_id: int = 0
+    repro_cooldown: int = 0
     ticks_since_meal: int = 0
     meals: int = 0
     status: str = ""  # "" | "hungry" | "starving"
 
     def __post_init__(self) -> None:
         if not self.caste:
-            self.caste = caste_name(self.sides, self.shape)
+            self.caste = caste_name(self.sides, self.shape, self.iso_angle)
         traits = traits_for(self.caste)
         if not self.radius:
             self.radius = RADIUS_BY_CASTE.get(self.caste, DEFAULT_RADIUS)
@@ -103,6 +112,15 @@ class Creature(Entity):
             self.lifespan = traits.lifespan
         if not self.sight_mult:
             self.sight_mult = traits.sight_mult
+
+    @property
+    def sex(self) -> str:
+        """Flatland: males are polygons, women are lines."""
+        return "female" if self.shape == "line" else "male"
+
+    @property
+    def is_adult(self) -> bool:
+        return True  # adulthood is a world law (Config.adult_age), checked there
 
 
 @dataclass

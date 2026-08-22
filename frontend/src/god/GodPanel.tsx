@@ -31,6 +31,18 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'steer_turn', label: 'Steer turn', min: 0, max: 2, step: 0.05, group: 'Movement' },
   // Life & Death — the span of beings
   { key: 'lifespan_mult', label: 'Lifespan ×', min: 0.05, max: 5, step: 0.05, group: 'Life & Death' },
+  // Reproduction — Nature's Law of lineage
+  { key: 'adult_age', label: 'Adult age', min: 0, max: 5000, step: 50, group: 'Reproduction' },
+  { key: 'mate_radius', label: 'Mate radius', min: 0.5, max: 30, step: 0.5, group: 'Reproduction' },
+  { key: 'mate_energy_min', label: 'Mate energy ≥', min: 0, max: 200, step: 5, group: 'Reproduction' },
+  { key: 'birth_rate', label: 'Birth rate', min: 0, max: 1, step: 0.05, group: 'Reproduction' },
+  { key: 'sex_ratio', label: 'Son probability', min: 0, max: 1, step: 0.05, group: 'Reproduction' },
+  { key: 'mutation_rate', label: 'Mutation rate', min: 0, max: 1, step: 0.01, group: 'Reproduction' },
+  { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction' },
+  { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction' },
+  { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction' },
+  { key: 'carrying_capacity', label: 'Carrying capacity', min: 2, max: 400, step: 2, group: 'Reproduction' },
+  { key: 'max_population', label: 'Hard pop cap', min: 2, max: 1000, step: 2, group: 'Reproduction' },
   // Bodies & Houses — geometry of the flat world
   { key: 'door_clearance', label: 'Door clearance ×', min: 1, max: 4, step: 0.1, group: 'Bodies & Houses' },
   { key: 'house_min_size', label: 'House min size', min: 4, max: 30, step: 1, group: 'Bodies & Houses' },
@@ -42,6 +54,7 @@ const GROUP_ORDER = [
   'Hunger & Sight',
   'Movement',
   'Life & Death',
+  'Reproduction',
   'Bodies & Houses',
 ]
 
@@ -53,6 +66,11 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   door_clearance: 'doorways scale with the largest creature × this',
   house_min_size: 'applies to houses built after the next reset',
   house_max_size: 'applies to houses built after the next reset',
+  adult_age: 'creatures must be this many ticks old to mate',
+  birth_rate: 'chance per eligible pair per tick, before fertility',
+  sex_ratio: 'probability a child is a son (polygons ascend; daughters are lines)',
+  mutation_rate: 'chance a son’s side count deviates ±1 from inheritance',
+  carrying_capacity: 'above this population, fertility fades gradually',
 }
 
 interface Props {
@@ -141,6 +159,20 @@ export default function GodPanel({ open, onClose }: Props) {
           {GROUP_ORDER.map((group) => (
             <section key={group} className="god-group">
               <h3>{group}</h3>
+              {group === 'Reproduction' && (
+                <label className="god-row">
+                  <span title="whether new life may begin at all">Births allowed</span>
+                  <select
+                    value={String(laws.birth_enabled ?? true)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, birth_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
+              )}
               {NUMBER_LAWS.filter((l) => l.group === group).map(({ key, label, min, max, step }) => (
                 <label className="god-row" key={key}>
                   <span title={LAW_HINTS[key]}>{label}</span>

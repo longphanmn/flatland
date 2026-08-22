@@ -19,6 +19,8 @@ export interface EntityState {
   radius?: number
   age?: number
   lifespan?: number
+  generation?: number
+  born_tick?: number
   door_width?: number
   door_offset?: number
   door_side?: 'north' | 'east' | 'south' | 'west'
@@ -39,13 +41,14 @@ export interface StateMessage {
 }
 
 export interface HistoryEvent {
-  type: 'death'
+  type: 'death' | 'birth' | 'promotion'
   tick: number
   entity_id: number
-  caste: string
-  cause: string
+  caste?: string | null
+  cause?: string
   x: number
   y: number
+  payload?: Record<string, unknown>
 }
 
 export interface HelloMessage {
@@ -134,6 +137,21 @@ export interface GodLaws {
   desperate_perceive_mult?: number
   desperate_speed_mult?: number
   lifespan_mult?: number
+
+  // Reproduction & inheritance (Nature's Law)
+  birth_enabled?: boolean
+  adult_age?: number
+  mate_radius?: number
+  mate_energy_min?: number
+  birth_rate?: number
+  sex_ratio?: number
+  mutation_rate?: number
+  max_sides?: number
+  birth_energy_cost?: number
+  reproduction_cooldown?: number
+  carrying_capacity?: number
+  max_population?: number
+
   door_clearance?: number
   house_min_size?: number
   house_max_size?: number

@@ -49,12 +49,17 @@ class Simulation:
     def _spawn_creature(self, shape: str, sides: int) -> None:
         cfg = self.config
         x, y = self._rand_pos()
-        caste = caste_name(sides, shape)
+        iso = 60.0
+        if sides == 3:
+            # Founding Isosceles: somewhere on the long road toward 60 degrees.
+            iso = self.rng.uniform(0.5, 59.5)
+        caste = caste_name(sides, shape, iso)
         traits = traits_for(caste)
         self.world.add(
             Creature(
                 shape=shape,
                 sides=sides,
+                iso_angle=iso,
                 x=x,
                 y=y,
                 angle=self.rng.uniform(0, 2 * math.pi),
@@ -116,8 +121,128 @@ class Simulation:
         houses = [e for e in self.world.entities.values() if e.kind == "house"]
         for creature in self.world.creatures():  # snapshot list; removals are safe
             self._update_creature(creature, houses)
+        self._reproduce()
         self._enforce_food_law()
         self.tick += 1
+
+    # ----------------------------------------------------------- reproduction
+    def _reproduce(self) -> None:
+        """Nature's Law: eligible pairs may beget children; god only sets rates."""
+        cfg = self.config
+        if not cfg.birth_enabled:
+            return
+        creatures = self.world.creatures()
+        pop = len(creatures)
+        if pop >= cfg.max_population:
+            return
+        room = 1.0  # fertility fades as the world crowds past carrying capacity
+        if pop > cfg.carrying_capacity:
+            gap = max(1.0, cfg.max_population - cfg.carrying_capacity)
+            room = max(0.0, 1.0 - (pop - cfg.carrying_capacity) / gap)
+
+        def eligible(c: Creature) -> bool:
+            return (
+                c.age >= cfg.adult_age
+                and c.repro_cooldown <= 0
+                and c.energy >= cfg.mate_energy_min
+            )
+
+        males = [c for c in creatures if c.sex == "male" and eligible(c)]
+        females = [c for c in creatures if c.sex == "female" and eligible(c)]
+        if not males or not females:
+            return
+
+        for mother in females:
+            father = None
+            best = math.inf
+            for m in males:
+                if m.repro_cooldown > 0 or m.energy < cfg.mate_energy_min:
+                    continue
+                d = self.world.distance(mother.x, mother.y, m.x, m.y)
+                if d <= cfg.mate_radius and d < best:
+                    father, best = m, d
+            if father is None:
+                continue
+            fert = (
+                traits_for(mother.caste).fertility
+                * traits_for(father.caste).fertility
+                * room
+            )
+            if self.rng.random() >= min(cfg.birth_rate * fert, 1.0):
+                continue
+            self._birth(mother, father)
+            if len(self.world.creatures()) >= cfg.max_population:
+                break
+
+    def _birth(self, mother: Creature, father: Creature) -> None:
+        cfg = self.config
+        gen = max(mother.generation, father.generation) + 1
+        tick = self.tick + 1  # the tick being completed
+        x = (mother.x + self.rng.uniform(-1.5, 1.5)) % cfg.width
+        y = (mother.y + self.rng.uniform(-1.5, 1.5)) % cfg.height
+
+        promoted = False
+        if self.rng.random() < cfg.sex_ratio:
+            if father.sides == 3:
+                # Isosceles line: sons stay triangles, creeping toward Regular.
+                sides = 3
+                iso = min(60.0, father.iso_angle + 0.5)
+                promoted = iso >= 60.0 and father.iso_angle < 60.0
+            else:
+                # Law of Nature: a son has one more side than his father.
+                sides = min(father.sides + 1, cfg.max_sides)
+                iso = 60.0
+            if self.rng.random() < cfg.mutation_rate:
+                sides = min(cfg.max_sides, max(3, sides + self.rng.choice((-1, 1))))
+                if sides != 3:
+                    promoted = False
+            caste = caste_name(sides, "polygon", iso)
+            child = Creature(
+                shape="polygon", sides=sides, iso_angle=iso,
+                x=x, y=y, angle=self.rng.uniform(0, 2 * math.pi),
+                energy=cfg.energy_start, generation=gen, born_tick=tick,
+                mother_id=mother.id, father_id=father.id,
+                lifespan=traits_for(caste).lifespan * cfg.lifespan_mult,
+            )
+        else:
+            child = Creature(
+                shape="line", sides=2,
+                x=x, y=y, angle=self.rng.uniform(0, 2 * math.pi),
+                energy=cfg.energy_start, generation=gen, born_tick=tick,
+                mother_id=mother.id, father_id=father.id,
+                lifespan=traits_for("Woman").lifespan * cfg.lifespan_mult,
+            )
+
+        self.world.add(child)
+
+        # The parents pay for it dearly.
+        for p in (mother, father):
+            p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
+            p.repro_cooldown = cfg.reproduction_cooldown
+
+        event = HistoryEvent(
+            type="birth", tick=tick, entity_id=child.id, caste=child.caste,
+            x=round(child.x, 2), y=round(child.y, 2),
+            payload={
+                "mother": mother.id, "father": father.id,
+                "sides": child.sides, "generation": gen, "sex": child.sex,
+            },
+        )
+        self.history.append(event)
+        self._events_this_tick.append(event)
+        if self.on_event is not None:
+            self.on_event(event)
+
+        if promoted:
+            pevent = HistoryEvent(
+                type="promotion", tick=tick, entity_id=child.id, caste=child.caste,
+                x=round(child.x, 2), y=round(child.y, 2),
+                payload={"from": "Soldier", "to": "Artisan"},
+            )
+            self.history.append(pevent)
+            self._events_this_tick.append(pevent)
+            if self.on_event is not None:
+                self.on_event(pevent)
 
     def _kill(self, c: Creature, cause: str) -> None:
         """Remove a creature from the world and record it in the chronicle."""
@@ -142,6 +267,8 @@ class Simulation:
         cfg, w = self.config, self.world
         c.ticks_since_meal += 1
         c.age += 1
+        if c.repro_cooldown > 0:
+            c.repro_cooldown -= 1
 
         # Hunger state drives perception range and urgency; the caste's
         # Sight Recognition (aided by Fog) sets the base reach.
@@ -270,6 +397,8 @@ class Simulation:
                 radius=round(e.radius, 3),
                 age=e.age,
                 lifespan=round(e.lifespan, 1),
+                generation=e.generation,
+                born_tick=e.born_tick,
             )
         if isinstance(e, House):
             return EntityState(

@@ -14,6 +14,14 @@ starvation when deprived of food too long.
   god law `Lifespan ×` scales all lifespans.
 - **Sight Recognition:** higher castes perceive farther (priests 1.35×, women
   0.8× the base sight radius) — Flatland's class hierarchy as natural law.
+- **Reproduction (Nature's Law):** adult polygons and women that meet (within
+  `mate_radius`, well-fed) may beget children. Sons inherit one more side than
+  their father (Square→Pentagon→…→Circle); isosceles sons instead creep +0.5°
+  per generation, becoming Regular Artisans at 60°. Daughters are lines.
+  Mutation may deviate a son's sides; higher castes are less fertile
+  (Nature's Law), fertility fades as the world crowds past carrying capacity,
+  and births stop at the hard population cap. Parents pay energy and cooldown.
+  Every birth/promotion lands in the Chronicle and the database.
 - **Houses:** square outlines with a doorway on the south wall; walls block
   movement but the door is passable. Door width scales with the largest
   creature's body size, so big castes need big doors.

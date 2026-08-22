@@ -150,6 +150,14 @@ body {
   color: #ffa657;
 }
 
+.chronicle li.ev-birth b {
+  color: #3fb950;
+}
+
+.chronicle li.ev-promo b {
+  color: #e3b341;
+}
+
 .controls {
   display: flex;
   gap: 10px;

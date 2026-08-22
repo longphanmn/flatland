@@ -6,7 +6,7 @@ Message flow:
 """
 
 from enum import Enum
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -39,6 +39,8 @@ class EntityState(BaseModel):
     radius: Optional[float] = None
     age: Optional[int] = None
     lifespan: Optional[float] = None
+    generation: Optional[int] = None
+    born_tick: Optional[int] = None
     door_width: Optional[float] = None
     door_offset: Optional[float] = None
     door_side: Optional[Literal["north", "east", "south", "west"]] = None
@@ -59,13 +61,14 @@ class StateMessage(BaseModel):
 
 
 class HistoryEvent(BaseModel):
-    type: Literal["death"] = "death"
+    type: Literal["death", "birth", "promotion"] = "death"
     tick: int
     entity_id: int
-    caste: str
-    cause: str  # e.g. "starvation"
-    x: float
-    y: float
+    caste: Optional[str] = None
+    cause: str = ""  # death cause when type == "death"
+    x: float = 0.0
+    y: float = 0.0
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class HelloMessage(BaseModel):
@@ -95,6 +98,20 @@ class GodLaws(BaseModel):
     hungry_perceive_mult: Optional[float] = Field(None, ge=1, le=4)
     desperate_speed_mult: Optional[float] = Field(None, ge=1, le=4)
     lifespan_mult: Optional[float] = Field(None, ge=0.01, le=100)
+
+    # Reproduction & inheritance (Nature's Law)
+    birth_enabled: Optional[bool] = None
+    adult_age: Optional[float] = Field(None, ge=0, le=100000)
+    mate_radius: Optional[float] = Field(None, ge=0.5, le=50)
+    mate_energy_min: Optional[float] = Field(None, ge=0, le=10000)
+    birth_rate: Optional[float] = Field(None, ge=0, le=1)
+    sex_ratio: Optional[float] = Field(None, ge=0, le=1)
+    mutation_rate: Optional[float] = Field(None, ge=0, le=1)
+    max_sides: Optional[int] = Field(None, ge=3, le=64)
+    birth_energy_cost: Optional[float] = Field(None, ge=0, le=1000)
+    reproduction_cooldown: Optional[int] = Field(None, ge=0, le=100000)
+    carrying_capacity: Optional[int] = Field(None, ge=2, le=2000)
+    max_population: Optional[int] = Field(None, ge=2, le=5000)
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
     house_min_size: Optional[float] = Field(None, ge=3, le=60)
     house_max_size: Optional[float] = Field(None, ge=3, le=80)

@@ -12,6 +12,7 @@ const MAX_SCALE = 80 // device px per world unit
 
 const CASTE_COLORS: Record<string, string> = {
   Soldier: '#ff7b72',
+  Artisan: '#f2cc60',
   Gentleman: '#ffa657',
   Professional: '#d2a8ff',
   Noble: '#79c0ff',

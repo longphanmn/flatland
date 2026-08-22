@@ -26,26 +26,28 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
       {starvation, old_age, …}; HUD "dead" chip shows per-cause breakdown
       (tooltip); counts tracked in sim and persisted via DB events
 
-## B. Reproduction & inheritance  [P1]
-- [ ] Sex model — males = polygons (sides ≥ 3), females = lines (women);
-      Creature.sex derived from shape
-- [ ] Mating — adult male + adult female within `mate_radius`, both energy ≥
-      `mate_energy_min`, not in cooldown → attempt birth (rng-gated by `birth_rate`)
-- [ ] Offspring — `sex_ratio` decides male (polygon) vs female (line);
-      child spawns near mother; parents pay `birth_energy_cost` + `reproduction_cooldown`
-- [ ] Lineage — Creature.generation, .born_tick, .parents [mother_id, father_id];
-      persisted in DB for genealogy graph [P2]
-- [ ] Law of Nature — son sides = father.sides + 1, capped at `max_sides` (=Circle);
-      daughter = line
-- [ ] Mutation — `mutation_rate` chance of ±1 side / regularity deviation
-- [ ] Isosceles rule — triangle child angle = parent angle + 0.5°; reaching 60°
-      promotes to Regular (event `promotion`)
-- [ ] Fertility law — fertility(caste) = base × `fertility_decay`^(sides−3);
-      global penalty as population approaches `carrying_capacity`; `max_population` hard cap
-- [ ] GodLaws: `birth_enabled, birth_rate, sex_ratio, mate_radius, mate_energy_min,
-      birth_energy_cost, mutation_rate, max_sides, fertility_decay,
-      carrying_capacity, max_population, reproduction_cooldown`
-- [ ] Events: `birth` (payload: parents, sides, generation), `promotion`
+## B. Reproduction & inheritance  [P1] — ✅ implemented
+- [x] Sex model — males = polygons (sides ≥ 3), females = lines (women);
+      `Creature.sex` derived from shape
+- [x] Mating — adult male + adult female within `mate_radius`, both energy ≥
+      `mate_energy_min`, not in cooldown → rng-gated by `birth_rate` ×
+      caste fertilities × crowding factor
+- [x] Offspring — `sex_ratio` decides son vs daughter; child spawns near
+      mother; both parents pay `birth_energy_cost` + `reproduction_cooldown`
+- [x] Lineage — Creature.generation/.born_tick/.mother_id/.father_id;
+      birth payload persisted in DB events (genealogy graph still [P2])
+- [x] Law of Nature — son sides = father.sides + 1, capped at `max_sides`;
+      daughters are lines
+- [x] Mutation — `mutation_rate` chance of ±1 side deviation
+- [x] Isosceles rule — triangle sons stay triangles: iso_angle +0.5° per
+      generation; reaching 60° promotes Soldier → Artisan (`promotion` event)
+- [x] Fertility law — per-caste fertility table × soft penalty above
+      `carrying_capacity`; hard `max_population` cap
+      (deviation: table embodies Nature's decay; no separate `fertility_decay`)
+- [x] GodLaws: birth_enabled, adult_age, mate_radius, mate_energy_min,
+      birth_rate, sex_ratio, mutation_rate, max_sides, birth_energy_cost,
+      reproduction_cooldown, carrying_capacity, max_population
+- [x] Events: birth (payload parents/sides/generation), promotion
 
 ## C. Irregularity, caste & social order
 - [ ] [P1] Irregularity — mutation may mark child irregular (deviation value);
@@ -90,6 +92,10 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
       Death / Bodies & Houses; grows as §B/§D/§E laws arrive)
 - [ ] [P2] Population/caste sparkline chart in HUD
 - [ ] [P2] Chronicle shows all event types (birth/promotion/euthanasia/outbreak/death)
+- [ ] [P2] Creature inspector — click/tap a creature to select it; side panel shows
+      live status (caste, sex, age/lifespan, energy, hunger, generation, parents)
+      plus its personal history from the chronicle/DB (born, promotions, meals,
+      children, death); highlight selected entity on canvas
 - [ ] [P2] DB-backed history pagination + world run selector
 
 ## Cross-system synergies (emergent depth)
