@@ -133,6 +133,7 @@ export interface GodLaws {
   hungry_perceive_mult?: number
   desperate_perceive_mult?: number
   desperate_speed_mult?: number
+  lifespan_mult?: number
   door_clearance?: number
   house_min_size?: number
   house_max_size?: number
