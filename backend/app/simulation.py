@@ -50,6 +50,7 @@ class Simulation:
         self._eaten: set[int] = set()
         self._events_this_tick: list[HistoryEvent] = []
         self._death_counts: dict[str, int] = {}
+        self.disease_id = 0
         self._spawn_initial()
 
     # ------------------------------------------------------------------ setup
@@ -169,9 +170,73 @@ class Simulation:
         houses = [e for e in self.world.entities.values() if e.kind == "house"]
         for creature in self.world.creatures():  # snapshot list; removals are safe
             self._update_creature(creature, houses)
+        self._update_disease()
         self._reproduce()
         self._enforce_food_law()
         self.tick += 1
+
+    # ---------------------------------------------------------------- disease
+    def _emit(self, event: HistoryEvent) -> None:
+        self.history.append(event)
+        self._events_this_tick.append(event)
+        if self.on_event is not None:
+            self.on_event(event)
+
+    def _infect(self, c: Creature) -> None:
+        c.infected = True
+        c.disease_id = self.disease_id
+
+    def _update_disease(self) -> None:
+        """Outbreaks, contagion and recovery. Disabling the law freezes it."""
+        cfg = self.config
+        if not cfg.disease_enabled:
+            return
+        creatures = self.world.creatures()
+        active = [c for c in creatures if c.infected]
+
+        if (
+            not any(c.infected for c in creatures)
+            and creatures
+            and self.rng.random() < cfg.disease_outbreak_rate
+        ):
+            patient = self.rng.choice(creatures)
+            self.disease_id += 1
+            self._infect(patient)
+            self._emit(
+                HistoryEvent(
+                    type="outbreak",
+                    tick=self.tick + 1,
+                    entity_id=patient.id,
+                    caste=patient.caste,
+                    x=round(patient.x, 2),
+                    y=round(patient.y, 2),
+                    payload={"disease_id": self.disease_id},
+                )
+            )
+
+        for c in active:
+            if not c.infected or c.id not in self.world.entities:
+                continue  # died or recovered earlier this tick
+            # Recovery
+            if cfg.recovery_rate > 0 and self.rng.random() < cfg.recovery_rate:
+                c.infected = False
+                self._emit(
+                    HistoryEvent(
+                        type="recovery",
+                        tick=self.tick + 1,
+                        entity_id=c.id,
+                        caste=c.caste,
+                        x=round(c.x, 2),
+                        y=round(c.y, 2),
+                        payload={"disease_id": c.disease_id},
+                    )
+                )
+                continue
+            # Contagion to healthy neighbours
+            for n in self.world.query_radius(c.x, c.y, cfg.disease_radius):
+                if n.kind == "creature" and not n.infected and n.id != c.id:
+                    if self.rng.random() < cfg.disease_rate:
+                        self._infect(n)  # type: ignore[arg-type]
 
     # ----------------------------------------------------------- reproduction
     def _reproduce(self) -> None:
@@ -422,8 +487,16 @@ class Simulation:
             c.meals += 1
             c.energy = min(cfg.energy_max, c.energy + cfg.energy_from_food)
 
-        # 6. Metabolism and mortality.
+        # 6. Metabolism, sickness and mortality.
         c.energy -= cfg.energy_decay_per_tick
+        if cfg.disease_enabled and c.infected:
+            c.energy -= cfg.disease_energy_drain
+            c.health -= 2.0 * cfg.disease_lethality
+            if c.health <= 0:
+                self._kill(c, "disease")
+                return
+        elif c.health < 100.0:
+            c.health = min(100.0, c.health + 0.1)
         if c.energy <= 0:
             self._kill(c, "starvation")
             return
@@ -463,6 +536,7 @@ class Simulation:
             creatures_alive=len(self.world.creatures()),
             creatures_dead=self.deaths,
             dead_by_cause=dict(self._death_counts),
+            infected_count=sum(1 for c in self.world.creatures() if c.infected),
             events=list(self._events_this_tick),
         )
 
@@ -482,6 +556,8 @@ class Simulation:
                 lifespan=round(e.lifespan, 1),
                 stage=e.stage,  # type: ignore[arg-type]
                 irregularity=e.irregularity,
+                health=round(e.health, 1),
+                infected=e.infected,
                 generation=e.generation,
                 born_tick=e.born_tick,
             )

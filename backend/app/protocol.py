@@ -41,6 +41,8 @@ class EntityState(BaseModel):
     lifespan: Optional[float] = None
     stage: Optional[Literal["infant", "juvenile", "adult", "elder"]] = None
     irregularity: Optional[float] = None
+    health: Optional[float] = None
+    infected: Optional[bool] = None
     generation: Optional[int] = None
     born_tick: Optional[int] = None
     door_width: Optional[float] = None
@@ -60,11 +62,14 @@ class StateMessage(BaseModel):
     creatures_alive: int = 0
     creatures_dead: int = 0
     dead_by_cause: dict[str, int] = Field(default_factory=dict)
+    infected_count: int = 0
     events: list["HistoryEvent"] = Field(default_factory=list)
 
 
 class HistoryEvent(BaseModel):
-    type: Literal["death", "birth", "promotion", "demotion"] = "death"
+    type: Literal["death", "birth", "promotion", "demotion", "outbreak", "recovery"] = (
+        "death"
+    )
     tick: int
     entity_id: int
     caste: Optional[str] = None
@@ -116,6 +121,15 @@ class GodLaws(BaseModel):
     carrying_capacity: Optional[int] = Field(None, ge=2, le=2000)
     max_population: Optional[int] = Field(None, ge=2, le=5000)
     euthanasia_threshold: Optional[float] = Field(None, ge=0, le=1)
+
+    # Health & disease
+    disease_enabled: Optional[bool] = None
+    disease_outbreak_rate: Optional[float] = Field(None, ge=0, le=1)
+    disease_rate: Optional[float] = Field(None, ge=0, le=1)
+    disease_radius: Optional[float] = Field(None, ge=0.5, le=50)
+    disease_energy_drain: Optional[float] = Field(None, ge=0, le=10)
+    recovery_rate: Optional[float] = Field(None, ge=0, le=1)
+    disease_lethality: Optional[float] = Field(None, ge=0, le=1)
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
     house_min_size: Optional[float] = Field(None, ge=3, le=60)
     house_max_size: Optional[float] = Field(None, ge=3, le=80)

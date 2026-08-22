@@ -83,6 +83,10 @@ body {
   color: #f85149;
 }
 
+.chip.sick b {
+  color: #3fb950;
+}
+
 .stage {
   flex: 1;
   position: relative;

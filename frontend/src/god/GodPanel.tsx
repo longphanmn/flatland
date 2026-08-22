@@ -39,6 +39,13 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'sex_ratio', label: 'Son probability', min: 0, max: 1, step: 0.05, group: 'Reproduction' },
   { key: 'mutation_rate', label: 'Mutation rate', min: 0, max: 1, step: 0.01, group: 'Reproduction' },
   { key: 'euthanasia_threshold', label: 'Euthanasia ≥', min: 0.3, max: 1, step: 0.05, group: 'Reproduction' },
+  // Disease — plague and mercy
+  { key: 'disease_outbreak_rate', label: 'Outbreak rate / tick', min: 0, max: 0.05, step: 0.0005, group: 'Disease' },
+  { key: 'disease_rate', label: 'Contagion chance', min: 0, max: 1, step: 0.01, group: 'Disease' },
+  { key: 'disease_radius', label: 'Contagion radius', min: 0.5, max: 20, step: 0.5, group: 'Disease' },
+  { key: 'disease_energy_drain', label: 'Energy drain / tick', min: 0, max: 2, step: 0.05, group: 'Disease' },
+  { key: 'recovery_rate', label: 'Recovery chance / tick', min: 0, max: 1, step: 0.005, group: 'Disease' },
+  { key: 'disease_lethality', label: 'Lethality', min: 0, max: 1, step: 0.05, group: 'Disease' },
   { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction' },
   { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction' },
   { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction' },
@@ -56,6 +63,7 @@ const GROUP_ORDER = [
   'Movement',
   'Life & Death',
   'Reproduction',
+  'Disease',
   'Bodies & Houses',
 ]
 
@@ -168,6 +176,22 @@ export default function GodPanel({ open, onClose }: Props) {
                     value={String(laws.birth_enabled ?? true)}
                     onChange={(e) =>
                       setLaws((l) => ({ ...l, birth_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
+              )}
+              {group === 'Disease' && (
+                <label className="god-row">
+                  <span title="plagues walk the world; disabling freezes all sickness">
+                    Plagues allowed
+                  </span>
+                  <select
+                    value={String(laws.disease_enabled ?? false)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, disease_enabled: e.target.value === 'true' }))
                     }
                   >
                     <option value="true">yes</option>

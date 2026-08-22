@@ -248,6 +248,16 @@ export default function CanvasRenderer({ stateRef }: Props) {
         ctx.stroke()
       }
       ctx.restore()
+      if (e.infected) {
+        const pulse = 0.4 + 0.3 * Math.sin(performance.now() / 180)
+        ctx.globalAlpha = pulse
+        ctx.strokeStyle = '#3fb950'
+        ctx.lineWidth = 0.45
+        ctx.beginPath()
+        ctx.arc(e.x, e.y, r + 1.2, 0, TAU)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
       if (e.status === 'hungry') {
         ctx.globalAlpha = 0.65
         ctx.strokeStyle = '#d29922'

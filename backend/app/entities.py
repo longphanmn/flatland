@@ -100,6 +100,9 @@ class Creature(Entity):
     repro_cooldown: int = 0
     irregularity: float = 0.0  # 0 = regular; mutation may deform a child
     matured: bool = False  # set once the world judges an irregular at adulthood
+    health: float = 100.0  # 0..100; disease drains it, time heals it
+    infected: bool = False
+    disease_id: int = 0
     ticks_since_meal: int = 0
     meals: int = 0
     status: str = ""  # "" | "hungry" | "starving"

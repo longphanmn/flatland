@@ -116,6 +116,11 @@ export default function App() {
             starving <b>{starvingCount}</b>
           </span>
         )}
+        {(state?.infected_count ?? 0) > 0 && (
+          <span className="chip sick">
+            infected <b>{state?.infected_count}</b>
+          </span>
+        )}
         {hello && (
           <span className="chip">
             seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×

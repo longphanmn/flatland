@@ -21,6 +21,8 @@ export interface EntityState {
   lifespan?: number
   stage?: 'infant' | 'juvenile' | 'adult' | 'elder'
   irregularity?: number
+  health?: number
+  infected?: boolean
   generation?: number
   born_tick?: number
   door_width?: number
@@ -40,6 +42,7 @@ export interface StateMessage {
   creatures_alive: number
   creatures_dead: number
   dead_by_cause: Record<string, number>
+  infected_count: number
   events: HistoryEvent[]
 }
 
@@ -155,6 +158,15 @@ export interface GodLaws {
   carrying_capacity?: number
   max_population?: number
   euthanasia_threshold?: number
+
+  // Health & disease
+  disease_enabled?: boolean
+  disease_outbreak_rate?: number
+  disease_rate?: number
+  disease_radius?: number
+  disease_energy_drain?: number
+  recovery_rate?: number
+  disease_lethality?: number
 
   door_clearance?: number
   house_min_size?: number

@@ -71,6 +71,15 @@ class Config:
     max_population: int = 120  # hard cap: no births beyond it
     euthanasia_threshold: float = 0.7  # irregularity at/below -> demotion, above -> consumed
 
+    # Health & disease
+    disease_enabled: bool = False
+    disease_outbreak_rate: float = 0.0005  # chance/tick a new outbreak begins
+    disease_rate: float = 0.08  # spread chance per healthy neighbour per tick
+    disease_radius: float = 3.0  # contagion range
+    disease_energy_drain: float = 0.15  # extra energy loss while infected
+    recovery_rate: float = 0.01  # chance/tick an infected creature recovers
+    disease_lethality: float = 0.5  # scales how fast infection drains health
+
     # Houses
     house_min_size: float = 6.0
     house_max_size: float = 10.0

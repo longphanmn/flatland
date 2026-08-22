@@ -70,17 +70,19 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [ ] [P2] Peace-cry — women emit a visible ripple while moving (renderer effect)
 - [ ] [P2] Social yielding — lower castes steer away from higher castes (repulsion)
 
-## D. Health & disease  [P2]
-- [ ] Creature.health (0–100) + .infected/.disease_id
-- [ ] Outbreak — if `disease_enabled`, `disease_outbreak_rate`/tick starts a new
-      `disease_id`; spreads to healthy neighbors within `disease_radius` at `disease_rate`
-- [ ] Effect — infected lose `disease_energy_drain`/tick + health decay;
-      recovery at `recovery_rate`, else death when health → 0 (cause `disease`)
-- [ ] Season synergy — winter raises `disease_rate` (see §E)
-- [ ] GodLaws: `disease_enabled, disease_outbreak_rate, disease_rate, disease_radius,
-      disease_energy_drain, recovery_rate, disease_lethality`
-- [ ] Events: `outbreak_start`, `disease_death`, `recovered`; HUD "infected N"
-- [ ] Render — infected creatures tinted green / pulsing
+## D. Health & disease  [P2] — ✅ implemented
+- [x] Creature.health (0–100, regenerates when healthy) + .infected/.disease_id
+- [x] Outbreak — if `disease_enabled`, `disease_outbreak_rate`/tick starts a new
+      `disease_id`; spreads to healthy neighbours within `disease_radius` at
+      `disease_rate`
+- [x] Effect — infected lose `disease_energy_drain`/tick + health decays at
+      2×`disease_lethality`; recovery at `recovery_rate`; death when health → 0
+      (cause `disease`). Disabling the law freezes all sickness instantly.
+- [ ] Season synergy — winter raises `disease_rate` (lands with §E)
+- [x] GodLaws: Plagues toggle + outbreak/rate/radius/drain/recovery/lethality
+      in a "Disease" panel group
+- [x] Events: `outbreak`, `recovery` (+ death cause `disease`); HUD "infected N"
+- [x] Render — pulsing green ring on the infected
 
 ## E. Environment — day/night, seasons, weather  [P2]
 - [ ] WorldClock — `time_of_day` (0–1, cycle `day_length` ticks); `day` counter;
