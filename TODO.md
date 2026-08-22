@@ -192,28 +192,48 @@ always matches the running code). No Vite/frontend dependency.
       section links back to TODO.md
 
 ## Cross-system synergies (emergent depth)
-- Winter + disease = famine/plague cascades · high mutation = irregularity purges ·
-  overpopulation = lower fertility + higher disease spread · night + fog = blindness
-- Predator–prey oscillation (Lotka–Volterra): predators over-hunt prey → prey crash →
-  predator crash → plant overgrowth → prey recovery; tune to a stable limit cycle or
-  a collapse
-- Death feeds life: carcass decay → nutrient pool → plant regrowth — war, predation
-  and euthanasia all become fertiliser; a purge or plague becomes a bloom
-- War over scarce food: crowding past carrying capacity spikes clan rivalry →
-  resource wars; war carcasses then feed the survivors (grim Malthusian loop)
-- Flocking is a double-edged sword: clan cohesion clusters creatures → safety in
-  numbers, but also amplifies disease spread and attracts predators; fog turns the
-  cluster into an ambush
-- Predators as natural selection: they cull the starving, elder and wounded first;
-  fog + night turn hunters into invisible executioners; prey evolve flight
-- Winter as apex pressure: plants die back, prey starve, predators hunt the
-  desperate, disease spreads in the cold — the deepest extinction risk lands in a
-  single season
-- Mutation → irregularity → demotion → fodder: demoted soldiers swell the prey and
-  warrior ranks, feeding both the food web and the war machine
-- Social order meets the food chain: Sight Recognition decides who sees the predator
-  first (priests flee, women fall); social yielding can trap a low caste between a
-  predator and a higher caste's shadow
+Not features — acceptance criteria. Tick only after the behaviour is observable in a
+live run (or a seeded test passes). `needs` = prerequisite systems; `verify` =
+observable signal; `tune` = god laws that push it over the edge.
+
+### Verifiable now (systems landed)
+- [ ] Winter + disease = famine/plague cascades
+      needs §D+§E · verify: winter → infected & starving spike together, deaths by
+      starvation+disease climb · tune: season_length, disease_rate, food_count
+- [ ] High mutation = irregularity purges
+      needs §B+§C · verify: mutation_rate↑ → euthanasia/demotion events surge at
+      adulthood · tune: mutation_rate, euthanasia_threshold
+- [ ] Overpopulation = lower fertility + higher disease spread
+      needs §B+§D · verify: pop past carrying_capacity → births fade, contagion rises
+      · tune: carrying_capacity, max_population, disease_radius
+- [ ] Night + fog = blindness
+      needs §E · verify: fog at night collapses sight (starving rate rises) · tune:
+      night_sight_mult, fog_sight_mult
+- [ ] Seeded tests — backend/tests/test_synergies.py: one deterministic test per
+      verifiable-now synergy (winter+plague, mutation→purge, overcrowd→fertility+
+      disease, night+fog blindness), reusing the fixed-tick RNG pattern from
+      test_disease.py / test_environment.py
+
+### Blocked on §H (food ecosystem) + §I (predation/clan war)
+- [ ] Predator–prey oscillation (Lotka–Volterra) — needs §H+§I · verify: predator/prey
+      counts oscillate out of phase · tune: predator_ratio, hunt_radius, plant_growth_rate
+- [ ] Death feeds life — needs §H (corpses already land in §N) · verify: post-die-off,
+      corpse decay + nutrient pool accelerates plant regrowth · tune: corpse_ttl,
+      nutrient_cycle_rate
+- [ ] War over scarce food — needs §H+§I · verify: famine → clan rivalry drops → wars
+      spike → corpses feed survivors · tune: rivalry_threshold, attack_damage
+- [ ] Flocking is a double-edged sword — needs §I+§D · verify: clan cohesion dilutes
+      predator attacks but super-spreads disease · tune: cohesion_weight, disease_rate
+- [ ] Predators as natural selection — needs §H+§I · verify: starving/elder/wounded prey
+      culled first, survivor stats shift · tune: hunt_radius, bite_damage, fear_radius
+- [ ] Winter as apex pressure — needs §E+§H+§I · verify: one winter stacks die-back +
+      starvation + hunting + plague into real extinction risk · tune: season_length,
+      SEASON_FOOD_MULT, disease_rate
+- [ ] Mutation → demotion → fodder — needs §C+§I · verify: demoted soldiers swell both
+      prey and warrior ranks · tune: mutation_rate, euthanasia_threshold, attack_damage
+- [ ] Social order meets the food chain — needs §C+§I · verify: priests see the predator
+      first and flee, women fall, low castes trapped by yielding · tune: sight_mult,
+      yield_strength, fear_radius
 
 ## W. World generation  — ✅ implemented
 - [x] Population & houses scale with map area: `creature_density`,

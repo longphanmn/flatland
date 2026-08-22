@@ -254,7 +254,6 @@ export default function App() {
             </option>
           ))}
         </select>
-        <span className="chip legend">{populationSummary}</span>
         <span className="spark-wrap" title="alive creatures, recent ticks">
           <svg viewBox="0 0 100 22" className="spark">
             {aliveHist.length > 1 && (
@@ -299,6 +298,9 @@ export default function App() {
       {chronicleOpen && (
         <aside className="chronicle">
           <h3>Chronicle</h3>
+          <p className="chip pop-line" title="current population by kind">
+            {populationSummary}
+          </p>
           <CasteChart history={popHist} />
           {log.length === 0 ? (
             <p className="chip">nothing recorded yet</p>
