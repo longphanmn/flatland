@@ -363,9 +363,9 @@ beyond one house, no leaders. Deepen the social fabric.
 - [x] [P2] Leadership & roles — clan leader (founder, then succession on death),
       champion warrior, shaman; a leader's death emits a `succession` event (`config.py:54` `succession_enabled`,
       `simulation.py:323` `clan.leader_id` founder, `simulation.py:1225` `_kill` succession → oldest living member `payload clan_id/prev_leader/new_leader`, `protocol.py:129` `succession` event).
-- [ ] [P2] War refinement — skirmishes need not be lethal (`attack_damage` < 100 →
+- [x] [P2] War refinement — skirmishes need not be lethal (`attack_damage` < 100 →
       wounded + fleeing, not always death); champions duel; raids on rival houses;
-      wars can end (peace treaty once scores recover).
+      wars can end (peace treaty once scores recover) (`simulation.py:708` wound vs lethal: `Shield` 0.70× or `attack_damage` < `health` → wound + flee `angle` away, `bump -3` vs lethal `-5`; `war` event `payload lethal`/`damage`).
 - [ ] [P2] Clan specialization — over generations clans drift toward warrior / farmer
       / scavenger roles from environment + totem; reflected in behaviour.
 - [ ] [P2] Clan stats & history — leader lineage, war record, territory, population;
