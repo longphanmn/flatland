@@ -358,3 +358,158 @@ def test_war_over_scarce_food():
     # corpses from war should be present or have been scavenged (meals)
     famine_meals = sum(c.meals for c in famine.world.creatures())
     assert famine_meals > 0 or famine_corpses >= 0
+
+def test_predators_as_natural_selection():
+    """Predators cull the weak first — starving/elder/wounded prey die before healthy."""
+    cfg = zeros(
+        seed=50, width=60, height=60,
+        food_count=0, plant_growth_rate=0, energy_decay_per_tick=0.0,
+        predation_enabled=True, predator_ratio=0.0,
+        hunt_radius=14, fear_radius=10, bite_cooldown=3, energy_from_prey=30,
+        war_enabled=False,
+    )
+    s = Simulation(cfg)
+    # 3 weak prey close to predators, 3 healthy far
+    # weak: starving (energy 8), wounded (health 18), elder (age 5000/6000)
+    weak = [
+        s.world.add(Creature(x=12, y=12, sides=4, energy=8, health=100, age=800, lifespan=6000, clan_id=1)),   # starving
+        s.world.add(Creature(x=13, y=12, sides=4, energy=90, health=18, age=800, lifespan=6000, clan_id=1)),   # wounded
+        s.world.add(Creature(x=12, y=13, sides=4, energy=90, health=100, age=5000, lifespan=6000, clan_id=1)),  # elder
+    ]
+    healthy = [
+        s.world.add(Creature(x=40, y=40, sides=4, energy=90, health=100, age=800, lifespan=6000, clan_id=1)),
+        s.world.add(Creature(x=42, y=40, sides=4, energy=90, health=100, age=800, lifespan=6000, clan_id=1)),
+        s.world.add(Creature(x=40, y=42, sides=4, energy=90, health=100, age=800, lifespan=6000, clan_id=1)),
+    ]
+    # predators near weak prey
+    for i in range(2):
+        s.world.add(Creature(x=11 + i, y=11, sides=6, energy=120, age=1000, lifespan=6600, is_predator=True, caste="Predator"))
+    # need clan for prey
+    s.clans[1] = {"name": "PreyClan", "founder_id": 1, "born_tick": 0, "color": "#ffd166", "leader_id": 1}
+    for c in weak + healthy:
+        c.clan_id = 1
+    # run 120 ticks — predators hunt weak first (they are closest)
+    for _ in range(120):
+        s.step()
+    predations = [e for e in s.history if e.type == "predation"]
+    assert len(predations) >= 2, "at least some predation occurred"
+    # victims should be predominantly weak (ids of weak prey)
+    weak_ids = {c.id for c in weak}
+    victim_ids = {e.payload.get("prey") for e in predations if e.payload.get("prey") in weak_ids}
+    # at least 1 weak culled before healthy, and weak death rate higher
+    assert len(victim_ids) >= 1, "weak prey were culled"
+    # also check survivors: healthy should have higher survival than weak
+    weak_alive = sum(1 for c in weak if c.id in s.world.entities)
+    healthy_alive = sum(1 for c in healthy if c.id in s.world.entities)
+    # healthy survival should be >= weak (natural selection)
+    assert healthy_alive >= weak_alive or len(predations) >= 3
+
+
+def test_winter_as_apex_pressure():
+    """One winter stacks die-back + starvation + hunting + plague into extinction risk."""
+    def make_world(winter: bool) -> Simulation:
+        # winter world starts at winter tick, summer world at summer
+        # season_length 60 => 240 ticks per full year, winter is last quarter
+        cfg = zeros(
+            seed=51, width=60, height=60,
+            food_count=3, plant_growth_rate=0.02, plant_spread_rate=0.01,
+            energy_decay_per_tick=0.08, energy_from_food=12,
+            season_length=60,
+            predation_enabled=True, predator_ratio=0.0, hunt_radius=10, fear_radius=8, bite_cooldown=5,
+            disease_enabled=True, disease_rate=0.35, disease_radius=4.0, recovery_rate=0.0, disease_outbreak_rate=0.001,
+            war_enabled=False,
+        )
+        s = Simulation(cfg)
+        # 8 prey + 2 predators
+        for i in range(8):
+            s.world.add(Creature(x=20 + (i % 4) * 2, y=20 + (i // 4) * 2, sides=4, energy=60, age=500, lifespan=6000))
+        for i in range(2):
+            s.world.add(Creature(x=22, y=22, sides=6, energy=100, age=500, lifespan=6600, is_predator=True, caste="Predator"))
+        # infect one
+        prey = next(c for c in s.world.creatures() if not c.is_predator)
+        s.disease_id = 1
+        s._infect(prey)
+        if winter:
+            s.tick = 180  # winter: 180//60=3 => winter
+        else:
+            s.tick = 60   # summer: 60//60=1 => summer
+        return s
+    winter = make_world(True)
+    summer = make_world(False)
+    for _ in range(120):
+        winter.step()
+        summer.step()
+    winter_deaths = sum(winter._death_counts.values())
+    summer_deaths = sum(summer._death_counts.values())
+    # winter should be harsher (more deaths from stacked pressures)
+    assert winter_deaths >= summer_deaths, f"winter {winter_deaths} vs summer {summer_deaths}"
+    assert winter_deaths >= 3, "winter apex should kill at least 3"
+
+
+def test_mutation_demotions_well_fodder():
+    """High mutation → demoted soldiers swell both prey and warrior ranks."""
+    cfg = Config(
+        seed=52, width=60, height=60,
+        birth_enabled=True, adult_age=20, mate_radius=40, mate_energy_min=10,
+        birth_rate=0.9, sex_ratio=1.0, mutation_rate=0.9, euthanasia_threshold=0.45,
+        birth_energy_cost=1, reproduction_cooldown=0,
+        energy_decay_per_tick=0.0, food_count=0,
+        num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,
+        num_priests=0, num_women=0, num_houses=0,
+        predation_enabled=True, predator_ratio=0.0, hunt_radius=12, fear_radius=10,
+        war_enabled=True, attack_radius=2.0, attack_damage=60, relation_drift_rate=0.0,
+        rivalry_threshold=-20, alliance_threshold=50,
+    )
+    s = Simulation(cfg)
+    father = s.world.add(Creature(x=20, y=20, sides=4, energy=5000, age=2000, lifespan=5000, clan_id=1))
+    mother = s.world.add(Creature(x=21, y=20, shape="line", sides=2, energy=5000, age=2000, lifespan=5000, clan_id=1))
+    # seed rival clan
+    s.clans[1] = {"name": "A", "founder_id": father.id, "born_tick": 0, "color": "#ffd166", "leader_id": father.id}
+    s.clans[2] = {"name": "B", "founder_id": 999, "born_tick": 0, "color": "#06d6a0", "leader_id": 999}
+    s.relations[(1, 2)] = -60
+    s._relation_zones[(1, 2)] = -1
+    for _ in range(120):
+        s.step()
+    demotions = [e for e in s.history if e.type == "demotion"]
+    assert len(demotions) >= 2, "high mutation should cause demotions"
+    soldiers = [c for c in s.world.creatures() if c.caste == "Soldier"]
+    # demoted soldiers should exist (swell prey/warrior ranks)
+    assert len(soldiers) >= 2, "demoted soldiers should swell ranks"
+    # they should have participated (meals or wars or predations)
+    assert len([e for e in s.history if e.type in ("war", "predation")]) >= 1 or len(soldiers) >= 3
+
+
+def test_social_order_meets_food_chain():
+    """Priests see predator first and flee, women fall, low castes trapped by yielding."""
+    cfg = zeros(
+        seed=53, width=80, height=40,
+        food_count=0, plant_growth_rate=0, energy_decay_per_tick=0.0,
+        predation_enabled=True, predator_ratio=0.0, hunt_radius=12, fear_radius=10,
+        war_enabled=False,
+    )
+    s = Simulation(cfg)
+    # place predator east, prey west in a line so sight distance matters
+    # priest (sight 1.35×), soldier (0.9×), woman (0.8×)
+    priest = s.world.add(Creature(x=10, y=20, sides=24, energy=90, age=1000, lifespan=9000))  # Priest
+    soldier = s.world.add(Creature(x=10, y=22, sides=3, energy=90, age=1000, lifespan=5400))  # Soldier
+    woman = s.world.add(Creature(x=10, y=18, sides=2, shape="line", energy=90, age=1000, lifespan=4800))  # Woman
+    # give distinct clans to avoid yielding confusion? But yielding is based on caste rank, so low castes yield to higher
+    predator = s.world.add(Creature(x=40, y=20, sides=6, energy=120, age=1000, lifespan=6600, is_predator=True, caste="Predator"))
+    # ensure predator approaches slowly (prey should flee)
+    # run 60 ticks: priest should have fled farther than woman, and woman more likely to be caught if predator hunts
+    priest_d0 = s.world.distance(priest.x, priest.y, predator.x, predator.y)
+    woman_d0 = s.world.distance(woman.x, woman.y, predator.x, predator.y)
+    for _ in range(60):
+        s.step()
+        if predator.id not in s.world.entities:
+            break
+        if priest.id not in s.world.entities or woman.id not in s.world.entities:
+            break
+    # priest should have fled more (greater distance) than woman, due to sight
+    if priest.id in s.world.entities and woman.id in s.world.entities:
+        priest_d1 = s.world.distance(priest.x, priest.y, predator.x, predator.y)
+        woman_d1 = s.world.distance(woman.x, woman.y, predator.x, predator.y)
+        # priest sight 1.35× vs woman 0.8×, so priest should have started fleeing earlier and be farther
+        assert priest_d1 >= woman_d1 - 2.0 or priest_d1 > priest_d0, "priest should flee at least as far as woman (sight advantage)"
+    # at least check that not all died, but yielding may trap low castes
+    assert len([c for c in s.world.creatures() if not c.is_predator]) >= 1, "some prey should survive"

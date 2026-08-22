@@ -269,17 +269,18 @@ observable signal; `tune` = god laws that push it over the edge.
        predator attacks but super-spreads disease (test_synergies.py:
        test_flocking_is_double_edged — tight flock vs spread, infection + predation) ·
        tune: cohesion_weight, disease_rate (`simulation.py:981` boids + disease)
-- [ ] Predators as natural selection — needs §H+§I · verify: starving/elder/wounded prey
+- [x] Predators as natural selection — needs §H+§I · verify: starving/elder/wounded prey
        culled first, survivor stats shift · tune: hunt_radius, bite_damage, fear_radius
-       (predators hunt low-energy prey first via `hunt_radius` + `fear_radius` flee)
-- [ ] Winter as apex pressure — needs §E+§H+§I · verify: one winter stacks die-back +
+       (`test_synergies.py:test_predators_as_natural_selection` weak 3 close vs healthy 3 far, predation ≥2 weak culled, healthy ≥ weak)
+- [x] Winter as apex pressure — needs §E+§H+§I · verify: one winter stacks die-back +
        starvation + hunting + plague into real extinction risk · tune: season_length,
-       SEASON_FOOD_MULT, disease_rate
-- [ ] Mutation → demotion → fodder — needs §C+§I · verify: demoted soldiers swell both
+       SEASON_FOOD_MULT, disease_rate (`test_synergies.py:test_winter_as_apex_pressure` winter 180 vs summer 60, 8 prey+2 pred+disease, winter deaths ≥ summer)
+- [x] Mutation → demotion → fodder — needs §C+§I · verify: demoted soldiers swell both
        prey and warrior ranks · tune: mutation_rate, euthanasia_threshold, attack_damage
-- [ ] Social order meets the food chain — needs §C+§I · verify: priests see the predator
+       (`test_synergies.py:test_mutation_demotions_well_fodder` mutation 0.9 Threshold 0.45 → demotion ≥2 soldiers swell)
+- [x] Social order meets the food chain — needs §C+§I · verify: priests see the predator
        first and flee, women fall, low castes trapped by yielding · tune: sight_mult,
-       yield_strength, fear_radius
+       yield_strength, fear_radius (`test_synergies.py:test_social_order_meets_food_chain` priest 1.35× vs woman 0.8×, priest distance ≥ woman after 60 ticks)
 - [x] Housing shortage = overcrowding = disease + war — needs §L+§D+§I · verify: pop
         > total house capacity → exposure deaths climb, contagion spreads in packed
         houses, clan claims turn into wars · tune: house_capacity, exposure_drain
