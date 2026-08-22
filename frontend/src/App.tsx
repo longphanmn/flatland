@@ -4,15 +4,26 @@ import CasteChart from './render/CasteChart'
 import GodPanel from './god/GodPanel'
 import Inspector from './inspect/Inspector'
 import { WorldSocket, type ConnStatus } from './websocket'
-import type { HelloMessage, HistoryEvent, StateMessage } from './types'
+import type { HelloMessage, HistoryEvent, StateMessage, WorldSummary } from './types'
 
 const SPEEDS = [1, 5, 10, 20, 40]
+const HISTORY_PAGE = 200
+const MAX_LOG = 600
 
 const STATUS_LABEL: Record<ConnStatus, string> = {
   connecting: 'connecting',
   open: 'live',
   closed: 'reconnecting…',
 }
+
+const eventKey = (ev: HistoryEvent) => `${ev.tick}:${ev.entity_id}:${ev.type}`
+
+/** Newest-first: later ticks on top, insertion id as tiebreak (live rows have none). */
+const newestFirst = (a: HistoryEvent, b: HistoryEvent) =>
+  b.tick - a.tick || (b.id ?? 0) - (a.id ?? 0)
+
+/** "2026-08-22T06:47:01+00:00" → "06:47" for compact run labels. */
+const fmtStart = (iso: string) => iso.slice(11, 16) || iso
 
 export default function App() {
   const [status, setStatus] = useState<ConnStatus>('connecting')
@@ -29,15 +40,33 @@ export default function App() {
   const [album, setAlbum] = useState<Array<{ id: number; tick: number }>>([])
   const [albumOpen, setAlbumOpen] = useState(false)
   const [viewSnapTick, setViewSnapTick] = useState<number | null>(null)
+  const [worlds, setWorlds] = useState<WorldSummary[]>([])
+  /** null = follow the live run; a number = pinned to that (past) run. */
+  const [selectedRunId, setSelectedRunId] = useState<number | null>(null)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [noMoreHistory, setNoMoreHistory] = useState(false)
 
   const stateRef = useRef<StateMessage | null>(null)
   const sockRef = useRef<WorldSocket | null>(null)
   const seenEventsRef = useRef(new Set<string>())
   const selectedRef = useRef<number | null>(null)
   const overrideRef = useRef<StateMessage | null>(null)
+  const archiveModeRef = useRef(false)
+  const oldestLoadedRef = useRef<number | null>(null)
+  const fetchedByIdRef = useRef(new Map<string, HistoryEvent>())
+  const seededRef = useRef(false)
+  const loadingOlderRef = useRef(false)
   useEffect(() => {
     selectedRef.current = selectedId
   }, [selectedId])
+
+  const liveWorld = worlds.find((w) => w.ended_at === null)
+  const liveWorldId = liveWorld?.id ?? null
+  const archiveMode = selectedRunId !== null && selectedRunId !== liveWorldId
+
+  useEffect(() => {
+    archiveModeRef.current = archiveMode
+  }, [archiveMode])
 
   // Keyboard controls: space pause · S step · R reset · +/- zoom · F fit.
   useEffect(() => {
@@ -75,6 +104,19 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  const refreshWorlds = useCallback(async () => {
+    try {
+      const d = await fetch('/api/worlds').then((r) => r.json())
+      setWorlds(Array.isArray(d.worlds) ? d.worlds : [])
+    } catch {
+      // backend briefly unreachable — keep previous list
+    }
+  }, [])
+
+  useEffect(() => {
+    refreshWorlds()
+  }, [refreshWorlds])
+
   useEffect(() => {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
     const sock = new WorldSocket(`${proto}://${location.host}/ws`, {
@@ -82,20 +124,25 @@ export default function App() {
       onHello: (msg) => {
         setHello(msg)
         setSpeed(msg.tick_rate)
+        refreshWorlds()
       },
       onState: (msg) => {
         stateRef.current = msg
         setState(msg)
         setAliveHist((prev) => [...prev.slice(-119), msg.creatures_alive])
         setPopHist((prev) => [...prev.slice(-239), msg.population])
-        const fresh = msg.events.filter((ev) => {
-          const key = `${ev.tick}:${ev.entity_id}:${ev.type}`
-          if (seenEventsRef.current.has(key)) return false
-          seenEventsRef.current.add(key)
-          return true
-        })
-        if (fresh.length > 0) {
-          setLog((prev) => [...fresh.reverse(), ...prev].slice(0, 200))
+        if (!archiveModeRef.current) {
+          const fresh = msg.events.filter((ev) => {
+            const key = eventKey(ev)
+            if (seenEventsRef.current.has(key)) return false
+            seenEventsRef.current.add(key)
+            return true
+          })
+          if (fresh.length > 0) {
+            setLog((prev) =>
+              [...fresh.reverse(), ...prev].slice(0, MAX_LOG),
+            )
+          }
         }
       },
 
@@ -143,6 +190,70 @@ export default function App() {
     overrideRef.current = null
     setViewSnapTick(null)
   }, [])
+
+  /** Merge fetched (id-bearing) events into the log newest-first, deduped by tick+entity_id+type. */
+  const mergeFetched = useCallback((fetched: HistoryEvent[]) => {
+    if (fetched.length === 0) return
+    let minId: number | null = null
+    for (const ev of fetched) {
+      if (typeof ev.id === 'number') {
+        fetchedByIdRef.current.set(String(ev.id), ev)
+        if (minId === null || ev.id < minId) minId = ev.id
+      }
+      // Register keys so a later live rebroadcast of the same window is dropped.
+      seenEventsRef.current.add(eventKey(ev))
+    }
+    if (minId !== null && (oldestLoadedRef.current === null || minId < oldestLoadedRef.current)) {
+      oldestLoadedRef.current = minId
+    }
+    setLog((prev) => {
+      const byKey = new Map<string, HistoryEvent>()
+      for (const ev of fetched) byKey.set(eventKey(ev), ev)
+      for (const ev of prev) {
+        const k = eventKey(ev)
+        if (!byKey.has(k)) byKey.set(k, ev)
+      }
+      return [...byKey.values()].sort(newestFirst).slice(0, MAX_LOG)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!chronicleOpen || archiveMode || seededRef.current) return
+    seededRef.current = true
+    fetch(`/api/history?limit=${HISTORY_PAGE}`)
+      .then((r) => r.json())
+      .then((d) => mergeFetched(Array.isArray(d.events) ? d.events : []))
+      .catch(() => {})
+  }, [chronicleOpen, archiveMode, mergeFetched])
+
+  const loadOlder = useCallback(async () => {
+    const since = oldestLoadedRef.current
+    if (since === null || loadingOlderRef.current) return
+    loadingOlderRef.current = true
+    setLoadingOlder(true)
+    try {
+      const d = await fetch(`/api/history?since=${since}&limit=${HISTORY_PAGE}`).then((r) =>
+        r.json(),
+      )
+      const events: HistoryEvent[] = Array.isArray(d.events) ? d.events : []
+      if (events.length === 0) setNoMoreHistory(true)
+      else mergeFetched(events)
+    } catch {
+      // transient failure — button stays usable for a retry
+    } finally {
+      loadingOlderRef.current = false
+      setLoadingOlder(false)
+    }
+  }, [mergeFetched])
+
+  const selectRun = useCallback(
+    (raw: string) => {
+      const id = Number(raw)
+      // Picking the live run canonicalizes back to follow-live mode.
+      setSelectedRunId(id === liveWorldId ? null : id)
+    },
+    [liveWorldId],
+  )
 
   const populationSummary = state
     ? Object.entries(state.population)
@@ -205,6 +316,24 @@ export default function App() {
             seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×
             {state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}
           </span>
+        )}
+        {worlds.length > 0 && (
+          <label className="chip run-label" htmlFor="run">
+            run
+            <select
+              id="run"
+              className="run-select"
+              value={String(selectedRunId ?? liveWorldId ?? '')}
+              onChange={(e) => selectRun(e.target.value)}
+            >
+              {worlds.map((w) => (
+                <option key={w.id} value={String(w.id)}>
+                  #{w.id} · seed {w.seed} · {fmtStart(w.started_at)}
+                  {w.ended_at === null ? ' · (live)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
         {state && (
           <span className="chip" title={`time of day ${state.time_of_day}`}>
@@ -272,6 +401,8 @@ export default function App() {
         </span>
       </footer>
 
+      <p className="key-hints">space pause · S step · R reset · F fit · +/− zoom</p>
+
       {viewSnapTick !== null && (
         <button className="snap-banner" onClick={exitSnapshot}>
           viewing snapshot from tick {viewSnapTick} — click to return to the living
@@ -298,10 +429,28 @@ export default function App() {
       {chronicleOpen && (
         <aside className="chronicle">
           <h3>Chronicle</h3>
+          {archiveMode && selectedRunId !== null && (
+            <p className="archive-banner">
+              viewing archive of world #{selectedRunId} — live feed paused
+            </p>
+          )}
           <p className="chip pop-line" title="current population by kind">
             {populationSummary}
           </p>
           <CasteChart history={popHist} />
+          {!archiveMode && oldestLoadedRef.current !== null && (
+            <button
+              className="chron-btn"
+              onClick={loadOlder}
+              disabled={loadingOlder || noMoreHistory}
+            >
+              {loadingOlder
+                ? 'loading…'
+                : noMoreHistory
+                  ? 'no older events'
+                  : 'load older'}
+            </button>
+          )}
           {log.length === 0 ? (
             <p className="chip">nothing recorded yet</p>
           ) : (

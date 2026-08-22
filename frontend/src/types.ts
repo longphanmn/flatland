@@ -57,6 +57,8 @@ export interface StateMessage {
 }
 
 export interface HistoryEvent {
+  /** Present only on events fetched from GET /api/history; absent on live-streamed ones. */
+  id?: number
   type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery'
   tick: number
   entity_id: number
@@ -74,6 +76,17 @@ export interface HelloMessage {
   width: number
   height: number
   boundary: 'wrap' | 'clamp'
+}
+
+/** One row of GET /api/worlds — a past or current world run. */
+export interface WorldSummary {
+  id: number
+  seed: number
+  width: number
+  height: number
+  boundary: 'wrap' | 'clamp'
+  started_at: string
+  ended_at: string | null
 }
 
 /** House wall segments for rendering; mirrors backend _house_wall_segments. */
