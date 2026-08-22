@@ -26,6 +26,7 @@ export interface EntityState {
   meals?: number
   clan_id?: number
   clan_color?: string
+  is_predator?: boolean
   sleeping?: boolean
   indoors?: boolean
   generation?: number
@@ -60,7 +61,7 @@ export interface StateMessage {
 export interface HistoryEvent {
   /** Present only on events fetched from GET /api/history; absent on live-streamed ones. */
   id?: number
-  type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery'
+  type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war'
   tick: number
   entity_id: number
   caste?: string | null
@@ -208,9 +209,33 @@ export interface GodLaws {
   shelter_enabled?: boolean
   exposure_drain?: number
   house_capacity?: number
+  house_claim_enabled?: boolean
   rest_recovery_mult?: number
 
   door_clearance?: number
   house_min_size?: number
   house_max_size?: number
+
+  // Predation (§I)
+  predation_enabled?: boolean
+  predator_ratio?: number
+  hunt_radius?: number
+  bite_damage?: number
+  bite_cooldown?: number
+  energy_from_prey?: number
+  fear_radius?: number
+
+  // Clan war (§I)
+  war_enabled?: boolean
+  attack_radius?: number
+  attack_damage?: number
+
+  // Society — interaction
+  cohesion_weight?: number
+  alignment_weight?: number
+  separation_weight?: number
+  flock_radius?: number
+  relation_drift_rate?: number
+  alliance_threshold?: number
+  rivalry_threshold?: number
 }

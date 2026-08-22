@@ -63,6 +63,24 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction' },
   { key: 'carrying_capacity', label: 'Carrying capacity', min: 2, max: 400, step: 2, group: 'Reproduction' },
   { key: 'max_population', label: 'Hard pop cap', min: 2, max: 1000, step: 2, group: 'Reproduction' },
+  // Society — interaction & clan relations
+  { key: 'cohesion_weight', label: 'Cohesion weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
+  { key: 'alignment_weight', label: 'Alignment weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
+  { key: 'separation_weight', label: 'Separation weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
+  { key: 'flock_radius', label: 'Flock radius', min: 1, max: 40, step: 1, group: 'Interaction' },
+  { key: 'relation_drift_rate', label: 'Relation drift / tick', min: 0, max: 10, step: 0.5, group: 'Interaction' },
+  { key: 'alliance_threshold', label: 'Alliance threshold', min: -100, max: 100, step: 5, group: 'Interaction' },
+  { key: 'rivalry_threshold', label: 'Rivalry threshold', min: -100, max: 100, step: 5, group: 'Interaction' },
+  // Predation — hunters and prey
+  { key: 'predator_ratio', label: 'Predator ratio', min: 0, max: 1, step: 0.01, group: 'Predation' },
+  { key: 'hunt_radius', label: 'Hunt radius', min: 1, max: 40, step: 1, group: 'Predation' },
+  { key: 'bite_damage', label: 'Bite damage', min: 0, max: 200, step: 10, group: 'Predation' },
+  { key: 'bite_cooldown', label: 'Bite cooldown', min: 0, max: 100, step: 1, group: 'Predation' },
+  { key: 'energy_from_prey', label: 'Energy from prey', min: 0, max: 200, step: 5, group: 'Predation' },
+  { key: 'fear_radius', label: 'Fear radius', min: 1, max: 40, step: 1, group: 'Predation' },
+  // Clan war — rival blood
+  { key: 'attack_radius', label: 'Attack radius', min: 0.5, max: 10, step: 0.1, group: 'Clan War' },
+  { key: 'attack_damage', label: 'Attack damage', min: 0, max: 200, step: 10, group: 'Clan War' },
   // Bodies & Houses — geometry of the flat world
   { key: 'door_clearance', label: 'Door clearance ×', min: 1, max: 4, step: 0.1, group: 'Bodies & Houses' },
   { key: 'house_min_size', label: 'House min size', min: 4, max: 30, step: 1, group: 'Bodies & Houses' },
@@ -78,6 +96,9 @@ const GROUP_ORDER = [
   'Disease',
   'Sky & Seasons',
   'Shelter',
+  'Interaction',
+  'Predation',
+  'Clan War',
   'Bodies & Houses',
 ]
 
@@ -124,11 +145,12 @@ export default function GodPanel({ open, onClose }: Props) {
   const set = (key: NumberLawKey, raw: string) =>
     setLaws((l) => ({ ...l, [key]: raw === '' ? undefined : Number(raw) }))
 
-  const apply = async () => {
+  const postLaws = async (persist: boolean) => {
     setError(null)
     setSaved(false)
     try {
-      const res = await fetch('/api/laws', {
+      const qs = persist ? '?persist=true' : '?persist=false'
+      const res = await fetch(`/api/laws${qs}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(laws),
@@ -148,6 +170,8 @@ export default function GodPanel({ open, onClose }: Props) {
       setError(e instanceof Error ? e.message : 'failed to apply law')
     }
   }
+  const apply = () => postLaws(false)
+  const save = () => postLaws(true)
 
   return (
     <aside className="god-panel">
@@ -257,6 +281,34 @@ export default function GodPanel({ open, onClose }: Props) {
                   </select>
                 </label>
               )}
+              {group === 'Predation' && (
+                <label className="god-row">
+                  <span title="predators hunt prey; disabling makes them docile">Predation allowed</span>
+                  <select
+                    value={String(laws.predation_enabled ?? false)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, predation_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
+              )}
+              {group === 'Clan War' && (
+                <label className="god-row">
+                  <span title="rival clans fight on contact; disabling enforces peace">War allowed</span>
+                  <select
+                    value={String(laws.war_enabled ?? false)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, war_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
+              )}
               {NUMBER_LAWS.filter((l) => l.group === group).map(({ key, label, min, max, step }) => (
                 <label className="god-row" key={key}>
                   <span title={LAW_HINTS[key]}>{label}</span>
@@ -276,7 +328,10 @@ export default function GodPanel({ open, onClose }: Props) {
           <footer className="god-foot">
             {error && <span className="god-error">{error}</span>}
             {!error && saved && <span className="god-saved">laws applied</span>}
-            <button onClick={apply}>Apply Law</button>
+            <button onClick={apply} title="apply to current world only (Reset reverts)">Apply</button>
+            <button onClick={save} title="save to current and future worlds (Reset keeps it)" className="god-save">
+              Save
+            </button>
           </footer>
         </>
       )}

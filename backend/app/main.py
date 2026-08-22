@@ -59,6 +59,8 @@ class RuntimeState:
         self.paused = False
         self.speed = self.config.tick_rate
         self.world_id: int | None = None
+        # Baseline laws that survive Reset (Save). Apply mutates only self.config.
+        self.saved_config = self.config
 
 
 CONFIG = Config.from_env()
@@ -145,8 +147,10 @@ async def apply_control(msg: ControlMessage) -> dict:
         await HUB.broadcast(RT.sim.snapshot().model_dump(mode="json"))
     elif msg.action is ControlAction.RESET:
         # A new world is born with fresh laws of chance: a new random seed.
+        # Save persists across worlds, Apply does not — use saved baseline.
         # The chronicle endures in the database.
-        new_cfg = replace(RT.config, seed=random.SystemRandom().randint(0, 2**31 - 1))
+        base = getattr(RT, "saved_config", RT.config)
+        new_cfg = replace(base, seed=random.SystemRandom().randint(0, 2**31 - 1))
         RT.config = new_cfg
         RT.sim = Simulation(new_cfg, history=RT.sim.history)
         start_world()
@@ -235,6 +239,16 @@ LAW_FIELDS = (
     "house_capacity",
     "house_claim_enabled",
     "rest_recovery_mult",
+    "predation_enabled",
+    "predator_ratio",
+    "hunt_radius",
+    "bite_damage",
+    "bite_cooldown",
+    "energy_from_prey",
+    "fear_radius",
+    "war_enabled",
+    "attack_radius",
+    "attack_damage",
 )
 
 
@@ -242,8 +256,12 @@ def get_laws() -> dict:
     return {name: getattr(RT.config, name) for name in LAW_FIELDS}
 
 
-def apply_laws(laws: GodLaws) -> dict:
-    """God sets the rules; the world and every creature must obey them."""
+def apply_laws(laws: GodLaws, persist: bool = True) -> dict:
+    """God sets the rules; the world and every creature must obey them.
+
+    persist=True  → Save: current world + future worlds (Reset uses this baseline)
+    persist=False → Apply: current world only (Reset reverts to saved baseline)
+    """
     updates = {
         k: v for k, v in laws.model_dump(exclude_unset=True).items() if v is not None
     }
@@ -260,6 +278,12 @@ def apply_laws(laws: GodLaws) -> dict:
     RT.config = cfg
     RT.sim.config = cfg  # the living world follows the new law immediately
     RT.sim.world.config = cfg
+    if persist:
+        # also advance the saved baseline so next Reset inherits it
+        if not hasattr(RT, "saved_config"):
+            RT.saved_config = RT.config
+        else:
+            RT.saved_config = replace(RT.saved_config, **updates)
     if "house_claim_enabled" in updates:
         RT.sim._refresh_house_claims()
     if updates and RT.world_id is not None:
@@ -306,9 +330,13 @@ async def read_laws() -> dict:
 
 
 @app.post("/api/laws")
-async def write_laws(laws: GodLaws) -> dict:
-    """Set new laws of nature (god-writable). Applies to the live world."""
-    return apply_laws(laws)
+async def write_laws(laws: GodLaws, persist: bool = True) -> dict:
+    """Set new laws of nature (god-writable).
+
+    persist=true  (default) → Save: current + future worlds (Reset keeps it)
+    persist=false → Apply: current world only (Reset reverts)
+    """
+    return apply_laws(laws, persist=persist)
 
 
 @app.get("/api/history")

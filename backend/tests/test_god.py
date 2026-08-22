@@ -26,9 +26,9 @@ def client():
 
 def test_get_laws_returns_current(client):
     laws = client.get("/api/laws").json()
-    assert laws["food_count"] == 24
+    assert laws["food_count"] == Config().food_count
     assert laws["boundary"] == "wrap"
-    assert laws["energy_decay_per_tick"] == pytest.approx(0.08)
+    assert laws["energy_decay_per_tick"] == pytest.approx(Config().energy_decay_per_tick)
 
 
 def test_god_declares_famine_and_world_follows(client):
@@ -61,7 +61,7 @@ def test_invalid_law_rejected(client):
     r = client.post("/api/laws", json={"energy_decay_per_tick": 99})
     assert r.status_code == 422
     # world unchanged
-    assert client.get("/api/laws").json()["energy_decay_per_tick"] == pytest.approx(0.08)
+    assert client.get("/api/laws").json()["energy_decay_per_tick"] == pytest.approx(Config().energy_decay_per_tick)
 
 
 def test_starving_ratio_above_hungry_rejected(client):

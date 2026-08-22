@@ -305,10 +305,10 @@ def test_sight_recognition_scales_with_caste():
         )
         return c, food.id
 
-    priest_world = Simulation(minimal_cfg(width=200.0, height=100.0, seed=22, food_count=1))
+    priest_world = Simulation(minimal_cfg(width=200.0, height=100.0, seed=22, food_count=1, perceive_radius=12.0))
     priest, priest_food_id = spawn_chaser(priest_world, "polygon", 24)
 
-    woman_world = Simulation(minimal_cfg(width=200.0, height=100.0, seed=22, food_count=1))
+    woman_world = Simulation(minimal_cfg(width=200.0, height=100.0, seed=22, food_count=1, perceive_radius=12.0))
     woman, woman_food_id = spawn_chaser(woman_world, "line", 2)
 
     px, py = priest.x, priest.y
@@ -347,7 +347,7 @@ def test_infants_see_less_than_adults():
     """A food 10 away: an adult Gentleman (sight 12) eats it; an infant
     (12 × 0.6 = 7.2 sight) never perceives it."""
     def world(age: int) -> tuple[Simulation, Creature]:
-        s = Simulation(minimal_cfg(width=200.0, height=100.0, seed=32, food_count=1))
+        s = Simulation(minimal_cfg(width=200.0, height=100.0, seed=32, food_count=1, perceive_radius=12.0))
         food = next(e for e in s.world.entities.values() if e.kind == "food")
         c = s.world.add(
             Creature(x=(food.x - 10.0) % 200.0, y=food.y, sides=4, angle=math.pi,
@@ -369,7 +369,7 @@ def test_food_count_stable_over_many_ticks():
     for _ in range(30):
         s.step()
     foods = [e for e in s.world.entities.values() if e.kind == "food"]
-    assert len(foods) == 24
+    assert len(foods) == s.config.food_count
 
 
 def test_snapshot_roundtrip_via_protocol():
@@ -389,4 +389,4 @@ def test_snapshot_roundtrip_via_protocol():
     dumped = snap.model_dump(mode="json")
     assert dumped["type"] == "state"
     assert dumped["tick"] == s.tick
-    assert len(dumped["entities"]) == 20 + 24 + 6
+    assert len(dumped["entities"]) == 20 + s.config.food_count + 6

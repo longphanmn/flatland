@@ -278,6 +278,8 @@ export default function App() {
   const populationEntries = state
     ? Object.entries(state.population).sort(([a], [b]) => a.localeCompare(b))
     : []
+  // Chronicle header shows only objects (Food/House/Corpse), creatures are in graph
+  const objectEntries = populationEntries.filter(([k]) => !(k in CASTE_COLORS))
 
   const hungryCount = state?.entities.filter((e) => e.status === 'hungry').length ?? 0
   const starvingCount = state?.entities.filter((e) => e.status === 'starving').length ?? 0
@@ -345,24 +347,6 @@ export default function App() {
             seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×
             {state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}
           </span>
-        )}
-        {worlds.length > 0 && (
-          <label className="chip run-label" htmlFor="run">
-            run
-            <select
-              id="run"
-              className="run-select"
-              value={String(selectedRunId ?? liveWorldId ?? '')}
-              onChange={(e) => selectRun(e.target.value)}
-            >
-              {worlds.map((w) => (
-                <option key={w.id} value={String(w.id)}>
-                  #{w.id} · seed {w.seed} · {fmtStart(w.started_at)}
-                  {w.ended_at === null ? ' · (live)' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
         )}
         {state && (
           <span className="chip" title={`time of day ${state.time_of_day}`}>
@@ -459,18 +443,17 @@ export default function App() {
         <aside className="chronicle">
           <h3 className="chronicle-title">
             Chronicle
-            {populationEntries.length > 0 && (
-              <span className="chronicle-pop" title="current population by kind">
+            {objectEntries.length > 0 && (
+              <span className="chronicle-pop" title="objects in world">
                 {' '}
                 —{' '}
-                {populationEntries.map(([k, v], i) => {
-                  const color = CASTE_COLORS[k] ?? (k === 'Food' ? '#d29922' : k === 'House' ? '#8b949e' : '#8b949e')
-                  const isCaste = k in CASTE_COLORS
+                {objectEntries.map(([k, v], i) => {
+                  const color = k === 'Food' ? '#d29922' : k === 'House' ? '#8b949e' : k === 'Corpse' ? '#6e7681' : '#8b949e'
                   return (
                     <span key={k} className="pop-chip">
-                      {isCaste && <span className="dot-inline" style={{ background: color }} />}
+                      <span className="dot-inline" style={{ background: color }} />
                       {k} <b>{v}</b>
-                      {i < populationEntries.length - 1 && ' · '}
+                      {i < objectEntries.length - 1 && ' · '}
                     </span>
                   )
                 })}
@@ -549,6 +532,27 @@ export default function App() {
       )}
 
       <GodPanel open={godOpen} onClose={() => setGodOpen(false)} />
+
+      {worlds.length > 0 && (
+        <div className="run-switcher">
+          <label className="chip run-label" htmlFor="run-bottom">
+            run
+            <select
+              id="run-bottom"
+              className="run-select"
+              value={String(selectedRunId ?? liveWorldId ?? '')}
+              onChange={(e) => selectRun(e.target.value)}
+            >
+              {worlds.map((w) => (
+                <option key={w.id} value={String(w.id)}>
+                  #{w.id} · seed {w.seed} · {fmtStart(w.started_at)}
+                  {w.ended_at === null ? ' · (live)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
     </div>
   )
 }

@@ -76,7 +76,7 @@ def test_immature_plant_feeds_less_than_mature():
     young = meal_energy(0.25)
     # same seed => identical metabolism; only the harvest differs. The plant
     # grows one tick's worth before being eaten, hence 0.25 + growth_rate.
-    expected = Config().energy_from_food * (1 - min(1.0, 0.25 + 0.02))
+    expected = Config().energy_from_food * (1 - min(1.0, 0.25 + Config().plant_growth_rate))
     assert mature - young == pytest.approx(expected)
 
 
@@ -125,8 +125,8 @@ def test_corpse_decay_boosts_nearby_plant_growth():
         s.step()
     assert not any(e.kind == "corpse" for e in s.world.entities.values())
     grown = NUTRIENT_BOOST * s.config.nutrient_cycle_rate
-    assert near.growth == pytest.approx(0.2 + 3 * 0.02 + grown)  # fertilised
-    assert far.growth == pytest.approx(0.2 + 3 * 0.02)  # too far to feel it
+    assert near.growth == pytest.approx(0.2 + 3 * s.config.plant_growth_rate + grown)  # fertilised
+    assert far.growth == pytest.approx(0.2 + 3 * s.config.plant_growth_rate)  # too far to feel it
 
 
 def test_winter_dieback_removes_youngest_first():

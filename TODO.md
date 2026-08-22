@@ -105,23 +105,27 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 
 ## G. God-law & observability
 - [x] [P0] Consolidate ALL new laws into GodLaws + God screen UI (grouped by
-      section: World / Food & Energy / Hunger & Sight / Movement / Life &
-      Death / Bodies & Houses; grows as §B/§D/§E laws arrive)
+       section: World / Food & Energy / Hunger & Sight / Movement / Life &
+       Death / Bodies & Houses; grows as §B/§D/§E laws arrive) — **Save** persists
+       to future worlds (`POST /api/laws?persist=true` → `RT.saved_config`),
+       **Apply** current only (`?persist=false` → revert on Reset, `main.py:259`,
+       `GodPanel.tsx:127`)
 - [x] [P2] Population/caste sparkline chart in HUD (+ stacked caste chart in
        the Chronicle panel, §N)
 - [x] [P2] Chronicle shows all event types (birth/promotion/demotion/recovery/
-       outbreak/death — color-coded in the panel); header combines live
-       population `Soldier 6 · Gentleman 4 · … · Food 24 · House 6` with caste
-       colors (`App.tsx:461`), legend via `CasteChart`; new world clears the
-       live feed (`App.tsx:129`, tick/seed reset detection)
+       outbreak/death — color-coded in the panel); header combines objects
+       `Food 48 · House 6` (creatures in graph, `App.tsx:455`), legend via
+       `CasteChart`; new world clears the live feed (`App.tsx:129`, tick/seed
+       reset); box at top-right (`index.css:117`, `top:58px`, `max-height:60vh`)
 - [x] [P2] Creature inspector — tap/click a creature (works on touch too):
        gold halo marks it; left panel shows live status (caste, sex, stage,
        age/lifespan, energy/health bars, meals, irregularity, lineage) and its
        personal chronicle from `GET /api/creature/{id}`; auto-refreshes 1 Hz;
-       survives death (status + full history remain)
-- [x] [P2] DB-backed history pagination + world run selector (landed with the
-       Chronicle pagination + HUD run dropdown, commit 9fed747); archive mode
-       pauses live feed, `load older` paginates via `GET /api/history?since=`
+       survives death (status + full history remain) (`inspect/Inspector.tsx:83`,
+       `CanvasRenderer.tsx:243` pick radius)
+- [x] [P2] DB-backed history pagination + world run selector (Chronicle pagination +
+       HUD run dropdown → moved to bottom-right `App.tsx:534` `run-switcher`
+       `index.css:182`); archive mode pauses live feed, `load older` paginates via `GET /api/history?since=`
 
 ## H. Food ecosystem & ecological balance  [P2] — ✅ implemented
 - [x] Plants replace inert food — `Food` is a living plant with `growth` 0.15→1.0
@@ -147,16 +151,18 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [x] [P2] Creature interaction (boids) — separation / cohesion / alignment
        steering blended after food-seeking (social yielding already landed in §C);
        "Interaction" law group (`cohesion_weight`, `alignment_weight`, `separation_weight`, `flock_radius`)
-- [ ] [P2] Predation — a Carnivore predator caste with behaviour priority
-      flee → hunt → forage → reproduce → rest; bite-on-contact kills prey (death
-      cause `predation`), leaves a carcass, feeds the predator; prey flee within
-      `fear_radius`
-- [ ] [P2] Clan war — rival-clan creatures fight on contact (`attack_radius`,
-      `attack_damage`); loser dies (cause `war`) → carcass + relation penalty
-- [x] GodLaws (partial): relation_drift_rate, alliance_threshold, rivalry_threshold,
-       cohesion_weight, alignment_weight, separation_weight, flock_radius
-       (predator laws deferred: predator_ratio, hunt_radius, bite_damage, …)
-- [x] Events (partial): `alliance`, `rivalry` (predation/war deferred to §I predation)
+- [x] [P2] Predation — Carnivore `Predator` caste (`entities.py:47`, `config.py:128`)
+       `is_predator`/`bite_cooldown`; spawn `predator_ratio` only if `predation_enabled`
+       (`simulation.py:255`), hunt `hunt_radius` → bite `bite_cooldown`/`energy_from_prey`,
+       prey `fear_radius` flee; death `predation` + `predation` event, carcass + relation
+- [x] [P2] Clan war — rival-clan creatures fight on contact (`war_enabled`,
+       `attack_radius`/`attack_damage` → cause `war`, `war` event, relation -5, carcass)
+       (`simulation.py:469`, `config.py:137`)
+- [x] GodLaws: relation_drift_rate, alliance_threshold, rivalry_threshold,
+       cohesion_weight, alignment_weight, separation_weight, flock_radius,
+       predation_enabled, predator_ratio, hunt_radius, bite_damage, bite_cooldown,
+       energy_from_prey, fear_radius, war_enabled, attack_radius, attack_damage
+- [x] Events: `alliance`, `rivalry`, `predation`, `war` (+ `predation`/`war` deaths)
 
 ## J. Creature profile & genealogy  [P0] — ✅ implemented
 - [x] Genealogy table — landed in §F (creatures rows: parents, caste, generation,
@@ -208,13 +214,18 @@ after dark (§N night rest). Shelter should be scarce, contested and life-saving
        the wall via `House.clan_id`/`clan_color`; members prefer own house via `_house_for`);
        founding clans claim distinct houses; new clans claim first free house; toggle via law
 - [x] [P2] Rest & recovery — indoors: energy regen halved via `sleep_energy_mult` +
-       `rest_recovery_mult` (×0.15 health/tick) disease recovery; shelter law toggle
+       `rest_recovery_mult` (×0.15 health/tick) disease recovery; shelter law toggle;
+       starving creatures skip sleep to forage (`simulation.py:885`)
+- [x] [P2] House smart — doorway targeting (`_door_pos` `simulation.py:345`, sleep
+       steering `simulation.py:993` within 12u), wall-bounce → door seeking
+       (`simulation.py:1072`), starving skip prevents house-wall starvation
 - [ ] [P2] Predator refuge — the doorway is too small for the Carnivore caste (§I);
        a house is the only safe haven once predators hunt.
 - [ ] [P2] Settlement economy — houses scale with population (house_density tied to
        carrying capacity); abandoned houses crumble to ruins; new clans found new ones.
 - [x] GodLaws: shelter_enabled, exposure_drain, house_capacity, house_claim_enabled,
-       rest_recovery_mult (Shelter group)
+       rest_recovery_mult (Shelter group) — defaults tuned for 30-day survival
+       (`config.py:108`, food 48, decay 0.05, perceive 18, mate 10/30, birth 0.35, adult 200)
 
 ## Cross-system synergies (emergent depth)
 Not features — acceptance criteria. Tick only after the behaviour is observable in a

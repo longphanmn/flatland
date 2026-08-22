@@ -18,6 +18,7 @@ export const CASTE_COLORS: Record<string, string> = {
   Noble: '#79c0ff',
   Priest: '#e6edf3',
   Woman: '#ff9bce',
+  Predator: '#ff3838',
 }
 
 function creatureColor(e: EntityState): string {

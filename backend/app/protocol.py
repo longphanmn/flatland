@@ -50,6 +50,7 @@ class EntityState(BaseModel):
     father_id: Optional[int] = None
     clan_id: Optional[int] = None
     clan_color: Optional[str] = None
+    is_predator: Optional[bool] = None
     sleeping: Optional[bool] = None
     indoors: Optional[bool] = None
     generation: Optional[int] = None
@@ -85,7 +86,7 @@ class StateMessage(BaseModel):
 class HistoryEvent(BaseModel):
     type: Literal[
         "death", "birth", "promotion", "demotion", "outbreak", "recovery",
-        "bloom", "alliance", "rivalry",
+        "bloom", "alliance", "rivalry", "predation", "war",
     ] = ("death")
     tick: int
     entity_id: int
@@ -182,3 +183,17 @@ class GodLaws(BaseModel):
     house_capacity: Optional[int] = Field(None, ge=1, le=64)
     house_claim_enabled: Optional[bool] = None
     rest_recovery_mult: Optional[float] = Field(None, ge=0, le=10)
+
+    # Predation (§I)
+    predation_enabled: Optional[bool] = None
+    predator_ratio: Optional[float] = Field(None, ge=0, le=1)
+    hunt_radius: Optional[float] = Field(None, ge=1, le=40)
+    bite_damage: Optional[float] = Field(None, ge=0, le=1000)
+    bite_cooldown: Optional[int] = Field(None, ge=0, le=100000)
+    energy_from_prey: Optional[float] = Field(None, ge=0, le=1000)
+    fear_radius: Optional[float] = Field(None, ge=1, le=40)
+
+    # Clan war (§I)
+    war_enabled: Optional[bool] = None
+    attack_radius: Optional[float] = Field(None, ge=0.5, le=10)
+    attack_damage: Optional[float] = Field(None, ge=0, le=1000)

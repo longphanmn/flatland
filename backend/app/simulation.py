@@ -167,6 +167,28 @@ class Simulation:
             )
         )
 
+    def _spawn_predator(self) -> None:
+        """Spawn a Carnivore predator (§I) — fast, no clan, hunts prey."""
+        cfg = self.config
+        x, y = self._rand_pos()
+        traits = traits_for("Predator")
+        self.world.add(
+            Creature(
+                shape="polygon",
+                sides=6,
+                iso_angle=60.0,
+                caste="Predator",
+                x=x,
+                y=y,
+                angle=self.rng.uniform(0, 2 * math.pi),
+                speed=traits.speed,
+                energy=cfg.energy_start,
+                lifespan=traits.lifespan * cfg.lifespan_mult,
+                is_predator=True,
+                clan_id=0,
+            )
+        )
+
     def _spawn_initial(self) -> None:
         cfg = self.config
         area = cfg.width * cfg.height
@@ -229,6 +251,11 @@ class Simulation:
                 )
             )
         self._found_founding_clans()
+        # Predators (§I) — spawn after clans so they don't get a clan crest; only if enabled
+        if cfg.predation_enabled and cfg.predator_ratio > 0:
+            n_predators = self._jittered(area * cfg.creature_density * cfg.predator_ratio)
+            for _ in range(n_predators):
+                self._spawn_predator()
 
     def _found_clan(self, founder: Creature) -> int:
         cid = self._next_clan_id
@@ -315,6 +342,18 @@ class Simulation:
                     return h  # type: ignore[return-value]
         # Fall back to nearest house by wrap-aware distance
         return min(houses, key=lambda h: self.world.distance(c.x, c.y, h.x, h.y))  # type: ignore[arg-type]
+
+    def _door_pos(self, h: House) -> tuple[float, float]:
+        """Center of the doorway gap (where creatures can pass)."""
+        half = h.size / 2
+        if h.door_side == "north":
+            return h.x + h.door_offset, h.y - half
+        if h.door_side == "south":
+            return h.x + h.door_offset, h.y + half
+        if h.door_side == "west":
+            return h.x - half, h.y + h.door_offset
+        # east
+        return h.x + half, h.y + h.door_offset
 
     # --------------------------------------------------------------- terrain
     def _generate_terrain(self) -> None:
@@ -410,6 +449,7 @@ class Simulation:
         for creature in self.world.creatures():  # snapshot list; removals are safe
             self._update_creature(creature, houses)
         self._update_disease()
+        self._update_war()
         self._reproduce()
         self._update_relations()
         self._enforce_food_law()
@@ -434,6 +474,52 @@ class Simulation:
         if score <= self.config.rivalry_threshold:
             return -1  # rivals
         return 0  # neutral
+
+    def _update_war(self) -> None:
+        """Rival-clan creatures fight on contact (§I)."""
+        cfg = self.config
+        if not cfg.war_enabled:
+            return
+        # Collect rival pairs first (deterministic order by id)
+        creatures = sorted(self.world.creatures(), key=lambda c: c.id)
+        to_kill: list[tuple[Creature, Creature]] = []
+        for i, a in enumerate(creatures):
+            if a.id not in self.world.entities:
+                continue
+            if a.is_predator:
+                continue
+            for b in creatures[i + 1 :]:
+                if b.id not in self.world.entities or b.is_predator:
+                    continue
+                if not a.clan_id or not b.clan_id or a.clan_id == b.clan_id:
+                    continue
+                pair = self._relation_pair(a.clan_id, b.clan_id)
+                if self._zone_of(self.relations.get(pair, 0)) != -1:
+                    continue  # not rivals
+                if self.world.distance(a.x, a.y, b.x, b.y) > cfg.attack_radius:
+                    continue
+                # Deterministic loser: lower id dies (no extra RNG)
+                loser, winner = (a, b) if a.id < b.id else (b, a)
+                # avoid double-kill in same tick
+                if any(loser.id == x[0].id for x in to_kill) or any(winner.id == x[0].id for x in to_kill):
+                    continue
+                to_kill.append((loser, winner))
+        for loser, winner in to_kill:
+            if loser.id not in self.world.entities:
+                continue
+            self._kill(loser, "war")
+            self._emit(
+                HistoryEvent(
+                    type="war",
+                    tick=self.tick + 1,
+                    entity_id=loser.id,
+                    caste=loser.caste,
+                    x=round(loser.x, 2),
+                    y=round(loser.y, 2),
+                    payload={"winner": winner.id, "a": loser.clan_id, "b": winner.clan_id},
+                )
+            )
+            self._bump_relation(loser.clan_id, winner.clan_id, -5)
 
     def _update_relations(self) -> None:
         """Clan scores rise when strangers feast together and drift toward peace."""
@@ -799,15 +885,24 @@ class Simulation:
         c.age += 1
         if c.repro_cooldown > 0:
             c.repro_cooldown -= 1
+        if c.bite_cooldown > 0:
+            c.bite_cooldown -= 1
 
         # 0. Night rest: after dark, creatures make for the nearest house and
         # those who win a bed sleep — half the hunger, multiplied healing.
+        # Predators cannot fit through the doorway (§L refuge).
+        # Starving creatures skip sleep to forage — survival over comfort.
         c.sleeping = False
         c.indoors = False
         tod = self._time_of_day()
+        # hunger check for shelter: starving creatures ignore the call of home
+        ratio = c.energy / cfg.energy_max if cfg.energy_max > 0 else 1.0
+        is_starving = ratio <= cfg.starving_ratio
         if (
             cfg.sleep_enabled
             and cfg.shelter_enabled
+            and not c.is_predator
+            and not is_starving
             and self._is_night(tod)
             and houses
         ):
@@ -890,11 +985,16 @@ class Simulation:
                 best, target = d, e  # type: ignore[assignment]
 
         # 2. Steer toward food or wander — unless heading home for the night.
+        # Smarter house approach: steer toward doorway when close to avoid wall stuck.
         if cfg.sleep_enabled and self._is_night(self._time_of_day()) and houses:
             home = self._house_for(c, houses)
             if home is None:
                 home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
-            dx, dy = w.delta(home.x, home.y, c.x, c.y)
+            # Target door only when near the house (within 12 units), otherwise center
+            if not self._inside_house(c, home) and w.distance(c.x, c.y, home.x, home.y) < 12:
+                dx, dy = w.delta(*self._door_pos(home), c.x, c.y)
+            else:
+                dx, dy = w.delta(home.x, home.y, c.x, c.y)
             desired = math.atan2(dy, dx)
             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
             c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
@@ -969,7 +1069,7 @@ class Simulation:
                 assert isinstance(h, House)
                 if _path_crosses_wall(px, py, px + mdx, py + mdy, h):
                     c.x, c.y = w.normalize(px, py)
-                    c.angle += math.pi + self.rng.uniform(-0.3, 0.3)
+                    c.angle += math.pi + self.rng.uniform(-0.4, 0.4)
                     break
 
         # 4b. Rocks are solid: push out and face away.

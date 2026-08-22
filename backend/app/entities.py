@@ -13,6 +13,7 @@ RADIUS_BY_CASTE = {
     "Professional": 1.25,
     "Noble": 1.35,
     "Priest": 1.45,
+    "Predator": 1.6,
 }
 DEFAULT_RADIUS = 1.2
 
@@ -45,6 +46,7 @@ CASTE_TRAITS = {
     "Noble": CasteTraits(lifespan=7200, speed=0.45, sight_mult=1.20, fertility=0.80),
     # Priests: longest-lived, sharpest-sighted, nearly sterile (Nature's Law).
     "Priest": CasteTraits(lifespan=9000, speed=0.35, sight_mult=1.35, fertility=0.50),
+    "Predator": CasteTraits(lifespan=6600, speed=0.95, sight_mult=1.10, fertility=0.90),
 }
 DEFAULT_TRAITS = CasteTraits(lifespan=6000, speed=0.60)
 
@@ -62,6 +64,7 @@ YIELD_RANK = {
     "Professional": 4,
     "Noble": 5,
     "Priest": 6,
+    "Predator": 7,
 }
 
 
@@ -116,6 +119,8 @@ class Creature(Entity):
     infected: bool = False
     disease_id: int = 0
     clan_id: int = 0  # 0 = clanless (assigned at birth / world creation)
+    is_predator: bool = False  # Carnivore caste (§I)
+    bite_cooldown: int = 0  # ticks until next bite
     sleeping: bool = False
     indoors: bool = False  # won a bed in a house this tick
     ticks_since_meal: int = 0

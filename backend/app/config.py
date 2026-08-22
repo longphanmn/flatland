@@ -36,12 +36,12 @@ class Config:
     house_density: float = 0.00015  # ~6 houses
     spawn_variance: float = 0.25  # ±25% around the density target
 
-    food_count: int = 24  # god's law: the world maintains this much food
+    food_count: int = 48  # god's law: the world maintains this much food (tuned for 30-day survival)
 
     # Plants & nutrient cycle (§H)
-    plant_growth_rate: float = 0.02  # growth/tick toward maturity (1.0)
-    plant_spread_rate: float = 0.003  # chance/tick a mature plant seeds nearby
-    nutrient_cycle_rate: float = 0.5  # scales the boost a decayed corpse grants
+    plant_growth_rate: float = 0.04  # growth/tick toward maturity (1.0) — faster regrowth
+    plant_spread_rate: float = 0.005  # chance/tick a mature plant seeds nearby
+    nutrient_cycle_rate: float = 0.6  # scales the boost a decayed corpse grants
 
     # Corpses & scavenging
     corpses_enabled: bool = True
@@ -49,12 +49,12 @@ class Config:
     corpse_energy: float = 25.0  # energy a fresh corpse holds
 
     # Behaviour tuning
-    perceive_radius: float = 12.0
+    perceive_radius: float = 18.0  # tuned for 30-day survival on 200×200
     eat_radius: float = 1.4
     energy_max: float = 100.0
     energy_start: float = 80.0
-    energy_decay_per_tick: float = 0.08
-    energy_from_food: float = 30.0
+    energy_decay_per_tick: float = 0.05  # tuned: was 0.08, too harsh with shelter
+    energy_from_food: float = 32.0
     wander_turn: float = 0.35  # max heading change (rad) when wandering
     steer_turn: float = 0.45  # max heading change when steering to food
 
@@ -66,19 +66,19 @@ class Config:
     desperate_speed_mult: float = 1.35  # starving: move faster
     lifespan_mult: float = 1.0  # god's law: scale every caste's natural lifespan
 
-    # Reproduction & inheritance (Nature's Law)
+    # Reproduction & inheritance (Nature's Law) — tuned for 30-day survival
     birth_enabled: bool = True
-    adult_age: float = 600.0  # ticks before a creature may mate
-    mate_radius: float = 3.0  # max distance between parents
-    mate_energy_min: float = 50.0  # both parents must hold this much energy
-    birth_rate: float = 0.15  # chance per eligible pair per tick (× fertility)
+    adult_age: float = 200.0  # ticks before a creature may mate (was 600)
+    mate_radius: float = 10.0  # max distance between parents (was 3.0)
+    mate_energy_min: float = 30.0  # both parents must hold this much energy (was 50)
+    birth_rate: float = 0.35  # chance per eligible pair per tick (× fertility) (was 0.15)
     sex_ratio: float = 0.5  # probability a child is a son
     mutation_rate: float = 0.05  # chance a son's side count deviates ±1
     max_sides: int = 24  # sons stop gaining sides here (= Circle)
-    birth_energy_cost: float = 25.0  # each parent pays
-    reproduction_cooldown: int = 300  # ticks both parents wait after a birth
-    carrying_capacity: int = 60  # soft cap: fertility fades above it
-    max_population: int = 120  # hard cap: no births beyond it
+    birth_energy_cost: float = 20.0  # each parent pays (was 25)
+    reproduction_cooldown: int = 200  # ticks both parents wait after a birth (was 300)
+    carrying_capacity: int = 80  # soft cap: fertility fades above it (was 60)
+    max_population: int = 140  # hard cap: no births beyond it (was 120)
     euthanasia_threshold: float = 0.7  # irregularity at/below -> demotion, above -> consumed
 
     # Health & disease
@@ -104,10 +104,10 @@ class Config:
     sleep_enabled: bool = True  # creatures shelter in houses after dark
     sleep_energy_mult: float = 0.5  # energy decay while asleep
 
-    # Shelter
+    # Shelter — tuned for sustainability (exposure was 0.3, now 0.03)
     shelter_enabled: bool = True  # houses are scarce, contested and life-saving
-    exposure_drain: float = 0.3  # extra energy/tick outdoors in rain/storm or at night
-    house_capacity: int = 4  # beds per house per tick; overflow sleeps outside
+    exposure_drain: float = 0.03  # extra energy/tick outdoors in rain/storm or at night (was 0.3)
+    house_capacity: int = 8  # beds per house per tick; overflow sleeps outside (was 4)
     house_claim_enabled: bool = True  # clans claim houses as settlements
     rest_recovery_mult: float = 2.0  # indoor sleeping health regen multiplier
 
@@ -124,6 +124,20 @@ class Config:
     relation_drift_rate: float = 1.0  # points/tick clan scores relax toward 0
     alliance_threshold: int = 50  # score at/above which two clans are allies
     rivalry_threshold: int = -50  # score at/below which two clans are rivals
+
+    # Predation (§I) — Carnivore caste
+    predation_enabled: bool = False  # predators hunt prey
+    predator_ratio: float = 0.08  # fraction of spawn that are predators
+    hunt_radius: float = 8.0  # predator sight for prey
+    bite_damage: float = 100.0  # damage on bite (100 = instant kill)
+    bite_cooldown: int = 10  # ticks between bites
+    energy_from_prey: float = 40.0  # energy predator gains per kill
+    fear_radius: float = 10.0  # prey flee when predator within this range
+
+    # Clan war (§I) — rival clans fight on contact
+    war_enabled: bool = False  # rival-clan combat enabled
+    attack_radius: float = 1.8  # distance for clan war engagement
+    attack_damage: float = 100.0  # damage per attack (100 = lethal)
 
     # Houses
     house_min_size: float = 6.0
