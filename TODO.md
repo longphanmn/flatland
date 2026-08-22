@@ -108,16 +108,20 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
       section: World / Food & Energy / Hunger & Sight / Movement / Life &
       Death / Bodies & Houses; grows as §B/§D/§E laws arrive)
 - [x] [P2] Population/caste sparkline chart in HUD (+ stacked caste chart in
-      the Chronicle panel, §N)
+       the Chronicle panel, §N)
 - [x] [P2] Chronicle shows all event types (birth/promotion/demotion/recovery/
-      outbreak/death — color-coded in the panel)
+       outbreak/death — color-coded in the panel); header combines live
+       population `Soldier 6 · Gentleman 4 · … · Food 24 · House 6` with caste
+       colors (`App.tsx:461`), legend via `CasteChart`; new world clears the
+       live feed (`App.tsx:129`, tick/seed reset detection)
 - [x] [P2] Creature inspector — tap/click a creature (works on touch too):
-      gold halo marks it; left panel shows live status (caste, sex, stage,
-      age/lifespan, energy/health bars, meals, irregularity, lineage) and its
-      personal chronicle from `GET /api/creature/{id}`; auto-refreshes 1 Hz;
-      survives death (status + full history remain)
+       gold halo marks it; left panel shows live status (caste, sex, stage,
+       age/lifespan, energy/health bars, meals, irregularity, lineage) and its
+       personal chronicle from `GET /api/creature/{id}`; auto-refreshes 1 Hz;
+       survives death (status + full history remain)
 - [x] [P2] DB-backed history pagination + world run selector (landed with the
-      Chronicle pagination + HUD run dropdown, commit 9fed747)
+       Chronicle pagination + HUD run dropdown, commit 9fed747); archive mode
+       pauses live feed, `load older` paginates via `GET /api/history?since=`
 
 ## H. Food ecosystem & ecological balance  [P2] — ✅ implemented
 - [x] Plants replace inert food — `Food` is a living plant with `growth` 0.15→1.0

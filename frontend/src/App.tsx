@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import CanvasRenderer from './render/CanvasRenderer'
+import CanvasRenderer, { CASTE_COLORS } from './render/CanvasRenderer'
 import CasteChart from './render/CasteChart'
 import GodPanel from './god/GodPanel'
 import Inspector from './inspect/Inspector'
@@ -56,6 +56,8 @@ export default function App() {
   const fetchedByIdRef = useRef(new Map<string, HistoryEvent>())
   const seededRef = useRef(false)
   const loadingOlderRef = useRef(false)
+  const prevTickRef = useRef<number | null>(null)
+  const prevSeedRef = useRef<number | null>(null)
   useEffect(() => {
     selectedRef.current = selectedId
   }, [selectedId])
@@ -127,10 +129,28 @@ export default function App() {
         refreshWorlds()
       },
       onState: (msg) => {
+        // New world detection: tick reset or seed change → clear chronicle
+        const isNewWorld =
+          (prevTickRef.current !== null && msg.tick < prevTickRef.current) ||
+          (prevSeedRef.current !== null && msg.seed !== prevSeedRef.current && msg.tick === 0)
+        if (isNewWorld && !archiveModeRef.current) {
+          setLog([])
+          setAliveHist([])
+          setPopHist([])
+          seenEventsRef.current.clear()
+          fetchedByIdRef.current.clear()
+          oldestLoadedRef.current = null
+          seededRef.current = false
+          setNoMoreHistory(false)
+          setViewSnapTick(null)
+          overrideRef.current = null
+        }
+        prevTickRef.current = msg.tick
+        prevSeedRef.current = msg.seed
         stateRef.current = msg
         setState(msg)
-        setAliveHist((prev) => [...prev.slice(-119), msg.creatures_alive])
-        setPopHist((prev) => [...prev.slice(-239), msg.population])
+        setAliveHist((prev) => (isNewWorld && !archiveModeRef.current ? [msg.creatures_alive] : [...prev.slice(-119), msg.creatures_alive]))
+        setPopHist((prev) => (isNewWorld && !archiveModeRef.current ? [msg.population] : [...prev.slice(-239), msg.population]))
         if (!archiveModeRef.current) {
           const fresh = msg.events.filter((ev) => {
             const key = eventKey(ev)
@@ -255,11 +275,9 @@ export default function App() {
     [liveWorldId],
   )
 
-  const populationSummary = state
-    ? Object.entries(state.population)
-        .map(([k, v]) => `${k} ${v}`)
-        .join(' · ')
-    : '—'
+  const populationEntries = state
+    ? Object.entries(state.population).sort(([a], [b]) => a.localeCompare(b))
+    : []
 
   const hungryCount = state?.entities.filter((e) => e.status === 'hungry').length ?? 0
   const starvingCount = state?.entities.filter((e) => e.status === 'starving').length ?? 0
@@ -439,15 +457,31 @@ export default function App() {
 
       {chronicleOpen && (
         <aside className="chronicle">
-          <h3>Chronicle</h3>
+          <h3 className="chronicle-title">
+            Chronicle
+            {populationEntries.length > 0 && (
+              <span className="chronicle-pop" title="current population by kind">
+                {' '}
+                —{' '}
+                {populationEntries.map(([k, v], i) => {
+                  const color = CASTE_COLORS[k] ?? (k === 'Food' ? '#d29922' : k === 'House' ? '#8b949e' : '#8b949e')
+                  const isCaste = k in CASTE_COLORS
+                  return (
+                    <span key={k} className="pop-chip">
+                      {isCaste && <span className="dot-inline" style={{ background: color }} />}
+                      {k} <b>{v}</b>
+                      {i < populationEntries.length - 1 && ' · '}
+                    </span>
+                  )
+                })}
+              </span>
+            )}
+          </h3>
           {archiveMode && selectedRunId !== null && (
             <p className="archive-banner">
               viewing archive of world #{selectedRunId} — live feed paused
             </p>
           )}
-          <p className="chip pop-line" title="current population by kind">
-            {populationSummary}
-          </p>
           <CasteChart history={popHist} />
           {!archiveMode && oldestLoadedRef.current !== null && (
             <button

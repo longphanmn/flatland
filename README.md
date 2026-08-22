@@ -111,9 +111,7 @@ recorded with that world run in the database.
 - **Zoom:** mouse wheel or pinch; **pan:** drag with mouse/finger; **Fit view**
   button resets the camera. Touch screens fully supported.
 - **HUD** shows live counts: alive vs dead creatures.
-- **Chronicle** panel records every event ("*Gentleman #3 died of starvation at
-  tick 41*", births, promotions, demotions, recoveries); the full log also lives
-  at `GET /api/history` and survives world resets.
+- **Chronicle** panel (`Chronicle — Soldier 6 · Gentleman 4 · … · Food 24 · House 6` header with caste colors + stacked chart) records every event ("*Gentleman #3 died of starvation at tick 41*", births, promotions, demotions, recoveries); the full log also lives at `GET /api/history` and survives world resets. New world (Reset) clears the live feed; archive selector + `load older` paginates history.
 - **Creature inspector:** tap any creature to open its dossier — live vitals
   (energy/health bars, stage, lineage) plus its personal history; a gold halo
   marks the selection.
