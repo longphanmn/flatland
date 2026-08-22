@@ -339,8 +339,8 @@ Predator. Add variety so niches, seasons and diets can emerge.
 - [x] [P2] Food quality — variants yield different energy/health (meat heals, poison
       harms); scavenging corpses vs grazing plants reward different creatures
       (`VARIANT_ENERGY` grass 32/berry 48/mushroom 24/poison 8, `VARIANT_HEALTH` berry +1/poison -30, corpse 25).
-- [ ] [P2] Trophic HUD — plant / herbivore / predator counts chart (the §H ecological
-      balance made watchable).
+- [x] [P2] Trophic HUD — plant / herbivore / predator counts chart (the §H ecological
+      balance made watchable) (`frontend/src/render/TrophicChart.tsx` stacked Food·Herbivore·Predator vs `popHist`, `App.tsx:469` under CasteChart).
 - [x] GodLaws: plant_variants_enabled, poison_rate, beast_ratio (Ecosystem `config.py:44` `protocol.py:123` `main.py:184` `GodPanel.tsx:15`); diet_strictness still [P2] pending (diet preference)
 
 ## P. Clan depth — totems, territory & war  [P2]
