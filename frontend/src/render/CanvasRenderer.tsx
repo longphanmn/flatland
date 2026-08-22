@@ -174,7 +174,9 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         lastMid = mid(a, b)
       }
       tapStart = { x: ev.clientX, y: ev.clientY, t: performance.now() }
-      canvas.style.cursor = 'grabbing'
+      canvas.style.cursor = 'grab'
+      // prevent scroll/zoom at edge of screen from swallowing the tap
+      if (ev.cancelable) ev.preventDefault()
     }
 
     /** Screen-tap → nearest creature within a forgiving pick radius. */
@@ -210,6 +212,12 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       const ratio = dpr()
 
       if (pointers.size === 1) {
+        // Dead zone: small moves are still taps, not drags (fixes edge-tap → hand/drag)
+        if (tapStart) {
+          const dragDist = Math.hypot(ev.clientX - tapStart.x, ev.clientY - tapStart.y) * ratio
+          if (dragDist < 6 * ratio) return
+        }
+        canvas.style.cursor = 'grabbing'
         cam.ox += (ev.clientX - prev.x) * ratio
         cam.oy += (ev.clientY - prev.y) * ratio
         clampCamera(state)
@@ -239,6 +247,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       }
       if (pointers.size === 0) canvas.style.cursor = 'grab'
       // A short, still press is a tap → select the nearest creature.
+      // Use the original tap position (not release) so a slight drag doesn't miss the creature.
       if (
         tapStart &&
         onTapCreature &&
@@ -246,7 +255,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         Math.hypot(ev.clientX - tapStart.x, ev.clientY - tapStart.y) * dpr() <
           10 * dpr()
       ) {
-        onTapCreature(pickCreature(ev.clientX, ev.clientY))
+        onTapCreature(pickCreature(tapStart.x, tapStart.y))
       }
       tapStart = null
     }
