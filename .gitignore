@@ -11,3 +11,7 @@ dist/
 # Misc
 .DS_Store
 *.log
+
+# SQLite runtime files
+backend/flatland.db*
+backend/flatworld.db*
