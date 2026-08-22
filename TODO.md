@@ -312,7 +312,7 @@ observable signal; `tune` = god laws that push it over the edge.
       `snapshots` table; Album lists them and clicking one re-renders that
       frozen moment on the canvas (banner to return to the living world)
 
-## O. Ecosystem depth — biodiversity & food web  [P2]
+## O. Ecosystem depth — biodiversity & food web  [P2] — ✅ implemented
 Today every plant is one green sprite (`Food.growth`) and the only animal is the
 Predator. Add variety so niches, seasons and diets can emerge.
 - [x] [P2] Plant species — `Food.variant` ∈ {grass, berry, mushroom, poisonous}:
