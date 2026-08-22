@@ -19,27 +19,39 @@ def zeros(**kw) -> Config:
 
 
 def test_winter_plus_plague_cascades_harder_than_alone():
-    """Winter famine + disease kills more than disease alone."""
-    common = dict(
-        seed=41, width=60.0, height=60.0,
-        num_triangles=6, num_women=2, food_count=2,
-        season_length=8,  # winter arrives at tick 24
-        energy_decay_per_tick=0.25,
-        disease_radius=12.0, recovery_rate=0.0,
-        disease_lethality=1.0, disease_energy_drain=0.5,
-    )
-    cascade = Simulation(zeros(disease_enabled=True, disease_rate=1.0, **common))
-    control = Simulation(zeros(disease_enabled=False, **common))
-    patient = next(c for c in cascade.world.creatures() if c.sex == "male")
-    cascade.disease_id = 1
-    cascade._infect(patient)
+    """Winter famine + plague wipes the village; famine alone does not."""
+    def world(plague: bool) -> Simulation:
+        cfg = zeros(
+            seed=41, width=60.0, height=60.0,
+            season_length=8,  # winters every 32 ticks
+            energy_decay_per_tick=0.35,
+            food_count=2,
+            disease_enabled=plague, disease_rate=1.0, disease_radius=14.0,
+            recovery_rate=0.0, disease_lethality=1.0, disease_energy_drain=0.6,
+        )
+        s = Simulation(cfg)
+        # a tight village of eight, so contagion cannot miss
+        for i in range(8):
+            c = s.world.add(
+                Creature(x=30.0 + (i % 4) * 1.5, y=30.0 + (i // 4) * 1.5,
+                         sides=3 if i % 2 else 4, angle=0.0, speed=0.55,
+                         energy=80.0)
+            )
+            if i == 0 and plague:
+                s.disease_id = 1
+                s._infect(c)
+        return s
+
+    cascade = world(True)
+    control = world(False)
     for _ in range(140):
         cascade.step()
         control.step()
     cascade_deaths = sum(cascade._death_counts.values())
     control_deaths = sum(control._death_counts.values())
     assert cascade_deaths > control_deaths
-    assert cascade_deaths >= 3
+    assert cascade_deaths >= 6          # the plague took nearly everyone...
+    assert len(cascade.world.creatures()) < len(control.world.creatures())
 
 
 def test_high_mutation_triggers_irregularity_purge():

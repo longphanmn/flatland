@@ -38,6 +38,11 @@ class Config:
 
     food_count: int = 24  # god's law: the world maintains this much food
 
+    # Plants & nutrient cycle (§H)
+    plant_growth_rate: float = 0.02  # growth/tick toward maturity (1.0)
+    plant_spread_rate: float = 0.003  # chance/tick a mature plant seeds nearby
+    nutrient_cycle_rate: float = 0.5  # scales the boost a decayed corpse grants
+
     # Corpses & scavenging
     corpses_enabled: bool = True
     corpse_ttl: int = 600  # ticks before a corpse decays away

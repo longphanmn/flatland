@@ -157,7 +157,14 @@ class Creature(Entity):
 
 @dataclass
 class Food(Entity):
+    """A living plant: grows from sprout toward maturity (1.0).
+
+    Immature plants feed a creature proportionally to their growth;
+    mature plants yield the full bounty. Fresh shoots start at 0.15.
+    """
+
     kind: str = "food"
+    growth: float = 0.15  # 0..1 — 1.0 means mature
 
 
 @dataclass

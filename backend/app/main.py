@@ -175,6 +175,9 @@ def hello_payload() -> dict:
 LAW_FIELDS = (
     "boundary",
     "food_count",
+    "plant_growth_rate",
+    "plant_spread_rate",
+    "nutrient_cycle_rate",
     "energy_max",
     "energy_decay_per_tick",
     "energy_from_food",

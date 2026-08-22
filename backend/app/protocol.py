@@ -34,6 +34,7 @@ class EntityState(BaseModel):
     sides: Optional[int] = None
     caste: Optional[str] = None
     energy: Optional[float] = None
+    growth: Optional[float] = None  # plants: 0..1 maturity (renderer scales size)
     size: Optional[float] = None
     status: Optional[Literal["", "hungry", "starving"]] = None
     radius: Optional[float] = None
@@ -81,9 +82,9 @@ class StateMessage(BaseModel):
 
 
 class HistoryEvent(BaseModel):
-    type: Literal["death", "birth", "promotion", "demotion", "outbreak", "recovery"] = (
-        "death"
-    )
+    type: Literal[
+        "death", "birth", "promotion", "demotion", "outbreak", "recovery", "bloom"
+    ] = ("death")
     tick: int
     entity_id: int
     caste: Optional[str] = None
@@ -108,6 +109,12 @@ class GodLaws(BaseModel):
     boundary: Optional[Literal["wrap", "clamp"]] = None
     food_count: Optional[int] = Field(None, ge=0, le=500)
     energy_max: Optional[float] = Field(None, gt=1, le=10000)
+
+    # Plants & nutrient cycle (§H)
+    plant_growth_rate: Optional[float] = Field(None, ge=0, le=1)
+    plant_spread_rate: Optional[float] = Field(None, ge=0, le=1)
+    nutrient_cycle_rate: Optional[float] = Field(None, ge=0, le=10)
+
     energy_decay_per_tick: Optional[float] = Field(None, ge=0, le=2)
     energy_from_food: Optional[float] = Field(None, ge=0, le=1000)
     hungry_ratio: Optional[float] = Field(None, gt=0, le=1)

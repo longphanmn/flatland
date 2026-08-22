@@ -41,6 +41,12 @@ WEATHER_STATES = ("clear", "rain", "fog", "storm")
 
 YIELD_RADIUS = 2.5  # lower castes step aside within this range
 
+# §H Plants & the nutrient cycle
+SPREAD_RADIUS = 6.0  # mature plants seed new ground within this range
+NUTRIENT_RADIUS = 10.0  # a fully decayed corpse fertilises plants within this range
+NUTRIENT_BOOST = 0.5  # base growth granted by a decayed corpse (× nutrient_cycle_rate)
+SPROUT_GROWTH = 0.15  # every newly spawned plant starts here
+
 # Clan crest colors, assigned round-robin as clans are founded.
 CLAN_COLORS = (
     "#ffd166", "#06d6a0", "#118ab2", "#ef476f",
@@ -192,7 +198,8 @@ class Simulation:
             self._spawn_creature("line", 2)
         for _ in range(cfg.food_count):
             x, y = self._food_pos()
-            self.world.add(Food(x=x, y=y))
+            # World-spawned plants arrive mature: the food law promises harvest.
+            self.world.add(Food(x=x, y=y, growth=1.0))
         max_radius = max(
             (c.radius for c in self.world.creatures()), default=DEFAULT_RADIUS
         )
@@ -325,6 +332,7 @@ class Simulation:
         self._beds.clear()  # beds are re-contested every tick, in id order
         self._events_this_tick = []
         self._update_weather()
+        self._update_plants()
         self.world.rebuild_index()
         houses = [e for e in self.world.entities.values() if e.kind == "house"]
         for creature in self.world.creatures():  # snapshot list; removals are safe
@@ -335,15 +343,73 @@ class Simulation:
         self._update_corpses()
         self.tick += 1
 
+    # ------------------------------------------------------------------ flora
+    def _update_plants(self) -> None:
+        """§H: every plant grows toward maturity; the mature ones spread."""
+        cfg = self.config
+        if cfg.plant_growth_rate > 0:
+            for e in self.world.entities.values():
+                if isinstance(e, Food) and e.growth < 1.0:
+                    e.growth = min(1.0, e.growth + cfg.plant_growth_rate)
+                    if e.growth >= 1.0:
+                        self._emit_bloom(e)
+        if cfg.plant_spread_rate > 0:
+            target = round(cfg.food_count * SEASON_FOOD_MULT[self._season()])
+            total = sum(1 for e in self.world.entities.values() if e.kind == "food")
+            for parent in list(self.world.entities.values()):
+                if not isinstance(parent, Food) or parent.growth < 1.0:
+                    continue  # only mature plants carry seeds
+                if self.rng.random() >= cfg.plant_spread_rate:
+                    continue
+                if total >= target:
+                    continue  # the land holds exactly god's seasonal bounty
+                ang = self.rng.uniform(0, 2 * math.pi)
+                rad = self.rng.uniform(0, SPREAD_RADIUS)
+                x, y = self.world.normalize(
+                    parent.x + math.cos(ang) * rad,
+                    parent.y + math.sin(ang) * rad,
+                )
+                self.world.add(Food(x=x, y=y, growth=SPROUT_GROWTH))
+                total += 1
+
+    def _emit_bloom(self, plant: Food) -> None:
+        """A plant has reached maturity: recorded in the chronicle."""
+        self._emit(
+            HistoryEvent(
+                type="bloom",
+                tick=self.tick + 1,
+                entity_id=plant.id,
+                x=round(plant.x, 2),
+                y=round(plant.y, 2),
+                payload={"x": round(plant.x, 2), "y": round(plant.y, 2)},
+            )
+        )
+
     def _update_corpses(self) -> None:
-        """Corpses rot away once their ttl runs out."""
+        """Corpses rot away once their ttl runs out — and death feeds life."""
         if not self.config.corpses_enabled:
             return
         for e in list(self.world.entities.values()):
             if isinstance(e, Corpse):
                 e.ttl -= 1
                 if e.ttl <= 0:
+                    self._release_nutrients(e)
                     self.world.remove(e.id)
+
+    def _release_nutrients(self, corpse: Corpse) -> None:
+        """A fully decayed corpse boosts nearby plant growth instantly."""
+        boost = NUTRIENT_BOOST * self.config.nutrient_cycle_rate
+        if boost <= 0:
+            return
+        for e in self.world.entities.values():
+            if not isinstance(e, Food):
+                continue
+            if self.world.distance(e.x, e.y, corpse.x, corpse.y) > NUTRIENT_RADIUS:
+                continue
+            was = e.growth
+            e.growth = min(1.0, e.growth + boost)
+            if was < 1.0 <= e.growth:
+                self._emit_bloom(e)
 
     # ---------------------------------------------------------------- disease
     def _emit(self, event: HistoryEvent) -> None:
@@ -733,7 +799,10 @@ class Simulation:
             self._eaten.add(target.id)
             c.ticks_since_meal = 0
             c.meals += 1
-            c.energy = min(cfg.energy_max, c.energy + cfg.energy_from_food)
+            gain = cfg.energy_from_food
+            if isinstance(target, Food):
+                gain *= target.growth  # immature plants feed proportionally less
+            c.energy = min(cfg.energy_max, c.energy + gain)
 
         # 5b. Rain and storms send the roofless under cover — beds permitting.
         if (
@@ -778,9 +847,12 @@ class Simulation:
         if deficit > 0:
             for _ in range(deficit):
                 x, y = self._food_pos()
-                self.world.add(Food(x=x, y=y))
+                # Law-respawned food also arrives mature; only SPREAD sprouts young.
+                self.world.add(Food(x=x, y=y, growth=1.0))
         elif deficit < 0:
-            for victim in self.rng.sample(foods, -deficit):
+            # Winter die-back takes the youngest shoots first.
+            ordered = sorted(foods, key=lambda f: f.growth)
+            for victim in ordered[:-deficit]:
                 self.world.remove(victim.id)
 
     # ------------------------------------------------------------------ output
@@ -849,6 +921,8 @@ class Simulation:
                 door_offset=round(e.door_offset, 2),
                 door_side=e.door_side,  # type: ignore[arg-type]
             )
+        if isinstance(e, Food):
+            return EntityState(**base, growth=round(e.growth, 3))
         return EntityState(**base)  # type: ignore[arg-type]
 
 
