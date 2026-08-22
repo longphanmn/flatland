@@ -108,6 +108,10 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'schism_min_pop', label: 'Schism min pop', min: 2, max: 100, step: 1, group: 'Rebellion' },
   // Ages — super-seasons (§S)
   { key: 'age_length', label: 'Age length (ticks)', min: 100, max: 1000000, step: 100, group: 'Ages' },
+  // Culture (§S)
+  { key: 'culture_spread_rate', label: 'Culture spread / tick', min: 0, max: 1, step: 0.0005, group: 'Culture' },
+  // Genetics — heritable traits (§S)
+  { key: 'trait_mutation_rate', label: 'Trait mutation rate', min: 0, max: 1, step: 0.005, group: 'Genetics' },
   // Wildfire & Disasters (§S)
   { key: 'fire_rate', label: 'Fire ignite / tick', min: 0, max: 0.05, step: 0.0001, group: 'Wildfire & Disasters' },
   { key: 'fire_spread_rate', label: 'Fire spread / tick', min: 0, max: 1, step: 0.01, group: 'Wildfire & Disasters' },
@@ -131,6 +135,8 @@ const GROUP_ORDER = [
   'Disease',
   'Sky & Seasons',
   'Ages',
+  'Culture',
+  'Genetics',
   'Wildfire & Disasters',
   'Weather & Crops',
   'Weather Sickness',
@@ -183,6 +189,8 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   chill_drain: 'health drain per tick when chilled (0.18) — death cause chill',
   wet_disease_mult: 'wet/cold catch disease faster and recover slower (1.5×)',
   age_length: 'ticks per age (12000 = 5 seasons) — Golden×1.25 food, Ice×0.55 food + chill, Chaos×1.8 mutation, Plague×1.8 disease',
+  culture_spread_rate: 'allied clans within territory adopt same culture with this chance/tick (0.005)',
+  trait_mutation_rate: 'chance mutation adds heritable trait greedy/peaceful/paranoid/bold (0.02) — bold war, paranoid flee, greedy food',
   fire_rate: 'chance a random mature plant ignites each tick (0.0005) — storm lightning raises to 0.002',
   fire_spread_rate: 'spread to neighboring plants within 6 (0.08) — kills creatures/plants, ash fertilizes',
   disaster_rate: 'meteor/flood stochastic gated by this per tick (0.0003) — crater/water reshapes terrain',
@@ -426,6 +434,25 @@ export default function GodPanel({ open, onClose }: Props) {
                     </select>
                   </label>
                 </>
+              )}
+              {group === 'Culture' && (
+                <label className="god-row">
+                  <span title="culture spreads to allied neighbours, can split into rival traditions; grants small collective bonus">Culture</span>
+                  <select
+                    value={String(laws.culture_enabled ?? false)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, culture_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
+              )}
+              {group === 'Genetics' && (
+                <div className="god-note" style={{ fontSize: 11, opacity: 0.7 }}>
+                  Heritable traits: greedy/peaceful/paranoid/bold — mutation {laws.trait_mutation_rate ?? 0.02}
+                </div>
               )}
               {group === 'Ages' && (
                 <label className="god-row">

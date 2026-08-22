@@ -168,6 +168,11 @@ export default function Inspector({ id, onClose, onNavigate }: Props) {
                 {e.clan_name ?? `Clan ${e.clan_id}`}
               </span>
             )}
+            {e.trait && (
+              <span className="chip" title={`Heritable trait: ${e.trait} — greedy/peaceful/paranoid/bold nudges food/war/flee`}>
+                {e.trait === 'greedy' ? '⬔' : e.trait === 'peaceful' ? '◯' : e.trait === 'paranoid' ? '⬥' : e.trait === 'bold' ? '▲' : '•'} {e.trait}
+              </span>
+            )}
           </div>
 
           {/* ---- family tree ---- */}

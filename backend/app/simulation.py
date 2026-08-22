@@ -125,6 +125,11 @@ def variation_for(entity_id: int, seed: int) -> dict:
     angle = ((entity_id * 1307 + seed) % 31) / 31 * 0.12 - 0.06  # -0.06..+0.06 rad
     return {"hue_shift": round(hue, 2), "scale_jitter": round(scale, 3), "angle_jitter": round(angle, 3)}
 
+TRAITS = ("greedy", "peaceful", "paranoid", "bold")
+TRAIT_GLYPH = {"greedy": "⬔", "peaceful": "◯", "paranoid": "⬥", "bold": "▲"}
+CULTURE_ADJECTIVES = ("Ashen", "Ember", "Hollow", "Stone", "River", "Sky", "Thorn", "Iron")
+CULTURE_NOUNS = ("Rite", "Way", "Path", "Creed", "Tradition", "Lore", "Custody", "Bond")
+
 
 class Simulation:
     def __init__(
@@ -395,6 +400,7 @@ class Simulation:
             spec = {"warrior": 0.25, "farmer": 0.25, "scavenger": 0.5}
         else:
             spec = {"warrior": 0.33, "farmer": 0.33, "scavenger": 0.34}
+        culture = f"{CULTURE_ADJECTIVES[(cid * 11 + self.config.seed) % len(CULTURE_ADJECTIVES)]} {CULTURE_NOUNS[(cid * 19 + self.config.seed) % len(CULTURE_NOUNS)]}"
         self.clans[cid] = {
             "name": name,
             "founder_id": founder.id,
@@ -403,6 +409,8 @@ class Simulation:
             "totem": totem,
             "leader_id": founder.id,
             "specialization": spec,
+            "culture": culture,
+            "culture_id": cid,
         }
         if self.config.house_claim_enabled:
             self._claim_house_for_clan(cid)
@@ -753,6 +761,7 @@ class Simulation:
         self._update_territory()
         self._update_schism()
         self._update_clan_specialization()
+        self._update_culture()
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
@@ -805,11 +814,18 @@ class Simulation:
                     continue
                 if any(loser.id == x[0].id for x in to_wound) or any(winner.id == x[0].id for x in to_wound):
                     continue
-                # Shield totem: 30% damage reduction; warrior specialization adds bite (§P)
+                # Shield totem: 30% damage reduction; warrior specialization adds bite (§P); traits bold/peaceful (§S)
                 dmg = cfg.attack_damage
                 # warrior clan hits harder
                 w_spec = self.clans.get(winner.clan_id, {}).get("specialization", {}).get("warrior", 0.33) if winner.clan_id else 0.33
                 dmg *= (0.85 + w_spec * 0.45)
+                if winner.trait == "bold":
+                    dmg *= 1.25
+                elif winner.trait == "peaceful":
+                    dmg *= 0.65
+                if loser.trait == "paranoid":
+                    # paranoid dodges? slight reduction
+                    dmg *= 0.9
                 if self._totem_of(loser) == "Shield":
                     dmg *= 0.70
                 if dmg >= loser.health:
@@ -856,7 +872,14 @@ class Simulation:
             if loser.id not in self.world.entities:
                 continue
             w_spec2 = self.clans.get(winner.clan_id, {}).get("specialization", {}).get("warrior", 0.33) if winner.clan_id else 0.33
-            dmg = cfg.attack_damage * (0.85 + w_spec2 * 0.45) * (0.70 if self._totem_of(loser) == "Shield" else 1.0)
+            trait_mult = 1.0
+            if winner.trait == "bold":
+                trait_mult *= 1.25
+            elif winner.trait == "peaceful":
+                trait_mult *= 0.65
+            if loser.trait == "paranoid":
+                trait_mult *= 0.9
+            dmg = cfg.attack_damage * (0.85 + w_spec2 * 0.45) * trait_mult * (0.70 if self._totem_of(loser) == "Shield" else 1.0)
             loser.health = max(0, loser.health - dmg)
             # wounded flees
             dx, dy = self.world.delta(loser.x, loser.y, winner.x, winner.y)
@@ -1064,7 +1087,16 @@ class Simulation:
             parent_spec = self.clans.get(cid, {}).get("specialization", {"warrior": 0.33, "farmer": 0.33, "scavenger": 0.34})
             # small random drift
             spec = dict(parent_spec)
-            # parent specialization drift already handled elsewhere; new clan inherits
+            # culture inherits parent but may diverge
+            parent_culture = self.clans.get(cid, {}).get("culture", "Unknown Rite")
+            parent_cid = self.clans.get(cid, {}).get("culture_id", cid)
+            # 15% chance to diverge into new culture on schism
+            if self.rng.random() < 0.15:
+                culture = f"{CULTURE_ADJECTIVES[(new_cid * 13 + self.config.seed) % len(CULTURE_ADJECTIVES)]} {CULTURE_NOUNS[(new_cid * 23 + self.config.seed) % len(CULTURE_NOUNS)]}"
+                culture_id = new_cid
+            else:
+                culture = parent_culture
+                culture_id = parent_cid
             self.clans[new_cid] = {
                 "name": name,
                 "founder_id": founder.id,
@@ -1073,6 +1105,8 @@ class Simulation:
                 "totem": totem,
                 "leader_id": founder.id,
                 "specialization": spec,
+                "culture": culture,
+                "culture_id": culture_id,
             }
             for c in movers:
                 c.clan_id = new_cid
@@ -1250,6 +1284,76 @@ class Simulation:
             tot = spec["warrior"] + spec["farmer"] + spec["scavenger"]
             for k in spec:
                 spec[k] = round(spec[k]/tot, 3)
+
+    def get_plots(self) -> list[dict]:
+        """§S Plots — upcoming war/schism as progress 0..10 for god observability."""
+        plots = []
+        # war plots: rival pairs with members near each other
+        for (a,b), score in self.relations.items():
+            if self._zone_of(score) != -1:
+                continue
+            # need members of both clans
+            a_members = [c for c in self.world.creatures() if c.clan_id == a]
+            b_members = [c for c in self.world.creatures() if c.clan_id == b]
+            if not a_members or not b_members:
+                continue
+            # closest pair distance
+            min_d = min(self.world.distance(ac.x, ac.y, bc.x, bc.y) for ac in a_members for bc in b_members)
+            # progress: base from how rival they are + proximity
+            base = max(0, (-score - self.config.rivalry_threshold) // 8)  # 0..6
+            prox = 0
+            if min_d < self.config.attack_radius * 3:
+                prox = 4
+            elif min_d < self.config.flock_radius * 2:
+                prox = 2
+            prog = min(10, int(base + prox + (self.tick % 10)/10))
+            if prog > 0:
+                plots.append({"type": "war", "a": a, "b": b, "a_name": self.clans.get(a, {}).get("name"), "b_name": self.clans.get(b, {}).get("name"), "progress": prog, "max": 10, "distance": round(min_d,1)})
+        # schism plots: clans approaching schism threshold
+        if self.config.schism_enabled:
+            for cid, info in self.clans.items():
+                members = [c for c in self.world.creatures() if c.clan_id == cid]
+                pop = len(members)
+                if pop < self.config.schism_min_pop:
+                    continue
+                has_house = any(h.clan_id == cid and not h.is_ruin for h in self.world.entities.values() if hasattr(h, "clan_id"))
+                unhappy = sum(1 for c in members if c.energy / self.config.energy_max <= self.config.starving_ratio or not has_house)
+                frac = unhappy / pop if pop else 0
+                if frac >= self.config.schism_threshold * 0.5:  # show even half-way
+                    prog = min(10, int(frac / self.config.schism_threshold * 6 + 2))
+                    plots.append({"type": "schism", "a": cid, "a_name": info.get("name"), "progress": prog, "max": 10, "unhappy": unhappy, "pop": pop})
+        return plots
+
+    def _update_culture(self) -> None:
+        """§S Culture drift — spreads to neighbours, can split into rival traditions."""
+        cfg = self.config
+        if not cfg.culture_enabled:
+            return
+        # spread: allies within territory may adopt same culture
+        if self.rng.random() < cfg.culture_spread_rate:
+            # pick random allied pair
+            allies = [pair for pair, score in self.relations.items() if self._zone_of(score)==1]
+            if allies:
+                a,b = self.rng.choice(allies)
+                # decide direction: a adopts b's culture or vice versa
+                ca = self.clans.get(a, {}).get("culture_id")
+                cb = self.clans.get(b, {}).get("culture_id")
+                if ca is not None and cb is not None and ca != cb:
+                    # 50% chance a adopts b
+                    if self.rng.random() < 0.5:
+                        # a adopts b's culture
+                        self.clans[a]["culture"] = self.clans[b].get("culture", "")
+                        self.clans[a]["culture_id"] = cb
+                    else:
+                        self.clans[b]["culture"] = self.clans[a].get("culture", "")
+                        self.clans[b]["culture_id"] = ca
+        # split: small chance a clan's culture diverges (like schism but culture only)
+        for cid, info in list(self.clans.items()):
+            if self.rng.random() < 0.0004:  # rare
+                new_culture = f"{self.rng.choice(CULTURE_ADJECTIVES)} {self.rng.choice(CULTURE_NOUNS)}"
+                info["culture"] = new_culture
+                info["culture_id"] = self._next_clan_id + 1000 + cid  # new id distinct
+                self._emit(HistoryEvent(type="culture", tick=self.tick+1, entity_id=0, x=0, y=0, payload={"clan_id": cid, "culture": new_culture}))
 
     # ------------------------------------------------------------------ flora
     def _update_plants(self) -> None:
@@ -1492,6 +1596,13 @@ class Simulation:
 
         if is_predator_child:
             # Predator children are always Predator caste, no clan, no irregularity
+            # trait inheritance (§S)
+            ptrait = None
+            if self.rng.random() < cfg.trait_mutation_rate:
+                ptrait = self.rng.choice(TRAITS)
+            elif mother.trait or father.trait:
+                opts = [t for t in (mother.trait, father.trait) if t]
+                ptrait = self.rng.choice(opts) if opts else None
             child = Creature(
                 shape="polygon" if self.rng.random() < 0.5 else "line",
                 sides=6 if self.rng.random() < 0.5 else 2,
@@ -1502,6 +1613,7 @@ class Simulation:
                 is_predator=True,
                 caste="Predator",
                 clan_id=0,
+                trait=ptrait,
             )
             # Predators don't get clan or irregularity
             self.world.add(child)
@@ -1533,6 +1645,12 @@ class Simulation:
         elif mother.is_herbivore or father.is_herbivore:
             is_herbivore_child = self.rng.random() < 0.5
         if is_herbivore_child:
+            htrait = None
+            if self.rng.random() < cfg.trait_mutation_rate:
+                htrait = self.rng.choice(TRAITS)
+            elif mother.trait or father.trait:
+                opts = [t for t in (mother.trait, father.trait) if t]
+                htrait = self.rng.choice(opts) if opts else None
             child = Creature(
                 shape="polygon", sides=4, iso_angle=60.0,
                 x=x, y=y, angle=self.rng.uniform(0, 2 * math.pi),
@@ -1542,6 +1660,7 @@ class Simulation:
                 is_herbivore=True,
                 caste="Herbivore",
                 clan_id=0,
+                trait=htrait,
             )
             self.world.add(child)
             event_payload = {
@@ -1588,6 +1707,13 @@ class Simulation:
                     promoted = False
                 irregularity = round(self.rng.uniform(0.3, 1.0), 3)
             caste = caste_name(sides, "polygon", iso)
+            # trait inheritance (§S)
+            ntrait = None
+            if self.rng.random() < cfg.trait_mutation_rate:
+                ntrait = self.rng.choice(TRAITS)
+            elif mother.trait or father.trait:
+                opts = [t for t in (mother.trait, father.trait) if t]
+                ntrait = self.rng.choice(opts) if opts else None
             child = Creature(
                 shape="polygon", sides=sides, iso_angle=iso,
                 x=x, y=y, angle=self.rng.uniform(0, 2 * math.pi),
@@ -1595,14 +1721,22 @@ class Simulation:
                 mother_id=mother.id, father_id=father.id,
                 lifespan=traits_for(caste).lifespan * cfg.lifespan_mult,
                 irregularity=irregularity,
+                trait=ntrait,
             )
         else:
+            dtrait = None
+            if self.rng.random() < cfg.trait_mutation_rate:
+                dtrait = self.rng.choice(TRAITS)
+            elif mother.trait or father.trait:
+                opts = [t for t in (mother.trait, father.trait) if t]
+                dtrait = self.rng.choice(opts) if opts else None
             child = Creature(
                 shape="line", sides=2,
                 x=x, y=y, angle=self.rng.uniform(0, 2 * math.pi),
                 energy=cfg.energy_start, generation=gen, born_tick=tick,
                 mother_id=mother.id, father_id=father.id,
                 lifespan=traits_for("Woman").lifespan * cfg.lifespan_mult,
+                trait=dtrait,
             )
 
         self.world.add(child)
@@ -1794,6 +1928,13 @@ class Simulation:
         if self._totem_of(c) == "Wolf" and (c.is_predator or perceive > cfg.perceive_radius):
             speed_mult *= 1.10
 
+        # trait paranoid/bold nudges flee threshold (§S)
+        # paranoid sees predator farther, bold tolerates closer
+        fear_radius_eff = cfg.fear_radius
+        if c.trait == "paranoid":
+            fear_radius_eff += 4.0
+        elif c.trait == "bold":
+            fear_radius_eff = max(2.0, fear_radius_eff - 2.5)
         # 1. Predation: hunt (predator) / flee (prey) — highest priority after sleep
         hunt_target: Creature | None = None
         flee_target: Creature | None = None
@@ -1836,8 +1977,8 @@ class Simulation:
             elif not c.is_predator:
                 # Find nearest predator within fear_radius to flee from
                 best_pred: Creature | None = None
-                best_pred_d = cfg.fear_radius + 1e-9
-                for o in w.query_radius(c.x, c.y, cfg.fear_radius):
+                best_pred_d = fear_radius_eff + 1e-9
+                for o in w.query_radius(c.x, c.y, fear_radius_eff):
                     if not isinstance(o, Creature) or not o.is_predator:
                         continue
                     if o.id not in w.entities:
@@ -1871,6 +2012,10 @@ class Simulation:
                 # herbivores avoid poisonous when strict
                 if c.is_herbivore and isinstance(e, Food) and e.variant == "poisonous" and cfg.diet_strictness > 0.3:
                     if self.rng.random() < cfg.diet_strictness:
+                        continue
+                # trait greedy: prefer richer food (berry/corpse) over grass
+                if c.trait == "greedy" and isinstance(e, Food) and e.variant == "grass":
+                    if self.rng.random() < 0.45:
                         continue
             d = w.distance(c.x, c.y, e.x, e.y)
             if d < best:
@@ -2283,6 +2428,7 @@ class Simulation:
                 scale_jitter=v["scale_jitter"],
                 angle_jitter=v["angle_jitter"],
                 chill=round(e.chill, 2),
+                trait=e.trait,
             )
         if isinstance(e, House):
             return EntityState(

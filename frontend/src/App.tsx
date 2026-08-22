@@ -3,6 +3,7 @@ import CanvasRenderer, { CASTE_COLORS } from './render/CanvasRenderer'
 import CasteChart from './render/CasteChart'
 import TrophicChart from './render/TrophicChart'
 import ClanPanel from './render/ClanPanel'
+import PlotsPanel from './render/PlotsPanel'
 import GodPanel from './god/GodPanel'
 import Inspector from './inspect/Inspector'
 import { WorldSocket, type ConnStatus } from './websocket'
@@ -491,6 +492,7 @@ export default function App() {
             </h4>
             <TrophicChart history={popHist} />
             <ClanPanel />
+            <PlotsPanel />
           </aside>
           <aside className="chronicle">
             <h3 className="chronicle-title" title="Event history — births, deaths, wars, plagues. Newest first.">

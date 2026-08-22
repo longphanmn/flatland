@@ -202,6 +202,9 @@ LAW_FIELDS = (
     "food_memory_ttl",
     "age_enabled",
     "age_length",
+    "culture_enabled",
+    "culture_spread_rate",
+    "trait_mutation_rate",
     "wildfire_enabled",
     "fire_rate",
     "fire_spread_rate",
@@ -433,10 +436,18 @@ async def get_clans() -> dict:
             "war_losses": war_losses.get(cid, 0),
             "territory_radius": RT.sim.config.territory_radius if RT.sim.config.territory_enabled else None,
             "specialization": info.get("specialization"),
+            "culture": info.get("culture"),
+            "culture_id": info.get("culture_id"),
         })
     # sort by population desc
     clans.sort(key=lambda c: (-c["population"], c["id"]))
     return {"clans": clans, "tick": RT.sim.tick}
+
+
+@app.get("/api/plots")
+async def get_plots() -> dict:
+    """Upcoming war/schism as progress — god's foreshadowing."""
+    return {"plots": RT.sim.get_plots(), "tick": RT.sim.tick}
 
 
 @app.post("/api/snapshot")

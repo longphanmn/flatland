@@ -135,6 +135,7 @@ class Creature(Entity):
     food_memory_y: float | None = None
     food_memory_tick: int = 0  # when memory was stored
     signal_cooldown: int = 0  # ticks until next call allowed
+    trait: str | None = None  # §S genetic trait: greedy/peaceful/paranoid/bold or None
 
     def __post_init__(self) -> None:
         if not self.caste:

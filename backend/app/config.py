@@ -64,6 +64,11 @@ class Config:
     age_enabled: bool = False  # long era bending world: Ice/Chaos/Plague/Golden
     age_length: int = 12000  # ticks per age (5 seasons)
 
+    # Culture & Traits (§S)
+    culture_enabled: bool = False  # clan culture spreads/splits, grants bonus
+    trait_mutation_rate: float = 0.02  # chance mutation adds heritable behaviour trait
+    culture_spread_rate: float = 0.005  # per tick ally culture spread
+
     # Wildfire & Disasters (§S)
     wildfire_enabled: bool = False  # fire ignites via storm lightning, spreads
     fire_rate: float = 0.0005  # chance/tick to ignite random plant

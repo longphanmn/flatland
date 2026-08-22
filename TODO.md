@@ -443,9 +443,9 @@ mechanics that survive that translation — all emergent or law-gated.
       (`schism_threshold`); success/failure recorded. Extends §I war + §P succession. (`config.py:60` `schism_enabled`/`threshold` 0.4/`min_pop` 4, `simulation.py:905` `_update_schism` homeless/starving ≥threshold → split 50% to new clan, new house, rivalry -60, `schism` + `rivalry` events, `protocol.py:94` `schism` type, `GodPanel.tsx:66` Rebellion, `App.tsx:568` chronicle)
 
 ### Plots (foreshadowing)
-- [ ] [P2] Plots panel — god sees *upcoming* war/rebellion/schism plans as progress
+- [x] [P2] Plots panel — god sees *upcoming* war/rebellion/schism plans as progress
       ("Ash Wolves is planning war on Long Shadow — 3/10") before they fire; icons
-      on the plotters. Extends §G observability.
+      on the plotters. Extends §G observability. (`simulation.py:930` `get_plots()` war rival proximity + schism unhappy 50% threshold → progress 0..10, `main.py:399` `GET /api/plots`, `PlotsPanel.tsx` war/schism progress bars, `App.tsx:482` under ClanPanel)
 
 ### Wildfire & disaster laws
 - [x] [P2] Wildfire — fire ignites (storm lightning / `fire_rate`) and spreads
@@ -462,15 +462,15 @@ mechanics that survive that translation — all emergent or law-gated.
       and house (§P); borders redraw; losing clan becomes homeless/refugees. (`simulation.py:793` lethal war conquest: transfer `loser_house.clan_id` → winner, `conquest` event `winner_clan/loser_clan/house_id`, `protocol.py:94` `conquest` type, `App.tsx:583` chronicle)
 
 ### Culture drift
-- [ ] [P2] Culture — each clan has a culture that spreads to neighbours and can split
+- [x] [P2] Culture — each clan has a culture that spreads to neighbours and can split
       (like WorldBox); culture grants a small collective bonus and can diverge into
-      rival traditions.
+      rival traditions. (`config.py:64` `culture_enabled`/`spread` 0.005, `simulation.py:990` `CULTURE_*` tables, clan `culture`/`culture_id` seeded, `_update_culture` ally spread 0.005 + split 0.0004 `culture` event, `main.py:399` `culture` in clans, `ClanPanel.tsx:15` 🎭 display)
 
 ### Behavioral genetic traits
-- [ ] [P2] Genetic traits — mutation may add a heritable behaviour trait (greedy /
+- [x] [P2] Genetic traits — mutation may add a heritable behaviour trait (greedy /
       peaceful / paranoid / bold) that nudges food choice, flee threshold, war
       eagerness; shown as a glyph in the profile (§Q). Distinct from the cosmetic
-      identity already scoped.
-- [ ] GodLaws: age_enabled, age_length, schism_enabled, schism_threshold, fire_rate,
+      identity already scoped. (`entities.py:133` `Creature.trait`, `config.py:66` `trait_mutation_rate` 0.02, `simulation.py:120` `TRAITS`/`TRAIT_GLYPH` heritable via parents, `simulation.py:1670` greedy grass 0.45 skip, paranoid +4 fear, bold -2.5 fear, peaceful 0.65 dmg/bold 1.25 dmg, `protocol.py:54` `trait`, `Inspector.tsx:155` ⬔◯⬥▲ chip)
+- [x] GodLaws: age_enabled, age_length, schism_enabled, schism_threshold, fire_rate,
       fire_spread_rate, disaster_rate, culture_enabled, trait_mutation_rate
-      (new "Ages & Disasters" + "Society II" law groups)
+      (new "Ages & Disasters" + "Society II" law groups) (`config.py:64` `culture_*`/`trait_*`/`age_*`/`fire_*`/`disaster_*`, `protocol.py:178` `GodLaws`, `GodPanel.tsx:66` Ages/Culture/Genetics/Wildfire groups, `main.py:180` `LAW_FIELDS`)

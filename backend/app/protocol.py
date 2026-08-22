@@ -64,6 +64,7 @@ class EntityState(BaseModel):
     scale_jitter: Optional[float] = None
     angle_jitter: Optional[float] = None
     chill: Optional[float] = None
+    trait: Optional[str] = None
     door_width: Optional[float] = None
     door_offset: Optional[float] = None
     door_side: Optional[Literal["north", "east", "south", "west"]] = None
@@ -103,7 +104,7 @@ class HistoryEvent(BaseModel):
     type: Literal[
         "death", "birth", "promotion", "demotion", "outbreak", "recovery",
         "bloom", "alliance", "rivalry", "predation", "war", "ruin", "settlement", "succession", "schism",
-        "fire", "disaster", "conquest",
+        "fire", "disaster", "conquest", "culture",
     ] = ("death")
     tick: int
     entity_id: int
@@ -208,6 +209,9 @@ class GodLaws(BaseModel):
     food_memory_ttl: Optional[int] = Field(None, ge=20, le=5000)
     age_enabled: Optional[bool] = None
     age_length: Optional[int] = Field(None, ge=100, le=1000000)
+    culture_enabled: Optional[bool] = None
+    culture_spread_rate: Optional[float] = Field(None, ge=0, le=1)
+    trait_mutation_rate: Optional[float] = Field(None, ge=0, le=1)
     wildfire_enabled: Optional[bool] = None
     fire_rate: Optional[float] = Field(None, ge=0, le=0.05)
     fire_spread_rate: Optional[float] = Field(None, ge=0, le=1)

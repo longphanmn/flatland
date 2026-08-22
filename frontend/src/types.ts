@@ -39,6 +39,7 @@ export interface EntityState {
   scale_jitter?: number
   angle_jitter?: number
   chill?: number
+  trait?: string | null
   door_width?: number
   door_offset?: number
   door_side?: 'north' | 'east' | 'south' | 'west'
@@ -82,7 +83,7 @@ export interface StateMessage {
 export interface HistoryEvent {
   /** Present only on events fetched from GET /api/history; absent on live-streamed ones. */
   id?: number
-  type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war' | 'ruin' | 'settlement' | 'succession' | 'schism' | 'fire' | 'disaster' | 'conquest'
+  type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war' | 'ruin' | 'settlement' | 'succession' | 'schism' | 'fire' | 'disaster' | 'conquest' | 'culture'
   tick: number
   entity_id: number
   caste?: string | null
@@ -261,6 +262,9 @@ export interface GodLaws {
   food_memory_ttl?: number
   age_enabled?: boolean
   age_length?: number
+  culture_enabled?: boolean
+  culture_spread_rate?: number
+  trait_mutation_rate?: number
   wildfire_enabled?: boolean
   fire_rate?: number
   fire_spread_rate?: number
