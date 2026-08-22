@@ -326,9 +326,13 @@ Predator. Add variety so niches, seasons and diets can emerge.
 - [x] [P2] Fruit & seasonality — berry bushes fruit in one season (autumn burst);
       grass is always available; spring/summer shift which plants dominate the land
       (`simulation.py:542` autumn berry 0.48 weight, winter mushroom 0.57, `VARIANT_SEASON_MULT` grass 1.15 summer, berry 1.9 autumn).
-- [ ] [P2] Wild herbivore beasts — a non-caste middle tier that grazes plants and is
+- [x] [P2] Wild herbivore beasts — a non-caste middle tier that grazes plants and is
       hunted by predators, competing with the castes for food → a real
-      plants → herbivores → predators Lotka–Volterra chain.
+      plants → herbivores → predators Lotka–Volterra chain
+      (`entities.py:40` `Herbivore` 5200/0.65, `entities.py:122` `is_herbivore`,
+      `config.py:46` `beast_ratio` 0.0 default (god enables), `simulation.py:205`
+      `_spawn_herbivore`, `simulation.py:289` spawn `area×density×beast_ratio`,
+      `simulation.py:1030` herbivore lineage 50% if one parent, `simulation.py:680` war excludes herbivore, shelter excludes herbivore).
 - [ ] [P2] Diet & preference — `Creature.diet` (herbivore/omnivore/carnivore) steers
       which food a creature perceives and eats; higher castes prefer richer food,
       predators prefer live prey over plants.
@@ -337,7 +341,7 @@ Predator. Add variety so niches, seasons and diets can emerge.
       (`VARIANT_ENERGY` grass 32/berry 48/mushroom 24/poison 8, `VARIANT_HEALTH` berry +1/poison -30, corpse 25).
 - [ ] [P2] Trophic HUD — plant / herbivore / predator counts chart (the §H ecological
       balance made watchable).
-- [x] GodLaws: plant_variants_enabled, poison_rate (Ecosystem group `config.py:44` `protocol.py:123` `main.py:184` `GodPanel.tsx:15`); beast_ratio, diet_strictness still [P2] pending
+- [x] GodLaws: plant_variants_enabled, poison_rate, beast_ratio (Ecosystem `config.py:44` `protocol.py:123` `main.py:184` `GodPanel.tsx:15`); diet_strictness still [P2] pending (diet preference)
 
 ## P. Clan depth — totems, territory & war  [P2]
 Clans have identity (crest ring) and a first taste of war (§I) but no totem, no land

@@ -27,6 +27,7 @@ export interface EntityState {
   clan_id?: number
   clan_color?: string
   is_predator?: boolean
+  is_herbivore?: boolean
   sleeping?: boolean
   indoors?: boolean
   generation?: number
@@ -167,6 +168,8 @@ export interface GodLaws {
   nutrient_cycle_rate?: number
   plant_variants_enabled?: boolean
   poison_rate?: number
+  beast_ratio?: number
+  diet_strictness?: number
   energy_max?: number
   energy_decay_per_tick?: number
   energy_from_food?: number

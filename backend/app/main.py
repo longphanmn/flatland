@@ -185,6 +185,8 @@ LAW_FIELDS = (
     "nutrient_cycle_rate",
     "plant_variants_enabled",
     "poison_rate",
+    "beast_ratio",
+    "diet_strictness",
     "energy_max",
     "energy_decay_per_tick",
     "energy_from_food",

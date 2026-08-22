@@ -52,6 +52,7 @@ class EntityState(BaseModel):
     clan_id: Optional[int] = None
     clan_color: Optional[str] = None
     is_predator: Optional[bool] = None
+    is_herbivore: Optional[bool] = None
     sleeping: Optional[bool] = None
     indoors: Optional[bool] = None
     generation: Optional[int] = None
@@ -122,6 +123,8 @@ class GodLaws(BaseModel):
     nutrient_cycle_rate: Optional[float] = Field(None, ge=0, le=10)
     plant_variants_enabled: Optional[bool] = None
     poison_rate: Optional[float] = Field(None, ge=0, le=1)
+    beast_ratio: Optional[float] = Field(None, ge=0, le=1)
+    diet_strictness: Optional[float] = Field(None, ge=0, le=1)
 
     energy_decay_per_tick: Optional[float] = Field(None, ge=0, le=2)
     energy_from_food: Optional[float] = Field(None, ge=0, le=1000)

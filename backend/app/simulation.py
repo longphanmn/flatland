@@ -203,6 +203,28 @@ class Simulation:
             )
         )
 
+    def _spawn_herbivore(self) -> None:
+        """Spawn a wild herbivore grazer (§O) — clanless, eats plants, hunted by predators."""
+        cfg = self.config
+        x, y = self._rand_pos()
+        traits = traits_for("Herbivore")
+        self.world.add(
+            Creature(
+                shape="polygon",
+                sides=4,
+                iso_angle=60.0,
+                caste="Herbivore",
+                x=x,
+                y=y,
+                angle=self.rng.uniform(0, 2 * math.pi),
+                speed=traits.speed,
+                energy=cfg.energy_start,
+                lifespan=traits.lifespan * cfg.lifespan_mult,
+                is_herbivore=True,
+                clan_id=0,
+            )
+        )
+
     def _spawn_initial(self) -> None:
         cfg = self.config
         area = cfg.width * cfg.height
@@ -270,6 +292,11 @@ class Simulation:
             n_predators = self._jittered(area * cfg.creature_density * cfg.predator_ratio)
             for _ in range(n_predators):
                 self._spawn_predator()
+        # Herbivores (§O) — wild grazers, clanless, compete for plants and feed predators
+        if cfg.beast_ratio > 0:
+            n_herbivores = self._jittered(area * cfg.creature_density * cfg.beast_ratio)
+            for _ in range(n_herbivores):
+                self._spawn_herbivore()
 
     def _found_clan(self, founder: Creature) -> int:
         cid = self._next_clan_id
@@ -650,10 +677,10 @@ class Simulation:
         for i, a in enumerate(creatures):
             if a.id not in self.world.entities:
                 continue
-            if a.is_predator:
+            if a.is_predator or a.is_herbivore:
                 continue
             for b in creatures[i + 1 :]:
-                if b.id not in self.world.entities or b.is_predator:
+                if b.id not in self.world.entities or b.is_predator or b.is_herbivore:
                     continue
                 if not a.clan_id or not b.clan_id or a.clan_id == b.clan_id:
                     continue
@@ -993,6 +1020,43 @@ class Simulation:
                 self.on_event(event)
             return
 
+        # Herbivore lineage: wild grazers breed true outside the caste system
+        is_herbivore_child = False
+        if mother.is_herbivore and father.is_herbivore:
+            is_herbivore_child = True
+        elif mother.is_herbivore or father.is_herbivore:
+            is_herbivore_child = self.rng.random() < 0.5
+        if is_herbivore_child:
+            child = Creature(
+                shape="polygon", sides=4, iso_angle=60.0,
+                x=x, y=y, angle=self.rng.uniform(0, 2 * math.pi),
+                energy=cfg.energy_start, generation=gen, born_tick=tick,
+                mother_id=mother.id, father_id=father.id,
+                lifespan=traits_for("Herbivore").lifespan * cfg.lifespan_mult,
+                is_herbivore=True,
+                caste="Herbivore",
+                clan_id=0,
+            )
+            self.world.add(child)
+            event_payload = {
+                "mother": mother.id, "father": father.id,
+                "sides": child.sides, "generation": gen, "sex": child.sex,
+                "clan_id": 0, "is_herbivore": True,
+            }
+            for p in (mother, father):
+                p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
+                p.repro_cooldown = cfg.reproduction_cooldown
+            event = HistoryEvent(
+                type="birth", tick=tick, entity_id=child.id, caste=child.caste,
+                x=round(child.x, 2), y=round(child.y, 2),
+                payload=event_payload,
+            )
+            self.history.append(event)
+            self._events_this_tick.append(event)
+            if self.on_event is not None:
+                self.on_event(event)
+            return
+
         promoted = False
         if self.rng.random() < cfg.sex_ratio:
             if father.sides == 3:
@@ -1112,6 +1176,7 @@ class Simulation:
             cfg.sleep_enabled
             and cfg.shelter_enabled
             and not c.is_predator
+            and not c.is_herbivore
             and not is_starving
             and self._is_night(tod)
             and houses
@@ -1259,7 +1324,7 @@ class Simulation:
             desired = math.atan2(dy, dx)
             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
             c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
-        elif cfg.sleep_enabled and not c.is_predator and self._is_night(self._time_of_day()) and houses:
+        elif cfg.sleep_enabled and not c.is_predator and not c.is_herbivore and self._is_night(self._time_of_day()) and houses:
             home = self._house_for(c, houses)
             if home is None:
                 home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
@@ -1399,10 +1464,11 @@ class Simulation:
                     return
 
         # 5b. Rain and storms send the roofless under cover — beds permitting.
-        # Predators cannot shelter: the doorway is too small (§L refuge).
+        # Predators cannot shelter: the doorway is too small (§L refuge). Wild grazers don't seek roofs.
         if (
             cfg.shelter_enabled
             and not c.is_predator
+            and not c.is_herbivore
             and not c.indoors
             and houses
             and not self._is_night(tod)
@@ -1509,6 +1575,7 @@ class Simulation:
                 clan_id=e.clan_id or None,
                 clan_color=self.clans.get(e.clan_id, {}).get("color"),
                 is_predator=e.is_predator or None,
+                is_herbivore=e.is_herbivore or None,
                 sleeping=e.sleeping,
                 indoors=e.indoors,
                 generation=e.generation,

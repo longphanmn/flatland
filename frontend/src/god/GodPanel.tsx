@@ -23,6 +23,8 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'plant_spread_rate', label: 'Plant spread chance', min: 0, max: 1, step: 0.005, group: 'Ecosystem' },
   { key: 'nutrient_cycle_rate', label: 'Nutrient cycle ×', min: 0, max: 10, step: 0.1, group: 'Ecosystem' },
   { key: 'poison_rate', label: 'Poison sprout chance', min: 0, max: 1, step: 0.01, group: 'Ecosystem' },
+  { key: 'beast_ratio', label: 'Herbivore ratio', min: 0, max: 1, step: 0.01, group: 'Ecosystem' },
+  { key: 'diet_strictness', label: 'Diet strictness', min: 0, max: 1, step: 0.05, group: 'Ecosystem' },
   // Hunger & Sight — perception of the world
   { key: 'hungry_ratio', label: 'Hungry threshold', min: 0.05, max: 1, step: 0.05, group: 'Hunger & Sight' },
   { key: 'starving_ratio', label: 'Starving threshold', min: 0.01, max: 1, step: 0.01, group: 'Hunger & Sight' },

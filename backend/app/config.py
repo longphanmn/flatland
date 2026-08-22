@@ -44,7 +44,8 @@ class Config:
     nutrient_cycle_rate: float = 0.6  # scales the boost a decayed corpse grants
     plant_variants_enabled: bool = True  # §O: grass/berry/mushroom/poisonous diversity
     poison_rate: float = 0.03  # §O: chance a new sprout is poisonous (mutates in)
-    # (future §O: beast_ratio, diet_strictness — wild herbivores & diet preference)
+    beast_ratio: float = 0.0  # §O: fraction of creature_density that are wild herbivores (grazers)
+    diet_strictness: float = 0.0  # §O: 0=omnivore, 1=strict diet preference (herbivore vs carnivore)
 
     # Corpses & scavenging
     corpses_enabled: bool = True
