@@ -699,3 +699,135 @@ select {
   color: #3fb950;
   font-size: 12px;
 }
+
+/* ─────────────── phone: make UI thumb-friendly ─────────────── */
+@media (max-width: 768px) {
+  .hud {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .title {
+    font-size: 13px;
+  }
+  .chip {
+    font-size: 11px;
+  }
+
+  /* right-stack becomes bottom sheet so canvas stays usable */
+  .right-stack {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: none;
+    top: auto;
+    bottom: 56px;
+    max-height: 52vh;
+    gap: 8px;
+  }
+  .info-panel {
+    max-height: 26vh;
+    padding: 8px 10px;
+  }
+  .chronicle {
+    min-height: 80px;
+    max-height: 26vh;
+    padding: 8px 10px;
+  }
+  .chronicle li {
+    font-size: 11px;
+  }
+
+  /* controls: horizontal scroll, larger taps */
+  .controls {
+    gap: 6px;
+    padding: 8px 10px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .controls::-webkit-scrollbar {
+    display: none;
+  }
+  .controls button,
+  .controls select {
+    min-height: 36px;
+    flex: none;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  .key-hints {
+    display: none;
+  }
+
+  /* drawers become bottom sheets */
+  .inspector {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-width: none;
+    height: 62vh;
+    max-height: 78vh;
+    border-right: none;
+    border-top: 1px solid #30363d;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55);
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  .god-panel {
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    top: auto;
+    bottom: 0;
+    height: 72vh;
+    max-height: 84vh;
+    border-left: none;
+    border-top: 1px solid #30363d;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55);
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  .album {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: none;
+    top: auto;
+    bottom: 56px;
+  }
+  .snap-banner {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    transform: none;
+    max-width: none;
+    font-size: 12px;
+    text-align: center;
+  }
+  .run-switcher {
+    left: 8px;
+    right: auto;
+    bottom: 56px;
+    max-width: calc(100vw - 16px);
+  }
+  .run-select {
+    max-width: 42vw;
+  }
+
+  /* larger touch targets */
+  button {
+    min-height: 34px;
+  }
+}
+
+@media (max-width: 380px) {
+  .hud {
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .right-stack {
+    max-height: 48vh;
+  }
+}
