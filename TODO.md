@@ -51,8 +51,10 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [ ] [P1] Irregularity — mutation may mark child irregular (deviation value);
       below tolerance → demoted to lowest civil-servant caste;
       above `euthanasia_threshold` → killed at maturity (cause `euthanasia`)
-- [ ] [P0] Caste traits table — lifespan, speed, fertility, sight radius per caste
-      (higher polygons see farther = "Sight Recognition"; women see less)
+- [x] [P0] Caste traits table — `CASTE_TRAITS` per caste: lifespan, speed,
+      Sight Recognition (`sight_mult` applied to perception), fertility
+      (reserved for §B); women see least, priests see farthest and are
+      nearly sterile (Nature's Law)
 - [ ] [P2] Peace-cry — women emit a visible ripple while moving (renderer effect)
 - [ ] [P2] Social yielding — lower castes steer away from higher castes (repulsion)
 

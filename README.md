@@ -9,6 +9,11 @@ starvation when deprived of food too long.
   a creature `hungry` (notices food farther away), very low makes it `starving`
   (farther perception + faster movement, pulsing red marker). Energy at zero =
   death.
+- **Aging:** creatures age each tick; each caste has a natural lifespan
+  (women shortest → priests longest). Old age is a distinct death cause; the
+  god law `Lifespan ×` scales all lifespans.
+- **Sight Recognition:** higher castes perceive farther (priests 1.35×, women
+  0.8× the base sight radius) — Flatland's class hierarchy as natural law.
 - **Houses:** square outlines with a doorway on the south wall; walls block
   movement but the door is passable. Door width scales with the largest
   creature's body size, so big castes need big doors.

@@ -7,8 +7,6 @@ from typing import Callable
 
 from .config import Config
 from .entities import (
-    CASTE_LIFESPAN,
-    DEFAULT_LIFESPAN,
     DEFAULT_RADIUS,
     PRIEST_SIDES,
     Creature,
@@ -16,19 +14,10 @@ from .entities import (
     Food,
     House,
     caste_name,
+    traits_for,
 )
 from .protocol import EntityState, HistoryEvent, StateMessage
 from .world import World, segments_intersect
-
-# Caste -> movement speed (grid units per tick).
-SPEEDS = {
-    "Soldier": 0.85,
-    "Gentleman": 0.55,
-    "Professional": 0.5,
-    "Noble": 0.45,
-    "Priest": 0.35,
-    "Woman": 0.75,
-}
 
 
 class Simulation:
@@ -61,7 +50,7 @@ class Simulation:
         cfg = self.config
         x, y = self._rand_pos()
         caste = caste_name(sides, shape)
-        lifespan = CASTE_LIFESPAN.get(caste, DEFAULT_LIFESPAN) * cfg.lifespan_mult
+        traits = traits_for(caste)
         self.world.add(
             Creature(
                 shape=shape,
@@ -69,9 +58,9 @@ class Simulation:
                 x=x,
                 y=y,
                 angle=self.rng.uniform(0, 2 * math.pi),
-                speed=SPEEDS.get(caste, 0.6),
+                speed=traits.speed,
                 energy=cfg.energy_start,
-                lifespan=lifespan,
+                lifespan=traits.lifespan * cfg.lifespan_mult,
             )
         )
 
@@ -154,7 +143,8 @@ class Simulation:
         c.ticks_since_meal += 1
         c.age += 1
 
-        # Hunger state drives perception range and urgency.
+        # Hunger state drives perception range and urgency; the caste's
+        # Sight Recognition (aided by Fog) sets the base reach.
         ratio = c.energy / cfg.energy_max if cfg.energy_max > 0 else 0.0
         if ratio <= cfg.starving_ratio:
             c.status = "starving"
@@ -163,7 +153,7 @@ class Simulation:
         else:
             c.status = ""
 
-        perceive = cfg.perceive_radius
+        perceive = cfg.perceive_radius * c.sight_mult
         speed_mult = 1.0
         if c.status == "hungry":
             perceive *= cfg.hungry_perceive_mult

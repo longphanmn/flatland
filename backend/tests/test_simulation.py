@@ -5,7 +5,7 @@ import math
 import pytest
 
 from app.config import Config
-from app.entities import Creature, Food, House
+from app.entities import Creature, Food, House, caste_name, traits_for
 from app.simulation import Simulation
 
 
@@ -267,6 +267,61 @@ def test_starvation_and_old_age_counts_are_separate():
     assert elder.id not in s.world.entities
     assert s._death_counts == {"starvation": 1, "old_age": 1}
     assert s.snapshot().dead_by_cause == {"starvation": 1, "old_age": 1}
+
+
+def test_caste_traits_table_drives_spawned_creatures():
+    s = Simulation(Config(seed=21))
+    by_caste: dict[str, Creature] = {}
+    for c in s.world.creatures():
+        by_caste.setdefault(c.caste, c)
+    # Sight Recognition rises up the social scale; women see least
+    assert by_caste["Woman"].sight_mult == pytest.approx(0.80)
+    assert by_caste["Gentleman"].sight_mult == pytest.approx(1.00)
+    assert by_caste["Priest"].sight_mult == pytest.approx(1.35)
+    # Nature's Law: higher castes live longer and move slower
+    assert by_caste["Priest"].lifespan > by_caste["Soldier"].lifespan
+    assert by_caste["Priest"].speed < by_caste["Soldier"].speed
+
+
+def test_sight_recognition_scales_with_caste():
+    """Priests (sight ×1.35) spot food behind them; women (×0.8) never do."""
+
+    def spawn_chaser(s: Simulation, shape: str, sides: int) -> tuple[Creature, int]:
+        food = next(e for e in s.world.entities.values() if e.kind == "food")
+        c = s.world.add(
+            Creature(
+                x=(food.x - 11.0) % 200.0,
+                y=food.y,
+                shape=shape,
+                sides=sides,
+                angle=math.pi,  # heading WEST, away from the food
+                speed=traits_for(caste_name(sides, shape)).speed,
+                energy=100.0,
+            )
+        )
+        return c, food.id
+
+    priest_world = Simulation(minimal_cfg(width=200.0, height=100.0, seed=22, food_count=1))
+    priest, priest_food_id = spawn_chaser(priest_world, "polygon", 24)
+
+    woman_world = Simulation(minimal_cfg(width=200.0, height=100.0, seed=22, food_count=1))
+    woman, woman_food_id = spawn_chaser(woman_world, "line", 2)
+
+    px, py = priest.x, priest.y
+    for _ in range(80):
+        priest_world.step()
+        woman_world.step()
+
+    assert priest.sight_mult == pytest.approx(1.35)
+    assert woman.sight_mult == pytest.approx(0.80)
+    # Priest sensed the food behind his back and went to eat it (a fresh one
+    # is re-spawned elsewhere by the food law).
+    current = next((e for e in priest_world.world.entities.values() if e.kind == "food"), None)
+    assert current is not None and current.id != priest_food_id
+    assert priest_world.world.distance(priest.x, priest.y, px, py) > 5.0
+    # Woman never perceived it: her food is untouched.
+    still = next(e for e in woman_world.world.entities.values() if e.kind == "food")
+    assert still.id == woman_food_id
 
 
 def test_food_count_stable_over_many_ticks():

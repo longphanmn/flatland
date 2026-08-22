@@ -16,17 +16,39 @@ RADIUS_BY_CASTE = {
 }
 DEFAULT_RADIUS = 1.2
 
-# Caste traits: natural lifespan in ticks (at 10 ticks/s: 4800 = 8 minutes).
-# Flatland: higher polygons are rarer and longer-lived than the lower orders.
-CASTE_LIFESPAN = {
-    "Woman": 4800,
-    "Soldier": 5400,
-    "Gentleman": 6000,
-    "Professional": 6600,
-    "Noble": 7200,
-    "Priest": 9000,
+
+@dataclass(frozen=True)
+class CasteTraits:
+    """The social order of Flatland, expressed as natural law.
+
+    - lifespan: ticks of natural life (at 10 ticks/s: 4800 = 8 minutes)
+    - speed: grid units per tick
+    - sight_mult: "Sight Recognition" — higher castes perceive farther,
+      aided by Fog; women see least
+    - fertility: relative reproductive rate (used by §B reproduction;
+      Nature's Law: development accelerates while fertility declines)
+    """
+
+    lifespan: float
+    speed: float
+    sight_mult: float = 1.0
+    fertility: float = 1.0
+
+
+CASTE_TRAITS = {
+    "Woman": CasteTraits(lifespan=4800, speed=0.75, sight_mult=0.80, fertility=1.20),
+    "Soldier": CasteTraits(lifespan=5400, speed=0.85, sight_mult=0.90, fertility=1.10),
+    "Gentleman": CasteTraits(lifespan=6000, speed=0.55, sight_mult=1.00, fertility=1.00),
+    "Professional": CasteTraits(lifespan=6600, speed=0.50, sight_mult=1.10, fertility=0.90),
+    "Noble": CasteTraits(lifespan=7200, speed=0.45, sight_mult=1.20, fertility=0.80),
+    # Priests: longest-lived, sharpest-sighted, nearly sterile (Nature's Law).
+    "Priest": CasteTraits(lifespan=9000, speed=0.35, sight_mult=1.35, fertility=0.50),
 }
-DEFAULT_LIFESPAN = 6000
+DEFAULT_TRAITS = CasteTraits(lifespan=6000, speed=0.60)
+
+
+def traits_for(caste: str) -> CasteTraits:
+    return CASTE_TRAITS.get(caste, DEFAULT_TRAITS)
 
 
 def caste_name(sides: int, shape: str) -> str:
@@ -66,6 +88,7 @@ class Creature(Entity):
     radius: float = 0.0  # body radius; derived from caste when unset
     age: int = 0  # ticks lived
     lifespan: float = 0.0  # 0 => derived from caste table
+    sight_mult: float = 0.0  # 0 => derived from caste table
     ticks_since_meal: int = 0
     meals: int = 0
     status: str = ""  # "" | "hungry" | "starving"
@@ -73,10 +96,13 @@ class Creature(Entity):
     def __post_init__(self) -> None:
         if not self.caste:
             self.caste = caste_name(self.sides, self.shape)
+        traits = traits_for(self.caste)
         if not self.radius:
             self.radius = RADIUS_BY_CASTE.get(self.caste, DEFAULT_RADIUS)
         if not self.lifespan:
-            self.lifespan = CASTE_LIFESPAN.get(self.caste, DEFAULT_LIFESPAN)
+            self.lifespan = traits.lifespan
+        if not self.sight_mult:
+            self.sight_mult = traits.sight_mult
 
 
 @dataclass
