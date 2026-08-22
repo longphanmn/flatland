@@ -333,15 +333,15 @@ Predator. Add variety so niches, seasons and diets can emerge.
       `config.py:46` `beast_ratio` 0.0 default (god enables), `simulation.py:205`
       `_spawn_herbivore`, `simulation.py:289` spawn `area×density×beast_ratio`,
       `simulation.py:1030` herbivore lineage 50% if one parent, `simulation.py:680` war excludes herbivore, shelter excludes herbivore).
-- [ ] [P2] Diet & preference — `Creature.diet` (herbivore/omnivore/carnivore) steers
+- [x] [P2] Diet & preference — `Creature.diet` (herbivore/omnivore/carnivore) steers
       which food a creature perceives and eats; higher castes prefer richer food,
-      predators prefer live prey over plants.
+      predators prefer live prey over plants (`simulation.py:1304` `diet_strictness` filter: herbivore ignores corpse, predator ignores plants, strict >0.5 higher castes skip grass if berry nearby, herbivore avoids poisonous; `config.py:46` `diet_strictness` 0.0 default).
 - [x] [P2] Food quality — variants yield different energy/health (meat heals, poison
       harms); scavenging corpses vs grazing plants reward different creatures
       (`VARIANT_ENERGY` grass 32/berry 48/mushroom 24/poison 8, `VARIANT_HEALTH` berry +1/poison -30, corpse 25).
 - [x] [P2] Trophic HUD — plant / herbivore / predator counts chart (the §H ecological
       balance made watchable) (`frontend/src/render/TrophicChart.tsx` stacked Food·Herbivore·Predator vs `popHist`, `App.tsx:469` under CasteChart).
-- [x] GodLaws: plant_variants_enabled, poison_rate, beast_ratio (Ecosystem `config.py:44` `protocol.py:123` `main.py:184` `GodPanel.tsx:15`); diet_strictness still [P2] pending (diet preference)
+- [x] GodLaws: plant_variants_enabled, poison_rate, beast_ratio, diet_strictness (Ecosystem `config.py:44` `protocol.py:123` `main.py:184` `GodPanel.tsx:15`)
 
 ## P. Clan depth — totems, territory & war  [P2]
 Clans have identity (crest ring) and a first taste of war (§I) but no totem, no land

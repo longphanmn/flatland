@@ -1301,12 +1301,31 @@ class Simulation:
                         best_pred_d, best_pred = d, o
                 flee_target = best_pred
 
-        # 2. Perceive the nearest meal — food or the fallen.
+        # 2. Perceive the nearest meal — food or the fallen. Diet strictness (§O) filters.
         target: Entity | None = None
         best = math.inf
         for e in w.query_radius(c.x, c.y, perceive):
             if e.kind not in ("food", "corpse") or e.id in self._eaten:
                 continue
+            # Diet & preference (§O): herbivore↔plants, carnivore↔meat, omnivore both; strictness gates.
+            if cfg.diet_strictness > 0:
+                if c.is_herbivore and e.kind == "corpse":
+                    if self.rng.random() < cfg.diet_strictness:
+                        continue
+                if c.is_predator and e.kind == "food":
+                    if self.rng.random() < cfg.diet_strictness:
+                        continue
+                # higher castes prefer richer food when strict: skip grass if berry nearby (approx)
+                if not c.is_herbivore and not c.is_predator and e.kind == "food" and cfg.diet_strictness > 0.5:
+                    if isinstance(e, Food) and e.variant == "grass":
+                        # peek if a berry/mushroom is also within perceive — if so, ignore grass
+                        # (cheaper than full scan: just skip grass with 70% chance when strict)
+                        if self.rng.random() < 0.7:
+                            continue
+                # herbivores avoid poisonous when strict
+                if c.is_herbivore and isinstance(e, Food) and e.variant == "poisonous" and cfg.diet_strictness > 0.3:
+                    if self.rng.random() < cfg.diet_strictness:
+                        continue
             d = w.distance(c.x, c.y, e.x, e.y)
             if d < best:
                 best, target = d, e  # type: ignore[assignment]
