@@ -93,6 +93,7 @@ class StateMessage(BaseModel):
     relations: list[dict[str, int]] = Field(default_factory=list)
     clans: dict[str, dict[str, Any]] = Field(default_factory=dict)
     events: list["HistoryEvent"] = Field(default_factory=list)
+    signals: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class HistoryEvent(BaseModel):
@@ -196,6 +197,12 @@ class GodLaws(BaseModel):
     relation_drift_rate: Optional[float] = Field(None, ge=0, le=10)
     alliance_threshold: Optional[int] = Field(None, ge=-100, le=100)
     rivalry_threshold: Optional[int] = Field(None, ge=-100, le=100)
+    communication_enabled: Optional[bool] = None
+    signal_radius: Optional[float] = Field(None, ge=3, le=40)
+    food_call_rate: Optional[float] = Field(None, ge=0, le=1)
+    alarm_call_rate: Optional[float] = Field(None, ge=0, le=1)
+    food_memory_ttl: Optional[int] = Field(None, ge=20, le=5000)
+
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
     schism_enabled: Optional[bool] = None
     schism_threshold: Optional[float] = Field(None, ge=0, le=1)

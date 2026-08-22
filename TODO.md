@@ -389,22 +389,22 @@ Give each a name, a face, and a voice — then let kin lead the hungry to food.
       personal mark, not a new caste) (`simulation.py:118` `variation_for` hue -12..+12 scale 0.96..1.04 angle ±0.06, `protocol.py:52` `hue_shift/scale_jitter/angle_jitter`, `CanvasRenderer.tsx:360` `creatureColor` hue shift + `r*scale` + `angle+ jitter`)
 
 ### Communication (food + alarm calls)
-- [ ] [P2] Signal model — a short-lived ping carrying sender position + type,
+- [x] [P2] Signal model — a short-lived ping carrying sender position + type,
       heard within `signal_radius`; clan-mates respond strongly, strangers
-      weakly/ignore; rendered as a ripple
-- [ ] [P2] Food call — a well-fed creature that finds food calls; hungry
-      clan-mates steer toward the caller
-- [ ] [P2] Alarm call — a creature that sees a predator calls; nearby creatures
-      flee even without seeing it (group awareness beyond `fear_radius`)
-- [ ] GodLaws: communication_enabled, signal_radius, food_call_rate,
-      alarm_call_rate (new "Creature" law group)
+      weakly/ignore; rendered as a ripple (`simulation.py:152` `signals` ttl 15/12, `protocol.py:88` `StateMessage.signals`, `CanvasRenderer.tsx:536` ripples `food #3fb950`/`alarm #f85149` age radius)
+- [x] [P2] Food call — a well-fed creature that finds food calls; hungry
+      clan-mates steer toward the caller (`simulation.py:1631` `food_call_rate` 0.08 well-fed finds food → signal `food_x/food_y`, `simulation.py:1657` hungry `signal_food_target` clan-weighted 1.0/0.35 `food_call_rate`, `GodPanel.tsx:16` `signal_radius` 12)
+- [x] [P2] Alarm call — a creature that sees a predator calls; nearby creatures
+      flee even without seeing it (group awareness beyond `fear_radius`) (`simulation.py:1638` `alarm_call_rate` 0.12 flee_target → alarm `ttl`12, `simulation.py:1680` `signal_alarm_target` flee even without direct fear)
+- [x] GodLaws: communication_enabled, signal_radius, food_call_rate,
+      alarm_call_rate (new "Creature" law group) (`config.py:64` defaults `false`/12/0.08/0.12, `GodPanel.tsx:30` Communication group)
 
 ### Care — the clan guides the hungry to food
-- [ ] [P2] Food memory — a creature remembers where it last saw food
-      (`food_memory_ttl` decay)
-- [ ] [P2] Recruitment — a sated clan-mate within `flock_radius` of a starving
+- [x] [P2] Food memory — a creature remembers where it last saw food
+      (`food_memory_ttl` decay) (`entities.py:133` `food_memory_x/y/tick`, `simulation.py:1621` store on see, `config.py:68` `food_memory_ttl` 300, `protocol.py:54` not exposed yet — internal)
+- [x] [P2] Recruitment — a sated clan-mate within `flock_radius` of a starving
       one calls toward its remembered food; the starving one follows the call
-      (kin guide the hungry home)
+      (kin guide the hungry home) (`simulation.py:1643` sated `energy>0.6` near starving `≤starving_ratio` within `flock_radius` → food call with `food_memory_x/y`, `simulation.py:1672` hungry hears `signal_food_target`)
 
 ## R. Weather as life — crops & chill  [P2]
 Weather today only slows movement and dims sight. Make it a force on the land and

@@ -98,6 +98,11 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'bite_cooldown', label: 'Bite cooldown', min: 0, max: 100, step: 1, group: 'Predation' },
   { key: 'energy_from_prey', label: 'Energy from prey', min: 0, max: 200, step: 5, group: 'Predation' },
   { key: 'fear_radius', label: 'Fear radius', min: 1, max: 40, step: 1, group: 'Predation' },
+  // Communication — clan calls (§Q)
+  { key: 'signal_radius', label: 'Signal radius', min: 3, max: 40, step: 1, group: 'Communication' },
+  { key: 'food_call_rate', label: 'Food call rate', min: 0, max: 1, step: 0.01, group: 'Communication' },
+  { key: 'alarm_call_rate', label: 'Alarm call rate', min: 0, max: 1, step: 0.01, group: 'Communication' },
+  { key: 'food_memory_ttl', label: 'Food memory TTL', min: 20, max: 5000, step: 10, group: 'Communication' },
   // Rebellion — clan schism (§S)
   { key: 'schism_threshold', label: 'Schism threshold', min: 0, max: 1, step: 0.05, group: 'Rebellion' },
   { key: 'schism_min_pop', label: 'Schism min pop', min: 2, max: 100, step: 1, group: 'Rebellion' },
@@ -124,6 +129,7 @@ const GROUP_ORDER = [
   'Shelter',
   'Territory',
   'Clan',
+  'Communication',
   'Rebellion',
   'Interaction',
   'Predation',
@@ -168,6 +174,10 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   chill_threshold: 'chill at which creature sickens (12) — shelter sheds 2.5× faster',
   chill_drain: 'health drain per tick when chilled (0.18) — death cause chill',
   wet_disease_mult: 'wet/cold catch disease faster and recover slower (1.5×)',
+  signal_radius: 'heard within this range (12) — clan-mates respond strongly, strangers weakly',
+  food_call_rate: 'well-fed finds food → calls with this chance/tick (0.08)',
+  alarm_call_rate: 'sees predator → alarm call chance/tick (0.12)',
+  food_memory_ttl: 'ticks a creature remembers last food position (300)',
   schism_threshold: 'fraction unhappy (starving/homeless) to split (0.4)',
   schism_min_pop: 'minimum clan population to consider schism (4)',
 }
@@ -356,6 +366,20 @@ export default function GodPanel({ open, onClose }: Props) {
                     value={String(laws.weather_sickness_enabled ?? false)}
                     onChange={(e) =>
                       setLaws((l) => ({ ...l, weather_sickness_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
+              )}
+              {group === 'Communication' && (
+                <label className="god-row">
+                  <span title="food + alarm calls — clan-mates respond strongly, strangers weakly; rendered as ripples">Communication</span>
+                  <select
+                    value={String(laws.communication_enabled ?? false)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, communication_enabled: e.target.value === 'true' }))
                     }
                   >
                     <option value="true">yes</option>

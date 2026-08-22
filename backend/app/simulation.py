@@ -150,6 +150,7 @@ class Simulation:
         self._eaters_this_tick: list[int] = []
         self.fertile: list[dict] = []  # {x,y,r} — food prefers these grounds
         self.rocks: list[dict] = []  # {x,y,r} — solid circles that block movement
+        self.signals: list[dict] = []  # §Q: {x,y,kind,sender,clan_id,ttl}
         self._spawn_initial()
         self._generate_terrain()
 
@@ -705,6 +706,10 @@ class Simulation:
         self._events_this_tick = []
         self._eaters_this_tick = []
         self._update_weather()
+        # §Q signals decay (ripples fade)
+        self.signals = [sg for sg in self.signals if sg["ttl"] > 1]
+        for sg in self.signals:
+            sg["ttl"] -= 1
         self._update_plants()
         self.world.rebuild_index()
         houses = [e for e in self.world.entities.values() if e.kind == "house" and not e.is_ruin]  # type: ignore[union-attr]
@@ -1613,7 +1618,69 @@ class Simulation:
             if d < best:
                 best, target = d, e  # type: ignore[assignment]
 
+        # §Q Food memory — remember last seen food
+        if target is not None and isinstance(target, Food):
+            c.food_memory_x = target.x
+            c.food_memory_y = target.y
+            c.food_memory_tick = self.tick
+        elif c.food_memory_tick and self.tick - c.food_memory_tick > cfg.food_memory_ttl:
+            c.food_memory_x = None
+            c.food_memory_y = None
+        if c.signal_cooldown > 0:
+            c.signal_cooldown -= 1
+        # §Q Communication — food and alarm calls
+        if cfg.communication_enabled:
+            # Food call: well-fed finds food → calls clan-mates
+            if target is not None and c.energy / cfg.energy_max > cfg.hungry_ratio and c.signal_cooldown == 0:
+                if self.rng.random() < cfg.food_call_rate:
+                    self.signals.append({"x": c.x, "y": c.y, "kind": "food", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 15, "food_x": target.x, "food_y": target.y})
+                    c.signal_cooldown = 8
+            # Alarm call: sees predator → alarm
+            if flee_target is not None and c.signal_cooldown == 0:
+                if self.rng.random() < cfg.alarm_call_rate:
+                    self.signals.append({"x": c.x, "y": c.y, "kind": "alarm", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 12})
+                    c.signal_cooldown = 10
+            # Recruitment: sated clan-mate near starving one calls toward remembered food (§Q Care)
+            if c.food_memory_x is not None and c.energy / cfg.energy_max > 0.6:
+                for other in w.query_radius(c.x, c.y, cfg.flock_radius):
+                    if not isinstance(other, Creature) or other.id == c.id:
+                        continue
+                    if other.clan_id != c.clan_id:
+                        continue
+                    if other.energy / cfg.energy_max > cfg.starving_ratio:
+                        continue  # only starving
+                    if c.signal_cooldown == 0 and self.rng.random() < 0.08:
+                        self.signals.append({"x": c.x, "y": c.y, "kind": "food", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 12, "food_x": c.food_memory_x, "food_y": c.food_memory_y})
+                        c.signal_cooldown = 12
+                        break
+
         # 3. Steer — priority: flee > hunt > home for night > food > wander
+        # §Q Hearing signals — clan-mates respond strongly
+        signal_food_target = None
+        signal_alarm_target = None
+        if cfg.communication_enabled and self.signals:
+            best_food = math.inf
+            best_alarm = math.inf
+            for sg in self.signals:
+                d = w.distance(c.x, c.y, sg["x"], sg["y"])
+                if d > cfg.signal_radius:
+                    continue
+                # clan weighting: clan-mates 1.0, strangers 0.35
+                is_kin = sg.get("clan_id") and sg.get("clan_id") == c.clan_id
+                if not is_kin and self.rng.random() < 0.65:
+                    continue
+                if sg["kind"] == "food" and c.status in ("hungry", "starving"):
+                    # food signal points to food_x/food_y if present, else sender pos
+                    fx = sg.get("food_x", sg["x"])
+                    fy = sg.get("food_y", sg["y"])
+                    df = w.distance(c.x, c.y, fx, fy)
+                    if df < best_food:
+                        best_food = df
+                        signal_food_target = (fx, fy)
+                elif sg["kind"] == "alarm" and flee_target is None:
+                    if d < best_alarm:
+                        best_alarm = d
+                        signal_alarm_target = sg
         if flee_target is not None:
             # Prey flees directly away from predator (with extra urgency when starving)
             dx, dy = w.delta(c.x, c.y, flee_target.x, flee_target.y)
@@ -1621,8 +1688,21 @@ class Simulation:
             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
             # Flee is more urgent than normal steering
             c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
+        elif signal_alarm_target is not None:
+            # Alarm call: flee even without seeing predator (clan awareness)
+            dx, dy = w.delta(c.x, c.y, signal_alarm_target["x"], signal_alarm_target["y"])
+            desired = math.atan2(dy, dx)
+            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+            c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
         elif hunt_target is not None:
             dx, dy = w.delta(hunt_target.x, hunt_target.y, c.x, c.y)
+            desired = math.atan2(dy, dx)
+            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+            c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
+        elif signal_food_target is not None and target is None:
+            # Hungry follows clan-mate food call toward remembered food
+            fx, fy = signal_food_target
+            dx, dy = w.delta(fx, fy, c.x, c.y)
             desired = math.atan2(dy, dx)
             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
             c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
@@ -1892,6 +1972,7 @@ class Simulation:
             ],
             clans={str(k): v for k, v in self.clans.items()},
             events=list(self._events_this_tick),
+            signals=[dict(sg) for sg in self.signals],
         )
 
     def _entity_state(self, e: Entity) -> EntityState:

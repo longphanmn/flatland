@@ -73,6 +73,7 @@ export interface StateMessage {
   relations: { a: number; b: number; score: number }[]
   clans: Record<string, { name: string; founder_id: number; born_tick: number; color: string }>
   events: HistoryEvent[]
+  signals: { x: number; y: number; kind: 'food' | 'alarm'; sender: number; clan_id: number | null; ttl: number }[]
 }
 
 export interface HistoryEvent {
@@ -249,6 +250,12 @@ export interface GodLaws {
   house_claim_enabled?: boolean
   rest_recovery_mult?: number
   house_decay_ticks?: number
+
+  communication_enabled?: boolean
+  signal_radius?: number
+  food_call_rate?: number
+  alarm_call_rate?: number
+  food_memory_ttl?: number
 
   schism_enabled?: boolean
   schism_threshold?: number

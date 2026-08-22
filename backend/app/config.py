@@ -60,6 +60,13 @@ class Config:
     schism_threshold: float = 0.4  # fraction unhappy (starving/homeless) to trigger split
     schism_min_pop: int = 4  # minimum clan population to consider schism
 
+    # Communication & Care (§Q)
+    communication_enabled: bool = False  # food + alarm calls, clan recruitment
+    signal_radius: float = 12.0  # heard within this range
+    food_call_rate: float = 0.08  # well-fed finds food → calls with this chance/tick
+    alarm_call_rate: float = 0.12  # sees predator → alarm call chance/tick
+    food_memory_ttl: int = 300  # ticks a creature remembers last food position
+
     # Corpses & scavenging
     corpses_enabled: bool = True
     corpse_ttl: int = 600  # ticks before a corpse decays away

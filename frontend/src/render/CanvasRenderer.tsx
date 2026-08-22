@@ -585,6 +585,31 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         }
       }
 
+      // §Q signals — ripples at caller position
+      if ((state as any).signals) {
+        for (const sg of (state as any).signals) {
+          const sx = cam.ox + sg.x * cam.scale
+          const sy = cam.oy + sg.y * cam.scale
+          const age = 15 - (sg.ttl ?? 0)
+          const radius = (4 + age * 2.2) * (cam.scale / 12)
+          const alpha = Math.max(0, 0.45 - age * 0.03)
+          if (alpha <= 0) continue
+          ctx.globalAlpha = alpha
+          ctx.strokeStyle = sg.kind === 'food' ? '#3fb950' : '#f85149'
+          ctx.lineWidth = 1.2
+          ctx.beginPath()
+          ctx.arc(sx, sy, radius, 0, TAU)
+          ctx.stroke()
+          // small dot at sender
+          ctx.globalAlpha = 0.9
+          ctx.fillStyle = sg.kind === 'food' ? '#3fb950' : '#f85149'
+          ctx.beginPath()
+          ctx.arc(sx, sy, 2, 0, TAU)
+          ctx.fill()
+          ctx.globalAlpha = 1
+        }
+      }
+
       ctx.setTransform(cam.scale, 0, 0, cam.scale, cam.ox, cam.oy)
       for (const e of state.entities) drawEntity(ctx, e)
       // totem poles — small marker beside each claimed house (§P)

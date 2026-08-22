@@ -131,6 +131,10 @@ class Creature(Entity):
     meals: int = 0
     status: str = ""  # "" | "hungry" | "starving"
     chill: float = 0.0  # §R: cold built when unsheltered in rain/storm/winter night; threshold → sick
+    food_memory_x: float | None = None  # §Q: last seen food position
+    food_memory_y: float | None = None
+    food_memory_tick: int = 0  # when memory was stored
+    signal_cooldown: int = 0  # ticks until next call allowed
 
     def __post_init__(self) -> None:
         if not self.caste:
