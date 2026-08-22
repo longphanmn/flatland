@@ -35,7 +35,10 @@ export default function App() {
   const [paused, setPaused] = useState(false)
   const [speed, setSpeed] = useState(10)
   const [godOpen, setGodOpen] = useState(false)
-  const [chronicleOpen, setChronicleOpen] = useState(true)
+  const [chronicleOpen, setChronicleOpen] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) return false
+    return true
+  })
   const [helpOpen, setHelpOpen] = useState(false)
   const [versionInfo, setVersionInfo] = useState<{ version: string; revision: string } | null>(null)
   const [log, setLog] = useState<HistoryEvent[]>([])
@@ -82,19 +85,74 @@ export default function App() {
       .catch(() => setVersionInfo({ version: '0.1.0', revision: '' }))
   }, [])
 
-  // Tap hint: clicking any HUD chip with title shows it (mobile where hover doesn't work)
+  const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
+  // Custom tooltip for HUD chips and law hints — works on hover (desktop) and tap (mobile)
   useEffect(() => {
-    const onChipClick = (e: Event) => {
+    let hideTimer: number | null = null
+    const show = (el: HTMLElement, x: number, y: number) => {
+      const txt = el.getAttribute('title') || el.getAttribute('data-hint')
+      if (!txt) return
+      // suppress native title
+      el.setAttribute('data-title', txt)
+      el.removeAttribute('title')
+      setTooltip({ text: txt, x, y })
+      if (hideTimer) window.clearTimeout(hideTimer)
+    }
+    const hide = (el: HTMLElement) => {
+      const orig = el.getAttribute('data-title')
+      if (orig) {
+        el.setAttribute('title', orig)
+        el.removeAttribute('data-title')
+      }
+      if (hideTimer) window.clearTimeout(hideTimer)
+      hideTimer = window.setTimeout(() => setTooltip(null), 120) as unknown as number
+    }
+    const onEnter = (e: Event) => {
       const t = e.target as HTMLElement
-      const chip = t.closest('.chip[title]') as HTMLElement | null
-      if (chip?.title) {
-        // use alert for mobile, but avoid spamming when selecting text
-        alert(chip.title)
+      const chip = t.closest('[title], [data-hint]') as HTMLElement | null
+      if (!chip) return
+      const rect = chip.getBoundingClientRect()
+      show(chip, rect.left + rect.width / 2, rect.top)
+    }
+    const onLeave = (e: Event) => {
+      const t = e.target as HTMLElement
+      const chip = t.closest('[title], [data-hint]') as HTMLElement | null
+      if (chip) hide(chip)
+      else setTooltip(null)
+    }
+    const onClick = (e: Event) => {
+      const t = e.target as HTMLElement
+      const chip = t.closest('[title], [data-hint]') as HTMLElement | null
+      if (chip) {
+        const txt = chip.getAttribute('title') || chip.getAttribute('data-hint') || chip.getAttribute('data-title')
+        if (txt) {
+          const rect = chip.getBoundingClientRect()
+          setTooltip({ text: txt, x: rect.left + rect.width / 2, y: rect.top })
+          if (hideTimer) window.clearTimeout(hideTimer)
+          hideTimer = window.setTimeout(() => setTooltip(null), 2800) as unknown as number
+          e.preventDefault()
+        }
       }
     }
-    document.addEventListener('click', onChipClick)
-    return () => document.removeEventListener('click', onChipClick)
-  }, [])
+    document.addEventListener('mouseenter', onEnter, true)
+    document.addEventListener('mouseleave', onLeave, true)
+    document.addEventListener('mousemove', (e: MouseEvent) => {
+      if (tooltip) {
+        const t = (e.target as HTMLElement).closest('[title], [data-hint]') as HTMLElement | null
+        if (t) {
+          const rect = t.getBoundingClientRect()
+          setTooltip((prev) => prev ? { ...prev, x: rect.left + rect.width / 2, y: rect.top } : prev)
+        }
+      }
+    })
+    document.addEventListener('click', onClick, true)
+    return () => {
+      document.removeEventListener('mouseenter', onEnter, true)
+      document.removeEventListener('mouseleave', onLeave, true)
+      document.removeEventListener('click', onClick, true)
+      if (hideTimer) window.clearTimeout(hideTimer)
+    }
+  }, [tooltip])
 
   // Keyboard controls: space pause · S step · R reset · +/- zoom · F fit.
   useEffect(() => {
@@ -713,6 +771,15 @@ export default function App() {
       <div className="version-bar" title={versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'Flatland'}>
         {versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'v0.1.0'}
       </div>
+      {tooltip && (
+        <div
+          className="custom-tooltip"
+          style={{ left: tooltip.x, top: tooltip.y - 8, transform: 'translate(-50%, -100%)' }}
+          onClick={() => setTooltip(null)}
+        >
+          {tooltip.text}
+        </div>
+      )}
       {worlds.length > 0 && (
         <div className="run-switcher">
           <label className="chip run-label" htmlFor="run-bottom">

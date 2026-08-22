@@ -848,6 +848,9 @@ select {
     top: 6px;
     right: 8px;
   }
+  .hud {
+    padding-right: 92px;
+  }
   .version-bar {
     bottom: 6px;
     left: 8px;
@@ -855,6 +858,16 @@ select {
     transform: none;
     font-size: 9px;
     padding: 1px 6px;
+  }
+  /* hide some HUD chips on very small screens to reduce height */
+  .hud .chip:nth-of-type(n+6) {
+    display: none;
+  }
+  .hud .chip.alive,
+  .hud .chip.dead,
+  .hud .chip.starving,
+  .hud .chip.sick {
+    display: inline-flex;
   }
   .run-select {
     max-width: 42vw;
@@ -894,6 +907,33 @@ select {
   z-index: 6;
   pointer-events: none;
   letter-spacing: 0.04em;
+}
+
+/* custom tooltip — instant on hover, tap on mobile */
+.custom-tooltip {
+  position: fixed;
+  max-width: 280px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: #c9d1d9;
+  line-height: 1.35;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  z-index: 40;
+  pointer-events: auto;
+  white-space: normal;
+  word-wrap: break-word;
+}
+.custom-tooltip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #30363d;
 }
 
 /* help modal */
