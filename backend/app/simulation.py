@@ -65,6 +65,7 @@ class Simulation:
         # touch the rng — determinism is unaffected by observers.
         self.on_event: Callable[[HistoryEvent], None] | None = None
         self._eaten: set[int] = set()
+        self._beds: dict[int, int] = {}  # house id -> occupants granted this tick
         self._events_this_tick: list[HistoryEvent] = []
         self._death_counts: dict[str, int] = {}
         self.disease_id = 0
@@ -111,6 +112,19 @@ class Simulation:
 
     def env_speed_mult(self) -> float:
         return self.config.rain_speed_mult if self.weather in ("rain", "storm") else 1.0
+
+    def _inside_house(self, c: Creature, h: House) -> bool:
+        return (
+            abs(c.x - h.x) < h.size / 2 - 0.3 and abs(c.y - h.y) < h.size / 2 - 0.3
+        )
+
+    def _claim_bed(self, house: House) -> bool:
+        """One bed per occupant until the house is full; creatures arrive in id order."""
+        taken = self._beds.get(house.id, 0)
+        if taken >= max(0, self.config.house_capacity):
+            return False
+        self._beds[house.id] = taken + 1
+        return True
 
     # ------------------------------------------------------------------ setup
     def _rand_pos(self) -> tuple[float, float]:
@@ -308,6 +322,7 @@ class Simulation:
     def step(self) -> None:
         """Advance the world by exactly one tick (deterministic)."""
         self._eaten.clear()
+        self._beds.clear()  # beds are re-contested every tick, in id order
         self._events_this_tick = []
         self._update_weather()
         self.world.rebuild_index()
@@ -563,22 +578,30 @@ class Simulation:
             c.repro_cooldown -= 1
 
         # 0. Night rest: after dark, creatures make for the nearest house and
-        # those safely inside sleep — half the hunger, twice the healing.
+        # those who win a bed sleep — half the hunger, multiplied healing.
         c.sleeping = False
-        if cfg.sleep_enabled and self._is_night(self._time_of_day()) and houses:
+        c.indoors = False
+        tod = self._time_of_day()
+        if (
+            cfg.sleep_enabled
+            and cfg.shelter_enabled
+            and self._is_night(tod)
+            and houses
+        ):
             home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
             inside = (
                 abs(c.x - home.x) < home.size / 2 - 0.3
                 and abs(c.y - home.y) < home.size / 2 - 0.3
             )
-            if inside:
+            if inside and self._claim_bed(home):
+                c.indoors = True
                 c.sleeping = True
                 c.energy -= cfg.energy_decay_per_tick * cfg.sleep_energy_mult
                 if c.infected and cfg.disease_enabled:
                     c.energy -= cfg.disease_energy_drain
                     c.health -= 2.0 * cfg.disease_lethality
                 else:
-                    c.health = min(100.0, c.health + 0.3)
+                    c.health = min(100.0, c.health + 0.15 * cfg.rest_recovery_mult)
                 if c.energy <= 0:
                     self._kill(c, "starvation")
                 elif c.health <= 0:
@@ -712,8 +735,26 @@ class Simulation:
             c.meals += 1
             c.energy = min(cfg.energy_max, c.energy + cfg.energy_from_food)
 
+        # 5b. Rain and storms send the roofless under cover — beds permitting.
+        if (
+            cfg.shelter_enabled
+            and not c.indoors
+            and houses
+            and not self._is_night(tod)
+            and self.weather in ("rain", "storm")
+        ):
+            home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
+            if self._inside_house(c, home) and self._claim_bed(home):
+                c.indoors = True
+
         # 6. Metabolism, sickness and mortality.
         c.energy -= cfg.energy_decay_per_tick
+        if (
+            cfg.shelter_enabled
+            and not c.indoors
+            and (self._is_night(tod) or self.weather in ("rain", "storm"))
+        ):
+            c.energy -= cfg.exposure_drain
         if cfg.disease_enabled and c.infected:
             c.energy -= cfg.disease_energy_drain
             c.health -= 2.0 * cfg.disease_lethality
@@ -796,6 +837,7 @@ class Simulation:
                 clan_id=e.clan_id or None,
                 clan_color=self.clans.get(e.clan_id, {}).get("color"),
                 sleeping=e.sleeping,
+                indoors=e.indoors,
                 generation=e.generation,
                 born_tick=e.born_tick,
             )

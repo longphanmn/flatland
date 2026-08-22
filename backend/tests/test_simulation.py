@@ -168,7 +168,9 @@ def test_hunger_status_stages():
 
 
 def test_starving_creature_finds_food_beyond_normal_range():
-    s = Simulation(minimal_cfg(width=60, height=60, seed=6, food_count=1))
+    s = Simulation(
+        minimal_cfg(width=60, height=60, seed=6, food_count=1, weather_enabled=False)
+    )
     food = next(e for e in s.world.entities.values() if e.kind == "food")
     c = s.world.add(
         Creature(x=(food.x - 18.0) % 60.0, y=food.y, angle=0.0, speed=0.85, energy=10.0)

@@ -219,6 +219,10 @@ LAW_FIELDS = (
     "door_clearance",
     "house_min_size",
     "house_max_size",
+    "shelter_enabled",
+    "exposure_drain",
+    "house_capacity",
+    "rest_recovery_mult",
 )
 
 

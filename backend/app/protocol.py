@@ -50,6 +50,7 @@ class EntityState(BaseModel):
     clan_id: Optional[int] = None
     clan_color: Optional[str] = None
     sleeping: Optional[bool] = None
+    indoors: Optional[bool] = None
     generation: Optional[int] = None
     born_tick: Optional[int] = None
     door_width: Optional[float] = None
@@ -156,3 +157,9 @@ class GodLaws(BaseModel):
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
     house_min_size: Optional[float] = Field(None, ge=3, le=60)
     house_max_size: Optional[float] = Field(None, ge=3, le=80)
+
+    # Shelter
+    shelter_enabled: Optional[bool] = None
+    exposure_drain: Optional[float] = Field(None, ge=0, le=10)
+    house_capacity: Optional[int] = Field(None, ge=1, le=64)
+    rest_recovery_mult: Optional[float] = Field(None, ge=0, le=10)

@@ -117,6 +117,7 @@ class Creature(Entity):
     disease_id: int = 0
     clan_id: int = 0  # 0 = clanless (assigned at birth / world creation)
     sleeping: bool = False
+    indoors: bool = False  # won a bed in a house this tick
     ticks_since_meal: int = 0
     meals: int = 0
     status: str = ""  # "" | "hungry" | "starving"

@@ -99,6 +99,12 @@ class Config:
     sleep_enabled: bool = True  # creatures shelter in houses after dark
     sleep_energy_mult: float = 0.5  # energy decay while asleep
 
+    # Shelter
+    shelter_enabled: bool = True  # houses are scarce, contested and life-saving
+    exposure_drain: float = 0.3  # extra energy/tick outdoors in rain/storm or at night
+    house_capacity: int = 4  # beds per house per tick; overflow sleeps outside
+    rest_recovery_mult: float = 2.0  # indoor sleeping health regen multiplier
+
     # Terrain (-1 => auto-scale from area)
     fertile_patches: int = -1  # green grounds where food prefers to grow
     rock_count: int = -1  # solid stone circles that block movement
