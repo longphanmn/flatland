@@ -2,6 +2,7 @@
 
 import math
 import random
+from collections import deque
 
 from .config import Config
 from .entities import (
@@ -13,7 +14,7 @@ from .entities import (
     House,
     caste_name,
 )
-from .protocol import EntityState, StateMessage
+from .protocol import EntityState, HistoryEvent, StateMessage
 from .world import World, segments_intersect
 
 # Caste -> movement speed (grid units per tick).
@@ -28,12 +29,20 @@ SPEEDS = {
 
 
 class Simulation:
-    def __init__(self, config: Config | None = None):
+    def __init__(
+        self,
+        config: Config | None = None,
+        history: deque[HistoryEvent] | None = None,
+    ):
         self.config = config or Config()
         self.world = World(self.config)
         self.rng = random.Random(self.config.seed)
         self.tick = 0
+        self.deaths = 0
+        # Chronicle of the world; survives resets when handed back in.
+        self.history: deque[HistoryEvent] = history or deque(maxlen=self.config.history_max)
         self._eaten: set[int] = set()
+        self._events_this_tick: list[HistoryEvent] = []
         self._spawn_initial()
 
     # ------------------------------------------------------------------ setup
@@ -78,15 +87,33 @@ class Simulation:
             (c.radius for c in self.world.creatures()), default=DEFAULT_RADIUS
         )
         for _ in range(cfg.num_houses):
-            x, y = self._rand_pos()
             size = self.rng.uniform(cfg.house_min_size, cfg.house_max_size)
+            x, y = self._rand_house_pos(size)
             door_width = min(size * 0.8, 2.0 * max_radius * cfg.door_clearance)
-            self.world.add(House(x=x, y=y, size=size, door_width=door_width))
+            self.world.add(
+                House(
+                    x=x,
+                    y=y,
+                    size=size,
+                    door_width=door_width,
+                    door_side=self.rng.choice(("north", "east", "south", "west")),
+                )
+            )
+
+    def _rand_house_pos(self, size: float) -> tuple[float, float]:
+        """Position keeping the whole house inside the world edge."""
+        cfg = self.config
+        margin = size / 2
+        return (
+            self.rng.uniform(margin, max(margin, cfg.width - margin)),
+            self.rng.uniform(margin, max(margin, cfg.height - margin)),
+        )
 
     # ------------------------------------------------------------------ tick
     def step(self) -> None:
         """Advance the world by exactly one tick (deterministic)."""
         self._eaten.clear()
+        self._events_this_tick = []
         self.world.rebuild_index()
         houses = [e for e in self.world.entities.values() if e.kind == "house"]
         for creature in self.world.creatures():  # snapshot list; removals are safe
@@ -171,6 +198,18 @@ class Simulation:
         c.energy -= cfg.energy_decay_per_tick
         if c.energy <= 0:
             w.remove(c.id)
+            self.deaths += 1
+            event = HistoryEvent(
+                type="death",
+                tick=self.tick + 1,  # the tick being completed
+                entity_id=c.id,
+                caste=c.caste,
+                cause="starvation",
+                x=round(c.x, 2),
+                y=round(c.y, 2),
+            )
+            self.history.append(event)
+            self._events_this_tick.append(event)
 
     def _enforce_food_law(self) -> None:
         """God's bounty or famine: keep food population at the law's target."""
@@ -201,6 +240,9 @@ class Simulation:
             boundary=cfg.boundary,
             population=population,
             entities=entities,
+            creatures_alive=len(self.world.creatures()),
+            creatures_dead=self.deaths,
+            events=list(self._events_this_tick),
         )
 
     @staticmethod
@@ -222,24 +264,58 @@ class Simulation:
                 size=round(e.size, 2),
                 door_width=round(e.door_width, 2),
                 door_offset=round(e.door_offset, 2),
+                door_side=e.door_side,  # type: ignore[arg-type]
             )
         return EntityState(**base)  # type: ignore[arg-type]
+
+
+def _house_wall_segments(h: House) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    """The house's wall segments; the door side is split around the doorway."""
+    half = h.size / 2
+    x0, y0 = h.x - half, h.y - half
+    x1, y1 = h.x + half, h.y + half
+    d = h.door_width / 2
+    c = h.door_offset
+    if h.door_side == "north":
+        return [
+            ((x0, y0), (h.x + c - d, y0)),
+            ((h.x + c + d, y0), (x1, y0)),
+            ((x0, y0), (x0, y1)),
+            ((x1, y0), (x1, y1)),
+            ((x0, y1), (x1, y1)),
+        ]
+    if h.door_side == "south":
+        return [
+            ((x0, y0), (x1, y0)),
+            ((x0, y0), (x0, y1)),
+            ((x1, y0), (x1, y1)),
+            ((x0, y1), (h.x + c - d, y1)),
+            ((h.x + c + d, y1), (x1, y1)),
+        ]
+    if h.door_side == "west":
+        return [
+            ((x0, y0), (x1, y0)),
+            ((x0, y1), (x1, y1)),
+            ((x1, y0), (x1, y1)),
+            ((x0, y0), (x0, h.y + c - d)),
+            ((x0, h.y + c + d), (x0, y1)),
+        ]
+    # east
+    return [
+        ((x0, y0), (x1, y0)),
+        ((x0, y0), (x0, y1)),
+        ((x0, y1), (x1, y1)),
+        ((x1, y0), (x1, h.y + c - d)),
+        ((x1, h.y + c + d), (x1, y1)),
+    ]
 
 
 def _path_crosses_wall(
     px: float, py: float, qx: float, qy: float, h: House
 ) -> bool:
     """True if the movement path p->q crosses a house wall (door is passable)."""
-    half = h.size / 2
-    x0, y0 = h.x - half, h.y - half
-    x1, y1 = h.x + half, h.y + half
-    door_lo = h.x + h.door_offset - h.door_width / 2
-    door_hi = h.x + h.door_offset + h.door_width / 2
-    walls = (
-        ((x0, y0), (x1, y0)),  # north
-        ((x0, y0), (x0, y1)),  # west
-        ((x1, y0), (x1, y1)),  # east
-        ((x0, y1), (door_lo, y1)),  # south, left of the door
-        ((door_hi, y1), (x1, y1)),  # south, right of the door
+    path = ((px, py), (qx, qy))
+    return any(
+        segments_intersect(path[0], path[1], a, b)
+        for a, b in _house_wall_segments(h)
     )
-    return any(segments_intersect((px, py), (qx, qy), a, b) for a, b in walls)

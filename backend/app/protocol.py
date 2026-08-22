@@ -39,6 +39,7 @@ class EntityState(BaseModel):
     radius: Optional[float] = None
     door_width: Optional[float] = None
     door_offset: Optional[float] = None
+    door_side: Optional[Literal["north", "east", "south", "west"]] = None
 
 
 class StateMessage(BaseModel):
@@ -49,6 +50,19 @@ class StateMessage(BaseModel):
     boundary: str
     population: dict[str, int] = Field(default_factory=dict)
     entities: list[EntityState] = Field(default_factory=list)
+    creatures_alive: int = 0
+    creatures_dead: int = 0
+    events: list["HistoryEvent"] = Field(default_factory=list)
+
+
+class HistoryEvent(BaseModel):
+    type: Literal["death"] = "death"
+    tick: int
+    entity_id: int
+    caste: str
+    cause: str  # e.g. "starvation"
+    x: float
+    y: float
 
 
 class HelloMessage(BaseModel):

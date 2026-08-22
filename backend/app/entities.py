@@ -72,5 +72,6 @@ class Food(Entity):
 class House(Entity):
     kind: str = "house"
     size: float = 6.0  # square side length
-    door_width: float = 4.0  # gap in the south wall
-    door_offset: float = 0.0  # door centre offset along the south wall
+    door_width: float = 4.0  # gap in the wall
+    door_side: str = "south"  # "north" | "east" | "south" | "west"
+    door_offset: float = 0.0  # door centre offset along that wall

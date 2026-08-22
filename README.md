@@ -74,11 +74,20 @@ curl -X POST localhost:8000/api/laws -H 'content-type: application/json' \
 
 | Variable | Default | Description |
 |---|---|---|
-| `FLATWORLD_WIDTH` | `100` | World width (grid units) |
-| `FLATWORLD_HEIGHT` | `100` | World height |
+| `FLATWORLD_WIDTH` | `200` | World width (grid units) |
+| `FLATWORLD_HEIGHT` | `200` | World height |
 | `FLATWORLD_BOUNDARY` | `wrap` | `wrap` or `clamp` edge behaviour |
 | `FLATWORLD_SEED` | `42` | RNG seed (same seed ⇒ identical simulation) |
 | `FLATWORLD_TICK_RATE` | `10` | Initial ticks per second |
+
+## Viewport & Chronicle
+
+- **Zoom:** mouse wheel or pinch; **pan:** drag with mouse/finger; **Fit view**
+  button resets the camera. Touch screens fully supported.
+- **HUD** shows live counts: alive vs dead creatures.
+- **Chronicle** panel records every death ("Soldier #14 died of starvation at
+  tick 512 …"); the full log also lives at `GET /api/history` and survives
+  world resets.
 
 ## Architecture
 

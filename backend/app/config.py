@@ -11,9 +11,9 @@ def _env(name: str, cast, default):
 
 @dataclass(frozen=True)
 class Config:
-    # World geometry (grid units)
-    width: float = 100.0
-    height: float = 100.0
+    # World geometry (grid units) — 200x200 = 4x the original 100x100 area
+    width: float = 200.0
+    height: float = 200.0
     boundary: str = "wrap"  # "wrap" | "clamp"
 
     # Simulation
@@ -52,11 +52,14 @@ class Config:
     house_max_size: float = 10.0
     door_clearance: float = 1.5  # door width = clearance * largest creature diameter
 
+    # Chronicle
+    history_max: int = 200  # death events kept in the chronicle
+
     @classmethod
     def from_env(cls) -> "Config":
         return cls(
-            width=_env("FLATWORLD_WIDTH", float, 100.0),
-            height=_env("FLATWORLD_HEIGHT", float, 100.0),
+            width=_env("FLATWORLD_WIDTH", float, 200.0),
+            height=_env("FLATWORLD_HEIGHT", float, 200.0),
             boundary=_env("FLATWORLD_BOUNDARY", str, "wrap"),
             seed=_env("FLATWORLD_SEED", int, 42),
             tick_rate=_env("FLATWORLD_TICK_RATE", float, 10.0),

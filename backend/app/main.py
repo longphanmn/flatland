@@ -103,7 +103,8 @@ async def apply_control(msg: ControlMessage) -> dict:
         RT.sim.step()
         await HUB.broadcast(RT.sim.snapshot().model_dump(mode="json"))
     elif msg.action is ControlAction.RESET:
-        RT.sim = Simulation(RT.config)
+        # A new world is born, but the chronicle of the old one endures.
+        RT.sim = Simulation(RT.config, history=RT.sim.history)
         await HUB.broadcast(RT.sim.snapshot().model_dump(mode="json"))
     elif msg.action is ControlAction.SET_SPEED:
         if msg.value is not None:
@@ -214,6 +215,15 @@ async def read_laws() -> dict:
 async def write_laws(laws: GodLaws) -> dict:
     """Set new laws of nature (god-writable). Applies to the live world."""
     return apply_laws(laws)
+
+
+@app.get("/api/history")
+async def get_history() -> dict:
+    """The full chronicle: every recorded death since the first world."""
+    return {
+        "total_deaths": RT.sim.deaths,
+        "events": [e.model_dump(mode="json") for e in RT.sim.history],
+    }
 
 
 @app.get("/api/state", response_model=StateMessage)

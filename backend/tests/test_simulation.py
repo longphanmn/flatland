@@ -192,6 +192,57 @@ def test_ticks_since_meal_resets_on_eating():
     assert c.ticks_since_meal == 1
 
 
+def test_houses_spawn_fully_inside_world():
+    for seed in range(8):
+        s = Simulation(Config(seed=seed))
+        w, h = s.config.width, s.config.height
+        for e in s.world.entities.values():
+            if e.kind == "house":
+                assert e.x - e.size / 2 >= 0.0, f"west edge breach seed={seed}"
+                assert e.x + e.size / 2 <= w, f"east edge breach seed={seed}"
+                assert e.y - e.size / 2 >= 0.0, f"north edge breach seed={seed}"
+                assert e.y + e.size / 2 <= h, f"south edge breach seed={seed}"
+
+
+def test_door_sides_valid_and_varied():
+    seen: set[str] = set()
+    for seed in range(8):
+        s = Simulation(Config(seed=seed))
+        for e in s.world.entities.values():
+            if e.kind == "house":
+                assert e.door_side in {"north", "east", "south", "west"}
+                seen.add(e.door_side)
+    assert len(seen) >= 2, f"expected variety of door sides, got {seen}"
+
+
+def test_death_recorded_in_chronicle():
+    s = Simulation(minimal_cfg(seed=11))
+    c = s.world.add(Creature(x=10.0, y=10.0, energy=0.01))
+    s.step()
+    assert s.deaths == 1
+    snap = s.snapshot()
+    assert snap.creatures_alive == 0
+    assert snap.creatures_dead == 1
+    assert len(snap.events) == 1
+    ev = snap.events[0]
+    assert ev.entity_id == c.id
+    assert ev.caste == "Gentleman"
+    assert ev.cause == "starvation"
+    assert ev.tick == 1
+    assert len(s.history) == 1
+
+
+def test_history_survives_reset():
+    cfg = minimal_cfg(seed=12)
+    a = Simulation(cfg)
+    a.world.add(Creature(x=5.0, y=5.0, energy=0.01))
+    a.step()
+    b = Simulation(cfg, history=a.history)
+    assert b.deaths == 0  # fresh world, nobody died in it yet
+    assert len(b.history) == 1  # ...but the chronicle endures
+    assert b.history[0].cause == "starvation"
+
+
 def test_food_count_stable_over_many_ticks():
     s = Simulation(Config(seed=9, width=60, height=60))
     for _ in range(30):

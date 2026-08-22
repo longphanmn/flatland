@@ -85,3 +85,17 @@ def test_partial_law_update_keeps_other_laws(client):
     assert after["eat_radius"] == pytest.approx(2.5)
     for key in ("food_count", "energy_max", "wander_turn"):
         assert after[key] == before[key]
+
+
+def test_deaths_appear_in_history_api(client):
+    # famine + fast decay: starvation is inevitable under these laws
+    client.post("/api/laws", json={"food_count": 0, "energy_decay_per_tick": 2.0})
+    for _ in range(45):
+        client.post("/api/control", json={"action": "step"})
+    hist = client.get("/api/history").json()
+    assert hist["total_deaths"] >= 1
+    assert len(hist["events"]) >= 1
+    ev = hist["events"][-1]
+    assert ev["cause"] == "starvation"
+    assert ev["type"] == "death"
+    assert {"tick", "caste", "x", "y"} <= set(ev)

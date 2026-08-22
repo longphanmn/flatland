@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import CanvasRenderer from './render/CanvasRenderer'
 import GodPanel from './god/GodPanel'
 import { WorldSocket, type ConnStatus } from './websocket'
-import type { HelloMessage, StateMessage } from './types'
+import type { HelloMessage, HistoryEvent, StateMessage } from './types'
 
 const SPEEDS = [1, 5, 10, 20, 40]
 
@@ -19,9 +19,12 @@ export default function App() {
   const [paused, setPaused] = useState(false)
   const [speed, setSpeed] = useState(10)
   const [godOpen, setGodOpen] = useState(false)
+  const [chronicleOpen, setChronicleOpen] = useState(true)
+  const [log, setLog] = useState<HistoryEvent[]>([])
 
   const stateRef = useRef<StateMessage | null>(null)
   const sockRef = useRef<WorldSocket | null>(null)
+  const seenEventsRef = useRef(new Set<string>())
 
   useEffect(() => {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
@@ -34,6 +37,15 @@ export default function App() {
       onState: (msg) => {
         stateRef.current = msg
         setState(msg)
+        const fresh = msg.events.filter((ev) => {
+          const key = `${ev.tick}:${ev.entity_id}`
+          if (seenEventsRef.current.has(key)) return false
+          seenEventsRef.current.add(key)
+          return true
+        })
+        if (fresh.length > 0) {
+          setLog((prev) => [...fresh.reverse(), ...prev].slice(0, 200))
+        }
       },
     })
     sock.connect()
@@ -81,6 +93,12 @@ export default function App() {
         <span className="chip">
           entities <b>{state?.entities.length ?? 0}</b>
         </span>
+        <span className="chip alive">
+          alive <b>{state?.creatures_alive ?? 0}</b>
+        </span>
+        <span className="chip dead">
+          dead <b>{state?.creatures_dead ?? 0}</b>
+        </span>
         {hungryCount > 0 && (
           <span className="chip hungry">
             hungry <b>{hungryCount}</b>
@@ -110,6 +128,12 @@ export default function App() {
         )}
         <button onClick={sendStep}>Step</button>
         <button onClick={sendReset}>Reset</button>
+        <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))}>
+          Fit view
+        </button>
+        <button onClick={() => setChronicleOpen((o) => !o)}>
+          {chronicleOpen ? 'Hide' : 'Show'} chronicle
+        </button>
         <label className="chip" htmlFor="speed">
           ticks/s
         </label>
@@ -126,6 +150,24 @@ export default function App() {
         </select>
         <span className="chip legend">{populationSummary}</span>
       </footer>
+
+      {chronicleOpen && (
+        <aside className="chronicle">
+          <h3>Chronicle</h3>
+          {log.length === 0 ? (
+            <p className="chip">no deaths recorded yet</p>
+          ) : (
+            <ul>
+              {log.map((ev) => (
+                <li key={`${ev.tick}:${ev.entity_id}`}>
+                  <b>{ev.caste}</b> #{ev.entity_id} died of {ev.cause} at tick{' '}
+                  {ev.tick} ({Math.round(ev.x)}, {Math.round(ev.y)})
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+      )}
 
       <GodPanel open={godOpen} onClose={() => setGodOpen(false)} />
     </div>

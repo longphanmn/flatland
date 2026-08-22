@@ -19,6 +19,7 @@ export interface EntityState {
   radius?: number
   door_width?: number
   door_offset?: number
+  door_side?: 'north' | 'east' | 'south' | 'west'
 }
 
 export interface StateMessage {
@@ -29,6 +30,19 @@ export interface StateMessage {
   boundary: 'wrap' | 'clamp'
   population: Record<string, number>
   entities: EntityState[]
+  creatures_alive: number
+  creatures_dead: number
+  events: HistoryEvent[]
+}
+
+export interface HistoryEvent {
+  type: 'death'
+  tick: number
+  entity_id: number
+  caste: string
+  cause: string
+  x: number
+  y: number
 }
 
 export interface HelloMessage {
@@ -38,6 +52,59 @@ export interface HelloMessage {
   width: number
   height: number
   boundary: 'wrap' | 'clamp'
+}
+
+/** House wall segments for rendering; mirrors backend _house_wall_segments. */
+export function houseWallSegments(
+  x: number,
+  y: number,
+  size: number,
+  side: string,
+  doorWidth: number,
+  doorOffset: number,
+): [number, number, number, number][] {
+  const h = size / 2
+  const x0 = x - h
+  const x1 = x + h
+  const y0 = y - h
+  const y1 = y + h
+  const d = doorWidth / 2
+  const cx = x + doorOffset
+  const cy = y + doorOffset
+  switch (side) {
+    case 'north':
+      return [
+        [x0, y0, cx - d, y0],
+        [cx + d, y0, x1, y0],
+        [x0, y0, x0, y1],
+        [x1, y0, x1, y1],
+        [x0, y1, x1, y1],
+      ]
+    case 'west':
+      return [
+        [x0, y0, x1, y0],
+        [x0, y1, x1, y1],
+        [x1, y0, x1, y1],
+        [x0, y0, x0, cy - d],
+        [x0, cy + d, x0, y1],
+      ]
+    case 'east':
+      return [
+        [x0, y0, x1, y0],
+        [x0, y0, x0, y1],
+        [x0, y1, x1, y1],
+        [x1, y0, x1, cy - d],
+        [x1, cy + d, x1, y1],
+      ]
+    default: // south
+      return [
+        [x0, y0, x1, y0],
+        [x0, y0, x0, y1],
+        [x1, y0, x1, y1],
+        [x0, y1, cx - d, y1],
+        [cx + d, y1, x1, y1],
+      ]
+  }
 }
 
 export type ControlAction = 'pause' | 'resume' | 'step' | 'reset' | 'set_speed'
