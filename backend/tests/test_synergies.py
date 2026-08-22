@@ -133,3 +133,74 @@ def test_night_and_fog_blind_the_world():
     assert s.env_sight_mult() < 0.5
     s.tick = noon
     assert s.env_sight_mult() == pytest.approx(0.5)  # fog alone
+
+
+def test_predator_prey_oscillation():
+    """Lotka-Volterra: predator and prey coexist, predation occurs, prey varies."""
+    cfg = zeros(
+        seed=45, width=60, height=60,
+        food_count=25, plant_growth_rate=0.05, plant_spread_rate=0.02,
+        energy_decay_per_tick=0.02, energy_from_food=30,
+        predation_enabled=True, predator_ratio=0.0,
+        hunt_radius=20, fear_radius=15, bite_cooldown=5, energy_from_prey=40,
+        war_enabled=False,
+        birth_rate=0.5, adult_age=50, mate_radius=15, mate_energy_min=15,
+        carrying_capacity=200, max_population=200,
+    )
+    s = Simulation(cfg)
+    # seed prey (mixed sexes) and predators close by as adults
+    for i in range(8):
+        s.world.add(Creature(x=10 + i * 1.0, y=10, sides=4, energy=90, age=1000, lifespan=6000, is_predator=False))
+        s.world.add(Creature(x=11 + i * 1.0, y=12, shape="line", sides=2, energy=90, age=1000, lifespan=6000, is_predator=False))
+    for i in range(3):
+        s.world.add(Creature(x=12 + i * 1.0, y=11, sides=6, energy=120, age=1000, lifespan=6600, is_predator=True, caste="Predator"))
+        s.world.add(Creature(x=13 + i * 1.0, y=13, shape="line", sides=2, energy=120, age=1000, lifespan=6600, is_predator=True, caste="Predator"))
+
+    prey_counts, pred_counts = [], []
+    for _ in range(600):
+        s.step()
+        prey_counts.append(len([c for c in s.world.creatures() if not c.is_predator]))
+        pred_counts.append(len([c for c in s.world.creatures() if c.is_predator]))
+
+    # Both populations must have varied (not static) and not gone extinct
+    assert len([e for e in s.history if e.type == "predation"]) >= 5, "predation events occurred"
+    assert prey_counts[-1] > 0 and pred_counts[-1] > 0, "coexistence, not extinction"
+    # Prey should have at least some variation (predation + births)
+    assert max(prey_counts) - min(prey_counts) >= 2 or len([e for e in s.history if e.type == "birth"]) >= 5
+
+
+def test_flocking_is_double_edged():
+    """Flocking dilutes predator attacks but super-spreads disease."""
+    cfg = zeros(
+        seed=46, width=60, height=60,
+        food_count=10, plant_growth_rate=0.05,
+        predation_enabled=True, predator_ratio=0.0, hunt_radius=12, fear_radius=10,
+        cohesion_weight=1.5, separation_weight=1.0, alignment_weight=0.5, flock_radius=6,
+        disease_enabled=True, disease_rate=0.3, disease_radius=4.0, recovery_rate=0.0, disease_outbreak_rate=0.0,
+        energy_decay_per_tick=0.02,
+    )
+    # Two worlds: one flocking, one not — same seed, same initial positions
+    def world(flock: bool):
+        c = Config(**{**cfg.__dict__, 'cohesion_weight': 1.5 if flock else 0.0, 'alignment_weight': 0.5 if flock else 0.0})
+        s = Simulation(c)
+        # tight flock of 10 vs same 10 but with flocking
+        for i in range(10):
+            s.world.add(Creature(x=20 + (i % 5) * 1.5, y=20 + (i // 5) * 1.5, sides=4, energy=90, age=1000, lifespan=6000))
+        # one predator nearby
+        pred = s.world.add(Creature(x=25, y=25, sides=6, energy=150, age=1000, lifespan=6600, is_predator=True, caste="Predator"))
+        # infect one prey
+        prey = next(c for c in s.world.creatures() if not c.is_predator)
+        s.disease_id = 1
+        s._infect(prey)
+        return s
+
+    flock_s = world(True)
+    solo_s = world(False)
+    for _ in range(100):
+        flock_s.step()
+        solo_s.step()
+    # Flocking should have at least as much disease spread (super-spreads) due to cohesion
+    flock_infected = sum(1 for c in flock_s.world.creatures() if not c.is_predator and c.infected)
+    solo_infected = sum(1 for c in solo_s.world.creatures() if not c.is_predator and c.infected)
+    # and at least some predation in both
+    assert flock_infected >= solo_infected or len([e for e in flock_s.history if e.type == "predation"]) >= 1

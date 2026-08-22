@@ -783,6 +783,47 @@ class Simulation:
         x = (mother.x + self.rng.uniform(-1.5, 1.5)) % cfg.width
         y = (mother.y + self.rng.uniform(-1.5, 1.5)) % cfg.height
 
+        # Predator lineage: if either parent is a predator, child may be predator
+        is_predator_child = False
+        if mother.is_predator and father.is_predator:
+            is_predator_child = True
+        elif mother.is_predator or father.is_predator:
+            is_predator_child = self.rng.random() < 0.5
+
+        if is_predator_child:
+            # Predator children are always Predator caste, no clan, no irregularity
+            child = Creature(
+                shape="polygon" if self.rng.random() < 0.5 else "line",
+                sides=6 if self.rng.random() < 0.5 else 2,
+                x=x, y=y, angle=self.rng.uniform(0, 2 * math.pi),
+                energy=cfg.energy_start, generation=gen, born_tick=tick,
+                mother_id=mother.id, father_id=father.id,
+                lifespan=traits_for("Predator").lifespan * cfg.lifespan_mult,
+                is_predator=True,
+                caste="Predator",
+                clan_id=0,
+            )
+            # Predators don't get clan or irregularity
+            self.world.add(child)
+            event_payload = {
+                "mother": mother.id, "father": father.id,
+                "sides": child.sides, "generation": gen, "sex": child.sex,
+                "clan_id": 0, "is_predator": True,
+            }
+            for p in (mother, father):
+                p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
+                p.repro_cooldown = cfg.reproduction_cooldown
+            event = HistoryEvent(
+                type="birth", tick=tick, entity_id=child.id, caste=child.caste,
+                x=round(child.x, 2), y=round(child.y, 2),
+                payload=event_payload,
+            )
+            self.history.append(event)
+            self._events_this_tick.append(event)
+            if self.on_event is not None:
+                self.on_event(event)
+            return
+
         promoted = False
         if self.rng.random() < cfg.sex_ratio:
             if father.sides == 3:
@@ -974,7 +1015,59 @@ class Simulation:
             perceive *= cfg.desperate_perceive_mult
             speed_mult = cfg.desperate_speed_mult
 
-        # 1. Perceive the nearest meal — food or the fallen.
+        # 1. Predation: hunt (predator) / flee (prey) — highest priority after sleep
+        hunt_target: Creature | None = None
+        flee_target: Creature | None = None
+        if cfg.predation_enabled:
+            if c.is_predator and c.bite_cooldown <= 0:
+                # Find nearest non-predator prey within hunt_radius
+                best_prey: Creature | None = None
+                best_prey_d = cfg.hunt_radius + 1e-9
+                for o in w.query_radius(c.x, c.y, cfg.hunt_radius):
+                    if not isinstance(o, Creature) or o.id == c.id or o.is_predator:
+                        continue
+                    if o.id not in w.entities or o.indoors:
+                        continue  # indoors prey are safe (predator refuge)
+                    d = w.distance(c.x, c.y, o.x, o.y)
+                    if d < best_prey_d:
+                        best_prey_d, best_prey = d, o
+                if best_prey is not None:
+                    if best_prey_d <= cfg.eat_radius:
+                        # Bite — instant kill, predator feeds
+                        self._kill(best_prey, "predation")
+                        c.energy = min(cfg.energy_max, c.energy + cfg.energy_from_prey)
+                        c.bite_cooldown = cfg.bite_cooldown
+                        c.meals += 1
+                        self._emit(
+                            HistoryEvent(
+                                type="predation",
+                                tick=self.tick + 1,
+                                entity_id=c.id,
+                                caste=c.caste,
+                                x=round(c.x, 2),
+                                y=round(c.y, 2),
+                                payload={"prey": best_prey.id, "prey_caste": best_prey.caste},
+                            )
+                        )
+                        # Skip further steering this tick — predator just fed
+                        hunt_target = None
+                    else:
+                        hunt_target = best_prey
+            elif not c.is_predator:
+                # Find nearest predator within fear_radius to flee from
+                best_pred: Creature | None = None
+                best_pred_d = cfg.fear_radius + 1e-9
+                for o in w.query_radius(c.x, c.y, cfg.fear_radius):
+                    if not isinstance(o, Creature) or not o.is_predator:
+                        continue
+                    if o.id not in w.entities:
+                        continue
+                    d = w.distance(c.x, c.y, o.x, o.y)
+                    if d < best_pred_d:
+                        best_pred_d, best_pred = d, o
+                flee_target = best_pred
+
+        # 2. Perceive the nearest meal — food or the fallen.
         target: Entity | None = None
         best = math.inf
         for e in w.query_radius(c.x, c.y, perceive):
@@ -984,9 +1077,20 @@ class Simulation:
             if d < best:
                 best, target = d, e  # type: ignore[assignment]
 
-        # 2. Steer toward food or wander — unless heading home for the night.
-        # Smarter house approach: steer toward doorway when close to avoid wall stuck.
-        if cfg.sleep_enabled and self._is_night(self._time_of_day()) and houses:
+        # 3. Steer — priority: flee > hunt > home for night > food > wander
+        if flee_target is not None:
+            # Prey flees directly away from predator (with extra urgency when starving)
+            dx, dy = w.delta(c.x, c.y, flee_target.x, flee_target.y)
+            desired = math.atan2(dy, dx)
+            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+            # Flee is more urgent than normal steering
+            c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
+        elif hunt_target is not None:
+            dx, dy = w.delta(hunt_target.x, hunt_target.y, c.x, c.y)
+            desired = math.atan2(dy, dx)
+            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+            c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
+        elif cfg.sleep_enabled and self._is_night(self._time_of_day()) and houses:
             home = self._house_for(c, houses)
             if home is None:
                 home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
@@ -1196,6 +1300,7 @@ class Simulation:
                 father_id=e.father_id or None,
                 clan_id=e.clan_id or None,
                 clan_color=self.clans.get(e.clan_id, {}).get("color"),
+                is_predator=e.is_predator or None,
                 sleeping=e.sleeping,
                 indoors=e.indoors,
                 generation=e.generation,

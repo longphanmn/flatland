@@ -511,6 +511,44 @@ export default function App() {
                     </li>
                   )
                 }
+                if (ev.type === 'predation') {
+                  const p = (ev.payload ?? {}) as { prey?: number; prey_caste?: string }
+                  return (
+                    <li key={key} className="ev-predation" style={{ color: '#ff3838' }}>
+                      <b>{ev.caste}</b> #{ev.entity_id} predated <b>{p.prey_caste}</b> #{p.prey} at tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'war') {
+                  const p = (ev.payload ?? {}) as { winner?: number; a?: number; b?: number }
+                  return (
+                    <li key={key} className="ev-war" style={{ color: '#f85149' }}>
+                      <b>{ev.caste}</b> #{ev.entity_id} fell in clan war (winner #{p.winner}) at tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'alliance' || ev.type === 'rivalry') {
+                  const p = (ev.payload ?? {}) as { a?: number; b?: number; score?: number }
+                  return (
+                    <li key={key} className={ev.type === 'alliance' ? 'ev-alliance' : 'ev-rivalry'} style={{ color: ev.type === 'alliance' ? '#3fb950' : '#d29922' }}>
+                      Clans #{p.a} & #{p.b} {ev.type} (score {p.score}) at tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'bloom') {
+                  return (
+                    <li key={key} className="ev-bloom" style={{ color: '#3fb950' }}>
+                      bloom at ({Math.round(ev.x)}, {Math.round(ev.y)}) tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'outbreak' || ev.type === 'recovery') {
+                  return (
+                    <li key={key} className={ev.type === 'outbreak' ? 'ev-outbreak' : 'ev-recovery'} style={{ color: ev.type === 'outbreak' ? '#d29922' : '#3fb950' }}>
+                      <b>{ev.caste}</b> #{ev.entity_id} {ev.type} at tick {ev.tick}
+                    </li>
+                  )
+                }
                 return (
                   <li key={key}>
                     <b>{ev.caste}</b> #{ev.entity_id} died of {ev.cause} at tick{' '}

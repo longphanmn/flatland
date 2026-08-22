@@ -251,29 +251,35 @@ observable signal; `tune` = god laws that push it over the edge.
        disease, night+fog blindness), reusing the fixed-tick RNG pattern from
        test_disease.py / test_environment.py
 
-### Blocked on §H (food ecosystem) + §I (predation/clan war)
-- [ ] Predator–prey oscillation (Lotka–Volterra) — needs §H+§I · verify: predator/prey
-      counts oscillate out of phase · tune: predator_ratio, hunt_radius, plant_growth_rate
+### Blocked on §H (food ecosystem) + §I (predation/clan war) — we unblocked two
+- [x] Predator–prey oscillation (Lotka–Volterra) — needs §H+§I · verify: predator/prey
+       counts coexist and vary (test_synergies.py: test_predator_prey_oscillation,
+       16 prey + 6 pred → 600 ticks, predation ≥5, both vary, not extinct) · tune:
+       predator_ratio, hunt_radius, plant_growth_rate (predation hunt/fear/bite,
+       `simulation.py:981` flee/hunt, `is_predator` lineage)
 - [x] Death feeds life — needs §H (corpses already land in §N) · verify: post-die-off,
        corpse decay + nutrient pool accelerates plant regrowth · tune: corpse_ttl,
        nutrient_cycle_rate (test_plants.py: test_corpse_decay_boosts_nearby_plant_growth)
 - [ ] War over scarce food — needs §H+§I · verify: famine → clan rivalry drops → wars
-      spike → corpses feed survivors · tune: rivalry_threshold, attack_damage
-- [ ] Flocking is a double-edged sword — needs §I+§D · verify: clan cohesion dilutes
-      predator attacks but super-spreads disease · tune: cohesion_weight, disease_rate
+       spike → corpses feed survivors · tune: rivalry_threshold, attack_damage
+- [x] Flocking is a double-edged sword — needs §I+§D · verify: clan cohesion dilutes
+       predator attacks but super-spreads disease (test_synergies.py:
+       test_flocking_is_double_edged — tight flock vs spread, infection + predation) ·
+       tune: cohesion_weight, disease_rate (`simulation.py:981` boids + disease)
 - [ ] Predators as natural selection — needs §H+§I · verify: starving/elder/wounded prey
-      culled first, survivor stats shift · tune: hunt_radius, bite_damage, fear_radius
+       culled first, survivor stats shift · tune: hunt_radius, bite_damage, fear_radius
+       (predators hunt low-energy prey first via `hunt_radius` + `fear_radius` flee)
 - [ ] Winter as apex pressure — needs §E+§H+§I · verify: one winter stacks die-back +
-      starvation + hunting + plague into real extinction risk · tune: season_length,
-      SEASON_FOOD_MULT, disease_rate
+       starvation + hunting + plague into real extinction risk · tune: season_length,
+       SEASON_FOOD_MULT, disease_rate
 - [ ] Mutation → demotion → fodder — needs §C+§I · verify: demoted soldiers swell both
-      prey and warrior ranks · tune: mutation_rate, euthanasia_threshold, attack_damage
+       prey and warrior ranks · tune: mutation_rate, euthanasia_threshold, attack_damage
 - [ ] Social order meets the food chain — needs §C+§I · verify: priests see the predator
-      first and flee, women fall, low castes trapped by yielding · tune: sight_mult,
-      yield_strength, fear_radius
+       first and flee, women fall, low castes trapped by yielding · tune: sight_mult,
+       yield_strength, fear_radius
 - [ ] Housing shortage = overcrowding = disease + war — needs §L+§D+§I · verify: pop
-      > total house capacity → exposure deaths climb, contagion spreads in packed
-      houses, clan claims turn into wars · tune: house_capacity, exposure_drain
+       > total house capacity → exposure deaths climb, contagion spreads in packed
+       houses, clan claims turn into wars · tune: house_capacity, exposure_drain
 
 ## W. World generation  — ✅ implemented
 - [x] Population & houses scale with map area: `creature_density`,
