@@ -372,3 +372,36 @@ beyond one house, no leaders. Deepen the social fabric.
 - [x] [P2] Clan stats & history — leader lineage, war record, territory, population;
       a clan panel in the inspector/HUD (`backend/app/main.py:363` `GET /api/clans` roster with `name`/`totem`/`leader_id`/`population`/`house`/`war_wins`/`losses`/`territory_radius`, `frontend/src/render/ClanPanel.tsx` tick 2s poll, `App.tsx:471` under TrophicChart).
 - [x] GodLaws: territory_enabled, territory_radius, trespass_decay, totems_enabled, succession_enabled (Territory/Clan `config.py:49` `protocol.py:127` `main.py:191` `GodPanel.tsx:15`); war_lethality still [P2] pending (new "Clan" law group)
+
+## Q. Creatures 2.0 — identity, voice & care  [P2]
+Creatures are interchangeable within a caste (#12 the Gentleman) and never speak.
+Give each a name, a face, and a voice — then let kin lead the hungry to food.
+
+### Identity (cosmetic — no sim impact)
+- [ ] [P2] Personal name — seeded, deterministic per creature (adjective+noun
+      table); shown in inspector + Chronicle ("Lyss died of starvation") instead
+      of bare "#12"
+- [ ] [P2] Soul-code glyph — a tiny unique rune (2–3 strokes) drawn inside the
+      body, derived from id + generation + caste; visible on hover/select (the
+      "small code inside" god view)
+- [ ] [P2] Individual variation — subtle per-creature size/angle/color jitter so
+      two of a caste are never pixel-identical (respects caste rigidity: it is a
+      personal mark, not a new caste)
+
+### Communication (food + alarm calls)
+- [ ] [P2] Signal model — a short-lived ping carrying sender position + type,
+      heard within `signal_radius`; clan-mates respond strongly, strangers
+      weakly/ignore; rendered as a ripple
+- [ ] [P2] Food call — a well-fed creature that finds food calls; hungry
+      clan-mates steer toward the caller
+- [ ] [P2] Alarm call — a creature that sees a predator calls; nearby creatures
+      flee even without seeing it (group awareness beyond `fear_radius`)
+- [ ] GodLaws: communication_enabled, signal_radius, food_call_rate,
+      alarm_call_rate (new "Creature" law group)
+
+### Care — the clan guides the hungry to food
+- [ ] [P2] Food memory — a creature remembers where it last saw food
+      (`food_memory_ttl` decay)
+- [ ] [P2] Recruitment — a sated clan-mate within `flock_radius` of a starving
+      one calls toward its remembered food; the starving one follows the call
+      (kin guide the hungry home)

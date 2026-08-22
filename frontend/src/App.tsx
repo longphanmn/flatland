@@ -280,7 +280,7 @@ export default function App() {
   const populationEntries = state
     ? Object.entries(state.population).sort(([a], [b]) => a.localeCompare(b))
     : []
-  // Chronicle header shows only objects (Food/House/Corpse), creatures are in graph
+  const creatureEntries = populationEntries.filter(([k]) => k in CASTE_COLORS)
   const objectEntries = populationEntries.filter(([k]) => !(k in CASTE_COLORS))
 
   const hungryCount = state?.entities.filter((e) => e.status === 'hungry').length ?? 0
@@ -312,46 +312,46 @@ export default function App() {
         <span className={`dot ${status}`} title={STATUS_LABEL[status]} />
         <span className="chip">{STATUS_LABEL[status]}</span>
         {paused && <span className="chip paused">PAUSED</span>}
-        <span className="chip">
+        <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Same seed ⇒ same world.">
           tick <b>{state?.tick ?? 0}</b>
         </span>
-        <span className="chip">
+        <span className="chip" title="Total entities in world (creatures + Food plants + Houses + Corpses).">
           entities <b>{state?.entities.length ?? 0}</b>
         </span>
-        <span className="chip alive">
+        <span className="chip alive" title="Alive creatures — Flatland castes + Predators + Herbivores. Hover Caste chart for breakdown.">
           alive <b>{state?.creatures_alive ?? 0}</b>
         </span>
-        <span className="chip dead" title={deadBreakdown}>
+        <span className="chip dead" title={`${deadBreakdown} — hover for per-cause breakdown (starvation/old_age/euthanasia/disease/predation/war/poison).`}>
           dead <b>{state?.creatures_dead ?? 0}</b>
         </span>
         {hungryCount > 0 && (
-          <span className="chip hungry">
+          <span className="chip hungry" title="Hungry: energy ≤ 35% of max — perceives food farther (1.3×), still fertile.">
             hungry <b>{hungryCount}</b>
           </span>
         )}
         {starvingCount > 0 && (
-          <span className="chip starving">
+          <span className="chip starving" title="Starving: energy ≤ 15% — sees farthest (1.6×) and moves 1.35× faster, pulsing red, will die soon.">
             starving <b>{starvingCount}</b>
           </span>
         )}
         {(state?.infected_count ?? 0) > 0 && (
-          <span className="chip sick">
+          <span className="chip sick" title="Infected — loses 0.15 energy/tick + 1.0 health/tick (winter ×1.5 spread), green pulsing ring, may recover.">
             infected <b>{state?.infected_count}</b>
           </span>
         )}
         {raining && exposedCount > 0 && (
-          <span className="chip exposed" title="awake creatures outdoors in the rain">
+          <span className="chip exposed" title="Exposed: awake, outdoors, not in a House during rain/storm or winter night — loses 0.03 energy/tick extra. Shelter is scarce.">
             ⛈ exposed <b>{exposedCount}</b>
           </span>
         )}
         {hello && (
-          <span className="chip">
+          <span className="chip" title="Seed determines entire world deterministically; width×height is world size; wrap vs clamp is edge behavior. Reset rolls a new seed.">
             seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×
             {state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}
           </span>
         )}
         {state && (
-          <span className="chip" title={`time of day ${state.time_of_day}`}>
+          <span className="chip" title={`Time of day ${state.time_of_day} — night (0-0.22, 0.78-1) dims sight 0.6×, fog 0.6× stack; season ${state.season} changes Food target and disease. Weather ${state.weather}: rain slows 0.85×, storm adds wander.`}>
             {isNight ? '🌙' : '☀'} day <b>{state.day}</b> · {state.season}
             {weatherIcon && ` · ${weatherIcon}`}
           </span>
@@ -443,16 +443,23 @@ export default function App() {
 
       {chronicleOpen && (
         <aside className="chronicle">
-          <h3 className="chronicle-title">
+          <h3 className="chronicle-title" title="Live population — creatures (colored) + objects (Food/House) · history below. Creatures also in Caste graph.">
             Chronicle
-            {objectEntries.length > 0 && (
-              <span className="chronicle-pop" title="objects in world">
+            {(creatureEntries.length > 0 || objectEntries.length > 0) && (
+              <span className="chronicle-pop">
                 {' '}
                 —{' '}
+                {creatureEntries.map(([k, v], i) => (
+                  <span key={k} className="pop-chip" title={`${k}: ${v} alive — see Caste graph for trend`}>
+                    <span className="dot-inline" style={{ background: CASTE_COLORS[k] ?? '#8b949e' }} />
+                    {k} <b>{v}</b>
+                    {(i < creatureEntries.length - 1 || objectEntries.length > 0) && ' · '}
+                  </span>
+                ))}
                 {objectEntries.map(([k, v], i) => {
-                  const color = k === 'Food' ? '#d29922' : k === 'House' ? '#8b949e' : k === 'Corpse' ? '#6e7681' : '#8b949e'
+                  const color = k === 'Food' ? '#3fb950' : k === 'House' ? '#8b949e' : k === 'Corpse' ? '#6e7681' : '#8b949e'
                   return (
-                    <span key={k} className="pop-chip">
+                    <span key={k} className="pop-chip" title={`${k}: ${v} objects — Food are plants (growth variant), House are shelters, Corpse are remains`}>
                       <span className="dot-inline" style={{ background: color }} />
                       {k} <b>{v}</b>
                       {i < objectEntries.length - 1 && ' · '}
@@ -468,7 +475,13 @@ export default function App() {
             </p>
           )}
           <CasteChart history={popHist} />
-          <h4 style={{ margin: '10px 0 4px', fontSize: '0.85em', opacity: 0.8 }}>Trophic pyramid — Food · Herbivore · Predator</h4>
+          <h4
+            style={{ margin: '10px 0 4px', fontSize: '0.85em', opacity: 0.8 }}
+            title="Trophic pyramid: stacked history of Food (plants, variant colors) → Herbivore (wild grazers, beast_ratio) → Predator (carnivores). Shows Lotka-Volterra oscillation: plants feed herbivores, herbivores feed predators. Spikes mean blooms or hunts."
+          >
+            Trophic pyramid — Food · Herbivore · Predator{' '}
+            <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span>
+          </h4>
           <TrophicChart history={popHist} />
           <ClanPanel />
           {!archiveMode && oldestLoadedRef.current !== null && (
