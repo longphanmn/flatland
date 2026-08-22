@@ -52,6 +52,9 @@ class Config:
     territory_radius: float = 14.0  # radius of clan territory circle
     trespass_decay: float = 1.0  # relation points lost per tick per trespasser inside rival territory (probabilistic if <1)
 
+    # Totem & clan depth (§P)
+    totems_enabled: bool = True  # §P: each clan bears a totem (Wolf/Tree/Shield/Eye) with subtle buff
+
     # Corpses & scavenging
     corpses_enabled: bool = True
     corpse_ttl: int = 600  # ticks before a corpse decays away

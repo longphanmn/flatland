@@ -535,6 +535,30 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
 
       ctx.setTransform(cam.scale, 0, 0, cam.scale, cam.ox, cam.oy)
       for (const e of state.entities) drawEntity(ctx, e)
+      // totem poles — small marker beside each claimed house (§P)
+      for (const e of state.entities) {
+        if (e.kind !== 'house' || !e.clan_id || e.is_ruin) continue
+        const clan = (state as any).clans?.[String(e.clan_id)]
+        const totem: string | undefined = clan?.totem
+        if (!totem) continue
+        const size = e.size ?? 8
+        const poleX = e.x + size / 2 + 1.2
+        const poleY = e.y - size / 2 + 1.0
+        ctx.save()
+        ctx.translate(poleX, poleY)
+        // pole
+        ctx.fillStyle = '#8b949e'
+        ctx.fillRect(-0.18, -1.2, 0.36, 2.4)
+        // totem icon
+        const iconMap: Record<string, string> = { Wolf: '▲', Tree: '♣', Shield: '⬢', Eye: '◉' }
+        const colorMap: Record<string, string> = { Wolf: '#ff7b72', Tree: '#3fb950', Shield: '#79c0ff', Eye: '#d2a8ff' }
+        ctx.fillStyle = colorMap[totem] ?? '#e6edf3'
+        ctx.font = '1.6px ui-monospace, monospace'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(iconMap[totem] ?? '•', 0, -1.6)
+        ctx.restore()
+      }
       // selection halo
       const sel = selectedRef?.current ?? null
       if (sel !== null) {

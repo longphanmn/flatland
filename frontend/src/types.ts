@@ -176,6 +176,7 @@ export interface GodLaws {
   territory_enabled?: boolean
   territory_radius?: number
   trespass_decay?: number
+  totems_enabled?: boolean
   energy_max?: number
   energy_decay_per_tick?: number
   energy_from_food?: number

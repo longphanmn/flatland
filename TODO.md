@@ -346,9 +346,11 @@ Predator. Add variety so niches, seasons and diets can emerge.
 ## P. Clan depth — totems, territory & war  [P2]
 Clans have identity (crest ring) and a first taste of war (§I) but no totem, no land
 beyond one house, no leaders. Deepen the social fabric.
-- [ ] [P2] Totem — each clan picks a totem at founding with a subtle buff: Wolf
+- [x] [P2] Totem — each clan picks a totem at founding with a subtle buff: Wolf
       (hunt), Tree (harvest/growth), Shield (defense), Eye (sight); drawn as a totem
-      pole beside the clan's house; buff applied to its members.
+      pole beside the clan's house; buff applied to its members (`simulation.py:68` `TOTEMS`/`TOTEM_BUFF`,
+      `simulation.py:323` deterministic `seed+cid` → totem, `config.py:54` `totems_enabled`, `protocol.py:129` `totems_enabled`,
+      `simulation.py:1350` Wolf +2 `hunt_radius`/`1.10×speed`, `simulation.py:1558` Tree `1.25×` harvest, `simulation.py:724` Shield `0.70×` war damage + `1.30×` regen, `simulation.py:1310` Eye `1.25×` perceive, `frontend/CanvasRenderer.tsx:536` totem pole `▲♣⬢◉` beside house).
 - [x] [P2] Procedural clan names — "Ash Wolves", "Clan of the Long Shadow" instead of
       "Clan N" (seeded adjective + noun table) (`simulation.py:68` `CLAN_ADJECTIVES/NOUNS`, `simulation.py:315` deterministic `seed+cid` → `Ash Wolves` 70% / `Clan of the Long Shadow` 30%, `protocol.py:64` `EntityState.clan_name` + `StateMessage.clans`, `frontend/src/inspect/Inspector.tsx:155` shows name).
 - [x] [P1] Territory — a clan claims a zone (radius around its house) with a painted
@@ -367,4 +369,4 @@ beyond one house, no leaders. Deepen the social fabric.
       / scavenger roles from environment + totem; reflected in behaviour.
 - [ ] [P2] Clan stats & history — leader lineage, war record, territory, population;
       a clan panel in the inspector/HUD.
-- [x] GodLaws: territory_enabled, territory_radius, trespass_decay (Territory `config.py:49` `protocol.py:127` `main.py:191` `GodPanel.tsx:15`); totems_enabled, war_lethality, succession_enabled still [P2] pending (new "Clan" law group)
+- [x] GodLaws: territory_enabled, territory_radius, trespass_decay, totems_enabled (Territory/Clan `config.py:49` `protocol.py:127` `main.py:191` `GodPanel.tsx:15`); war_lethality, succession_enabled still [P2] pending (new "Clan" law group)

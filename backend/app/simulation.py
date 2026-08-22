@@ -79,6 +79,14 @@ CLAN_NOUNS = (
     "Wings", "Fangs", "Roots", "Branches", "Stars", "Sands", "Waters", "Fires",
 )
 
+TOTEMS = ("Wolf", "Tree", "Shield", "Eye")
+TOTEM_BUFF = {
+    "Wolf": {"hunt_radius": 2.0, "speed": 0.10},  # hunters see farther, move faster when hunting
+    "Tree": {"harvest": 1.25, "growth": 1.15},  # richer harvest, faster plant growth nearby
+    "Shield": {"defense": 0.30, "health": 15.0},  # 30% damage reduction +15 health
+    "Eye": {"sight": 0.25, "perceive": 1.2},  # +25% sight
+}
+
 
 class Simulation:
     def __init__(
@@ -322,15 +330,24 @@ class Simulation:
             name = f"Clan of the {adj} {noun}"
         else:
             name = f"{adj} {noun}"
+        totem = None
+        if self.config.totems_enabled:
+            totem = TOTEMS[(cid * 17 + self.config.seed) % len(TOTEMS)]
         self.clans[cid] = {
             "name": name,
             "founder_id": founder.id,
             "born_tick": self.tick,
             "color": CLAN_COLORS[(cid - 1) % len(CLAN_COLORS)],
+            "totem": totem,
         }
         if self.config.house_claim_enabled:
             self._claim_house_for_clan(cid)
         return cid
+
+    def _totem_of(self, c: Creature) -> str | None:
+        if not self.config.totems_enabled or not c.clan_id:
+            return None
+        return self.clans.get(c.clan_id, {}).get("totem")
 
     def _found_founding_clans(self) -> None:
         """The founding generation seeds one clan per caste."""
@@ -689,13 +706,13 @@ class Simulation:
         return 0  # neutral
 
     def _update_war(self) -> None:
-        """Rival-clan creatures fight on contact (§I)."""
+        """Rival-clan creatures fight on contact (§I). Shield totem reduces damage (§P)."""
         cfg = self.config
         if not cfg.war_enabled:
             return
-        # Collect rival pairs first (deterministic order by id)
         creatures = sorted(self.world.creatures(), key=lambda c: c.id)
         to_kill: list[tuple[Creature, Creature]] = []
+        to_wound: list[tuple[Creature, Creature]] = []
         for i, a in enumerate(creatures):
             if a.id not in self.world.entities:
                 continue
@@ -708,15 +725,22 @@ class Simulation:
                     continue
                 pair = self._relation_pair(a.clan_id, b.clan_id)
                 if self._zone_of(self.relations.get(pair, 0)) != -1:
-                    continue  # not rivals
+                    continue
                 if self.world.distance(a.x, a.y, b.x, b.y) > cfg.attack_radius:
                     continue
-                # Deterministic loser: lower id dies (no extra RNG)
                 loser, winner = (a, b) if a.id < b.id else (b, a)
-                # avoid double-kill in same tick
                 if any(loser.id == x[0].id for x in to_kill) or any(winner.id == x[0].id for x in to_kill):
                     continue
-                to_kill.append((loser, winner))
+                if any(loser.id == x[0].id for x in to_wound) or any(winner.id == x[0].id for x in to_wound):
+                    continue
+                # Shield totem: 30% damage reduction
+                dmg = cfg.attack_damage
+                if self._totem_of(loser) == "Shield":
+                    dmg *= 0.70
+                if dmg >= loser.health:
+                    to_kill.append((loser, winner))
+                else:
+                    to_wound.append((loser, winner))
         for loser, winner in to_kill:
             if loser.id not in self.world.entities:
                 continue
@@ -729,10 +753,30 @@ class Simulation:
                     caste=loser.caste,
                     x=round(loser.x, 2),
                     y=round(loser.y, 2),
-                    payload={"winner": winner.id, "a": loser.clan_id, "b": winner.clan_id},
+                    payload={"winner": winner.id, "a": loser.clan_id, "b": winner.clan_id, "lethal": True},
                 )
             )
             self._bump_relation(loser.clan_id, winner.clan_id, -5)
+        for loser, winner in to_wound:
+            if loser.id not in self.world.entities:
+                continue
+            dmg = cfg.attack_damage * (0.70 if self._totem_of(loser) == "Shield" else 1.0)
+            loser.health = max(0, loser.health - dmg)
+            # wounded flees
+            dx, dy = self.world.delta(loser.x, loser.y, winner.x, winner.y)
+            loser.angle = math.atan2(dy, dx)
+            self._emit(
+                HistoryEvent(
+                    type="war",
+                    tick=self.tick + 1,
+                    entity_id=loser.id,
+                    caste=loser.caste,
+                    x=round(loser.x, 2),
+                    y=round(loser.y, 2),
+                    payload={"winner": winner.id, "a": loser.clan_id, "b": winner.clan_id, "lethal": False, "damage": round(dmg,1)},
+                )
+            )
+            self._bump_relation(loser.clan_id, winner.clan_id, -3)
 
     def _update_relations(self) -> None:
         """Clan scores rise when strangers feast together and drift toward peace."""
@@ -1242,7 +1286,10 @@ class Simulation:
                     c.energy -= cfg.disease_energy_drain
                     c.health -= 2.0 * cfg.disease_lethality
                 else:
-                    c.health = min(100.0, c.health + 0.15 * cfg.rest_recovery_mult)
+                    regen = 0.15 * cfg.rest_recovery_mult
+                    if self._totem_of(c) == "Shield":
+                        regen *= 1.30  # Shield totem: 30% faster healing when sheltered
+                    c.health = min(100.0, c.health + regen)
                 if c.energy <= 0:
                     self._kill(c, "starvation")
                 elif c.health <= 0:
@@ -1290,22 +1337,29 @@ class Simulation:
 
         stage_speed, stage_sight = STAGE_MULT[c.stage]
         perceive = cfg.perceive_radius * c.sight_mult * stage_sight * self.env_sight_mult()
+        # Totem Eye: +25% sight (§P)
+        if self._totem_of(c) == "Eye":
+            perceive *= 1.25
         speed_mult = 1.0
         if c.status == "hungry":
             perceive *= cfg.hungry_perceive_mult
         elif c.status == "starving":
             perceive *= cfg.desperate_perceive_mult
             speed_mult = cfg.desperate_speed_mult
+        # Totem Wolf: +10% speed when hunting/fleeing
+        if self._totem_of(c) == "Wolf" and (c.is_predator or perceive > cfg.perceive_radius):
+            speed_mult *= 1.10
 
         # 1. Predation: hunt (predator) / flee (prey) — highest priority after sleep
         hunt_target: Creature | None = None
         flee_target: Creature | None = None
         if cfg.predation_enabled:
             if c.is_predator and c.bite_cooldown <= 0:
-                # Find nearest non-predator prey within hunt_radius
+                # Find nearest non-predator prey within hunt_radius (+2 Wolf totem)
+                hunt_r = cfg.hunt_radius + (2.0 if self._totem_of(c) == "Wolf" else 0.0)
                 best_prey: Creature | None = None
-                best_prey_d = cfg.hunt_radius + 1e-9
-                for o in w.query_radius(c.x, c.y, cfg.hunt_radius):
+                best_prey_d = hunt_r + 1e-9
+                for o in w.query_radius(c.x, c.y, hunt_r):
                     if not isinstance(o, Creature) or o.id == c.id or o.is_predator:
                         continue
                     if o.id not in w.entities or o.indoors:
@@ -1537,8 +1591,14 @@ class Simulation:
                     health_delta = VARIANT_HEALTH.get(target.variant, 0.0)
                 else:
                     gain = cfg.energy_from_food * target.growth
+                # Totem Tree: +25% harvest (§P)
+                if self._totem_of(c) == "Tree":
+                    gain *= 1.25
+                    health_delta += 0.5
             elif isinstance(target, Corpse):
                 gain = cfg.corpse_energy  # scavenged remains
+                if self._totem_of(c) == "Tree":
+                    gain *= 1.10
             c.energy = min(cfg.energy_max, c.energy + gain)
             if health_delta != 0:
                 c.health = max(0.0, min(100.0, c.health + health_delta))
@@ -1576,7 +1636,8 @@ class Simulation:
                 self._kill(c, "disease")
                 return
         elif c.health < 100.0:
-            c.health = min(100.0, c.health + 0.1)
+            regen = 0.1 * (1.30 if self._totem_of(c) == "Shield" else 1.0)
+            c.health = min(100.0, c.health + regen)
         if c.energy <= 0:
             self._kill(c, "starvation")
             return

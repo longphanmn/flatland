@@ -109,6 +109,7 @@ const GROUP_ORDER = [
   'Sky & Seasons',
   'Shelter',
   'Territory',
+  'Clan',
   'Interaction',
   'Predation',
   'Clan War',
@@ -301,6 +302,20 @@ export default function GodPanel({ open, onClose }: Props) {
                     value={String(laws.territory_enabled ?? true)}
                     onChange={(e) =>
                       setLaws((l) => ({ ...l, territory_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
+              )}
+              {group === 'Clan' && (
+                <label className="god-row">
+                  <span title="each clan bears a totem (Wolf/Tree/Shield/Eye) granting a subtle buff; disabling makes all clans plain">Totems</span>
+                  <select
+                    value={String(laws.totems_enabled ?? true)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, totems_enabled: e.target.value === 'true' }))
                     }
                   >
                     <option value="true">yes</option>
