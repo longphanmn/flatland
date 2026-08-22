@@ -828,7 +828,10 @@ select {
     right: 8px;
   }
   .version-bar {
-    bottom: 2px;
+    bottom: 6px;
+    right: 8px;
+    left: auto;
+    transform: none;
     font-size: 9px;
     padding: 1px 6px;
   }
@@ -857,9 +860,10 @@ select {
 }
 .version-bar {
   position: fixed;
-  bottom: 2px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 6px;
+  right: 14px;
+  left: auto;
+  transform: none;
   font-size: 10px;
   color: #484f58;
   background: rgba(13,17,23,0.85);

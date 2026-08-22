@@ -330,9 +330,6 @@ export default function App() {
     <div className="app">
       <header className="hud">
         <span className="title">Flatland</span>
-        <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls" style={{ padding: '6px 10px' }}>
-          ?
-        </button>
         <span className={`dot ${status}`} title={STATUS_LABEL[status]} />
         <span className="chip">{STATUS_LABEL[status]}</span>
         {paused && <span className="chip paused">PAUSED</span>}
@@ -704,8 +701,11 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* God button — top right panel */}
+      {/* God + Help — top right panel */}
       <div className="top-right-panel">
+        <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls">
+          ?
+        </button>
         <button className="god-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life">
           ⚖ God
         </button>
