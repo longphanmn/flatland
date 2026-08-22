@@ -232,8 +232,9 @@ always matches the running code). No Vite/frontend dependency.
       inside sleep (movement stops, hunger halved via `sleep_energy_mult`,
       health +0.3/tick, disease still bites); `sleeping` in snapshot with zzz
       renderer cue; Night rest toggle in the Sky & Seasons law group
-- [ ] [P2] Terrain — seeded map features: fertile patches bias food spawns;
-      rocky circles block movement (radial push-out); drawn under entities
+- [x] [P2] Terrain — seeded fertile patches (food spawns there ~70% of the
+      time via `fertile_food_bias`) and solid rock circles (radial push-out);
+      auto-scaled by area or pinned; drawn under entities; in snapshot
 - [x] [P2] Keyboard controls — space pause/resume · S step · R reset ·
           +/- zoom · F fit view (ignored while typing in inputs)
 - [ ] [P2] Caste population chart — client-side history panel: stacked lines

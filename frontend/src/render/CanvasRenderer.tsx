@@ -447,6 +447,23 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature }:
       }
       ctx.stroke()
 
+      // ---- terrain: fertile grounds then rocks, under everything else ----
+      for (const p of state.terrain_fertile ?? []) {
+        ctx.fillStyle = 'rgba(80,160,90,0.10)'
+        ctx.beginPath()
+        ctx.arc(cam.ox + p.x * cam.scale, cam.oy + p.y * cam.scale, p.r * cam.scale, 0, TAU)
+        ctx.fill()
+      }
+      for (const r of state.terrain_rocks ?? []) {
+        ctx.fillStyle = '#30363d'
+        ctx.strokeStyle = '#6e7681'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.arc(cam.ox + r.x * cam.scale, cam.oy + r.y * cam.scale, r.r * cam.scale, 0, TAU)
+        ctx.fill()
+        ctx.stroke()
+      }
+
       ctx.setTransform(cam.scale, 0, 0, cam.scale, cam.ox, cam.oy)
       for (const e of state.entities) drawEntity(ctx, e)
       // selection halo

@@ -71,6 +71,8 @@ class StateMessage(BaseModel):
     day: int = 1
     season: Literal["spring", "summer", "autumn", "winter"] = "spring"
     weather: Literal["clear", "rain", "fog", "storm"] = "clear"
+    terrain_fertile: list[dict[str, float]] = Field(default_factory=list)
+    terrain_rocks: list[dict[str, float]] = Field(default_factory=list)
     events: list["HistoryEvent"] = Field(default_factory=list)
 
 

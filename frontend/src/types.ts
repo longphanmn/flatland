@@ -51,6 +51,8 @@ export interface StateMessage {
   day: number
   season: 'spring' | 'summer' | 'autumn' | 'winter'
   weather: 'clear' | 'rain' | 'fog' | 'storm'
+  terrain_fertile: { x: number; y: number; r: number }[]
+  terrain_rocks: { x: number; y: number; r: number }[]
   events: HistoryEvent[]
 }
 

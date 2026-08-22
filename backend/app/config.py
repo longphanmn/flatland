@@ -99,6 +99,11 @@ class Config:
     sleep_enabled: bool = True  # creatures shelter in houses after dark
     sleep_energy_mult: float = 0.5  # energy decay while asleep
 
+    # Terrain (-1 => auto-scale from area)
+    fertile_patches: int = -1  # green grounds where food prefers to grow
+    rock_count: int = -1  # solid stone circles that block movement
+    fertile_food_bias: float = 0.7  # fraction of food spawned on fertile ground
+
     # Houses
     house_min_size: float = 6.0
     house_max_size: float = 10.0

@@ -71,7 +71,10 @@ class Simulation:
         self.weather = "clear"
         self.clans: dict[int, dict] = {}  # id -> {name, founder_id, born_tick, color}
         self._next_clan_id = 1
+        self.fertile: list[dict] = []  # {x,y,r} — food prefers these grounds
+        self.rocks: list[dict] = []  # {x,y,r} — solid circles that block movement
         self._spawn_initial()
+        self._generate_terrain()
 
     # ------------------------------------------------------------- the sky
     def _time_of_day(self) -> float:
@@ -174,7 +177,7 @@ class Simulation:
         for _ in range(n_women):
             self._spawn_creature("line", 2)
         for _ in range(cfg.food_count):
-            x, y = self._rand_pos()
+            x, y = self._food_pos()
             self.world.add(Food(x=x, y=y))
         max_radius = max(
             (c.radius for c in self.world.creatures()), default=DEFAULT_RADIUS
@@ -220,6 +223,67 @@ class Simulation:
             for c in self.world.creatures():
                 if c.caste == caste:
                     c.clan_id = cid
+
+    # --------------------------------------------------------------- terrain
+    def _generate_terrain(self) -> None:
+        cfg = self.config
+        area = cfg.width * cfg.height
+        n_fertile = (
+            cfg.fertile_patches
+            if cfg.fertile_patches >= 0
+            else self._jittered(area * 0.00008)
+        )
+        n_rocks = (
+            cfg.rock_count if cfg.rock_count >= 0 else self._jittered(area * 0.00006)
+        )
+        for _ in range(n_fertile):
+            r = self.rng.uniform(8.0, 20.0)
+            self.fertile.append(
+                {
+                    "x": self.rng.uniform(r, cfg.width - r),
+                    "y": self.rng.uniform(r, cfg.height - r),
+                    "r": r,
+                }
+            )
+        for _ in range(n_rocks):
+            r = self.rng.uniform(2.0, 5.0)
+            self.rocks.append(
+                {
+                    "x": self.rng.uniform(r + 1, cfg.width - r - 1),
+                    "y": self.rng.uniform(r + 1, cfg.height - r - 1),
+                    "r": r,
+                }
+            )
+
+    def _food_pos(self) -> tuple[float, float]:
+        """New food prefers fertile ground (god law sets the bias)."""
+        cfg = self.config
+        if self.fertile and self.rng.random() < cfg.fertile_food_bias:
+            patch = self.rng.choice(self.fertile)
+            ang = self.rng.uniform(0, 2 * math.pi)
+            rad = math.sqrt(self.rng.random()) * patch["r"]
+            return (
+                (patch["x"] + math.cos(ang) * rad) % cfg.width,
+                (patch["y"] + math.sin(ang) * rad) % cfg.height,
+            )
+        return self._rand_pos()
+
+    def _resolve_rock_collision(self, c: Creature) -> None:
+        """Push a creature out of any rock it has wandered into."""
+        for rock in self.rocks:
+            d = self.world.distance(c.x, c.y, rock["x"], rock["y"])
+            min_d = rock["r"] + c.radius
+            if d < min_d:
+                ux, uy = self.world.delta(c.x, c.y, rock["x"], rock["y"])
+                if abs(ux) < 1e-6 and abs(uy) < 1e-6:
+                    ang = self.rng.uniform(0, 2 * math.pi)
+                    ux, uy = math.cos(ang), math.sin(ang)
+                norm = math.hypot(ux, uy) or 1.0
+                c.x, c.y = self.world.normalize(
+                    rock["x"] + ux / norm * min_d,
+                    rock["y"] + uy / norm * min_d,
+                )
+                c.angle = math.atan2(uy, ux)
 
     def _jittered(self, target: float) -> int:
         v = self.config.spawn_variance
@@ -636,6 +700,10 @@ class Simulation:
                     c.angle += math.pi + self.rng.uniform(-0.3, 0.3)
                     break
 
+        # 4b. Rocks are solid: push out and face away.
+        if self.rocks:
+            self._resolve_rock_collision(c)
+
         # 5. Eat.
         if target is not None and best <= cfg.eat_radius:
             w.remove(target.id)
@@ -668,7 +736,7 @@ class Simulation:
         deficit = target - len(foods)
         if deficit > 0:
             for _ in range(deficit):
-                x, y = self._rand_pos()
+                x, y = self._food_pos()
                 self.world.add(Food(x=x, y=y))
         elif deficit < 0:
             for victim in self.rng.sample(foods, -deficit):
@@ -700,6 +768,8 @@ class Simulation:
             day=self.day,
             season=self._season(),
             weather=self.weather,
+            terrain_fertile=self.fertile,
+            terrain_rocks=self.rocks,
             events=list(self._events_this_tick),
         )
 
