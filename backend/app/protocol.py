@@ -44,6 +44,9 @@ class EntityState(BaseModel):
     health: Optional[float] = None
     infected: Optional[bool] = None
     meals: Optional[int] = None
+    sex: Optional[Literal["male", "female"]] = None
+    mother_id: Optional[int] = None
+    father_id: Optional[int] = None
     clan_id: Optional[int] = None
     clan_color: Optional[str] = None
     sleeping: Optional[bool] = None

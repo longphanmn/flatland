@@ -15,6 +15,7 @@ from pydantic import ValidationError
 from .config import Config
 from .db import Database
 from .protocol import ControlAction, ControlMessage, GodLaws, HelloMessage, StateMessage
+from .entities import Creature
 from .simulation import Simulation
 
 MIN_SPEED = 0.5  # ticks per second
@@ -334,9 +335,52 @@ async def get_snapshot(snapshot_id: int) -> dict:
     return {"id": snap["id"], "tick": snap["tick"], "state": snap["payload"]}
 
 
+def _kin_card(entity_id: int) -> dict:
+    """Dossier card for a family-tree node (alive creatures preferred)."""
+    ent = RT.sim.world.entities.get(entity_id)
+    if ent is not None and isinstance(ent, Creature):
+        return {
+            "id": entity_id,
+            "caste": ent.caste,
+            "alive": True,
+            "clan_color": RT.sim.clans.get(ent.clan_id, {}).get("color"),
+        }
+    return {"id": entity_id, "caste": None, "alive": False, "clan_color": None}
+
+
+def _family_of(creature_id: int) -> dict:
+    """Parents above, children below — live world first, genealogy to fill gaps."""
+    mother = father = None
+    children: dict[int, dict] = {}
+
+    # Living children are visible to the world even if the subject is not.
+    for other in RT.sim.world.creatures():
+        if other.id != creature_id and creature_id in (other.mother_id, other.father_id):
+            children[other.id] = _kin_card(other.id)
+
+    ent = RT.sim.world.entities.get(creature_id)
+    if isinstance(ent, Creature):
+        if ent.mother_id:
+            mother = _kin_card(ent.mother_id)
+        if ent.father_id:
+            father = _kin_card(ent.father_id)
+
+    if RT.world_id is not None:
+        gm, gf = DB.genealogy_parents(RT.world_id, creature_id)
+        if mother is None and gm:
+            mother = {**gm, "alive": False, "clan_color": None}
+        if father is None and gf:
+            father = {**gf, "alive": False, "clan_color": None}
+        for kid in DB.genealogy_children(RT.world_id, creature_id):
+            if kid["id"] not in children and kid["id"] != creature_id:
+                children[kid["id"]] = {**kid, "alive": False, "clan_color": None}
+
+    return {"mother": mother, "father": father, "children": list(children.values())}
+
+
 @app.get("/api/creature/{creature_id}")
 async def get_creature(creature_id: int) -> dict:
-    """Live status + personal chronicle for one creature."""
+    """Live status + personal chronicle + family tree for one creature."""
     ent = RT.sim.world.entities.get(creature_id)
     entity = RT.sim._entity_state(ent).model_dump(mode="json") if ent else None
     events = (
@@ -348,7 +392,7 @@ async def get_creature(creature_id: int) -> dict:
         if RT.world_id
         else []
     )
-    return {"entity": entity, "events": events}
+    return {"entity": entity, "events": events, "family": _family_of(creature_id)}
 
 
 @app.get("/api/state", response_model=StateMessage)

@@ -203,6 +203,43 @@ class Database:
             )
             self._conn.commit()  # type: ignore[union-attr]
 
+    # ------------------------------------------------------------- genealogy
+    def genealogy_parents(
+        self, world_id: int, entity_id: int
+    ) -> tuple[dict | None, dict | None]:
+        """(mother, father) minimal cards from the genealogy table, if recorded."""
+        with self._lock:
+            row = self._require().execute(
+                "SELECT mother_id, father_id FROM creatures"
+                " WHERE world_id=? AND entity_id=?",
+                (world_id, entity_id),
+            ).fetchone()
+        if row is None:
+            return None, None
+        cards: dict[str, dict | None] = {"m": None, "f": None}
+        for pid, which in ((row["mother_id"], "m"), (row["father_id"], "f")):
+            if not pid:
+                continue
+            with self._lock:
+                prow = self._require().execute(
+                    "SELECT caste FROM creatures WHERE world_id=? AND entity_id=?",
+                    (world_id, pid),
+                ).fetchone()
+            cards[which] = {
+                "id": pid,
+                "caste": prow["caste"] if prow else None,
+            }
+        return cards["m"], cards["f"]
+
+    def genealogy_children(self, world_id: int, entity_id: int) -> list[dict]:
+        with self._lock:
+            rows = self._require().execute(
+                "SELECT entity_id, caste FROM creatures WHERE world_id=?"
+                " AND (mother_id=? OR father_id=?)",
+                (world_id, entity_id, entity_id),
+            ).fetchall()
+        return [{"id": r["entity_id"], "caste": r["caste"]} for r in rows]
+
     def law_changes(self, world_id: int, limit: int = 200) -> list[dict]:
         with self._lock:
             rows = self._require().execute(

@@ -1,9 +1,23 @@
 import { useEffect, useState } from 'react'
 import type { EntityState, HistoryEvent } from '../types'
 
+interface KinCard {
+  id: number
+  caste: string | null
+  alive: boolean
+  clan_color: string | null
+}
+
+interface Family {
+  mother: KinCard | null
+  father: KinCard | null
+  children: KinCard[]
+}
+
 interface CreatureResponse {
   entity: EntityState | null
   events: HistoryEvent[]
+  family?: Family
 }
 
 function Bar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
@@ -38,12 +52,35 @@ function eventLine(ev: HistoryEvent): string {
   }
 }
 
+function KinNode({
+  kin,
+  label,
+  onNavigate,
+}: {
+  kin: KinCard | null
+  label: string
+  onNavigate: (id: number) => void
+}) {
+  if (!kin) return <div className="kin-node empty">{label}: —</div>
+  return (
+    <button
+      className={`kin-node ${kin.alive ? '' : 'dead'}`}
+      onClick={() => onNavigate(kin.id)}
+      title={kin.alive ? 'open dossier' : 'deceased — view record'}
+    >
+      <span className="kin-role">{label}</span>{' '}
+      #{kin.id} {kin.caste ?? '?'} {kin.alive ? '' : '†'}
+    </button>
+  )
+}
+
 interface Props {
   id: number
   onClose: () => void
+  onNavigate: (id: number) => void
 }
 
-export default function Inspector({ id, onClose }: Props) {
+export default function Inspector({ id, onClose, onNavigate }: Props) {
   const [data, setData] = useState<CreatureResponse | null>(null)
 
   useEffect(() => {
@@ -62,6 +99,13 @@ export default function Inspector({ id, onClose }: Props) {
   }, [id])
 
   const e = data?.entity
+  const fam = data?.family
+
+  const statusChips: Array<{ text: string; cls: string }> = []
+  if (e?.status === 'hungry') statusChips.push({ text: 'hungry', cls: 'st-hungry' })
+  if (e?.status === 'starving') statusChips.push({ text: 'starving', cls: 'st-starving' })
+  if (e?.infected) statusChips.push({ text: 'sick', cls: 'st-sick' })
+  if (e?.sleeping) statusChips.push({ text: 'asleep', cls: 'st-asleep' })
 
   return (
     <aside className="inspector">
@@ -75,48 +119,61 @@ export default function Inspector({ id, onClose }: Props) {
         </button>
       </header>
 
-      {!e && data && <p className="god-note">no longer among the living.</p>}
+      {!e && data && <p className="god-note">no longer among the living — their chronicle remains.</p>}
       {e && (
         <>
-          <p className="god-note">
-            generation {e.generation ?? 0} · born tick {e.born_tick ?? '?'} · stage{' '}
-            {e.stage}
-            {e.infected && ' · 🤒 infected'}
-          </p>
-          {e.clan_id != null && e.clan_id > 0 && (
-            <p className="god-note">
-              <span
-                style={{
-                  display: 'inline-block',
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  background: e.clan_color ?? '#8b949e',
-                  marginRight: 6,
-                }}
-              />
-              {e.clan_color && typeof e.clan_id === 'number'
-                ? `of Clan ${e.clan_id}`
-                : 'clanless'}
-            </p>
+          {statusChips.length > 0 && (
+            <div className="status-row">
+              {statusChips.map((s) => (
+                <span key={s.text} className={`status-chip ${s.cls}`}>
+                  {s.text}
+                </span>
+              ))}
+            </div>
           )}
           <Bar label="energy" value={e.energy ?? 0} max={100} color="#d29922" />
           <Bar label="health" value={e.health ?? 0} max={100} color="#3fb950" />
           <div className="insp-grid">
             <span className="chip">
-              age <b>{e.age ?? 0}</b> / {Math.round(e.lifespan ?? 0)}
+              age <b>{e.age ?? 0}</b> / {Math.round(e.lifespan ?? 0)} · {e.stage}
             </span>
             <span className="chip">
-              sight ×<b>{'—'}</b>
+              meals <b>{e.meals ?? 0}</b> · sides <b>{e.sides}</b> · gen{' '}
+              <b>{e.generation ?? 0}</b>
             </span>
             {typeof e.irregularity === 'number' && e.irregularity > 0 && (
               <span className="chip" style={{ color: '#f85149' }}>
                 irregularity <b>{e.irregularity}</b>
               </span>
             )}
-            <span className="chip">
-              meals <b>{e.meals ?? 0}</b> · sides <b>{e.sides}</b>
-            </span>
+            {e.clan_id != null && e.clan_id > 0 && (
+              <span className="chip">
+                <span
+                  className="dot-inline"
+                  style={{ background: e.clan_color ?? '#8b949e', marginRight: 4 }}
+                />
+                Clan {e.clan_id}
+              </span>
+            )}
+          </div>
+
+          {/* ---- family tree ---- */}
+          <h3 className="insp-h">Family</h3>
+          <div className="family-tree">
+            <div className="tree-row">
+              <KinNode kin={fam?.mother ?? null} label="♀ mother" onNavigate={onNavigate} />
+              <KinNode kin={fam?.father ?? null} label="♂ father" onNavigate={onNavigate} />
+            </div>
+            <div className="tree-self">#{id} ← you are here</div>
+            <div className="tree-row wrap">
+              {(fam?.children ?? []).length === 0 ? (
+                <span className="chip">no children yet</span>
+              ) : (
+                fam!.children.map((k) => (
+                  <KinNode key={k.id} kin={k} label="child" onNavigate={onNavigate} />
+                ))
+              )}
+            </div>
           </div>
         </>
       )}

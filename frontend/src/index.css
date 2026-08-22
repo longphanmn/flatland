@@ -236,6 +236,93 @@ body {
   border-bottom: 1px solid rgba(48, 54, 61, 0.5);
 }
 
+/* ---- creature profile: status chips + family tree ---- */
+
+.status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.status-chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid #30363d;
+}
+
+.st-hungry {
+  color: #d29922;
+  border-color: #7e6325;
+}
+
+.st-starving {
+  color: #f85149;
+  border-color: #f85149;
+}
+
+.st-sick {
+  color: #3fb950;
+  border-color: #238636;
+}
+
+.st-asleep {
+  color: #79c0ff;
+  border-color: #1f4a7a;
+}
+
+.family-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tree-row {
+  display: flex;
+  gap: 6px;
+}
+
+.tree-row.wrap {
+  flex-wrap: wrap;
+}
+
+.kin-node {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font: inherit;
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.kin-node:hover {
+  border-color: #e3b341;
+}
+
+.kin-node.dead {
+  opacity: 0.55;
+}
+
+.kin-node.empty {
+  cursor: default;
+  color: #484f58;
+  border-style: dashed;
+}
+
+.kin-role {
+  color: #8b949e;
+  margin-right: 4px;
+}
+
+.tree-self {
+  font-size: 11px;
+  color: #e3b341;
+  padding-left: 6px;
+}
+
 .controls {
   display: flex;
   gap: 10px;

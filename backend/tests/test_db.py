@@ -188,6 +188,33 @@ def test_snapshot_album_roundtrip(client):
     assert client.get("/api/snapshot/999999").status_code == 404
 
 
+def test_creature_family_tree(client):
+    from app.entities import Creature
+
+    # mother (alive), father (dies -> genealogy card), child
+    mother = RT.sim.world.add(Creature(x=5.0, y=5.0, shape="line", sides=2, energy=100.0))
+    father = RT.sim.world.add(Creature(x=6.0, y=5.0, sides=4, energy=100.0))
+    child = RT.sim.world.add(
+        Creature(x=7.0, y=5.0, sides=4, energy=100.0,
+                 mother_id=mother.id, father_id=father.id)
+    )
+    DB.add_creature(RT.world_id, father.id, "Gentleman", 0, 0, 0, 0, born_tick=0)
+    DB.add_creature(RT.world_id, child.id, "Gentleman", 0, 1, mother.id, father.id, born_tick=0)
+
+    fam = client.get(f"/api/creature/{child.id}").json()["family"]
+    assert fam["mother"]["id"] == mother.id and fam["mother"]["alive"] is True
+    assert fam["father"]["id"] == father.id
+
+    # father dies: still resolvable via genealogy, marked dead
+    RT.sim._kill(father, "starvation")
+    fam = client.get(f"/api/creature/{child.id}").json()["family"]
+    assert fam["father"]["id"] == father.id and fam["father"]["alive"] is False
+
+    # child appears in the father's children list (dead or alive)
+    kids = client.get(f"/api/creature/{father.id}").json()["family"]["children"]
+    assert any(k["id"] == child.id for k in kids)
+
+
 def test_events_survive_world_reset_in_db(client):
     wid_before = RT.world_id
     DB.add_events(wid_before, [HistoryEvent(tick=1, entity_id=9, caste="Priest", cause="old_age", x=5.0, y=5.0)])

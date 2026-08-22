@@ -347,7 +347,11 @@ export default function App() {
       )}
 
       {selectedId !== null && (
-        <Inspector id={selectedId} onClose={() => setSelectedId(null)} />
+        <Inspector
+          id={selectedId}
+          onClose={() => setSelectedId(null)}
+          onNavigate={(nid) => setSelectedId(nid)}
+        />
       )}
 
       <GodPanel open={godOpen} onClose={() => setGodOpen(false)} />

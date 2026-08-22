@@ -790,6 +790,9 @@ class Simulation:
                 irregularity=e.irregularity,
                 health=round(e.health, 1),
                 infected=e.infected,
+                sex=e.sex,  # type: ignore[arg-type]
+                mother_id=e.mother_id or None,
+                father_id=e.father_id or None,
                 clan_id=e.clan_id or None,
                 clan_color=self.clans.get(e.clan_id, {}).get("color"),
                 sleeping=e.sleeping,

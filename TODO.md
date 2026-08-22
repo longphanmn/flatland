@@ -107,7 +107,8 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [x] [P0] Consolidate ALL new laws into GodLaws + God screen UI (grouped by
       section: World / Food & Energy / Hunger & Sight / Movement / Life &
       Death / Bodies & Houses; grows as §B/§D/§E laws arrive)
-- [ ] [P2] Population/caste sparkline chart in HUD
+- [x] [P2] Population/caste sparkline chart in HUD (+ stacked caste chart in
+      the Chronicle panel, §N)
 - [x] [P2] Chronicle shows all event types (birth/promotion/demotion/recovery/
       outbreak/death — color-coded in the panel)
 - [x] [P2] Creature inspector — tap/click a creature (works on touch too):
@@ -152,17 +153,16 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
       relation_drift_rate, alliance_threshold, rivalry_threshold
 - [ ] Events: `predation`, `war`, `attack`, `clan_founded`, `alliance`, `rivalry`
 
-## J. Creature profile & genealogy  [P0]
+## J. Creature profile & genealogy  [P0] — ✅ implemented
 - [x] Genealogy table — landed in §F (creatures rows: parents, caste, generation,
-      clan, born/died ticks); what remains is surfacing it in the UI
-- [ ] Expose lineage on the wire — `mother_id`/`father_id`/`sex` still live only on
-      the Creature, not on `EntityState` (clan_id/meals are already sent); add them +
-      a parents/children lookup to `/api/creature/{id}` and a `/tree` endpoint
-- [ ] Profile UI — inspector already shows caste · sex · clan · age/lifespan ·
-      energy/health · meals · stage; add a **status chip** (hungry/starving/sick/
-      infected) and **clickable parent links** (`mother #12` / `father #8`) that open
-      that creature's dossier, plus a compact family tree (parents above, children
-      below) with click-to-navigate
+      clan, born/died ticks); surfaced via the profile below
+- [x] Expose lineage on the wire — `mother_id`/`father_id`/`sex`/meals now on
+      `EntityState`; `/api/creature/{id}` returns a `family` block (mother/
+      father cards alive-or-dead via genealogy, living + recorded children)
+- [x] Profile UI — status chips (hungry/starving/sick/asleep), clickable
+      parent links († marks the dead) and a compact family tree: parents
+      above, "you are here", children below; every node opens that dossier
+      with click-to-navigate
 
 ## K. Documentation — living guide  [P2]
 Serve a full reference independent of the React game UI (backend-rendered, so it
@@ -190,6 +190,27 @@ always matches the running code). No Vite/frontend dependency.
 - [ ] Anti-rot check — a small test asserts every `GodLaws` field and every REST
       route is mentioned in the docs, so the guide can't silently go stale; roadmap
       section links back to TODO.md
+
+## L. Shelter — make houses matter  [P1]
+Houses today are ~5 empty squares: walls block movement and creatures nap inside
+after dark (§N night rest). Shelter should be scarce, contested and life-saving.
+- [ ] [P1] Exposure — rain/storm and winter nights drain energy (or health) on the
+      open plain (`exposure_drain`); being indoors cancels it. Shelter becomes
+      survival, not convenience.
+- [ ] [P1] House capacity — each house shelters at most `house_capacity` creatures
+      (∝ size); the overflow sleeps outside and suffers exposure. Five houses is a
+      real housing shortage.
+- [ ] [P1] Clan claim — each clan claims a house as its settlement (clan crest on
+      the wall; members prefer their own house). Rival clans may contest a claim
+      once §I clan war lands.
+- [ ] [P2] Rest & recovery — indoors: energy regen + `rest_recovery_mult` disease
+      recovery; births happen at home (infants born outside are exposed/weakened).
+- [ ] [P2] Predator refuge — the doorway is too small for the Carnivore caste (§I);
+      a house is the only safe haven once predators hunt.
+- [ ] [P2] Settlement economy — houses scale with population (house_density tied to
+      carrying capacity); abandoned houses crumble to ruins; new clans found new ones.
+- [ ] GodLaws: shelter_enabled, exposure_drain, house_capacity, house_claim_enabled,
+      rest_recovery_mult (new "Shelter" law group)
 
 ## Cross-system synergies (emergent depth)
 Not features — acceptance criteria. Tick only after the behaviour is observable in a
@@ -234,6 +255,9 @@ observable signal; `tune` = god laws that push it over the edge.
 - [ ] Social order meets the food chain — needs §C+§I · verify: priests see the predator
       first and flee, women fall, low castes trapped by yielding · tune: sight_mult,
       yield_strength, fear_radius
+- [ ] Housing shortage = overcrowding = disease + war — needs §L+§D+§I · verify: pop
+      > total house capacity → exposure deaths climb, contagion spreads in packed
+      houses, clan claims turn into wars · tune: house_capacity, exposure_drain
 
 ## W. World generation  — ✅ implemented
 - [x] Population & houses scale with map area: `creature_density`,
