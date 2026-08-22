@@ -35,6 +35,7 @@ class EntityState(BaseModel):
     caste: Optional[str] = None
     energy: Optional[float] = None
     growth: Optional[float] = None  # plants: 0..1 maturity (renderer scales size)
+    variant: Optional[Literal["grass", "berry", "mushroom", "poisonous"]] = None
     size: Optional[float] = None
     status: Optional[Literal["", "hungry", "starving"]] = None
     radius: Optional[float] = None
@@ -115,10 +116,12 @@ class GodLaws(BaseModel):
     food_count: Optional[int] = Field(None, ge=0, le=500)
     energy_max: Optional[float] = Field(None, gt=1, le=10000)
 
-    # Plants & nutrient cycle (§H)
+    # Plants & nutrient cycle (§H) + biodiversity (§O)
     plant_growth_rate: Optional[float] = Field(None, ge=0, le=1)
     plant_spread_rate: Optional[float] = Field(None, ge=0, le=1)
     nutrient_cycle_rate: Optional[float] = Field(None, ge=0, le=10)
+    plant_variants_enabled: Optional[bool] = None
+    poison_rate: Optional[float] = Field(None, ge=0, le=1)
 
     energy_decay_per_tick: Optional[float] = Field(None, ge=0, le=2)
     energy_from_food: Optional[float] = Field(None, ge=0, le=1000)

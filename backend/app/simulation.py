@@ -47,6 +47,18 @@ NUTRIENT_RADIUS = 10.0  # a fully decayed corpse fertilises plants within this r
 NUTRIENT_BOOST = 0.5  # base growth granted by a decayed corpse (× nutrient_cycle_rate)
 SPROUT_GROWTH = 0.15  # every newly spawned plant starts here
 
+# §O Biodiversity — plant variants (§O)
+VARIANT_ENERGY = {"grass": 32.0, "berry": 48.0, "mushroom": 24.0, "poisonous": 8.0}
+VARIANT_HEALTH = {"grass": 0.0, "berry": 1.0, "mushroom": 0.0, "poisonous": -30.0}
+VARIANT_GROWTH_MULT = {"grass": 1.0, "berry": 0.65, "mushroom": 0.85, "poisonous": 0.60}
+# berry peaks in autumn, mushrooms tolerate winter, grass thrives summer
+VARIANT_SEASON_MULT = {
+    "grass": {"spring": 1.05, "summer": 1.15, "autumn": 1.0, "winter": 0.45},
+    "berry": {"spring": 0.5, "summer": 0.8, "autumn": 1.9, "winter": 0.25},
+    "mushroom": {"spring": 1.0, "summer": 0.6, "autumn": 1.35, "winter": 1.1},
+    "poisonous": {"spring": 1.0, "summer": 1.0, "autumn": 1.0, "winter": 1.0},
+}
+
 # Clan crest colors, assigned round-robin as clans are founded.
 CLAN_COLORS = (
     "#ffd166", "#06d6a0", "#118ab2", "#ef476f",
@@ -230,7 +242,7 @@ class Simulation:
         for _ in range(cfg.food_count):
             x, y = self._food_pos()
             # World-spawned plants arrive mature: the food law promises harvest.
-            self.world.add(Food(x=x, y=y, growth=1.0))
+            self.world.add(self._new_food(x, y, growth=1.0))
         max_radius = max(
             (c.radius for c in self.world.creatures()), default=DEFAULT_RADIUS
         )
@@ -502,6 +514,54 @@ class Simulation:
             )
         return self._rand_pos()
 
+    def _pick_variant(self, x: float, y: float) -> str:
+        """§O: choose grass/berry/mushroom/poisonous for a new sprout."""
+        cfg = self.config
+        if not cfg.plant_variants_enabled:
+            return "grass"
+        if cfg.poison_rate > 0 and self.rng.random() < cfg.poison_rate:
+            return "poisonous"
+        season = self._season()
+        # base weights shift with season (autumn → berries, winter → mushrooms)
+        if season == "autumn":
+            weights = {"grass": 0.30, "berry": 0.48, "mushroom": 0.22}
+        elif season == "winter":
+            weights = {"grass": 0.35, "berry": 0.08, "mushroom": 0.57}
+        elif season == "summer":
+            weights = {"grass": 0.58, "berry": 0.22, "mushroom": 0.20}
+        else:  # spring
+            weights = {"grass": 0.50, "berry": 0.18, "mushroom": 0.32}
+        # decomposer boost: near corpses or rocks → more mushrooms
+        near_decomposer = False
+        for e in self.world.entities.values():
+            if e.kind == "corpse" and self.world.distance(x, y, e.x, e.y) < NUTRIENT_RADIUS:
+                near_decomposer = True
+                break
+        if not near_decomposer:
+            for rock in self.rocks:
+                if self.world.distance(x, y, rock["x"], rock["y"]) < rock["r"] + 4.0:
+                    near_decomposer = True
+                    break
+        if near_decomposer:
+            # shift 0.25 from grass/berry to mushroom
+            weights["mushroom"] = min(0.70, weights["mushroom"] + 0.25)
+            # renormalize proportionally
+            total = sum(weights.values())
+            for k in weights:
+                weights[k] /= total
+        r = self.rng.random()
+        cum = 0.0
+        for v, w in weights.items():
+            cum += w
+            if r < cum:
+                return v
+        return "grass"
+
+    def _new_food(self, x: float, y: float, growth: float) -> Food:
+        """Create a Food with §O variant (deterministic via rng)."""
+        variant = self._pick_variant(x, y)
+        return Food(x=x, y=y, growth=growth, variant=variant)
+
     def _resolve_rock_collision(self, c: Creature) -> None:
         """Push a creature out of any rock it has wandered into."""
         for rock in self.rocks:
@@ -692,12 +752,17 @@ class Simulation:
 
     # ------------------------------------------------------------------ flora
     def _update_plants(self) -> None:
-        """§H: every plant grows toward maturity; the mature ones spread."""
+        """§H: every plant grows toward maturity; the mature ones spread. §O variant rhythms."""
         cfg = self.config
         if cfg.plant_growth_rate > 0:
             for e in self.world.entities.values():
                 if isinstance(e, Food) and e.growth < 1.0:
-                    e.growth = min(1.0, e.growth + cfg.plant_growth_rate)
+                    if cfg.plant_variants_enabled:
+                        vm = VARIANT_GROWTH_MULT.get(e.variant, 1.0)
+                        sm = VARIANT_SEASON_MULT.get(e.variant, {}).get(self._season(), 1.0)
+                    else:
+                        vm, sm = 1.0, 1.0
+                    e.growth = min(1.0, e.growth + cfg.plant_growth_rate * vm * sm)
                     if e.growth >= 1.0:
                         self._emit_bloom(e)
         if cfg.plant_spread_rate > 0:
@@ -716,7 +781,7 @@ class Simulation:
                     parent.x + math.cos(ang) * rad,
                     parent.y + math.sin(ang) * rad,
                 )
-                self.world.add(Food(x=x, y=y, growth=SPROUT_GROWTH))
+                self.world.add(self._new_food(x, y, growth=SPROUT_GROWTH))
                 total += 1
 
     def _emit_bloom(self, plant: Food) -> None:
@@ -728,7 +793,7 @@ class Simulation:
                 entity_id=plant.id,
                 x=round(plant.x, 2),
                 y=round(plant.y, 2),
-                payload={"x": round(plant.x, 2), "y": round(plant.y, 2)},
+                payload={"x": round(plant.x, 2), "y": round(plant.y, 2), "variant": plant.variant},
             )
         )
 
@@ -1308,7 +1373,7 @@ class Simulation:
         if self.rocks:
             self._resolve_rock_collision(c)
 
-        # 5. Eat.
+        # 5. Eat. §O variant yields: grass low, berry high (autumn), mushroom decomposer, poisonous sickens.
         if target is not None and best <= cfg.eat_radius:
             w.remove(target.id)
             self._eaten.add(target.id)
@@ -1316,9 +1381,22 @@ class Simulation:
             c.meals += 1
             self._eaters_this_tick.append(c.id)
             gain = cfg.energy_from_food
+            health_delta = 0.0
             if isinstance(target, Food):
-                gain *= target.growth  # immature plants feed proportionally less
+                if cfg.plant_variants_enabled:
+                    base = VARIANT_ENERGY.get(target.variant, cfg.energy_from_food)
+                    gain = base * target.growth  # immature plants feed proportionally less
+                    health_delta = VARIANT_HEALTH.get(target.variant, 0.0)
+                else:
+                    gain = cfg.energy_from_food * target.growth
+            elif isinstance(target, Corpse):
+                gain = cfg.corpse_energy  # scavenged remains
             c.energy = min(cfg.energy_max, c.energy + gain)
+            if health_delta != 0:
+                c.health = max(0.0, min(100.0, c.health + health_delta))
+                if c.health <= 0:
+                    self._kill(c, "poison")
+                    return
 
         # 5b. Rain and storms send the roofless under cover — beds permitting.
         # Predators cannot shelter: the doorway is too small (§L refuge).
@@ -1366,7 +1444,7 @@ class Simulation:
             for _ in range(deficit):
                 x, y = self._food_pos()
                 # Law-respawned food also arrives mature; only SPREAD sprouts young.
-                self.world.add(Food(x=x, y=y, growth=1.0))
+                self.world.add(self._new_food(x, y, growth=1.0))
         elif deficit < 0:
             # Winter die-back takes the youngest shoots first.
             ordered = sorted(foods, key=lambda f: f.growth)
@@ -1449,7 +1527,7 @@ class Simulation:
                 abandoned_ticks=e.abandoned_ticks or None,
             )
         if isinstance(e, Food):
-            return EntityState(**base, growth=round(e.growth, 3))
+            return EntityState(**base, growth=round(e.growth, 3), variant=e.variant)  # type: ignore[arg-type]
         return EntityState(**base)  # type: ignore[arg-type]
 
 

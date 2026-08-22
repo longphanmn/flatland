@@ -140,6 +140,7 @@ def test_predator_prey_oscillation():
     cfg = zeros(
         seed=45, width=60, height=60,
         food_count=25, plant_growth_rate=0.05, plant_spread_rate=0.02,
+        plant_variants_enabled=False,
         energy_decay_per_tick=0.02, energy_from_food=30,
         predation_enabled=True, predator_ratio=0.0,
         hunt_radius=20, fear_radius=15, bite_cooldown=5, energy_from_prey=40,

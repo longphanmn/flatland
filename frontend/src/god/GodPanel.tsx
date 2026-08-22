@@ -18,6 +18,11 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'energy_max', label: 'Max energy', min: 10, max: 500, step: 5, group: 'Food & Energy' },
   { key: 'energy_decay_per_tick', label: 'Energy decay / tick', min: 0, max: 2, step: 0.01, group: 'Food & Energy' },
   { key: 'energy_from_food', label: 'Energy from food', min: 0, max: 100, step: 1, group: 'Food & Energy' },
+  // Ecosystem — biodiversity of the meadow
+  { key: 'plant_growth_rate', label: 'Plant growth / tick', min: 0, max: 1, step: 0.01, group: 'Ecosystem' },
+  { key: 'plant_spread_rate', label: 'Plant spread chance', min: 0, max: 1, step: 0.005, group: 'Ecosystem' },
+  { key: 'nutrient_cycle_rate', label: 'Nutrient cycle ×', min: 0, max: 10, step: 0.1, group: 'Ecosystem' },
+  { key: 'poison_rate', label: 'Poison sprout chance', min: 0, max: 1, step: 0.01, group: 'Ecosystem' },
   // Hunger & Sight — perception of the world
   { key: 'hungry_ratio', label: 'Hungry threshold', min: 0.05, max: 1, step: 0.05, group: 'Hunger & Sight' },
   { key: 'starving_ratio', label: 'Starving threshold', min: 0.01, max: 1, step: 0.01, group: 'Hunger & Sight' },
@@ -58,6 +63,7 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'exposure_drain', label: 'Exposure drain / tick', min: 0, max: 2, step: 0.05, group: 'Shelter' },
   { key: 'house_capacity', label: 'House capacity', min: 1, max: 20, step: 1, group: 'Shelter' },
   { key: 'rest_recovery_mult', label: 'Rest healing ×', min: 0.5, max: 5, step: 0.25, group: 'Shelter' },
+  { key: 'house_decay_ticks', label: 'House decay ticks', min: 100, max: 100000, step: 100, group: 'Shelter' },
   { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction' },
   { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction' },
   { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction' },
@@ -89,6 +95,7 @@ const NUMBER_LAWS: LawSpec[] = [
 
 const GROUP_ORDER = [
   'Food & Energy',
+  'Ecosystem',
   'Hunger & Sight',
   'Movement',
   'Life & Death',
@@ -274,6 +281,22 @@ export default function GodPanel({ open, onClose }: Props) {
                     value={String(laws.shelter_enabled ?? true)}
                     onChange={(e) =>
                       setLaws((l) => ({ ...l, shelter_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
+              )}
+              {group === 'Ecosystem' && (
+                <label className="god-row">
+                  <span title="grass/berry/mushroom/poisonous diversity; disabling makes all plants grass">
+                    Plant variants
+                  </span>
+                  <select
+                    value={String(laws.plant_variants_enabled ?? true)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, plant_variants_enabled: e.target.value === 'true' }))
                     }
                   >
                     <option value="true">yes</option>

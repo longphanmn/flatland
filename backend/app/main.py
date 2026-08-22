@@ -183,6 +183,8 @@ LAW_FIELDS = (
     "plant_growth_rate",
     "plant_spread_rate",
     "nutrient_cycle_rate",
+    "plant_variants_enabled",
+    "poison_rate",
     "energy_max",
     "energy_decay_per_tick",
     "energy_from_food",

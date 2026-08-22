@@ -37,6 +37,7 @@ export interface EntityState {
   is_ruin?: boolean
   abandoned_ticks?: number
   growth?: number
+  variant?: 'grass' | 'berry' | 'mushroom' | 'poisonous'
   sex?: 'male' | 'female'
   mother_id?: number
   father_id?: number
@@ -161,6 +162,11 @@ export interface ControlMessage {
 export interface GodLaws {
   boundary?: 'wrap' | 'clamp'
   food_count?: number
+  plant_growth_rate?: number
+  plant_spread_rate?: number
+  nutrient_cycle_rate?: number
+  plant_variants_enabled?: boolean
+  poison_rate?: number
   energy_max?: number
   energy_decay_per_tick?: number
   energy_from_food?: number

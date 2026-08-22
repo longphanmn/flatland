@@ -38,10 +38,13 @@ class Config:
 
     food_count: int = 48  # god's law: the world maintains this much food (tuned for 30-day survival)
 
-    # Plants & nutrient cycle (§H)
+    # Plants & nutrient cycle (§H) + biodiversity (§O)
     plant_growth_rate: float = 0.04  # growth/tick toward maturity (1.0) — faster regrowth
     plant_spread_rate: float = 0.005  # chance/tick a mature plant seeds nearby
     nutrient_cycle_rate: float = 0.6  # scales the boost a decayed corpse grants
+    plant_variants_enabled: bool = True  # §O: grass/berry/mushroom/poisonous diversity
+    poison_rate: float = 0.03  # §O: chance a new sprout is poisonous (mutates in)
+    # (future §O: beast_ratio, diet_strictness — wild herbivores & diet preference)
 
     # Corpses & scavenging
     corpses_enabled: bool = True

@@ -42,9 +42,10 @@ def test_same_seed_determinism_including_plants():
 
 
 def test_growth_reaches_one_and_stops_with_single_bloom():
-    s = Simulation(plants_cfg(seed=7, food_count=3, plant_growth_rate=0.1))
+    s = Simulation(plants_cfg(seed=7, food_count=3, plant_growth_rate=0.1, plant_variants_enabled=False))
     for f in foods(s):  # a young meadow: watch it ripen together
         f.growth = 0.5
+        f.variant = "grass"
     for _ in range(6):  # 0.5 + 5 * 0.1 crosses 1.0 here
         s.step()
     assert len(foods(s)) == 3
@@ -63,8 +64,8 @@ def test_growth_reaches_one_and_stops_with_single_bloom():
 
 def test_immature_plant_feeds_less_than_mature():
     def meal_energy(growth: float) -> float:
-        s = Simulation(plants_cfg(seed=5))
-        s.world.add(Food(x=20.0, y=20.0, growth=growth))
+        s = Simulation(plants_cfg(seed=5, plant_variants_enabled=False))
+        s.world.add(Food(x=20.0, y=20.0, growth=growth, variant="grass"))
         eater = s.world.add(
             Creature(x=19.0, y=20.0, sides=4, angle=0.0, speed=0.55,
                      energy=40.0, lifespan=100000.0)
@@ -115,12 +116,12 @@ def test_spread_fills_only_below_seasonal_target():
 def test_corpse_decay_boosts_nearby_plant_growth():
     from dataclasses import replace
     s = Simulation(plants_cfg(seed=21, corpse_ttl=2, nutrient_cycle_rate=1.0,
-                              food_count=0))  # no auto-spawned plants
+                              food_count=0, plant_variants_enabled=False))  # no auto-spawned plants
     # our two hand-placed sprouts ARE the seasonal bounty (target = 2)
     s.config = replace(s.config, food_count=2)
     s.world.add(Creature(x=20.0, y=20.0, energy=0.01))  # starves at once
-    near = s.world.add(Food(x=26.0, y=20.0, growth=0.2))   # in fertiliser reach…
-    far = s.world.add(Food(x=80.0, y=80.0, growth=0.2))     # …far one is not
+    near = s.world.add(Food(x=26.0, y=20.0, growth=0.2, variant="grass"))   # in fertiliser reach…
+    far = s.world.add(Food(x=80.0, y=80.0, growth=0.2, variant="grass"))     # …far one is not
     for _ in range(3):
         s.step()
     assert not any(e.kind == "corpse" for e in s.world.entities.values())

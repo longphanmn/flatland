@@ -278,10 +278,26 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
     // ---- drawing ----
     const drawEntity = (ctx: CanvasRenderingContext2D, e: EntityState) => {
       if (e.kind === 'food') {
-        ctx.fillStyle = '#d29922'
+        const variantColors: Record<string, string> = {
+          grass: '#3fb950',
+          berry: '#f85149',
+          mushroom: '#a67c52',
+          poisonous: '#8957e5',
+        }
+        ctx.fillStyle = variantColors[e.variant ?? 'grass'] ?? '#d29922'
+        // size ∝ growth (sprout 0.15 small, mature 1.0 full)
+        const r = 0.35 + 0.55 * (e.growth ?? 0.15)
         ctx.beginPath()
-        ctx.arc(e.x, e.y, 0.7, 0, TAU)
+        ctx.arc(e.x, e.y, r, 0, TAU)
         ctx.fill()
+        // poisonous: faint purple halo
+        if (e.variant === 'poisonous') {
+          ctx.globalAlpha = 0.25
+          ctx.strokeStyle = '#8957e5'
+          ctx.lineWidth = 0.3
+          ctx.stroke()
+          ctx.globalAlpha = 1
+        }
         return
       }
       if (e.kind === 'corpse') {
@@ -302,6 +318,18 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         return
       }
       if (e.kind === 'house') {
+        if (e.is_ruin) {
+          // ruins: faint collapsed square, no walls/door
+          const size = (e.size ?? 8) * 0.7
+          ctx.strokeStyle = 'rgba(110,118,129,0.25)'
+          ctx.lineWidth = 0.2
+          ctx.setLineDash([0.8, 0.6])
+          ctx.strokeRect(e.x - size / 2, e.y - size / 2, size, size)
+          ctx.setLineDash([])
+          ctx.fillStyle = 'rgba(110,118,129,0.08)'
+          ctx.fillRect(e.x - size / 2, e.y - size / 2, size, size)
+          return
+        }
         const size = e.size ?? 8
         const segs = houseWallSegments(
           e.x,
@@ -311,7 +339,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
           e.door_width ?? 3,
           e.door_offset ?? 0,
         )
-        ctx.strokeStyle = '#8b949e'
+        ctx.strokeStyle = e.clan_color ?? '#8b949e'
         ctx.lineWidth = 0.35
         ctx.beginPath()
         for (const [ax, ay, bx, by] of segs) {
@@ -319,6 +347,13 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
           ctx.lineTo(bx, by)
         }
         ctx.stroke()
+        // clan crest on wall (settlement)
+        if (e.clan_color) {
+          ctx.fillStyle = e.clan_color
+          ctx.globalAlpha = 0.18
+          ctx.fillRect(e.x - size / 2, e.y - size / 2, size, 1.2)
+          ctx.globalAlpha = 1
+        }
         return
       }
       const color = creatureColor(e)

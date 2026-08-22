@@ -315,24 +315,29 @@ observable signal; `tune` = god laws that push it over the edge.
 ## O. Ecosystem depth — biodiversity & food web  [P2]
 Today every plant is one green sprite (`Food.growth`) and the only animal is the
 Predator. Add variety so niches, seasons and diets can emerge.
-- [ ] [P2] Plant species — `Food.variant` ∈ {grass, berry, mushroom, poisonous}:
+- [x] [P2] Plant species — `Food.variant` ∈ {grass, berry, mushroom, poisonous}:
       grass common/low-energy; berries high-energy but seasonal; mushrooms sprout
       on corpses/rocks (a decomposer tier); poisonous plants mutate in and sicken
-      whoever eats them. Each variant: color, growth rate, energy yield, season.
-- [ ] [P2] Fruit & seasonality — berry bushes fruit in one season (autumn burst);
-      grass is always available; spring/summer shift which plants dominate the land.
+      whoever eats them. Each variant: color, growth rate, energy yield, season
+      (`entities.py:169` `Food.variant`, `simulation.py:49` `VARIANT_*`,
+      `simulation.py:530` `_pick_variant` poison 0.03 + season + decomposer boost,
+      `simulation.py:782` `VARIANT_GROWTH_MULT`×`SEASON_MULT`, `simulation.py:1376` eating `VARIANT_ENERGY/HEALTH`,
+      `protocol.py:39` `EntityState.variant`, `frontend/CanvasRenderer.tsx:280` colors, `config.py:44` `plant_variants_enabled`/`poison_rate`).
+- [x] [P2] Fruit & seasonality — berry bushes fruit in one season (autumn burst);
+      grass is always available; spring/summer shift which plants dominate the land
+      (`simulation.py:542` autumn berry 0.48 weight, winter mushroom 0.57, `VARIANT_SEASON_MULT` grass 1.15 summer, berry 1.9 autumn).
 - [ ] [P2] Wild herbivore beasts — a non-caste middle tier that grazes plants and is
       hunted by predators, competing with the castes for food → a real
       plants → herbivores → predators Lotka–Volterra chain.
 - [ ] [P2] Diet & preference — `Creature.diet` (herbivore/omnivore/carnivore) steers
       which food a creature perceives and eats; higher castes prefer richer food,
       predators prefer live prey over plants.
-- [ ] [P2] Food quality — variants yield different energy/health (meat heals, poison
-      harms); scavenging corpses vs grazing plants reward different creatures.
+- [x] [P2] Food quality — variants yield different energy/health (meat heals, poison
+      harms); scavenging corpses vs grazing plants reward different creatures
+      (`VARIANT_ENERGY` grass 32/berry 48/mushroom 24/poison 8, `VARIANT_HEALTH` berry +1/poison -30, corpse 25).
 - [ ] [P2] Trophic HUD — plant / herbivore / predator counts chart (the §H ecological
       balance made watchable).
-- [ ] GodLaws: plant_variants_enabled, poison_rate, beast_ratio, diet_strictness
-      (new "Ecosystem" law group)
+- [x] GodLaws: plant_variants_enabled, poison_rate (Ecosystem group `config.py:44` `protocol.py:123` `main.py:184` `GodPanel.tsx:15`); beast_ratio, diet_strictness still [P2] pending
 
 ## P. Clan depth — totems, territory & war  [P2]
 Clans have identity (crest ring) and a first taste of war (§I) but no totem, no land
