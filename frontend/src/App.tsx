@@ -511,44 +511,54 @@ export default function App() {
               {log.map((ev) => {
                 const key = `${ev.tick}:${ev.entity_id}:${ev.type}`
                 if (ev.type === 'birth') {
-                  const p = (ev.payload ?? {}) as { mother?: number; father?: number; generation?: number }
+                  const p = (ev.payload ?? {}) as { mother?: number; father?: number; generation?: number; personal_name?: string; glyph?: string }
+                  const nm = (p.personal_name as string) ?? ev.caste
+                  const gl = (p.glyph as string) ? ` ${p.glyph}` : ''
                   return (
                     <li key={key} className="ev-birth">
-                      <b>{ev.caste}</b> #{ev.entity_id} born to #{p.mother} × #
+                      <b>{nm}{gl}</b> #{ev.entity_id} born to #{p.mother} × #
                       {p.father} (gen {p.generation}) at tick {ev.tick}
                     </li>
                   )
                 }
                 if (ev.type === 'promotion') {
-                  const p = (ev.payload ?? {}) as { from?: string; to?: string }
+                  const p = (ev.payload ?? {}) as { from?: string; to?: string; personal_name?: string }
+                  const nm = (p.personal_name as string) ? `${p.personal_name} ` : ''
                   return (
                     <li key={key} className="ev-promo">
-                      <b>#{ev.entity_id}</b> rose {String(p.from ?? 'Soldier')} →{' '}
+                      <b>{nm}#{ev.entity_id}</b> rose {String(p.from ?? 'Soldier')} →{' '}
                       {String(p.to ?? ev.caste)} at tick {ev.tick}
                     </li>
                   )
                 }
                 if (ev.type === 'demotion') {
+                  const p = (ev.payload ?? {}) as { personal_name?: string; glyph?: string }
+                  const nm = (p.personal_name as string) ?? ev.caste
+                  const gl = (p.glyph as string) ? ` ${p.glyph}` : ''
                   return (
                     <li key={key} className="ev-demote">
-                      <b>{ev.caste}</b> #{ev.entity_id} judged irregular and demoted
+                      <b>{nm}{gl}</b> #{ev.entity_id} judged irregular and demoted
                       at tick {ev.tick}
                     </li>
                   )
                 }
                 if (ev.type === 'predation') {
-                  const p = (ev.payload ?? {}) as { prey?: number; prey_caste?: string }
+                  const p = (ev.payload ?? {}) as { prey?: number; prey_caste?: string; personal_name?: string; glyph?: string }
+                  const nm = (p.personal_name as string) ?? ev.caste
+                  const gl = (p.glyph as string) ? ` ${p.glyph}` : ''
                   return (
                     <li key={key} className="ev-predation" style={{ color: '#ff3838' }}>
-                      <b>{ev.caste}</b> #{ev.entity_id} predated <b>{p.prey_caste}</b> #{p.prey} at tick {ev.tick}
+                      <b>{nm}{gl}</b> #{ev.entity_id} predated <b>{p.prey_caste}</b> #{p.prey} at tick {ev.tick}
                     </li>
                   )
                 }
                 if (ev.type === 'war') {
-                  const p = (ev.payload ?? {}) as { winner?: number; a?: number; b?: number }
+                  const p = (ev.payload ?? {}) as { winner?: number; a?: number; b?: number; personal_name?: string; glyph?: string }
+                  const nm = (p.personal_name as string) ?? ev.caste
+                  const gl = (p.glyph as string) ? ` ${p.glyph}` : ''
                   return (
                     <li key={key} className="ev-war" style={{ color: '#f85149' }}>
-                      <b>{ev.caste}</b> #{ev.entity_id} fell in clan war (winner #{p.winner}) at tick {ev.tick}
+                      <b>{nm}{gl}</b> #{ev.entity_id} fell in clan war (winner #{p.winner}) at tick {ev.tick}
                     </li>
                   )
                 }
@@ -568,18 +578,26 @@ export default function App() {
                   )
                 }
                 if (ev.type === 'outbreak' || ev.type === 'recovery') {
+                  const p = (ev.payload ?? {}) as { personal_name?: string; glyph?: string }
+                  const nm = (p.personal_name as string) ?? ev.caste
+                  const gl = (p.glyph as string) ? ` ${p.glyph}` : ''
                   return (
                     <li key={key} className={ev.type === 'outbreak' ? 'ev-outbreak' : 'ev-recovery'} style={{ color: ev.type === 'outbreak' ? '#d29922' : '#3fb950' }}>
-                      <b>{ev.caste}</b> #{ev.entity_id} {ev.type} at tick {ev.tick}
+                      <b>{nm}{gl}</b> #{ev.entity_id} {ev.type} at tick {ev.tick}
                     </li>
                   )
                 }
-                return (
-                  <li key={key}>
-                    <b>{ev.caste}</b> #{ev.entity_id} died of {ev.cause} at tick{' '}
-                    {ev.tick} ({Math.round(ev.x)}, {Math.round(ev.y)})
-                  </li>
-                )
+                {
+                  const p = (ev.payload ?? {}) as { personal_name?: string; glyph?: string }
+                  const nm = (p.personal_name as string) ?? ev.caste
+                  const gl = (p.glyph as string) ? ` ${p.glyph}` : ''
+                  return (
+                    <li key={key}>
+                      <b>{nm}{gl}</b> #{ev.entity_id} died of {ev.cause} at tick{' '}
+                      {ev.tick} ({Math.round(ev.x)}, {Math.round(ev.y)})
+                    </li>
+                  )
+                }
               })}
             </ul>
           )}

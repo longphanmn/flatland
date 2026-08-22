@@ -87,6 +87,39 @@ TOTEM_BUFF = {
     "Eye": {"sight": 0.25, "perceive": 1.2},  # +25% sight
 }
 
+# Personal identity — seeded adjective+noun table (§Q), deterministic id+seed
+PERSONAL_FIRSTS = (
+    "Alen", "Bran", "Cora", "Dell", "Ember", "Finn", "Galen", "Hala", "Iris", "Joren",
+    "Kira", "Lyss", "Maren", "Nora", "Orin", "Pella", "Quill", "Rhea", "Sable", "Taryn",
+    "Uri", "Vessa", "Wren", "Xara", "Yara", "Zane", "Aric", "Brielle", "Cade", "Dara",
+    "Eldric", "Fiora", "Gideon", "Hessa", "Ivor", "Jessa", "Kell", "Lina", "Mira", "Nessa",
+)
+PERSONAL_LASTS = (
+    "Ash", "Stone", "Hollow", "Quill", "Grey", "Lark", "Vale", "Thorn", "Ember", "Wren",
+    "Frost", "Dusk", "Star", "River", "Shadow", "Flame", "Wind", "Haven", "Moor", "Glen",
+    "Ridge", "Brook", "Hearth", "Sable", "Wisp", "Bramble", "Harrow", "Tide", "Dell", "Echo",
+)
+GLYPH_TABLE = ("◈", "⬡", "⬢", "◉", "⬣", "⟡", "✦", "◆", "▲", "●", "✕", "∆", "◐", "◑", "⬔", "⬕", "⟐", "⧫")
+
+
+def personal_name_for(entity_id: int, seed: int, generation: int = 0) -> str:
+    """Seeded deterministic personal name — god's ledger, never RNG."""
+    a = PERSONAL_FIRSTS[(entity_id * 37 + seed) % len(PERSONAL_FIRSTS)]
+    b = PERSONAL_LASTS[(entity_id * 73 + seed + generation * 101) % len(PERSONAL_LASTS)]
+    return f"{a} {b}"
+
+
+def glyph_for(entity_id: int, seed: int, generation: int = 0) -> str:
+    return GLYPH_TABLE[(entity_id * 101 + seed + generation * 17) % len(GLYPH_TABLE)]
+
+
+def variation_for(entity_id: int, seed: int) -> dict:
+    """Subtle per-creature jitter — cosmetic only, never touches RNG."""
+    hue = ((entity_id * 9973 + seed) % 241) / 241 * 24 - 12  # -12..+12 deg
+    scale = 0.96 + ((entity_id * 7919 + seed) % 109) / 109 * 0.08  # 0.96..1.04
+    angle = ((entity_id * 1307 + seed) % 31) / 31 * 0.12 - 0.06  # -0.06..+0.06 rad
+    return {"hue_shift": round(hue, 2), "scale_jitter": round(scale, 3), "angle_jitter": round(angle, 3)}
+
 
 class Simulation:
     def __init__(
@@ -1098,6 +1131,8 @@ class Simulation:
                 "mother": mother.id, "father": father.id,
                 "sides": child.sides, "generation": gen, "sex": child.sex,
                 "clan_id": 0, "is_predator": True,
+                "personal_name": personal_name_for(child.id, self.config.seed, gen),
+                "glyph": glyph_for(child.id, self.config.seed, gen),
             }
             for p in (mother, father):
                 p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
@@ -1135,6 +1170,8 @@ class Simulation:
                 "mother": mother.id, "father": father.id,
                 "sides": child.sides, "generation": gen, "sex": child.sex,
                 "clan_id": 0, "is_herbivore": True,
+                "personal_name": personal_name_for(child.id, self.config.seed, gen),
+                "glyph": glyph_for(child.id, self.config.seed, gen),
             }
             for p in (mother, father):
                 p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
@@ -1194,6 +1231,8 @@ class Simulation:
             "mother": mother.id, "father": father.id,
             "sides": child.sides, "generation": gen, "sex": child.sex,
             "clan_id": child.clan_id,
+            "personal_name": personal_name_for(child.id, self.config.seed, gen),
+            "glyph": glyph_for(child.id, self.config.seed, gen),
         }
 
         # The parents pay for it dearly.
@@ -1240,6 +1279,7 @@ class Simulation:
             cause=cause,
             x=round(c.x, 2),
             y=round(c.y, 2),
+            payload={"personal_name": personal_name_for(c.id, self.config.seed, c.generation), "glyph": glyph_for(c.id, self.config.seed, c.generation)},
         )
         self.history.append(event)
         self._events_this_tick.append(event)
@@ -1722,6 +1762,7 @@ class Simulation:
     def _entity_state(self, e: Entity) -> EntityState:
         base = dict(id=e.id, kind=e.kind, x=round(e.x, 3), y=round(e.y, 3), angle=round(e.angle, 4))
         if isinstance(e, Creature):
+            v = variation_for(e.id, self.config.seed)
             return EntityState(
                 **base,
                 shape=e.shape,
@@ -1748,6 +1789,11 @@ class Simulation:
                 indoors=e.indoors,
                 generation=e.generation,
                 born_tick=e.born_tick,
+                personal_name=personal_name_for(e.id, self.config.seed, e.generation),
+                glyph=glyph_for(e.id, self.config.seed, e.generation),
+                hue_shift=v["hue_shift"],
+                scale_jitter=v["scale_jitter"],
+                angle_jitter=v["angle_jitter"],
             )
         if isinstance(e, House):
             return EntityState(

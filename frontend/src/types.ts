@@ -33,6 +33,11 @@ export interface EntityState {
   indoors?: boolean
   generation?: number
   born_tick?: number
+  personal_name?: string
+  glyph?: string
+  hue_shift?: number
+  scale_jitter?: number
+  angle_jitter?: number
   door_width?: number
   door_offset?: number
   door_side?: 'north' | 'east' | 'south' | 'west'

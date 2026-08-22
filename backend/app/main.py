@@ -17,7 +17,7 @@ from .config import Config
 from .db import Database
 from .protocol import ControlAction, ControlMessage, GodLaws, HelloMessage, StateMessage
 from .entities import Creature
-from .simulation import Simulation
+from .simulation import Simulation, glyph_for, personal_name_for, variation_for
 
 MIN_SPEED = 0.5  # ticks per second
 MAX_SPEED = 120.0
@@ -442,15 +442,44 @@ async def get_snapshot(snapshot_id: int) -> dict:
 
 def _kin_card(entity_id: int) -> dict:
     """Dossier card for a family-tree node (alive creatures preferred)."""
+    seed = RT.sim.config.seed if hasattr(RT.sim, "config") else RT.config.seed
     ent = RT.sim.world.entities.get(entity_id)
     if ent is not None and isinstance(ent, Creature):
+        v = variation_for(entity_id, seed)
         return {
             "id": entity_id,
             "caste": ent.caste,
             "alive": True,
             "clan_color": RT.sim.clans.get(ent.clan_id, {}).get("color"),
+            "personal_name": personal_name_for(entity_id, seed, ent.generation),
+            "glyph": glyph_for(entity_id, seed, ent.generation),
+            "hue_shift": v["hue_shift"],
+            "scale_jitter": v["scale_jitter"],
+            "angle_jitter": v["angle_jitter"],
         }
-    return {"id": entity_id, "caste": None, "alive": False, "clan_color": None}
+    # dead or archived — compute deterministic name via genealogy generation if available
+    # try DB to get generation
+    gen = 0
+    if RT.world_id is not None:
+        try:
+            # quick lookup: genealogy_parents gives child's generation via creatures table
+            for tbl in ("creatures",):
+                pass
+        except Exception:
+            pass
+    # fallback deterministic with gen 0 (still unique)
+    v = variation_for(entity_id, seed)
+    return {
+        "id": entity_id,
+        "caste": None,
+        "alive": False,
+        "clan_color": None,
+        "personal_name": personal_name_for(entity_id, seed, gen),
+        "glyph": glyph_for(entity_id, seed, gen),
+        "hue_shift": v["hue_shift"],
+        "scale_jitter": v["scale_jitter"],
+        "angle_jitter": v["angle_jitter"],
+    }
 
 
 def _family_of(creature_id: int) -> dict:
@@ -487,7 +516,44 @@ def _family_of(creature_id: int) -> dict:
 async def get_creature(creature_id: int) -> dict:
     """Live status + personal chronicle + family tree for one creature."""
     ent = RT.sim.world.entities.get(creature_id)
-    entity = RT.sim._entity_state(ent).model_dump(mode="json") if ent else None
+    if ent is not None:
+        entity = RT.sim._entity_state(ent).model_dump(mode="json")
+    elif RT.world_id is not None:
+        # deceased: synthesize minimal dossier from genealogy so name/glyph still show
+        try:
+            row = DB._require().execute(
+                "SELECT caste, clan_id, generation, born_tick FROM creatures WHERE world_id=? AND entity_id=?",
+                (RT.world_id, creature_id),
+            ).fetchone()
+        except Exception:
+            row = None
+        if row is not None:
+            gen = int(row["generation"] or 0)
+            clan_id = int(row["clan_id"] or 0)
+            v = variation_for(creature_id, RT.sim.config.seed)
+            entity = {
+                "id": creature_id,
+                "kind": "creature",
+                "x": 0.0,
+                "y": 0.0,
+                "angle": 0.0,
+                "caste": row["caste"],
+                "clan_id": clan_id or None,
+                "clan_color": RT.sim.clans.get(clan_id, {}).get("color") if clan_id else None,
+                "clan_name": RT.sim.clans.get(clan_id, {}).get("name") if clan_id else None,
+                "generation": gen,
+                "born_tick": row["born_tick"],
+                "personal_name": personal_name_for(creature_id, RT.sim.config.seed, gen),
+                "glyph": glyph_for(creature_id, RT.sim.config.seed, gen),
+                "hue_shift": v["hue_shift"],
+                "scale_jitter": v["scale_jitter"],
+                "angle_jitter": v["angle_jitter"],
+                "sex": "female" if row["caste"] == "Woman" else "male" if row["caste"] else None,
+            }
+        else:
+            entity = None
+    else:
+        entity = None
     events = (
         [
             e

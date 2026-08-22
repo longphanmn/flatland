@@ -6,6 +6,10 @@ interface KinCard {
   caste: string | null
   alive: boolean
   clan_color: string | null
+  personal_name?: string | null
+  glyph?: string | null
+  hue_shift?: number | null
+  scale_jitter?: number | null
 }
 
 interface Family {
@@ -69,7 +73,7 @@ function KinNode({
       title={kin.alive ? 'open dossier' : 'deceased — view record'}
     >
       <span className="kin-role">{label}</span>{' '}
-      #{kin.id} {kin.caste ?? '?'} {kin.alive ? '' : '†'}
+      {kin.personal_name ? `${kin.personal_name} ` : ''}#{kin.id} {kin.caste ?? '?'} {kin.glyph ? kin.glyph : ''} {kin.alive ? '' : '†'}
     </button>
   )
 }
@@ -111,13 +115,18 @@ export default function Inspector({ id, onClose, onNavigate }: Props) {
     <aside className="inspector">
       <header className="god-head">
         <h2>
-          {e?.caste ?? 'Creature'} #{id}
+          {e?.personal_name ?? `${e?.caste ?? 'Creature'} #${id}`} {e?.glyph ? <span title="soul-code glyph">{e.glyph}</span> : ''}
           {e && ` · ${e.shape === 'line' ? 'female' : 'male'}`}
         </h2>
         <button className="god-close" onClick={onClose} aria-label="close">
           ×
         </button>
       </header>
+      {e && (
+        <div className="chip" style={{ fontSize: 11, opacity: 0.8 }}>
+          {e.personal_name} · {e.caste} #{id} {e.glyph} · scale {(e.scale_jitter ?? 1).toFixed(2)} · hue {(e.hue_shift ?? 0) > 0 ? '+' : ''}{e.hue_shift ?? 0}°
+        </div>
+      )}
 
       {!e && data && <p className="god-note">no longer among the living — their chronicle remains.</p>}
       {e && (

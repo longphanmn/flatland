@@ -58,6 +58,11 @@ class EntityState(BaseModel):
     indoors: Optional[bool] = None
     generation: Optional[int] = None
     born_tick: Optional[int] = None
+    personal_name: Optional[str] = None
+    glyph: Optional[str] = None
+    hue_shift: Optional[float] = None
+    scale_jitter: Optional[float] = None
+    angle_jitter: Optional[float] = None
     door_width: Optional[float] = None
     door_offset: Optional[float] = None
     door_side: Optional[Literal["north", "east", "south", "west"]] = None

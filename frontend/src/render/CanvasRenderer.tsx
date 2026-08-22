@@ -23,7 +23,32 @@ export const CASTE_COLORS: Record<string, string> = {
 }
 
 function creatureColor(e: EntityState): string {
-  return (e.caste && CASTE_COLORS[e.caste]) || '#8b949e'
+  const base = (e.caste && CASTE_COLORS[e.caste]) || '#8b949e'
+  if (e.hue_shift == null || e.hue_shift === 0) return base
+  // subtle hue shift via HSL rotation — preserves caste read
+  const h = parseInt(base.slice(1,3),16)/255, hh2 = parseInt(base.slice(3,5),16)/255, b = parseInt(base.slice(5,7),16)/255
+  // fast approx: convert to HSL, shift hue
+  const max = Math.max(h,hh2,b), min = Math.min(h,hh2,b)
+  let hh=0, ss=0, ll=(max+min)/2
+  if (max!==min){
+    const d = max-min
+    ss = ll>0.5 ? d/(2-max-min) : d/(max+min)
+    if (max===h) hh=(hh2-b)/d + (hh2<b?6:0)
+    else if (max===hh2) hh=(b-h)/d + 2
+    else hh=(h-hh2)/d + 4
+    hh/=6
+  }
+  hh = (hh + (e.hue_shift as number)/360) % 1
+  if (hh<0) hh+=1
+  const hue2rgb=(p:number,q:number,t:number)=>{ if(t<0) t+=1; if(t>1) t-=1; if(t<1/6) return p+(q-p)*6*t; if(t<1/2) return q; if(t<2/3) return p+(q-p)*(2/3-t)*6; return p }
+  let r2,g2,b2
+  if (ss===0){ r2=g2=b2=ll }
+  else {
+    const q = ll<0.5 ? ll*(1+ss) : ll+ss-ll*ss
+    const pp = 2*ll-q
+    r2=hue2rgb(pp,q,hh+1/3); g2=hue2rgb(pp,q,hh); b2=hue2rgb(pp,q,hh-1/3)
+  }
+  return `rgb(${Math.round(r2*255)},${Math.round(g2*255)},${Math.round(b2*255)})`
 }
 
 /** Rain streaks and fog veil, drawn in screen space. */
@@ -361,11 +386,11 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       const stage = e.stage ?? 'adult'
       const sizeF = stage === 'infant' ? 0.55 : stage === 'juvenile' ? 0.8 : 1.0
       const alphaF = stage === 'elder' ? 0.6 : 1.0
-      const r = (e.radius ?? 1.2) * sizeF
+      const r = (e.radius ?? 1.2) * sizeF * (e.scale_jitter ?? 1)
       ctx.save()
       ctx.globalAlpha = alphaF
       ctx.translate(e.x, e.y)
-      ctx.rotate(e.angle)
+      ctx.rotate(e.angle + (e.angle_jitter ?? 0))
       if (e.shape === 'line') {
         ctx.strokeStyle = color
         ctx.lineWidth = 0.7 * Math.max(0.75, r / 1.2)
@@ -442,6 +467,23 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         ctx.beginPath()
         ctx.arc(e.x, e.y, r + 0.9, 0, TAU)
         ctx.stroke()
+        ctx.globalAlpha = 1
+      }
+      // soul-code glyph — tiny rune inside body, always visible but brighter when selected (§Q)
+      if (e.glyph) {
+        const isSel = selectedRef?.current === e.id
+        ctx.globalAlpha = isSel ? 1 : 0.75
+        ctx.fillStyle = isSel ? '#e6edf3' : 'rgba(230,237,243,0.85)'
+        // scale font with radius but keep legible when zoomed
+        const fontSize = Math.max(0.9, Math.min(1.6, r * 0.9))
+        ctx.font = `${fontSize}px ui-monospace, monospace`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        // slight shadow for contrast
+        ctx.strokeStyle = 'rgba(11,15,20,0.9)'
+        ctx.lineWidth = 0.25
+        ctx.strokeText(e.glyph, e.x, e.y + 0.15)
+        ctx.fillText(e.glyph, e.x, e.y + 0.15)
         ctx.globalAlpha = 1
       }
     }
@@ -571,6 +613,18 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
           ctx.arc(selEnt.x, selEnt.y, (selEnt.radius ?? 1.2) + 2.0, 0, TAU)
           ctx.stroke()
           ctx.setLineDash([])
+          // name label above selection
+          if ((selEnt as any).personal_name) {
+            ctx.fillStyle = '#e6edf3'
+            ctx.font = '2px ui-monospace, monospace'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'bottom'
+            const label = `${(selEnt as any).personal_name} ${(selEnt as any).glyph ?? ''}`
+            ctx.strokeStyle = 'rgba(11,15,20,0.85)'
+            ctx.lineWidth = 0.4
+            ctx.strokeText(label, selEnt.x, selEnt.y - (selEnt.radius ?? 1.2) - 2.5)
+            ctx.fillText(label, selEnt.x, selEnt.y - (selEnt.radius ?? 1.2) - 2.5)
+          }
         }
       }
       ctx.setTransform(1, 0, 0, 1, 0, 0)

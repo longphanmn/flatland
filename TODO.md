@@ -378,15 +378,15 @@ Creatures are interchangeable within a caste (#12 the Gentleman) and never speak
 Give each a name, a face, and a voice — then let kin lead the hungry to food.
 
 ### Identity (cosmetic — no sim impact)
-- [ ] [P2] Personal name — seeded, deterministic per creature (adjective+noun
+- [x] [P2] Personal name — seeded, deterministic per creature (adjective+noun
       table); shown in inspector + Chronicle ("Lyss died of starvation") instead
-      of bare "#12"
-- [ ] [P2] Soul-code glyph — a tiny unique rune (2–3 strokes) drawn inside the
+      of bare "#12" (`simulation.py:93` `PERSONAL_FIRSTS/LASTS` → `personal_name_for` `id*37+seed`, `protocol.py:50` `personal_name`, `main.py:443` payload + `get_creature` synth, `App.tsx:514` chronicle, `Inspector.tsx:118`)
+- [x] [P2] Soul-code glyph — a tiny unique rune (2–3 strokes) drawn inside the
       body, derived from id + generation + caste; visible on hover/select (the
-      "small code inside" god view)
-- [ ] [P2] Individual variation — subtle per-creature size/angle/color jitter so
+      "small code inside" god view) (`simulation.py:111` `GLYPH_TABLE` → `glyph_for`, `CanvasRenderer.tsx:420` `canvas.fillText` `0.9-1.6px` + selection label `564`, `protocol.py:51` `glyph`)
+- [x] [P2] Individual variation — subtle per-creature size/angle/color jitter so
       two of a caste are never pixel-identical (respects caste rigidity: it is a
-      personal mark, not a new caste)
+      personal mark, not a new caste) (`simulation.py:118` `variation_for` hue -12..+12 scale 0.96..1.04 angle ±0.06, `protocol.py:52` `hue_shift/scale_jitter/angle_jitter`, `CanvasRenderer.tsx:360` `creatureColor` hue shift + `r*scale` + `angle+ jitter`)
 
 ### Communication (food + alarm calls)
 - [ ] [P2] Signal model — a short-lived ping carrying sender position + type,
