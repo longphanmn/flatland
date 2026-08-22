@@ -366,6 +366,55 @@ async def get_worlds() -> dict:
     return {"worlds": DB.worlds()}
 
 
+@app.get("/api/clans")
+async def get_clans() -> dict:
+    """Clan roster with lineage, territory and war record."""
+    # live clan dict + live population + house territory + war history
+    clans = []
+    # war record from history (both live and DB)
+    war_wins: dict[int, int] = {}
+    war_losses: dict[int, int] = {}
+    for e in RT.sim.history:
+        if e.type == "war":
+            winner = int(e.payload.get("winner", 0) or 0)
+            loser = int(e.entity_id or 0)
+            # winner's clan vs loser's clan
+            # need to find clan of winner/loser if still alive or via history payload a/b
+            a = int(e.payload.get("a", 0) or 0)  # loser clan
+            b = int(e.payload.get("b", 0) or 0)  # winner clan? actually payload a,b are both clans, winner is id
+            # For war, payload winner is entity id, a/b are clans. Use a as loser clan, b as winner clan? Check simulation war payload: {"winner": winner.id, "a": loser.clan_id, "b": winner.clan_id}
+            # So b is winner clan
+            if b:
+                war_wins[b] = war_wins.get(b, 0) + 1
+            if a:
+                war_losses[a] = war_losses.get(a, 0) + 1
+    # houses by clan
+    houses_by_clan: dict[int, dict] = {}
+    for ent in RT.sim.world.entities.values():
+        if ent.kind == "house" and getattr(ent, "clan_id", 0):
+            houses_by_clan[ent.clan_id] = {"x": ent.x, "y": ent.y, "size": getattr(ent, "size", 0), "is_ruin": getattr(ent, "is_ruin", False)}
+    for cid, info in RT.sim.clans.items():
+        pop = sum(1 for c in RT.sim.world.creatures() if c.clan_id == cid)
+        house = houses_by_clan.get(cid)
+        clans.append({
+            "id": cid,
+            "name": info.get("name"),
+            "color": info.get("color"),
+            "totem": info.get("totem"),
+            "founder_id": info.get("founder_id"),
+            "leader_id": info.get("leader_id"),
+            "born_tick": info.get("born_tick"),
+            "population": pop,
+            "house": house,
+            "war_wins": war_wins.get(cid, 0),
+            "war_losses": war_losses.get(cid, 0),
+            "territory_radius": RT.sim.config.territory_radius if RT.sim.config.territory_enabled else None,
+        })
+    # sort by population desc
+    clans.sort(key=lambda c: (-c["population"], c["id"]))
+    return {"clans": clans, "tick": RT.sim.tick}
+
+
 @app.post("/api/snapshot")
 async def take_snapshot() -> dict:
     """Freeze the current world state into the album (god's photo, not a hand)."""

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import CanvasRenderer, { CASTE_COLORS } from './render/CanvasRenderer'
 import CasteChart from './render/CasteChart'
 import TrophicChart from './render/TrophicChart'
+import ClanPanel from './render/ClanPanel'
 import GodPanel from './god/GodPanel'
 import Inspector from './inspect/Inspector'
 import { WorldSocket, type ConnStatus } from './websocket'
@@ -469,6 +470,7 @@ export default function App() {
           <CasteChart history={popHist} />
           <h4 style={{ margin: '10px 0 4px', fontSize: '0.85em', opacity: 0.8 }}>Trophic pyramid — Food · Herbivore · Predator</h4>
           <TrophicChart history={popHist} />
+          <ClanPanel />
           {!archiveMode && oldestLoadedRef.current !== null && (
             <button
               className="chron-btn"
