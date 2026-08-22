@@ -218,8 +218,12 @@ export default function CanvasRenderer({ stateRef }: Props) {
         return
       }
       const color = creatureColor(e)
-      const r = e.radius ?? 1.2
+      const stage = e.stage ?? 'adult'
+      const sizeF = stage === 'infant' ? 0.55 : stage === 'juvenile' ? 0.8 : 1.0
+      const alphaF = stage === 'elder' ? 0.6 : 1.0
+      const r = (e.radius ?? 1.2) * sizeF
       ctx.save()
+      ctx.globalAlpha = alphaF
       ctx.translate(e.x, e.y)
       ctx.rotate(e.angle)
       if (e.shape === 'line') {
@@ -235,10 +239,10 @@ export default function CanvasRenderer({ stateRef }: Props) {
         ctx.beginPath()
         if (sides >= PRIEST_SIDES) ctx.arc(0, 0, r, 0, TAU)
         else tracePolygon(ctx, sides, r)
-        ctx.globalAlpha = 0.22
+        ctx.globalAlpha = alphaF * 0.22
         ctx.fillStyle = color
         ctx.fill()
-        ctx.globalAlpha = 1
+        ctx.globalAlpha = alphaF
         ctx.strokeStyle = color
         ctx.lineWidth = 0.3
         ctx.stroke()

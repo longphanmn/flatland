@@ -10,8 +10,10 @@ starvation when deprived of food too long.
   (farther perception + faster movement, pulsing red marker). Energy at zero =
   death.
 - **Aging:** creatures age each tick; each caste has a natural lifespan
-  (women shortest → priests longest). Old age is a distinct death cause; the
-  god law `Lifespan ×` scales all lifespans.
+  (women shortest → priests longest). Life stages — infant, juvenile, adult,
+  elder — scale speed, sight and fertility (the young are small, dim-sighted
+  and infertile; elders slow and half-fertile). Old age is a distinct death
+  cause; the god law `Lifespan ×` scales all lifespans.
 - **Sight Recognition:** higher castes perceive farther (priests 1.35×, women
   0.8× the base sight radius) — Flatland's class hierarchy as natural law.
 - **Reproduction (Nature's Law):** adult polygons and women that meet (within

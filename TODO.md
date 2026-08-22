@@ -20,8 +20,10 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [x] [P0] Age & lifespan — Creature.age (ticks) + caste-based lifespan
       (Woman shortest → Priest longest); death cause `old_age`;
       god law `lifespan_mult`; snapshot exposes age/lifespan + dead_by_cause
-- [ ] [P1] Life stages — infant/juvenile/adult/elder scale speed, sight, fertility;
-      render size/alpha by stage; elder = faded outline, infant = small + dim
+- [x] [P1] Life stages — infant/juvenile/adult/elder by fraction of lifespan
+      (<15/<30/<75%); stage multiplies speed & sight (infant 0.6², juvenile
+      0.85², elder 0.85×0.9) and fertility (elder ×0.5, young infertile);
+      `stage` in snapshot; renderer scales bodies (infant 0.55×) and fades elders
 - [x] [P0] Death-cause chronicle — HistoryEvent.cause ∈
       {starvation, old_age, …}; HUD "dead" chip shows per-cause breakdown
       (tooltip); counts tracked in sim and persisted via DB events
@@ -50,6 +52,13 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [x] Events: birth (payload parents/sides/generation), promotion
 
 ## C. Irregularity, caste & social order
+- [ ] [P1] Family/clan identity — every creature belongs to a clan:
+      founding generation seeds the first clans; children inherit their
+      mother's clan; clanless newcomers found new clans (`clan_id`, registry
+      {id, name, founder_id, color, born_tick}); inspector/HUD show clan name;
+      creature outline tinted by clan color; DB `clans` table + `clan` on
+      events; god laws: `clans_enabled`, `max_clans`; future: rivalries,
+      alliances, clan-level famine stats
 - [ ] [P1] Irregularity — mutation may mark child irregular (deviation value);
       below tolerance → demoted to lowest civil-servant caste;
       above `euthanasia_threshold` → killed at maturity (cause `euthanasia`)

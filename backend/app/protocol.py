@@ -39,6 +39,7 @@ class EntityState(BaseModel):
     radius: Optional[float] = None
     age: Optional[int] = None
     lifespan: Optional[float] = None
+    stage: Optional[Literal["infant", "juvenile", "adult", "elder"]] = None
     generation: Optional[int] = None
     born_tick: Optional[int] = None
     door_width: Optional[float] = None

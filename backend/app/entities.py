@@ -119,8 +119,20 @@ class Creature(Entity):
         return "female" if self.shape == "line" else "male"
 
     @property
-    def is_adult(self) -> bool:
-        return True  # adulthood is a world law (Config.adult_age), checked there
+    def stage(self) -> str:
+        """Life stage by fraction of natural lifespan."""
+        if self.lifespan <= 0:
+            return "adult"
+        f = self.age / self.lifespan
+        if f < 0.15:
+            return "infant"
+        if f < 0.30:
+            return "juvenile"
+        if f < 0.75:
+            return "adult"
+        return "elder"
+
+    FERTILITY_MULT = {"infant": 0.0, "juvenile": 0.0, "adult": 1.0, "elder": 0.5}
 
 
 @dataclass

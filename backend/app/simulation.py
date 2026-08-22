@@ -20,6 +20,16 @@ from .protocol import EntityState, HistoryEvent, StateMessage
 from .world import World, segments_intersect
 
 
+# Life-stage multipliers (speed, sight) — the young are small and dim-sighted,
+# the elders slow. Fertility multiplier lives on Creature.FERTILITY_MULT.
+STAGE_MULT = {
+    "infant": (0.60, 0.60),
+    "juvenile": (0.85, 0.85),
+    "adult": (1.00, 1.00),
+    "elder": (0.85, 0.90),
+}
+
+
 class Simulation:
     def __init__(
         self,
@@ -202,7 +212,9 @@ class Simulation:
                 continue
             fert = (
                 traits_for(mother.caste).fertility
+                * Creature.FERTILITY_MULT[mother.stage]
                 * traits_for(father.caste).fertility
+                * Creature.FERTILITY_MULT[father.stage]
                 * room
             )
             if self.rng.random() >= min(cfg.birth_rate * fert, 1.0):
@@ -307,8 +319,8 @@ class Simulation:
         if c.repro_cooldown > 0:
             c.repro_cooldown -= 1
 
-        # Hunger state drives perception range and urgency; the caste's
-        # Sight Recognition (aided by Fog) sets the base reach.
+        # Hunger and life stage drive perception range and urgency; the
+        # caste's Sight Recognition (aided by Fog) sets the base reach.
         ratio = c.energy / cfg.energy_max if cfg.energy_max > 0 else 0.0
         if ratio <= cfg.starving_ratio:
             c.status = "starving"
@@ -317,7 +329,8 @@ class Simulation:
         else:
             c.status = ""
 
-        perceive = cfg.perceive_radius * c.sight_mult
+        stage_speed, stage_sight = STAGE_MULT[c.stage]
+        perceive = cfg.perceive_radius * c.sight_mult * stage_sight
         speed_mult = 1.0
         if c.status == "hungry":
             perceive *= cfg.hungry_perceive_mult
@@ -346,7 +359,7 @@ class Simulation:
             c.angle += self.rng.uniform(-cfg.wander_turn, cfg.wander_turn)
 
         # 3. Move (hunger speeds up the desperate).
-        step_len = c.speed * speed_mult
+        step_len = c.speed * speed_mult * stage_speed
         px, py = c.x, c.y
         nx = c.x + math.cos(c.angle) * step_len
         ny = c.y + math.sin(c.angle) * step_len
@@ -435,6 +448,7 @@ class Simulation:
                 radius=round(e.radius, 3),
                 age=e.age,
                 lifespan=round(e.lifespan, 1),
+                stage=e.stage,  # type: ignore[arg-type]
                 generation=e.generation,
                 born_tick=e.born_tick,
             )

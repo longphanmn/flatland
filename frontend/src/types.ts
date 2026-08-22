@@ -19,6 +19,7 @@ export interface EntityState {
   radius?: number
   age?: number
   lifespan?: number
+  stage?: 'infant' | 'juvenile' | 'adult' | 'elder'
   generation?: number
   born_tick?: number
   door_width?: number

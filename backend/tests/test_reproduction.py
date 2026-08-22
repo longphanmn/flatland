@@ -38,8 +38,12 @@ def empty_cfg(**kw) -> Config:
 
 
 def pair(sim: Simulation, father_kwargs: dict, mother_kwargs: dict) -> tuple[Creature, Creature]:
-    father = sim.world.add(Creature(x=25.0, y=25.0, energy=100.0, **father_kwargs))
-    mother = sim.world.add(Creature(x=26.0, y=25.0, shape="line", sides=2, angle=0.0, energy=100.0, **mother_kwargs))
+    fk = dict(age=1000, lifespan=2000)  # adults by life stage
+    fk.update(father_kwargs)
+    mk = dict(age=1000, lifespan=2000)
+    mk.update(mother_kwargs)
+    father = sim.world.add(Creature(x=25.0, y=25.0, energy=100.0, **fk))
+    mother = sim.world.add(Creature(x=26.0, y=25.0, shape="line", sides=2, angle=0.0, energy=100.0, **mk))
     return father, mother
 
 
@@ -146,8 +150,12 @@ def test_births_disabled_by_law():
 
 def test_isosceles_promotion_to_artisan():
     s = Simulation(empty_cfg(sex_ratio=1.0, mutation_rate=0.0))
-    father = s.world.add(Creature(x=25.0, y=25.0, sides=3, iso_angle=59.5, energy=100.0))
-    s.world.add(Creature(x=26.0, y=25.0, shape="line", sides=2, angle=0.0, energy=100.0))
+    father = s.world.add(
+        Creature(x=25.0, y=25.0, sides=3, iso_angle=59.5, energy=100.0, age=1000, lifespan=2000)
+    )
+    s.world.add(
+        Creature(x=26.0, y=25.0, shape="line", sides=2, angle=0.0, energy=100.0, age=1000, lifespan=2000)
+    )
     s.step()
     child = next(c for c in s.world.creatures() if c.generation == 1)
     assert child.sides == 3 and child.iso_angle == pytest.approx(60.0)

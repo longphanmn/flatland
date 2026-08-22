@@ -297,6 +297,8 @@ def test_sight_recognition_scales_with_caste():
                 angle=math.pi,  # heading WEST, away from the food
                 speed=traits_for(caste_name(sides, shape)).speed,
                 energy=100.0,
+                age=60,  # adult life stage (sight/speed unpenalized)
+                lifespan=100.0,
             )
         )
         return c, food.id
@@ -322,6 +324,42 @@ def test_sight_recognition_scales_with_caste():
     # Woman never perceived it: her food is untouched.
     still = next(e for e in woman_world.world.entities.values() if e.kind == "food")
     assert still.id == woman_food_id
+
+
+def test_life_stage_progression_and_penalties():
+    s = Simulation(minimal_cfg(seed=31))
+    c = s.world.add(Creature(x=10.0, y=10.0, energy=100.0, lifespan=100.0))
+    assert c.stage == "infant"  # age 0 < 15%
+    c.age = 20
+    assert c.stage == "juvenile"
+    c.age = 50
+    assert c.stage == "adult"
+    c.age = 80
+    assert c.stage == "elder"
+    snap = s.snapshot()
+    me = next(e for e in snap.entities if e.id == c.id)
+    assert me.stage == "elder"
+
+
+def test_infants_see_less_than_adults():
+    """A food 10 away: an adult Gentleman (sight 12) eats it; an infant
+    (12 × 0.6 = 7.2 sight) never perceives it."""
+    def world(age: int) -> tuple[Simulation, Creature]:
+        s = Simulation(minimal_cfg(width=200.0, height=100.0, seed=32, food_count=1))
+        food = next(e for e in s.world.entities.values() if e.kind == "food")
+        c = s.world.add(
+            Creature(x=(food.x - 10.0) % 200.0, y=food.y, sides=4, angle=math.pi,
+                     speed=0.55, energy=100.0, lifespan=100.0, age=age)
+        )
+        return s, c
+
+    adult_world, adult = world(50)
+    infant_world, infant = world(5)
+    for _ in range(40):
+        adult_world.step()
+        infant_world.step()
+    assert adult.meals >= 1  # adult turned around, ate (food law replenishes)
+    assert infant.meals == 0  # infant never perceived it
 
 
 def test_food_count_stable_over_many_ticks():
