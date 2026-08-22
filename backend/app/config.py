@@ -95,6 +95,10 @@ class Config:
     rain_speed_mult: float = 0.85  # movement scale in rain/storm
     storm_wander_bonus: float = 0.35  # extra heading chaos in storms
 
+    # Night rest
+    sleep_enabled: bool = True  # creatures shelter in houses after dark
+    sleep_energy_mult: float = 0.5  # energy decay while asleep
+
     # Houses
     house_min_size: float = 6.0
     house_max_size: float = 10.0

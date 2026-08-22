@@ -498,6 +498,31 @@ class Simulation:
         if c.repro_cooldown > 0:
             c.repro_cooldown -= 1
 
+        # 0. Night rest: after dark, creatures make for the nearest house and
+        # those safely inside sleep — half the hunger, twice the healing.
+        c.sleeping = False
+        if cfg.sleep_enabled and self._is_night(self._time_of_day()) and houses:
+            home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
+            inside = (
+                abs(c.x - home.x) < home.size / 2 - 0.3
+                and abs(c.y - home.y) < home.size / 2 - 0.3
+            )
+            if inside:
+                c.sleeping = True
+                c.energy -= cfg.energy_decay_per_tick * cfg.sleep_energy_mult
+                if c.infected and cfg.disease_enabled:
+                    c.energy -= cfg.disease_energy_drain
+                    c.health -= 2.0 * cfg.disease_lethality
+                else:
+                    c.health = min(100.0, c.health + 0.3)
+                if c.energy <= 0:
+                    self._kill(c, "starvation")
+                elif c.health <= 0:
+                    self._kill(c, "disease")
+                elif c.age >= c.lifespan:
+                    self._kill(c, "old_age")
+                return
+
         # At adulthood the world judges the irregular: consumed if far from
         # regular, otherwise demoted to the lowest of the regular orders.
         if not c.matured and c.irregularity > 0 and c.age >= cfg.adult_age:
@@ -554,8 +579,14 @@ class Simulation:
             if d < best:
                 best, target = d, e  # type: ignore[assignment]
 
-        # 2. Steer toward food or wander.
-        if target is not None:
+        # 2. Steer toward food or wander — unless heading home for the night.
+        if cfg.sleep_enabled and self._is_night(self._time_of_day()) and houses:
+            home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
+            dx, dy = w.delta(home.x, home.y, c.x, c.y)
+            desired = math.atan2(dy, dx)
+            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+            c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
+        elif target is not None:
             dx, dy = w.delta(target.x, target.y, c.x, c.y)
             desired = math.atan2(dy, dx)
             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
@@ -691,6 +722,7 @@ class Simulation:
                 infected=e.infected,
                 clan_id=e.clan_id or None,
                 clan_color=self.clans.get(e.clan_id, {}).get("color"),
+                sleeping=e.sleeping,
                 generation=e.generation,
                 born_tick=e.born_tick,
             )

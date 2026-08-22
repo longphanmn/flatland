@@ -46,6 +46,7 @@ class EntityState(BaseModel):
     meals: Optional[int] = None
     clan_id: Optional[int] = None
     clan_color: Optional[str] = None
+    sleeping: Optional[bool] = None
     generation: Optional[int] = None
     born_tick: Optional[int] = None
     door_width: Optional[float] = None

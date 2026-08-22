@@ -348,6 +348,16 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature }:
         ctx.stroke()
       }
       ctx.restore()
+      // sleeping: little z's drift above the sleeper
+      if (e.sleeping) {
+        ctx.globalAlpha = 0.8
+        ctx.fillStyle = '#c9d1d9'
+        ctx.font = `${1.6}px ui-monospace, monospace`
+        ctx.fillText('z', r + 0.4, -r - 0.2)
+        ctx.font = `${1.1}px ui-monospace, monospace`
+        ctx.fillText('z', r + 1.5, -r - 1.3)
+        ctx.globalAlpha = 1
+      }
       // clan crest: a thin tinted ring for those who belong to a line
       if (e.clan_color) {
         ctx.globalAlpha = 0.85

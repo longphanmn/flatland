@@ -209,18 +209,32 @@ export default function GodPanel({ open, onClose }: Props) {
                 </label>
               )}
               {group === 'Sky & Seasons' && (
-                <label className="god-row">
-                  <span title="whether the weather ever turns">Weather allowed</span>
-                  <select
-                    value={String(laws.weather_enabled ?? true)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, weather_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
+                <>
+                  <label className="god-row">
+                    <span title="whether the weather ever turns">Weather allowed</span>
+                    <select
+                      value={String(laws.weather_enabled ?? true)}
+                      onChange={(e) =>
+                        setLaws((l) => ({ ...l, weather_enabled: e.target.value === 'true' }))
+                      }
+                    >
+                      <option value="true">yes</option>
+                      <option value="false">no</option>
+                    </select>
+                  </label>
+                  <label className="god-row">
+                    <span title="creatures shelter in houses after dark">Night rest</span>
+                    <select
+                      value={String(laws.sleep_enabled ?? true)}
+                      onChange={(e) =>
+                        setLaws((l) => ({ ...l, sleep_enabled: e.target.value === 'true' }))
+                      }
+                    >
+                      <option value="true">yes</option>
+                      <option value="false">no</option>
+                    </select>
+                  </label>
+                </>
               )}
               {NUMBER_LAWS.filter((l) => l.group === group).map(({ key, label, min, max, step }) => (
                 <label className="god-row" key={key}>

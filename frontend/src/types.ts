@@ -26,6 +26,7 @@ export interface EntityState {
   meals?: number
   clan_id?: number
   clan_color?: string
+  sleeping?: boolean
   generation?: number
   born_tick?: number
   door_width?: number
@@ -184,6 +185,8 @@ export interface GodLaws {
   fog_sight_mult?: number
   rain_speed_mult?: number
   storm_wander_bonus?: number
+  sleep_enabled?: boolean
+  sleep_energy_mult?: number
 
   door_clearance?: number
   house_min_size?: number

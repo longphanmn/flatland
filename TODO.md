@@ -228,9 +228,10 @@ always matches the running code). No Vite/frontend dependency.
       fading cross renderer); creatures perceive and eat them like food;
       corpses decay after `corpse_ttl`; god laws: corpses toggle + ttl +
       energy; famine now has a second chance built in
-- [ ] [P2] Night rest — at night creatures seek the nearest house and sleep
-      inside: movement stops, energy decay halves, health regenerates faster;
-      they leave at sunrise; `sleeping` flag in snapshot + zzz renderer cue
+- [x] [P2] Night rest — at night creatures head for the nearest house; those
+      inside sleep (movement stops, hunger halved via `sleep_energy_mult`,
+      health +0.3/tick, disease still bites); `sleeping` in snapshot with zzz
+      renderer cue; Night rest toggle in the Sky & Seasons law group
 - [ ] [P2] Terrain — seeded map features: fertile patches bias food spawns;
       rocky circles block movement (radial push-out); drawn under entities
 - [x] [P2] Keyboard controls — space pause/resume · S step · R reset ·
