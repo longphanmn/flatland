@@ -84,19 +84,22 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [x] Events: `outbreak`, `recovery` (+ death cause `disease`); HUD "infected N"
 - [x] Render — pulsing green ring on the infected
 
-## E. Environment — day/night, seasons, weather  [P2]
-- [ ] WorldClock — `time_of_day` (0–1, cycle `day_length` ticks); `day` counter;
-      `season` index over `season_length` ticks (4 seasons)
-- [ ] Day/night — night applies `night_sight_mult` to perception; renderer dims sky
-- [ ] Seasons — food law target = `food_count × season_food_mult`
-      (spring 1.0, summer 1.2, autumn 1.0, winter 0.5); spring ↑ `birth_rate`,
-      winter ↑ `disease_rate`
-- [ ] Weather state machine — clear/rain/fog/storm; transitions at `weather_change_rate`
-      - rain: `speed_mult` 0.85 · fog: sight × `fog_sight_mult` · storm: wander chaos
-- [ ] GodLaws: `day_length, season_length, night_sight_mult, season_food_mults,
-      weather_enabled, weather_change_rate, fog_sight_mult`
-- [ ] Render — sky tint by time-of-day, season tint, rain particles, fog overlay
-- [ ] HUD — day/season/time-of-day + weather icon + clock
+## E. Environment — day/night, seasons, weather  [P2] — ✅ implemented
+- [x] WorldClock — derived from tick: `time_of_day` (0–1, `day_length` cycle,
+      world starts at sunrise), `day` counter, `season` over `season_length`
+- [x] Day/night — night applies `night_sight_mult`; renderer dims the sky
+      (smooth sunrise→noon→midnight gradient)
+- [x] Seasons — food target = `food_count × SEASON_FOOD_MULT`
+      (spring 1.0, summer 1.2, autumn 1.0, winter 0.5); spring ×1.25
+      `birth_rate`, winter ×1.5 outbreak + contagion
+- [x] Weather state machine — clear/rain/fog/storm at `weather_change_rate`;
+      rain/storm slow movement (`rain_speed_mult`), fog dims sight
+      (`fog_sight_mult`), storms add wander chaos (`storm_wander_bonus`)
+- [x] GodLaws: Sky & Seasons panel group (lengths, multipliers + Weather
+      allowed toggle)
+- [x] Render — night veil, season tint, rain streaks (heavier in storms),
+      fog overlay
+- [x] HUD — 🌙/☀ · day N · season · weather icon
 
 ## G. God-law & observability
 - [x] [P0] Consolidate ALL new laws into GodLaws + God screen UI (grouped by

@@ -63,6 +63,10 @@ class StateMessage(BaseModel):
     creatures_dead: int = 0
     dead_by_cause: dict[str, int] = Field(default_factory=dict)
     infected_count: int = 0
+    time_of_day: float = 0.25
+    day: int = 1
+    season: Literal["spring", "summer", "autumn", "winter"] = "spring"
+    weather: Literal["clear", "rain", "fog", "storm"] = "clear"
     events: list["HistoryEvent"] = Field(default_factory=list)
 
 
@@ -130,6 +134,16 @@ class GodLaws(BaseModel):
     disease_energy_drain: Optional[float] = Field(None, ge=0, le=10)
     recovery_rate: Optional[float] = Field(None, ge=0, le=1)
     disease_lethality: Optional[float] = Field(None, ge=0, le=1)
+
+    # Environment: sky, seasons, weather
+    day_length: Optional[int] = Field(None, ge=2, le=200000)
+    season_length: Optional[int] = Field(None, ge=2, le=1000000)
+    night_sight_mult: Optional[float] = Field(None, ge=0.05, le=2)
+    weather_enabled: Optional[bool] = None
+    weather_change_rate: Optional[float] = Field(None, ge=0, le=1)
+    fog_sight_mult: Optional[float] = Field(None, ge=0.05, le=2)
+    rain_speed_mult: Optional[float] = Field(None, ge=0.1, le=2)
+    storm_wander_bonus: Optional[float] = Field(None, ge=0, le=3.2)
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
     house_min_size: Optional[float] = Field(None, ge=3, le=60)
     house_max_size: Optional[float] = Field(None, ge=3, le=80)

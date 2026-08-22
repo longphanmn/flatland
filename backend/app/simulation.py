@@ -30,6 +30,13 @@ STAGE_MULT = {
     "elder": (0.85, 0.90),
 }
 
+SEASONS = ("spring", "summer", "autumn", "winter")
+# Winter starves the land; summer is plenty.
+SEASON_FOOD_MULT = {"spring": 1.0, "summer": 1.2, "autumn": 1.0, "winter": 0.5}
+SPRING_BIRTH_MULT = 1.25
+WINTER_DISEASE_MULT = 1.5
+WEATHER_STATES = ("clear", "rain", "fog", "storm")
+
 
 class Simulation:
     def __init__(
@@ -51,7 +58,44 @@ class Simulation:
         self._events_this_tick: list[HistoryEvent] = []
         self._death_counts: dict[str, int] = {}
         self.disease_id = 0
+        self.weather = "clear"
         self._spawn_initial()
+
+    # ------------------------------------------------------------- the sky
+    def _time_of_day(self) -> float:
+        """0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset; world starts at sunrise."""
+        dl = max(1, self.config.day_length)
+        return ((self.tick + 0.25 * dl) % dl) / dl
+
+    def _is_night(self, tod: float) -> bool:
+        return tod < 0.22 or tod > 0.78
+
+    def _season(self) -> str:
+        return SEASONS[(self.tick // max(1, self.config.season_length)) % 4]
+
+    @property
+    def day(self) -> int:
+        return self.tick // max(1, self.config.day_length) + 1
+
+    def _update_weather(self) -> None:
+        cfg = self.config
+        if not cfg.weather_enabled or self.rng.random() >= cfg.weather_change_rate:
+            return
+        others = [w for w in WEATHER_STATES if w != self.weather]
+        self.weather = self.rng.choice(others)
+
+    def env_sight_mult(self) -> float:
+        """Night and fog dim every eye (Sight Recognition suffers)."""
+        cfg = self.config
+        m = 1.0
+        if self._is_night(self._time_of_day()):
+            m *= cfg.night_sight_mult
+        if self.weather == "fog":
+            m *= cfg.fog_sight_mult
+        return m
+
+    def env_speed_mult(self) -> float:
+        return self.config.rain_speed_mult if self.weather in ("rain", "storm") else 1.0
 
     # ------------------------------------------------------------------ setup
     def _rand_pos(self) -> tuple[float, float]:
@@ -166,6 +210,7 @@ class Simulation:
         """Advance the world by exactly one tick (deterministic)."""
         self._eaten.clear()
         self._events_this_tick = []
+        self._update_weather()
         self.world.rebuild_index()
         houses = [e for e in self.world.entities.values() if e.kind == "house"]
         for creature in self.world.creatures():  # snapshot list; removals are safe
@@ -197,7 +242,9 @@ class Simulation:
         if (
             not any(c.infected for c in creatures)
             and creatures
-            and self.rng.random() < cfg.disease_outbreak_rate
+            and self.rng.random()
+            < cfg.disease_outbreak_rate
+            * (WINTER_DISEASE_MULT if self._season() == "winter" else 1.0)
         ):
             patient = self.rng.choice(creatures)
             self.disease_id += 1
@@ -232,10 +279,13 @@ class Simulation:
                     )
                 )
                 continue
-            # Contagion to healthy neighbours
+            # Contagion to healthy neighbours (winter air carries further)
+            spread_rate = cfg.disease_rate * (
+                WINTER_DISEASE_MULT if self._season() == "winter" else 1.0
+            )
             for n in self.world.query_radius(c.x, c.y, cfg.disease_radius):
                 if n.kind == "creature" and not n.infected and n.id != c.id:
-                    if self.rng.random() < cfg.disease_rate:
+                    if self.rng.random() < min(spread_rate, 1.0):
                         self._infect(n)  # type: ignore[arg-type]
 
     # ----------------------------------------------------------- reproduction
@@ -283,7 +333,10 @@ class Simulation:
                 * Creature.FERTILITY_MULT[father.stage]
                 * room
             )
-            if self.rng.random() >= min(cfg.birth_rate * fert, 1.0):
+            rate = cfg.birth_rate
+            if self._season() == "spring":
+                rate = min(1.0, rate * SPRING_BIRTH_MULT)  # spring quickens the blood
+            if self.rng.random() >= min(rate * fert, 1.0):
                 continue
             self._birth(mother, father)
             if len(self.world.creatures()) >= cfg.max_population:
@@ -427,7 +480,7 @@ class Simulation:
             c.status = ""
 
         stage_speed, stage_sight = STAGE_MULT[c.stage]
-        perceive = cfg.perceive_radius * c.sight_mult * stage_sight
+        perceive = cfg.perceive_radius * c.sight_mult * stage_sight * self.env_sight_mult()
         speed_mult = 1.0
         if c.status == "hungry":
             perceive *= cfg.hungry_perceive_mult
@@ -453,10 +506,13 @@ class Simulation:
             step = max(-cfg.steer_turn, min(cfg.steer_turn, diff))
             c.angle += step
         else:
-            c.angle += self.rng.uniform(-cfg.wander_turn, cfg.wander_turn)
+            wander = cfg.wander_turn
+            if self.weather == "storm":
+                wander += cfg.storm_wander_bonus  # storms fling the lost about
+            c.angle += self.rng.uniform(-wander, wander)
 
-        # 3. Move (hunger speeds up the desperate).
-        step_len = c.speed * speed_mult * stage_speed
+        # 3. Move (hunger speeds up the desperate; rain slows every body).
+        step_len = c.speed * speed_mult * stage_speed * self.env_speed_mult()
         px, py = c.x, c.y
         nx = c.x + math.cos(c.angle) * step_len
         ny = c.y + math.sin(c.angle) * step_len
@@ -504,9 +560,11 @@ class Simulation:
             self._kill(c, "old_age")
 
     def _enforce_food_law(self) -> None:
-        """God's bounty or famine: keep food population at the law's target."""
+        """God's bounty or famine, bent by the season: winter starves the land."""
+        season = self._season()
+        target = round(self.config.food_count * SEASON_FOOD_MULT[season])
         foods = [e for e in self.world.entities.values() if e.kind == "food"]
-        deficit = self.config.food_count - len(foods)
+        deficit = target - len(foods)
         if deficit > 0:
             for _ in range(deficit):
                 x, y = self._rand_pos()
@@ -537,6 +595,10 @@ class Simulation:
             creatures_dead=self.deaths,
             dead_by_cause=dict(self._death_counts),
             infected_count=sum(1 for c in self.world.creatures() if c.infected),
+            time_of_day=round(self._time_of_day(), 3),
+            day=self.day,
+            season=self._season(),
+            weather=self.weather,
             events=list(self._events_this_tick),
         )
 

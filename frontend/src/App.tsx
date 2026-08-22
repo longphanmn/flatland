@@ -84,6 +84,10 @@ export default function App() {
         .join(' · ') || 'no deaths yet'
     : ''
 
+  const isNight = state ? state.time_of_day < 0.22 || state.time_of_day > 0.78 : false
+  const weatherIcon =
+    state?.weather === 'rain' ? '🌧' : state?.weather === 'fog' ? '🌫' : state?.weather === 'storm' ? '⛈' : ''
+
   return (
     <div className="app">
       <header className="hud">
@@ -125,6 +129,12 @@ export default function App() {
           <span className="chip">
             seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×
             {state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}
+          </span>
+        )}
+        {state && (
+          <span className="chip" title={`time of day ${state.time_of_day}`}>
+            {isNight ? '🌙' : '☀'} day <b>{state.day}</b> · {state.season}
+            {weatherIcon && ` · ${weatherIcon}`}
           </span>
         )}
       </header>

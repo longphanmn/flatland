@@ -46,6 +46,14 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'disease_energy_drain', label: 'Energy drain / tick', min: 0, max: 2, step: 0.05, group: 'Disease' },
   { key: 'recovery_rate', label: 'Recovery chance / tick', min: 0, max: 1, step: 0.005, group: 'Disease' },
   { key: 'disease_lethality', label: 'Lethality', min: 0, max: 1, step: 0.05, group: 'Disease' },
+  // Sky & Seasons — the turning of the world
+  { key: 'day_length', label: 'Day length (ticks)', min: 4, max: 20000, step: 4, group: 'Sky & Seasons' },
+  { key: 'season_length', label: 'Season length (ticks)', min: 4, max: 100000, step: 10, group: 'Sky & Seasons' },
+  { key: 'night_sight_mult', label: 'Night sight ×', min: 0.05, max: 2, step: 0.05, group: 'Sky & Seasons' },
+  { key: 'weather_change_rate', label: 'Weather turn chance', min: 0, max: 1, step: 0.001, group: 'Sky & Seasons' },
+  { key: 'fog_sight_mult', label: 'Fog sight ×', min: 0.05, max: 2, step: 0.05, group: 'Sky & Seasons' },
+  { key: 'rain_speed_mult', label: 'Rain speed ×', min: 0.1, max: 2, step: 0.05, group: 'Sky & Seasons' },
+  { key: 'storm_wander_bonus', label: 'Storm wander +', min: 0, max: 3.2, step: 0.05, group: 'Sky & Seasons' },
   { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction' },
   { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction' },
   { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction' },
@@ -64,6 +72,7 @@ const GROUP_ORDER = [
   'Life & Death',
   'Reproduction',
   'Disease',
+  'Sky & Seasons',
   'Bodies & Houses',
 ]
 
@@ -192,6 +201,20 @@ export default function GodPanel({ open, onClose }: Props) {
                     value={String(laws.disease_enabled ?? false)}
                     onChange={(e) =>
                       setLaws((l) => ({ ...l, disease_enabled: e.target.value === 'true' }))
+                    }
+                  >
+                    <option value="true">yes</option>
+                    <option value="false">no</option>
+                  </select>
+                </label>
+              )}
+              {group === 'Sky & Seasons' && (
+                <label className="god-row">
+                  <span title="whether the weather ever turns">Weather allowed</span>
+                  <select
+                    value={String(laws.weather_enabled ?? true)}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, weather_enabled: e.target.value === 'true' }))
                     }
                   >
                     <option value="true">yes</option>

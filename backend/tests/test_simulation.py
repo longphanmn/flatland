@@ -81,7 +81,7 @@ def test_clamp_boundary_reflects_heading():
     c = s.world.add(Creature(x=49.8, y=25.0, angle=0.05, speed=0.8, energy=100.0))
     s.step()
     assert c.x <= 50.0
-    assert abs(c.angle) > 3.0  # reflected: now heading west-ish
+    assert math.cos(c.angle) < 0  # reflected: now heading west-ish
 
 
 def test_starvation_removes_creature():

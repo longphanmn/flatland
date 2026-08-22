@@ -80,6 +80,16 @@ class Config:
     recovery_rate: float = 0.01  # chance/tick an infected creature recovers
     disease_lethality: float = 0.5  # scales how fast infection drains health
 
+    # Environment: day/night, seasons, weather
+    day_length: int = 1200  # ticks per day cycle
+    season_length: int = 2400  # ticks per season; four seasons per year
+    night_sight_mult: float = 0.6  # sight scale during the night
+    weather_enabled: bool = True
+    weather_change_rate: float = 0.002  # chance/tick the weather turns
+    fog_sight_mult: float = 0.6  # sight scale in fog
+    rain_speed_mult: float = 0.85  # movement scale in rain/storm
+    storm_wander_bonus: float = 0.35  # extra heading chaos in storms
+
     # Houses
     house_min_size: float = 6.0
     house_max_size: float = 10.0

@@ -43,6 +43,10 @@ export interface StateMessage {
   creatures_dead: number
   dead_by_cause: Record<string, number>
   infected_count: number
+  time_of_day: number
+  day: number
+  season: 'spring' | 'summer' | 'autumn' | 'winter'
+  weather: 'clear' | 'rain' | 'fog' | 'storm'
   events: HistoryEvent[]
 }
 
@@ -167,6 +171,16 @@ export interface GodLaws {
   disease_energy_drain?: number
   recovery_rate?: number
   disease_lethality?: number
+
+  // Environment: sky, seasons, weather
+  day_length?: number
+  season_length?: number
+  night_sight_mult?: number
+  weather_enabled?: boolean
+  weather_change_rate?: number
+  fog_sight_mult?: number
+  rain_speed_mult?: number
+  storm_wander_bonus?: number
 
   door_clearance?: number
   house_min_size?: number

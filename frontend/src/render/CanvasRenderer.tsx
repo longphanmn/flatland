@@ -24,6 +24,33 @@ function creatureColor(e: EntityState): string {
   return (e.caste && CASTE_COLORS[e.caste]) || '#8b949e'
 }
 
+/** Rain streaks and fog veil, drawn in screen space. */
+function drawWeather(
+  ctx: CanvasRenderingContext2D,
+  weather: string,
+  cw: number,
+  ch: number,
+): void {
+  if (weather === 'fog') {
+    ctx.fillStyle = 'rgba(190,205,225,0.13)'
+    ctx.fillRect(0, 0, cw, ch)
+    return
+  }
+  if (weather !== 'rain' && weather !== 'storm') return
+  const drops = weather === 'storm' ? 150 : 80
+  const t = performance.now() / 16
+  ctx.strokeStyle = 'rgba(140,170,220,0.35)'
+  ctx.lineWidth = Math.max(1, cw / 1200)
+  ctx.beginPath()
+  for (let i = 0; i < drops; i++) {
+    const x = (i * 977 + t * (13 + (i % 5))) % cw
+    const y = (i * 613 + t * (23 + (i % 7) * 3)) % ch
+    ctx.moveTo(x, y)
+    ctx.lineTo(x - cw * 0.004, y + ch * 0.02)
+  }
+  ctx.stroke()
+}
+
 function tracePolygon(ctx: CanvasRenderingContext2D, sides: number, radius: number): void {
   ctx.beginPath()
   for (let i = 0; i < sides; i++) {
@@ -290,6 +317,23 @@ export default function CanvasRenderer({ stateRef }: Props) {
       if (!state) return
 
       if (!cam.initialized || cam.scale <= 0) fitCamera(state)
+
+      // ---- sky: night darkness + season tint + weather overlays ----
+      const sun = Math.sin((state.time_of_day - 0.25) * TAU) // -1 midnight .. 1 noon
+      const darkness = Math.max(0, Math.min(1, 0.55 - 0.55 * sun))
+      if (darkness > 0.01) {
+        ctx.fillStyle = `rgba(4,8,24,${(darkness * 0.45).toFixed(3)})`
+        ctx.fillRect(0, 0, cw, ch)
+      }
+      const seasonTint: Record<string, string> = {
+        spring: 'rgba(80,160,90,0.05)',
+        summer: 'rgba(220,180,60,0.05)',
+        autumn: 'rgba(200,120,50,0.06)',
+        winter: 'rgba(150,190,255,0.08)',
+      }
+      ctx.fillStyle = seasonTint[state.season] ?? 'rgba(0,0,0,0)'
+      ctx.fillRect(0, 0, cw, ch)
+      drawWeather(ctx, state.weather, cw, ch)
 
       ctx.strokeStyle = 'rgba(110,118,129,0.45)'
       ctx.lineWidth = 1
