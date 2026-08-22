@@ -122,7 +122,7 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
        age/lifespan, energy/health bars, meals, irregularity, lineage) and its
        personal chronicle from `GET /api/creature/{id}`; auto-refreshes 1 Hz;
        survives death (status + full history remain) (`inspect/Inspector.tsx:83`,
-       `CanvasRenderer.tsx:243` pick radius)
+       `CanvasRenderer.tsx:181` pick `4.0/24` world units, tap `500ms/10px` forgiving)
 - [x] [P2] DB-backed history pagination + world run selector (Chronicle pagination +
        HUD run dropdown → moved to bottom-right `App.tsx:534` `run-switcher`
        `index.css:182`); archive mode pauses live feed, `load older` paginates via `GET /api/history?since=`

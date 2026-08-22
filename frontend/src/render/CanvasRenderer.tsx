@@ -184,7 +184,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       const ratio = dpr()
       const px = clientX * ratio
       const py = clientY * ratio
-      const pickRadiusWorld = Math.max(2.0, 14 / cam.scale)
+      const pickRadiusWorld = Math.max(4.0, 24 / cam.scale)
       let bestId: number | null = null
       let bestD = Infinity
       for (const e of state.entities) {
@@ -242,9 +242,9 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       if (
         tapStart &&
         onTapCreature &&
-        performance.now() - tapStart.t < 400 &&
+        performance.now() - tapStart.t < 500 &&
         Math.hypot(ev.clientX - tapStart.x, ev.clientY - tapStart.y) * dpr() <
-          6 * dpr()
+          10 * dpr()
       ) {
         onTapCreature(pickCreature(ev.clientX, ev.clientY))
       }
