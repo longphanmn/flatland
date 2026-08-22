@@ -544,8 +544,7 @@ export default function App() {
                   const gl = (p.glyph as string) ? ` ${p.glyph}` : ''
                   return (
                     <li key={key} className="ev-birth">
-                      <b>{nm}{gl}</b> #{ev.entity_id} born to #{p.mother} × #
-                      {p.father} (gen {p.generation}) at tick {ev.tick}
+                      <button className="chronicle-name" onClick={() => setSelectedId(ev.entity_id)} title="show profile"><b>{nm}{gl}</b> #{ev.entity_id}</button> born to <button className="chronicle-name" onClick={() => p.mother && setSelectedId(p.mother!)} title="show mother">#{p.mother}</button> × <button className="chronicle-name" onClick={() => p.father && setSelectedId(p.father!)} title="show father">#{p.father}</button> (gen {p.generation}) at tick {ev.tick}
                     </li>
                   )
                 }
@@ -554,7 +553,7 @@ export default function App() {
                   const nm = (p.personal_name as string) ? `${p.personal_name} ` : ''
                   return (
                     <li key={key} className="ev-promo">
-                      <b>{nm}#{ev.entity_id}</b> rose {String(p.from ?? 'Soldier')} →{' '}
+                      <button className="chronicle-name" onClick={() => setSelectedId(ev.entity_id)} title="show profile"><b>{nm}#{ev.entity_id}</b></button> rose {String(p.from ?? 'Soldier')} →{' '}
                       {String(p.to ?? ev.caste)} at tick {ev.tick}
                     </li>
                   )
@@ -565,7 +564,7 @@ export default function App() {
                   const gl = (p.glyph as string) ? ` ${p.glyph}` : ''
                   return (
                     <li key={key} className="ev-demote">
-                      <b>{nm}{gl}</b> #{ev.entity_id} judged irregular and demoted
+                      <button className="chronicle-name" onClick={() => setSelectedId(ev.entity_id)} title="show profile"><b>{nm}{gl}</b> #{ev.entity_id}</button> judged irregular and demoted
                       at tick {ev.tick}
                     </li>
                   )
@@ -576,7 +575,7 @@ export default function App() {
                   const gl = (p.glyph as string) ? ` ${p.glyph}` : ''
                   return (
                     <li key={key} className="ev-predation" style={{ color: '#ff3838' }}>
-                      <b>{nm}{gl}</b> #{ev.entity_id} predated <b>{p.prey_caste}</b> #{p.prey} at tick {ev.tick}
+                      <button className="chronicle-name" onClick={() => setSelectedId(ev.entity_id)} title="show predator"><b>{nm}{gl}</b> #{ev.entity_id}</button> predated <b>{p.prey_caste}</b> <button className="chronicle-name" onClick={() => p.prey && setSelectedId(p.prey!)} title="show prey">#{p.prey}</button> at tick {ev.tick}
                     </li>
                   )
                 }
@@ -586,7 +585,7 @@ export default function App() {
                   const gl = (p.glyph as string) ? ` ${p.glyph}` : ''
                   return (
                     <li key={key} className="ev-war" style={{ color: '#f85149' }}>
-                      <b>{nm}{gl}</b> #{ev.entity_id} fell in clan war (winner #{p.winner}) at tick {ev.tick}
+                      <button className="chronicle-name" onClick={() => setSelectedId(ev.entity_id)} title="show fallen"><b>{nm}{gl}</b> #{ev.entity_id}</button> fell in clan war (winner <button className="chronicle-name" onClick={() => p.winner && setSelectedId(p.winner!)} title="show winner">#{p.winner}</button>) at tick {ev.tick}
                     </li>
                   )
                 }
@@ -643,7 +642,7 @@ export default function App() {
                   const gl = (p.glyph as string) ? ` ${p.glyph}` : ''
                   return (
                     <li key={key} className={ev.type === 'outbreak' ? 'ev-outbreak' : 'ev-recovery'} style={{ color: ev.type === 'outbreak' ? '#d29922' : '#3fb950' }}>
-                      <b>{nm}{gl}</b> #{ev.entity_id} {ev.type} at tick {ev.tick}
+                      <button className="chronicle-name" onClick={() => setSelectedId(ev.entity_id)} title="show creature"><b>{nm}{gl}</b> #{ev.entity_id}</button> {ev.type} at tick {ev.tick}
                     </li>
                   )
                 }
@@ -653,7 +652,7 @@ export default function App() {
                   const gl = (p.glyph as string) ? ` ${p.glyph}` : ''
                   return (
                     <li key={key}>
-                      <b>{nm}{gl}</b> #{ev.entity_id} died of {ev.cause} at tick{' '}
+                      <button className="chronicle-name" onClick={() => setSelectedId(ev.entity_id)} title="show profile"><b>{nm}{gl}</b> #{ev.entity_id}</button> died of {ev.cause} at tick{' '}
                       {ev.tick} ({Math.round(ev.x)}, {Math.round(ev.y)})
                     </li>
                   )

@@ -227,6 +227,27 @@ body {
   color: #f85149;
 }
 
+.chronicle-name {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(255,166,87,0.45);
+  text-underline-offset: 2px;
+}
+.chronicle-name:hover {
+  color: #e3b341;
+  text-decoration-color: #e3b341;
+}
+.chronicle-name b {
+  color: inherit;
+}
+
 /* ---- run selector + archive mode ---- */
 
 .run-label {
@@ -829,8 +850,8 @@ select {
   }
   .version-bar {
     bottom: 6px;
-    right: 8px;
-    left: auto;
+    left: 8px;
+    right: auto;
     transform: none;
     font-size: 9px;
     padding: 1px 6px;
@@ -861,8 +882,8 @@ select {
 .version-bar {
   position: fixed;
   bottom: 6px;
-  right: 14px;
-  left: auto;
+  left: 14px;
+  right: auto;
   transform: none;
   font-size: 10px;
   color: #484f58;
