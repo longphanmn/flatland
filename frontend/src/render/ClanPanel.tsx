@@ -13,6 +13,7 @@ interface ClanInfo {
   war_wins: number
   war_losses: number
   territory_radius: number | null
+  specialization?: { warrior: number; farmer: number; scavenger: number } | null
 }
 
 export default function ClanPanel() {
@@ -56,6 +57,11 @@ export default function ClanPanel() {
             <div className="chip">
               leader #{c.leader_id ?? '—'} · founder #{c.founder_id} · born tick {c.born_tick}
             </div>
+            {c.specialization && (
+              <div className="chip" title="Clan specialization drifts over generations — warrior (war), farmer (harvest), scavenger (corpse) — totem biases start, environment + history drift it">
+                <span style={{ color: '#f85149' }}>⚔ warrior {c.specialization.warrior.toFixed(2)}</span> · <span style={{ color: '#3fb950' }}>🌾 farmer {c.specialization.farmer.toFixed(2)}</span> · <span style={{ color: '#8b949e' }}>🦴 scavenger {c.specialization.scavenger.toFixed(2)}</span>
+              </div>
+            )}
           </div>
         ))}
       </div>

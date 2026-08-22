@@ -367,8 +367,8 @@ beyond one house, no leaders. Deepen the social fabric.
 - [x] [P2] War refinement — skirmishes need not be lethal (`attack_damage` < 100 →
       wounded + fleeing, not always death); champions duel; raids on rival houses;
       wars can end (peace treaty once scores recover) (`simulation.py:708` wound vs lethal: `Shield` 0.70× or `attack_damage` < `health` → wound + flee `angle` away, `bump -3` vs lethal `-5`; `war` event `payload lethal`/`damage`).
-- [ ] [P2] Clan specialization — over generations clans drift toward warrior / farmer
-      / scavenger roles from environment + totem; reflected in behaviour.
+- [x] [P2] Clan specialization — over generations clans drift toward warrior / farmer
+      / scavenger roles from environment + totem; reflected in behaviour. (`simulation.py:990` `_update_clan_specialization` totem-biased start Wolf 0.5 war/Tree 0.6 farm/Eye 0.5 scav + drift war if wars, farmer if food/fertile near house, scavenger if corpse_near, renormalize, `simulation.py:745` war damage ×(0.85+warrior*0.45), `simulation.py:1670` harvest ×(1+farmer*0.25) corpse ×(1+scav*0.35), `main.py:399` `GET /api/clans` specialization, `ClanPanel.tsx:15` ⚔/🌾/🦴 display)
 - [x] [P2] Clan stats & history — leader lineage, war record, territory, population;
       a clan panel in the inspector/HUD (`backend/app/main.py:363` `GET /api/clans` roster with `name`/`totem`/`leader_id`/`population`/`house`/`war_wins`/`losses`/`territory_radius`, `frontend/src/render/ClanPanel.tsx` tick 2s poll, `App.tsx:471` under TrophicChart).
 - [x] GodLaws: territory_enabled, territory_radius, trespass_decay, totems_enabled, succession_enabled (Territory/Clan `config.py:49` `protocol.py:127` `main.py:191` `GodPanel.tsx:15`); war_lethality still [P2] pending (new "Clan" law group)

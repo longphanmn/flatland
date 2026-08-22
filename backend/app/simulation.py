@@ -367,6 +367,17 @@ class Simulation:
         totem = None
         if self.config.totems_enabled:
             totem = TOTEMS[(cid * 17 + self.config.seed) % len(TOTEMS)]
+        # specialization drift start — totem biases initial role
+        if totem == "Wolf":
+            spec = {"warrior": 0.5, "farmer": 0.25, "scavenger": 0.25}
+        elif totem == "Tree":
+            spec = {"warrior": 0.2, "farmer": 0.6, "scavenger": 0.2}
+        elif totem == "Shield":
+            spec = {"warrior": 0.45, "farmer": 0.25, "scavenger": 0.3}
+        elif totem == "Eye":
+            spec = {"warrior": 0.25, "farmer": 0.25, "scavenger": 0.5}
+        else:
+            spec = {"warrior": 0.33, "farmer": 0.33, "scavenger": 0.34}
         self.clans[cid] = {
             "name": name,
             "founder_id": founder.id,
@@ -374,6 +385,7 @@ class Simulation:
             "color": CLAN_COLORS[(cid - 1) % len(CLAN_COLORS)],
             "totem": totem,
             "leader_id": founder.id,
+            "specialization": spec,
         }
         if self.config.house_claim_enabled:
             self._claim_house_for_clan(cid)
@@ -721,6 +733,7 @@ class Simulation:
         self._update_relations()
         self._update_territory()
         self._update_schism()
+        self._update_clan_specialization()
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
@@ -773,8 +786,11 @@ class Simulation:
                     continue
                 if any(loser.id == x[0].id for x in to_wound) or any(winner.id == x[0].id for x in to_wound):
                     continue
-                # Shield totem: 30% damage reduction
+                # Shield totem: 30% damage reduction; warrior specialization adds bite (§P)
                 dmg = cfg.attack_damage
+                # warrior clan hits harder
+                w_spec = self.clans.get(winner.clan_id, {}).get("specialization", {}).get("warrior", 0.33) if winner.clan_id else 0.33
+                dmg *= (0.85 + w_spec * 0.45)
                 if self._totem_of(loser) == "Shield":
                     dmg *= 0.70
                 if dmg >= loser.health:
@@ -800,7 +816,8 @@ class Simulation:
         for loser, winner in to_wound:
             if loser.id not in self.world.entities:
                 continue
-            dmg = cfg.attack_damage * (0.70 if self._totem_of(loser) == "Shield" else 1.0)
+            w_spec2 = self.clans.get(winner.clan_id, {}).get("specialization", {}).get("warrior", 0.33) if winner.clan_id else 0.33
+            dmg = cfg.attack_damage * (0.85 + w_spec2 * 0.45) * (0.70 if self._totem_of(loser) == "Shield" else 1.0)
             loser.health = max(0, loser.health - dmg)
             # wounded flees
             dx, dy = self.world.delta(loser.x, loser.y, winner.x, winner.y)
@@ -962,6 +979,11 @@ class Simulation:
             totem = None
             if self.config.totems_enabled:
                 totem = TOTEMS[(new_cid * 17 + self.config.seed) % len(TOTEMS)]
+            # inherit parent specialization with slight drift
+            parent_spec = self.clans.get(cid, {}).get("specialization", {"warrior": 0.33, "farmer": 0.33, "scavenger": 0.34})
+            # small random drift
+            spec = dict(parent_spec)
+            # parent specialization drift already handled elsewhere; new clan inherits
             self.clans[new_cid] = {
                 "name": name,
                 "founder_id": founder.id,
@@ -969,6 +991,7 @@ class Simulation:
                 "color": CLAN_COLORS[(new_cid - 1) % len(CLAN_COLORS)],
                 "totem": totem,
                 "leader_id": founder.id,
+                "specialization": spec,
             }
             for c in movers:
                 c.clan_id = new_cid
@@ -1002,6 +1025,55 @@ class Simulation:
                 )
             )
             break  # only one schism per tick
+
+    def _update_clan_specialization(self) -> None:
+        """§P Clan specialization — drift toward warrior/farmer/scavenger."""
+        for cid, info in self.clans.items():
+            spec = info.get("specialization")
+            if spec is None:
+                spec = {"warrior": 0.33, "farmer": 0.33, "scavenger": 0.34}
+                info["specialization"] = spec
+            # totem bias already in founding; now environment drift
+            # find clan house
+            house = None
+            for e in self.world.entities.values():
+                if isinstance(e, House) and getattr(e, "clan_id", 0) == cid and not getattr(e, "is_ruin", False):
+                    house = e
+                    break
+            # count recent war involvement (last 80 history)
+            recent = list(self.history)[-80:]
+            war_cnt = sum(1 for ev in recent if ev.type == "war" and (ev.payload.get("a")==cid or ev.payload.get("b")==cid))
+            # count food/corpse near house (if has house)
+            food_near = 0
+            corpse_near = 0
+            if house is not None:
+                for e in self.world.entities.values():
+                    if e.kind == "food" and self.world.distance(e.x, e.y, house.x, house.y) < 18:
+                        food_near += 1
+                    elif e.kind == "corpse" and self.world.distance(e.x, e.y, house.x, house.y) < 18:
+                        corpse_near += 1
+                # fertile patches near house also farmer
+                for fp in self.fertile:
+                    if self.world.distance(fp["x"], fp["y"], house.x, house.y) < 20:
+                        food_near += 1
+            # small drift per tick
+            # warrior up if wars, farmer up if food_near, scavenger up if corpse_near
+            # normalize drift to keep sum 1
+            drift = 0.002
+            if war_cnt > 0:
+                spec["warrior"] = min(0.8, spec["warrior"] + drift * war_cnt)
+            if food_near > 3:
+                spec["farmer"] = min(0.8, spec["farmer"] + drift * 0.5)
+            if corpse_near > 2:
+                spec["scavenger"] = min(0.8, spec["scavenger"] + drift * 0.7)
+            # slight decay toward 0.33 to avoid lock-in, plus random jitter
+            for k in ("warrior","farmer","scavenger"):
+                spec[k] += self.rng.uniform(-0.0005, 0.0005)
+                spec[k] = max(0.05, min(0.85, spec[k]))
+            # renormalize to 1
+            tot = spec["warrior"] + spec["farmer"] + spec["scavenger"]
+            for k in spec:
+                spec[k] = round(spec[k]/tot, 3)
 
     # ------------------------------------------------------------------ flora
     def _update_plants(self) -> None:
@@ -1852,14 +1924,20 @@ class Simulation:
                     health_delta = VARIANT_HEALTH.get(target.variant, 0.0)
                 else:
                     gain = cfg.energy_from_food * target.growth
-                # Totem Tree: +25% harvest (§P)
+                # Totem Tree: +25% harvest (§P); farmer specialization adds harvest (§P specialization)
+                farmer = self.clans.get(c.clan_id, {}).get("specialization", {}).get("farmer", 0.33) if c.clan_id else 0.0
                 if self._totem_of(c) == "Tree":
                     gain *= 1.25
                     health_delta += 0.5
+                if farmer:
+                    gain *= (1.0 + farmer * 0.25)
             elif isinstance(target, Corpse):
                 gain = cfg.corpse_energy  # scavenged remains
+                scav = self.clans.get(c.clan_id, {}).get("specialization", {}).get("scavenger", 0.33) if c.clan_id else 0.0
                 if self._totem_of(c) == "Tree":
                     gain *= 1.10
+                if scav:
+                    gain *= (1.0 + scav * 0.35)
             c.energy = min(cfg.energy_max, c.energy + gain)
             if health_delta != 0:
                 c.health = max(0.0, min(100.0, c.health + health_delta))

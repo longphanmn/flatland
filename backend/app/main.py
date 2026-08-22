@@ -425,6 +425,7 @@ async def get_clans() -> dict:
             "war_wins": war_wins.get(cid, 0),
             "war_losses": war_losses.get(cid, 0),
             "territory_radius": RT.sim.config.territory_radius if RT.sim.config.territory_enabled else None,
+            "specialization": info.get("specialization"),
         })
     # sort by population desc
     clans.sort(key=lambda c: (-c["population"], c["id"]))
