@@ -823,6 +823,15 @@ select {
     bottom: 56px;
     max-width: calc(100vw - 16px);
   }
+  .top-right-panel {
+    top: 6px;
+    right: 8px;
+  }
+  .version-bar {
+    bottom: 2px;
+    font-size: 9px;
+    padding: 1px 6px;
+  }
   .run-select {
     max-width: 42vw;
   }
@@ -831,6 +840,35 @@ select {
   button {
     min-height: 34px;
   }
+}
+
+/* top-right God button */
+.top-right-panel {
+  position: fixed;
+  top: 8px;
+  right: 14px;
+  z-index: 12;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+.top-right-panel .god-btn {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+.version-bar {
+  position: fixed;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #484f58;
+  background: rgba(13,17,23,0.85);
+  border: 1px solid #21262d;
+  border-radius: 10px;
+  padding: 2px 8px;
+  z-index: 6;
+  pointer-events: none;
+  letter-spacing: 0.04em;
 }
 
 /* help modal */

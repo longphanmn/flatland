@@ -37,6 +37,7 @@ export default function App() {
   const [godOpen, setGodOpen] = useState(false)
   const [chronicleOpen, setChronicleOpen] = useState(true)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [versionInfo, setVersionInfo] = useState<{ version: string; revision: string } | null>(null)
   const [log, setLog] = useState<HistoryEvent[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [aliveHist, setAliveHist] = useState<number[]>([])
@@ -73,6 +74,13 @@ export default function App() {
   useEffect(() => {
     archiveModeRef.current = archiveMode
   }, [archiveMode])
+
+  useEffect(() => {
+    fetch('/api/version')
+      .then((r) => r.json())
+      .then((d) => setVersionInfo({ version: d.version ?? '0.1.0', revision: d.revision ?? '' }))
+      .catch(() => setVersionInfo({ version: '0.1.0', revision: '' }))
+  }, [])
 
   // Tap hint: clicking any HUD chip with title shows it (mobile where hover doesn't work)
   useEffect(() => {
@@ -322,9 +330,6 @@ export default function App() {
     <div className="app">
       <header className="hud">
         <span className="title">Flatland</span>
-        <button className="god-btn" onClick={() => setGodOpen(true)}>
-          ⚖ God
-        </button>
         <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls" style={{ padding: '6px 10px' }}>
           ?
         </button>
@@ -483,6 +488,7 @@ export default function App() {
                 </span>
               )}
             </h3>
+            <CasteChart history={popHist} showLegend={false} />
             <div className="info-spark" title="alive creatures, recent ticks (was at bottom left, now in info box)">
               <div style={{ fontSize: '11px', color: '#8b949e', marginBottom: 2 }}>Alive — recent ticks</div>
               <span className="spark-wrap" title="alive creatures, recent ticks">
@@ -500,7 +506,6 @@ export default function App() {
                 </svg>
               </span>
             </div>
-            <CasteChart history={popHist} showLegend={false} />
             <h4
               style={{ margin: '10px 0 4px', fontSize: '0.85em', opacity: 0.8 }}
               title="Trophic pyramid: stacked history of Food (plants, variant colors) → Herbivore (wild grazers, beast_ratio) → Predator (carnivores). Shows Lotka-Volterra oscillation: plants feed herbivores, herbivores feed predators. Spikes mean blooms or hunts."
@@ -699,6 +704,16 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* God button — top right panel */}
+      <div className="top-right-panel">
+        <button className="god-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life">
+          ⚖ God
+        </button>
+      </div>
+      {/* version + revision at bottom */}
+      <div className="version-bar" title={versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'Flatland'}>
+        {versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'v0.1.0'}
+      </div>
       {worlds.length > 0 && (
         <div className="run-switcher">
           <label className="chip run-label" htmlFor="run-bottom">

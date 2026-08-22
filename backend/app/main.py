@@ -354,6 +354,43 @@ async def healthz() -> dict:
     return {"ok": True}
 
 
+@app.get("/api/version")
+async def get_version() -> dict:
+    """Version + git revision for footer display."""
+    import subprocess
+
+    version = "0.1.0"
+    revision = ""
+    # try pyproject
+    try:
+        import tomllib
+
+        with open("pyproject.toml", "rb") as f:
+            data = tomllib.load(f)
+            version = data.get("project", {}).get("version", version)
+    except Exception:
+        try:
+            import pathlib
+            txt = pathlib.Path("pyproject.toml").read_text()
+            for line in txt.splitlines():
+                if line.strip().startswith("version"):
+                    # version = "0.1.0"
+                    parts = line.split("=")
+                    if len(parts) == 2:
+                        version = parts[1].strip().strip('"').strip("'")
+        except Exception:
+            pass
+    # git revision
+    try:
+        revision = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=".", timeout=2).decode().strip()
+    except Exception:
+        try:
+            revision = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], timeout=2).decode().strip()
+        except Exception:
+            revision = "dev"
+    return {"version": version, "revision": revision}
+
+
 @app.get("/api/config")
 async def get_config() -> dict:
     return asdict(RT.config)
