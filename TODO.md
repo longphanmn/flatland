@@ -253,7 +253,7 @@ observable signal; `tune` = god laws that push it over the edge.
        disease, night+fog blindness), reusing the fixed-tick RNG pattern from
        test_disease.py / test_environment.py
 
-### Blocked on §H (food ecosystem) + §I (predation/clan war) — we unblocked two
+### Blocked on §H (food ecosystem) + §I (predation/clan war) — we unblocked four
 - [x] Predator–prey oscillation (Lotka–Volterra) — needs §H+§I · verify: predator/prey
        counts coexist and vary (test_synergies.py: test_predator_prey_oscillation,
        16 prey + 6 pred → 600 ticks, predation ≥5, both vary, not extinct) · tune:
@@ -279,9 +279,10 @@ observable signal; `tune` = god laws that push it over the edge.
 - [ ] Social order meets the food chain — needs §C+§I · verify: priests see the predator
        first and flee, women fall, low castes trapped by yielding · tune: sight_mult,
        yield_strength, fear_radius
-- [ ] Housing shortage = overcrowding = disease + war — needs §L+§D+§I · verify: pop
-       > total house capacity → exposure deaths climb, contagion spreads in packed
-       houses, clan claims turn into wars · tune: house_capacity, exposure_drain
+- [x] Housing shortage = overcrowding = disease + war — needs §L+§D+§I · verify: pop
+        > total house capacity → exposure deaths climb, contagion spreads in packed
+        houses, clan claims turn into wars · tune: house_capacity, exposure_drain
+        (`test_synergies.py:test_housing_shortage_is_overcrowding_crisis` 1 house×2 beds vs 5 houses×2 beds 10 packed rivals, rain+night exposure 0.45, 80 ticks)
 
 ## W. World generation  — ✅ implemented
 - [x] Population & houses scale with map area: `creature_density`,

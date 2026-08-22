@@ -5,7 +5,7 @@ import math
 import pytest
 
 from app.config import Config
-from app.entities import Creature
+from app.entities import Creature, House
 from app.simulation import Simulation
 
 
@@ -204,3 +204,76 @@ def test_flocking_is_double_edged():
     solo_infected = sum(1 for c in solo_s.world.creatures() if not c.is_predator and c.infected)
     # and at least some predation in both
     assert flock_infected >= solo_infected or len([e for e in flock_s.history if e.type == "predation"]) >= 1
+
+
+def test_housing_shortage_is_overcrowding_crisis():
+    """Housing shortage = overcrowding = disease + war: pop > beds → exposure + contagion + clan war."""
+    def make_world(shortage: bool) -> Simulation:
+        cfg = zeros(
+            seed=47, width=60, height=60,
+            day_length=8, season_length=200, food_count=2, plant_growth_rate=0.02,
+            energy_decay_per_tick=0.06, energy_from_food=10, house_capacity=2,
+            exposure_drain=0.45, sleep_enabled=True, shelter_enabled=True, house_claim_enabled=True,
+            disease_enabled=True, disease_rate=0.4, disease_radius=5.0, recovery_rate=0.0, disease_outbreak_rate=0.0,
+            war_enabled=True, attack_radius=2.0, attack_damage=100.0, relation_drift_rate=0.0,
+            rivalry_threshold=-20, alliance_threshold=50,
+            num_houses=1 if shortage else 5,
+            weather_enabled=False,
+        )
+        s = Simulation(cfg)
+        for eid in list(s.world.entities.keys()):
+            s.world.remove(eid)
+        s.clans.clear()
+        s._next_clan_id = 1
+        s.clans[1] = {"name": "Clan 1", "founder_id": 1, "born_tick": 0, "color": "#ffd166"}
+        s.clans[2] = {"name": "Clan 2", "founder_id": 2, "born_tick": 0, "color": "#06d6a0"}
+        s.relations[(1, 2)] = -60
+        s._relation_zones[(1, 2)] = -1
+        if shortage:
+            s.world.add(House(x=30, y=30, size=8, door_width=3, door_side="south", clan_id=1, clan_color="#ffd166"))
+            # all 10 packed at the single house → 8 overflow exposed, disease super-spreads, rivals forced together
+            for i in range(10):
+                clan = 1 if i < 5 else 2
+                c = s.world.add(Creature(x=30 + (i % 5)*1.1, y=30 + (i //5)*1.1, sides=4, energy=55, age=500, lifespan=6000, clan_id=clan, health=100))
+                if i==0:
+                    s.disease_id=1
+                    s._infect(c)
+        else:
+            # 5 houses spread to two villages: clan 1 at (12,12), clan 2 at (48,48) → no forced sharing, less war/disease cross
+            houses = [(12,12),(14,12),(12,14),(48,48),(50,48)]
+            for i, (hx, hy) in enumerate(houses):
+                cid = 1 if i < 3 else 2
+                color = "#ffd166" if cid==1 else "#06d6a0"
+                s.world.add(House(x=hx, y=hy, size=8, door_width=3, door_side="south", clan_id=cid, clan_color=color))
+            for i in range(10):
+                clan = 1 if i < 5 else 2
+                base_x, base_y = (12,12) if clan==1 else (48,48)
+                c = s.world.add(Creature(x=base_x + (i %5)*1.1, y=base_y + (i //5)*1.1, sides=4, energy=55, age=500, lifespan=6000, clan_id=clan, health=100))
+                if i==0:
+                    s.disease_id=1
+                    s._infect(c)
+        s.weather = "rain"
+        s.tick = 5
+        return s
+
+    shortage = make_world(True)
+    adequate = make_world(False)
+    for _ in range(80):
+        shortage.step()
+        adequate.step()
+    shortage_deaths = sum(shortage._death_counts.values())
+    adequate_deaths = sum(adequate._death_counts.values())
+    shortage_infected = sum(1 for c in shortage.world.creatures() if c.infected)
+    adequate_infected = sum(1 for c in adequate.world.creatures() if c.infected)
+    shortage_wars = len([e for e in shortage.history if e.type=="war"])
+    adequate_wars = len([e for e in adequate.history if e.type=="war"])
+    assert shortage_deaths >= adequate_deaths, f"shortage deaths {shortage_deaths} vs adequate {adequate_deaths}"
+    assert shortage_deaths >= 2 or shortage_infected > adequate_infected or shortage_wars > adequate_wars
+    crisis_signals = 0
+    if shortage_deaths > adequate_deaths:
+        crisis_signals += 1
+    if shortage_infected > adequate_infected:
+        crisis_signals += 1
+    if shortage_wars > adequate_wars:
+        crisis_signals += 1
+    assert crisis_signals >= 1, f"no crisis signal: deaths {shortage_deaths}/{adequate_deaths}, infected {shortage_infected}/{adequate_infected}, wars {shortage_wars}/{adequate_wars}"
