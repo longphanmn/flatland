@@ -58,6 +58,8 @@ class EntityState(BaseModel):
     door_width: Optional[float] = None
     door_offset: Optional[float] = None
     door_side: Optional[Literal["north", "east", "south", "west"]] = None
+    is_ruin: Optional[bool] = None
+    abandoned_ticks: Optional[int] = None
 
 
 class StateMessage(BaseModel):
@@ -86,7 +88,7 @@ class StateMessage(BaseModel):
 class HistoryEvent(BaseModel):
     type: Literal[
         "death", "birth", "promotion", "demotion", "outbreak", "recovery",
-        "bloom", "alliance", "rivalry", "predation", "war",
+        "bloom", "alliance", "rivalry", "predation", "war", "ruin", "settlement",
     ] = ("death")
     tick: int
     entity_id: int
@@ -183,6 +185,7 @@ class GodLaws(BaseModel):
     house_capacity: Optional[int] = Field(None, ge=1, le=64)
     house_claim_enabled: Optional[bool] = None
     rest_recovery_mult: Optional[float] = Field(None, ge=0, le=10)
+    house_decay_ticks: Optional[int] = Field(None, ge=100, le=100000)
 
     # Predation (§I)
     predation_enabled: Optional[bool] = None

@@ -127,6 +127,8 @@ class Simulation:
         return self.world.distance(ax, ay, bx, by)
 
     def _inside_house(self, c: Creature, h: House) -> bool:
+        if h.is_ruin:
+            return False
         return (
             abs(c.x - h.x) < h.size / 2 - 0.3 and abs(c.y - h.y) < h.size / 2 - 0.3
         )
@@ -287,7 +289,7 @@ class Simulation:
         if not self.config.house_claim_enabled:
             return
         houses = sorted(
-            [e for e in self.world.entities.values() if isinstance(e, House)],
+            [e for e in self.world.entities.values() if isinstance(e, House) and not e.is_ruin],
             key=lambda h: h.id,
         )
         if not houses:
@@ -309,11 +311,11 @@ class Simulation:
             h.clan_color = self.clans[cid]["color"]
 
     def _claim_house_for_clan(self, clan_id: int) -> None:
-        """Give a newly founded clan the first free house, if any."""
+        """Give a newly founded clan the first free house, if any — or found a new one."""
         if not self.config.house_claim_enabled:
             return
         houses = sorted(
-            [e for e in self.world.entities.values() if isinstance(e, House)],
+            [e for e in self.world.entities.values() if isinstance(e, House) and not e.is_ruin],
             key=lambda h: h.id,
         )
         for h in houses:
@@ -321,16 +323,117 @@ class Simulation:
                 h.clan_id = clan_id
                 h.clan_color = self.clans[clan_id]["color"]
                 return
+        # No free house: a new clan founds a new settlement (§L settlement economy)
+        # But respect explicit overrides: tests/scenarios that pin num_houses keep housing shortage
+        if self.config.shelter_enabled and self.config.num_houses < 0:
+            founder = None
+            for c in self.world.creatures():
+                if c.clan_id == clan_id:
+                    founder = c
+                    break
+            self._spawn_settlement_house(clan_id, near=founder)
 
     def _refresh_house_claims(self) -> None:
         """Sync house crests with the current law (enable/disable)."""
-        houses = [e for e in self.world.entities.values() if isinstance(e, House)]
+        houses = [e for e in self.world.entities.values() if isinstance(e, House) and not e.is_ruin]
         if not self.config.house_claim_enabled:
             for h in houses:  # type: ignore[union-attr]
                 h.clan_id = 0
                 h.clan_color = None
         else:
             self._assign_house_claims()
+
+    # ------------------------------------------------------- settlement economy
+    def _target_house_count(self) -> int:
+        """Houses scale with map area and with carrying capacity (§L settlement economy).
+
+        Base is area × house_density (W worldgen); then scaled by carrying_capacity
+        relative to the default 80 so that raising the soft cap raises the bed supply.
+        Keeps the historic housing shortage (≈60% beds vs cap) while letting god tune it.
+        """
+        cfg = self.config
+        area = cfg.width * cfg.height
+        base = area * cfg.house_density
+        # scale with carrying_capacity; default 80 → factor 1.0
+        factor = cfg.carrying_capacity / 80.0 if 80 else 1.0
+        target = round(base * factor)
+        # also ensure at least enough beds for ~60% of the carrying capacity
+        cap_based = round(cfg.carrying_capacity / max(1, cfg.house_capacity) * 0.6)
+        target = max(target, cap_based)
+        return max(1, target)
+
+    def _spawn_settlement_house(self, clan_id: int | None = None, near: Creature | None = None) -> House:
+        """Spawn a new house — near a clan founder if given, else random; claim it if clan_id."""
+        cfg = self.config
+        max_radius = max(
+            (c.radius for c in self.world.creatures()), default=DEFAULT_RADIUS
+        )
+        size = self.rng.uniform(cfg.house_min_size, cfg.house_max_size)
+        if near is not None:
+            # scatter near founder but keep inside world
+            x = (near.x + self.rng.uniform(-12, 12)) % cfg.width
+            y = (near.y + self.rng.uniform(-12, 12)) % cfg.height
+            # keep whole house inside clamp? we use normalize wrap path, so just clamp margin
+            x = max(size / 2, min(cfg.width - size / 2, x))
+            y = max(size / 2, min(cfg.height - size / 2, y))
+        else:
+            x, y = self._rand_house_pos(size)
+        door_width = min(size * 0.8, 2.0 * max_radius * cfg.door_clearance)
+        house = House(
+            x=x, y=y, size=size, door_width=door_width,
+            door_side=self.rng.choice(("north", "east", "south", "west")),
+        )
+        if clan_id is not None and self.config.house_claim_enabled:
+            house.clan_id = clan_id
+            house.clan_color = self.clans.get(clan_id, {}).get("color")
+        self.world.add(house)
+        self._emit(
+            HistoryEvent(
+                type="settlement", tick=self.tick + 1, entity_id=house.id,
+                x=round(house.x, 2), y=round(house.y, 2),
+                payload={"clan_id": clan_id, "size": round(size, 2)},
+            )
+        )
+        return house
+
+    def _update_settlements(self) -> None:
+        """Settlement economy tick: grow to meet demand, crumble abandoned houses (§L)."""
+        cfg = self.config
+        if not cfg.shelter_enabled:
+            return
+        # Respect explicit overrides: pinned scenarios (tests) keep exact housing
+        if cfg.num_houses >= 0:
+            return
+        # — growth: houses scale with carrying_capacity / density —
+        functional = [h for h in self.world.entities.values() if isinstance(h, House) and not h.is_ruin]
+        target = self._target_house_count()
+        # Spawn at most one per tick to keep determinism smooth (jitter already in target)
+        if len(functional) < target:
+            # avoid spawning every tick when far below target — one per tick is enough
+            self._spawn_settlement_house()
+
+        # — decay: abandoned houses crumble to ruins —
+        # Build living-clan set once
+        living_clans = {c.clan_id for c in self.world.creatures() if c.clan_id}
+        for h in list(functional):
+            assert isinstance(h, House)
+            # A house is abandoned if unclaimed, or its clan has no living members
+            is_abandoned = (h.clan_id == 0) or (h.clan_id not in living_clans)
+            if is_abandoned:
+                h.abandoned_ticks += 1
+            else:
+                h.abandoned_ticks = 0
+            if h.abandoned_ticks >= cfg.house_decay_ticks:
+                h.is_ruin = True
+                h.clan_id = 0
+                h.clan_color = None
+                self._emit(
+                    HistoryEvent(
+                        type="ruin", tick=self.tick + 1, entity_id=h.id,
+                        x=round(h.x, 2), y=round(h.y, 2),
+                        payload={"abandoned_ticks": h.abandoned_ticks},
+                    )
+                )
 
     def _house_for(self, c: Creature, houses: list[Entity]) -> House | None:
         """Preferred shelter: clan's claimed house if enabled, else nearest."""
@@ -445,7 +548,7 @@ class Simulation:
         self._update_weather()
         self._update_plants()
         self.world.rebuild_index()
-        houses = [e for e in self.world.entities.values() if e.kind == "house"]
+        houses = [e for e in self.world.entities.values() if e.kind == "house" and not e.is_ruin]  # type: ignore[union-attr]
         for creature in self.world.creatures():  # snapshot list; removals are safe
             self._update_creature(creature, houses)
         self._update_disease()
@@ -454,6 +557,7 @@ class Simulation:
         self._update_relations()
         self._enforce_food_law()
         self._update_corpses()
+        self._update_settlements()
         self.tick += 1
 
     # ---------------------------------------------------------------- society
@@ -1090,7 +1194,7 @@ class Simulation:
             desired = math.atan2(dy, dx)
             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
             c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
-        elif cfg.sleep_enabled and self._is_night(self._time_of_day()) and houses:
+        elif cfg.sleep_enabled and not c.is_predator and self._is_night(self._time_of_day()) and houses:
             home = self._house_for(c, houses)
             if home is None:
                 home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
@@ -1167,13 +1271,37 @@ class Simulation:
         c.x, c.y = w.normalize(nx, ny)
 
         # 4. House walls block movement except through the doorway.
+        # The doorway is too small for the Carnivore caste (§L refuge) — predators see a closed wall.
         mdx, mdy = w.delta(c.x, c.y, px, py)
         if math.hypot(mdx, mdy) <= step_len * 1.5:  # skip wrap teleports
             for h in houses:
                 assert isinstance(h, House)
-                if _path_crosses_wall(px, py, px + mdx, py + mdy, h):
+                crosses = (
+                    _path_crosses_wall(px, py, px + mdx, py + mdy, h, predator_blocked=c.is_predator)
+                    if c.is_predator
+                    else _path_crosses_wall(px, py, px + mdx, py + mdy, h)
+                )
+                if crosses:
                     c.x, c.y = w.normalize(px, py)
                     c.angle += math.pi + self.rng.uniform(-0.4, 0.4)
+                    break
+        # Predator refuge safety net: even if a predator spawns inside a house, push it out
+        if c.is_predator and houses:
+            for h in houses:
+                assert isinstance(h, House)
+                if self._inside_house(c, h):
+                    # push to doorway, then one step outside
+                    dx, dy = self._door_pos(h)
+                    # move predator just outside the door
+                    if h.door_side == "north":
+                        c.x, c.y = w.normalize(dx, h.y - h.size / 2 - c.radius - 0.2)
+                    elif h.door_side == "south":
+                        c.x, c.y = w.normalize(dx, h.y + h.size / 2 + c.radius + 0.2)
+                    elif h.door_side == "west":
+                        c.x, c.y = w.normalize(h.x - h.size / 2 - c.radius - 0.2, dy)
+                    else:
+                        c.x, c.y = w.normalize(h.x + h.size / 2 + c.radius + 0.2, dy)
+                    c.angle += math.pi
                     break
 
         # 4b. Rocks are solid: push out and face away.
@@ -1193,8 +1321,10 @@ class Simulation:
             c.energy = min(cfg.energy_max, c.energy + gain)
 
         # 5b. Rain and storms send the roofless under cover — beds permitting.
+        # Predators cannot shelter: the doorway is too small (§L refuge).
         if (
             cfg.shelter_enabled
+            and not c.is_predator
             and not c.indoors
             and houses
             and not self._is_night(tod)
@@ -1315,6 +1445,8 @@ class Simulation:
                 door_side=e.door_side,  # type: ignore[arg-type]
                 clan_id=e.clan_id or None,
                 clan_color=e.clan_color,
+                is_ruin=e.is_ruin or None,
+                abandoned_ticks=e.abandoned_ticks or None,
             )
         if isinstance(e, Food):
             return EntityState(**base, growth=round(e.growth, 3))
@@ -1362,12 +1494,28 @@ def _house_wall_segments(h: House) -> list[tuple[tuple[float, float], tuple[floa
     ]
 
 
+def _house_wall_segments_closed(h: House) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    """Four fully closed walls — the doorway sealed (predator refuge, §L)."""
+    half = h.size / 2
+    x0, y0 = h.x - half, h.y - half
+    x1, y1 = h.x + half, h.y + half
+    return [
+        ((x0, y0), (x1, y0)),
+        ((x0, y0), (x0, y1)),
+        ((x1, y0), (x1, y1)),
+        ((x0, y1), (x1, y1)),
+    ]
+
+
 def _path_crosses_wall(
-    px: float, py: float, qx: float, qy: float, h: House
+    px: float, py: float, qx: float, qy: float, h: House, predator_blocked: bool = False
 ) -> bool:
-    """True if the movement path p->q crosses a house wall (door is passable)."""
+    """True if the movement path p->q crosses a house wall (door is passable unless predator_blocked)."""
+    if h.is_ruin:
+        return False  # crumbled ruins don't block
     path = ((px, py), (qx, qy))
+    segments = _house_wall_segments_closed(h) if predator_blocked else _house_wall_segments(h)
     return any(
         segments_intersect(path[0], path[1], a, b)
-        for a, b in _house_wall_segments(h)
+        for a, b in segments
     )

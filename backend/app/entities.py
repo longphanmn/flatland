@@ -190,3 +190,5 @@ class House(Entity):
     door_offset: float = 0.0  # door centre offset along that wall
     clan_id: int = 0  # claimed by this clan (0 = unclaimed); set when §L enabled
     clan_color: str | None = None  # crest color of claiming clan
+    abandoned_ticks: int = 0  # how long this house has been without a living clan
+    is_ruin: bool = False  # crumbled — no shelter, visually distinct

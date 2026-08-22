@@ -239,6 +239,7 @@ LAW_FIELDS = (
     "house_capacity",
     "house_claim_enabled",
     "rest_recovery_mult",
+    "house_decay_ticks",
     "predation_enabled",
     "predator_ratio",
     "hunt_radius",

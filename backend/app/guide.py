@@ -175,7 +175,7 @@ HOW_IT_WORKS_MD = """
 **God model:** god sets *laws*, never touches individual creatures. Everything else emerges.
 
 ## The deterministic tick
-`s = Simulation(Config(seed))` → `s.step()` is fully deterministic (one `random.Random` per world). Same seed ⇒ same world. Tick loop (`simulation.py:335`) order: weather → plants → rebuild index → creatures → disease → reproduce → relations → food law → corpses → tick+=1. Snapshots are pushed over WebSocket `state` every tick.
+`s = Simulation(Config(seed))` → `s.step()` is fully deterministic (one `random.Random` per world). Same seed ⇒ same world. Tick loop (`simulation.py:539` `simulation.py:335`) order: weather → plants → rebuild index → creatures → disease → war → reproduce → relations → food law → corpses → settlements → tick+=1. Snapshots are pushed over WebSocket `state` every tick.
 
 ## Life cycle & stages (§A)
 Creature.age ticks + caste-based lifespan (Woman 4800 → Priest 9000). Stage by `age/lifespan`: infant <15%, juvenile <30%, adult <75%, else elder. Stage scales speed & sight (infant 0.6×, elder 0.85×) and fertility (elder ×0.5). Death causes: `starvation`, `old_age`, `euthanasia`, `disease`.
@@ -199,7 +199,7 @@ Founding generation seeds one clan per caste (`simulation.py:244`), children inh
 `Food` is a living plant `growth` 0.15→1.0 (`plant_growth_rate`), spreads `plant_spread_rate` within `SPREAD_RADIUS` 6.0 if below seasonal bounty `food_count×SEASON_FOOD_MULT`. Winter die-back removes youngest first. Death leaves `Corpse` (`corpse_ttl`, `corpse_energy`) edible like food; decay boosts nearby plants `NUTRIENT_BOOST×nutrient_cycle_rate` within `NUTRIENT_RADIUS`.
 
 ## Shelter (§L/N)
-Houses (`entities.py:179`) squares with doorway; walls block except door. Exposure `exposure_drain` outdoors in rain/storm or night unless `indoors`. `house_capacity` beds per house re-contested every tick in id order; overflow sleeps outside. `sleep_enabled` night → seek house (`_house_for` prefers own clan's settlement if `house_claim_enabled`), `sleeping` halves hunger `sleep_energy_mult` + health `+0.15×rest_recovery_mult`. Clan claim: each clan's settlement house shows crest (`House.clan_color`).
+Houses (`entities.py:184`) squares with doorway; walls block except door — doorway too small for Carnivore predators (§L refuge, `simulation.py:1178` `predator_blocked`) so houses are the only safe haven once predators hunt; any predator that spawns inside is ejected to the doorstep. Exposure `exposure_drain` outdoors in rain/storm or night unless `indoors`. `house_capacity` beds per house re-contested every tick in id order; overflow sleeps outside. `sleep_enabled` night → seek house (`_house_for` prefers own clan's settlement if `house_claim_enabled`; predators never seek shelter), `sleeping` halves hunger `sleep_energy_mult` + health `+0.15×rest_recovery_mult`. Clan claim: each clan's settlement house shows crest (`House.clan_color`). Settlement economy (§L): target houses `area×house_density×carrying/80` vs `0.6×carrying/house_capacity` (`simulation.py:356` `_target_house_count`), growth via `_spawn_settlement_house` (`simulation.py:373`) and `_update_settlements` (`simulation.py:390`) after corpses each tick; abandoned houses (unclaimed or clan extinct) idle `house_decay_ticks` (`config.py:113`) then crumble to `is_ruin` (`entities.py:192`) → `ruin` event, walls no longer block (`simulation.py:1507`); new clans found a new settlement if no free house (`simulation.py:311`); pinned `num_houses` (`simulation.py:423`) still wins for tests/scenarios.
 """
 
 CODEBASE_MAP_MD = """
@@ -233,13 +233,13 @@ DATA_MODEL_MD = """
 - `Creature` (`entities.py:95`): `id`, `x`, `y`, `angle`, `shape` polygon|line, `sides`, `caste`, `radius`, `age`, `lifespan`, `stage` infant|juvenile|adult|elder, `irregularity`, `health` 0–100, `infected`, `sex` male|female, `mother_id`/`father_id`, `clan_id`/`clan_color`, `sleeping`/`indoors`, `generation`, `born_tick`, `energy`, `status` hungry/starving, `meals`.
 - `Food` (`entities.py:158`): `x`, `y`, `growth` 0–1.
 - `Corpse` (`entities.py:170`): `x`, `y`, `ttl`, `energy`.
-- `House` (`entities.py:179`): `x`, `y`, `size`, `door_width`/`door_side`/`door_offset`, `clan_id`/`clan_color` (settlement).
+- `House` (`entities.py:184`): `x`, `y`, `size`, `door_width`/`door_side`/`door_offset`, `clan_id`/`clan_color` (settlement), `is_ruin`/`abandoned_ticks`; ruin after `house_decay_ticks` (`config.py:113`), `settlement`/`ruin` events.
 - Terrain: `fertile: [{x,y,r}]`, `rocks: [{x,y,r}]` in snapshot.
 
 ## Wire schemas (`protocol.py`)
 - `EntityState` (`protocol.py:27`): `id`, `kind` creature|food|house|corpse, `x`/`y`/`angle`, plus optional fields above.
 - `StateMessage` (`protocol.py:62`): `tick`, `seed`, `width`/`height`/`boundary`, `population`, `entities`, `creatures_alive`/`creatures_dead`/`dead_by_cause`, `infected_count`, `time_of_day`/`day`/`season`/`weather`, `terrain_fertile`/`terrain_rocks`, `relations`, `events`.
-- `HistoryEvent` (`protocol.py:85`): `type` death|birth|promotion|demotion|outbreak|recovery|bloom|alliance|rivalry, `tick`, `entity_id`, `caste`, `cause`, `x`/`y`, `payload` (parents/sides/generation/clan_id etc).
+- `HistoryEvent` (`protocol.py:86`): `type` death|birth|promotion|demotion|outbreak|recovery|bloom|alliance|rivalry|predation|war|ruin|settlement, `tick`, `entity_id`, `caste`, `cause`, `x`/`y`, `payload` (parents/sides/generation/clan_id etc).
 - `HelloMessage` (`protocol.py:99`): `seed`, `tick_rate`, `width`/`height`/`boundary`.
 - `ControlMessage` (`protocol.py:22`): `action` pause|resume|step|reset|set_speed + `value`.
 

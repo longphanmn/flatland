@@ -34,6 +34,12 @@ export interface EntityState {
   door_width?: number
   door_offset?: number
   door_side?: 'north' | 'east' | 'south' | 'west'
+  is_ruin?: boolean
+  abandoned_ticks?: number
+  growth?: number
+  sex?: 'male' | 'female'
+  mother_id?: number
+  father_id?: number
 }
 
 export interface StateMessage {
@@ -61,7 +67,7 @@ export interface StateMessage {
 export interface HistoryEvent {
   /** Present only on events fetched from GET /api/history; absent on live-streamed ones. */
   id?: number
-  type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war'
+  type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war' | 'ruin' | 'settlement'
   tick: number
   entity_id: number
   caste?: string | null
@@ -211,6 +217,7 @@ export interface GodLaws {
   house_capacity?: number
   house_claim_enabled?: boolean
   rest_recovery_mult?: number
+  house_decay_ticks?: number
 
   door_clearance?: number
   house_min_size?: number

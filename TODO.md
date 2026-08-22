@@ -203,7 +203,7 @@ always matches the running code). No Vite/frontend dependency.
        route is mentioned in the docs, so the guide can't silently go stale; roadmap
        section links back to TODO.md (`guide.py:330`)
 
-## L. Shelter — make houses matter  [P1] — ✅ backend delivered
+## L. Shelter — make houses matter  [P1] — ✅ implemented
 Houses today are ~5 empty squares: walls block movement and creatures nap inside
 after dark (§N night rest). Shelter should be scarce, contested and life-saving.
 - [x] [P1] Exposure — rain/storm and winter nights drain `exposure_drain` energy on the
@@ -220,13 +220,15 @@ after dark (§N night rest). Shelter should be scarce, contested and life-saving
 - [x] [P2] House smart — doorway targeting (`_door_pos` `simulation.py:345`, sleep
        steering `simulation.py:993` within 12u), wall-bounce → door seeking
        (`simulation.py:1072`), starving skip prevents house-wall starvation
-- [ ] [P2] Predator refuge — the doorway is too small for the Carnivore caste (§I);
-       a house is the only safe haven once predators hunt.
-- [ ] [P2] Settlement economy — houses scale with population (house_density tied to
-       carrying capacity); abandoned houses crumble to ruins; new clans found new ones.
+- [x] [P2] Predator refuge — the doorway is too small for the Carnivore caste (§I);
+        a house is the only safe haven once predators hunt (`simulation.py:1178`
+        predator_blocked doorway, `simulation.py:1093` prey indoors safe from
+        `hunt_radius`, `simulation.py:939` predators never sleep, ejected if spawned inside).
+- [x] [P2] Settlement economy — houses scale with population (house_density tied to
+        carrying capacity via `_target_house_count` `simulation.py:356`; `area×house_density×carrying/80` vs `0.6×carrying/house_capacity`); abandoned houses crumble to ruins after `house_decay_ticks` (`simulation.py:399`, `config.py:113`, `protocol.py:184` → `ruin` event, `House.is_ruin` `entities.py:192`, walls no longer block `simulation.py:1507`); new clans found new settlements when no free house (`_claim_house_for_clan` `simulation.py:311` → `_spawn_settlement_house` `simulation.py:373` → `settlement` event; pinned `num_houses` `simulation.py:390` still wins for tests/scenarios).
 - [x] GodLaws: shelter_enabled, exposure_drain, house_capacity, house_claim_enabled,
-       rest_recovery_mult (Shelter group) — defaults tuned for 30-day survival
-       (`config.py:108`, food 48, decay 0.05, perceive 18, mate 10/30, birth 0.35, adult 200)
+        rest_recovery_mult, house_decay_ticks (Shelter group) — defaults tuned for 30-day survival
+        (`config.py:108`, food 48, decay 0.05, perceive 18, mate 10/30, birth 0.35, adult 200)
 
 ## Cross-system synergies (emergent depth)
 Not features — acceptance criteria. Tick only after the behaviour is observable in a
@@ -308,3 +310,48 @@ observable signal; `tune` = god laws that push it over the edge.
 - [x] [P2] Snapshot album — 📷 freezes the full state into the DB
       `snapshots` table; Album lists them and clicking one re-renders that
       frozen moment on the canvas (banner to return to the living world)
+
+## O. Ecosystem depth — biodiversity & food web  [P2]
+Today every plant is one green sprite (`Food.growth`) and the only animal is the
+Predator. Add variety so niches, seasons and diets can emerge.
+- [ ] [P2] Plant species — `Food.variant` ∈ {grass, berry, mushroom, poisonous}:
+      grass common/low-energy; berries high-energy but seasonal; mushrooms sprout
+      on corpses/rocks (a decomposer tier); poisonous plants mutate in and sicken
+      whoever eats them. Each variant: color, growth rate, energy yield, season.
+- [ ] [P2] Fruit & seasonality — berry bushes fruit in one season (autumn burst);
+      grass is always available; spring/summer shift which plants dominate the land.
+- [ ] [P2] Wild herbivore beasts — a non-caste middle tier that grazes plants and is
+      hunted by predators, competing with the castes for food → a real
+      plants → herbivores → predators Lotka–Volterra chain.
+- [ ] [P2] Diet & preference — `Creature.diet` (herbivore/omnivore/carnivore) steers
+      which food a creature perceives and eats; higher castes prefer richer food,
+      predators prefer live prey over plants.
+- [ ] [P2] Food quality — variants yield different energy/health (meat heals, poison
+      harms); scavenging corpses vs grazing plants reward different creatures.
+- [ ] [P2] Trophic HUD — plant / herbivore / predator counts chart (the §H ecological
+      balance made watchable).
+- [ ] GodLaws: plant_variants_enabled, poison_rate, beast_ratio, diet_strictness
+      (new "Ecosystem" law group)
+
+## P. Clan depth — totems, territory & war  [P2]
+Clans have identity (crest ring) and a first taste of war (§I) but no totem, no land
+beyond one house, no leaders. Deepen the social fabric.
+- [ ] [P2] Totem — each clan picks a totem at founding with a subtle buff: Wolf
+      (hunt), Tree (harvest/growth), Shield (defense), Eye (sight); drawn as a totem
+      pole beside the clan's house; buff applied to its members.
+- [ ] [P2] Procedural clan names — "Ash Wolves", "Clan of the Long Shadow" instead of
+      "Clan N" (seeded adjective + noun table).
+- [ ] [P1] Territory — a clan claims a zone (radius around its house) with a painted
+      border; members prefer their own territory; foreign trespass slowly sours
+      relations; rivals contest borders (ties into §I war).
+- [ ] [P2] Leadership & roles — clan leader (founder, then succession on death),
+      champion warrior, shaman; a leader's death emits a `succession` event.
+- [ ] [P2] War refinement — skirmishes need not be lethal (`attack_damage` < 100 →
+      wounded + fleeing, not always death); champions duel; raids on rival houses;
+      wars can end (peace treaty once scores recover).
+- [ ] [P2] Clan specialization — over generations clans drift toward warrior / farmer
+      / scavenger roles from environment + totem; reflected in behaviour.
+- [ ] [P2] Clan stats & history — leader lineage, war record, territory, population;
+      a clan panel in the inspector/HUD.
+- [ ] GodLaws: totems_enabled, territory_radius, trespass_decay, war_lethality,
+      succession_enabled (new "Clan" law group)

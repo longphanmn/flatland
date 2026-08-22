@@ -110,6 +110,7 @@ class Config:
     house_capacity: int = 8  # beds per house per tick; overflow sleeps outside (was 4)
     house_claim_enabled: bool = True  # clans claim houses as settlements
     rest_recovery_mult: float = 2.0  # indoor sleeping health regen multiplier
+    house_decay_ticks: int = 2400  # abandoned house stands this many ticks before crumbling to ruin
 
     # Terrain (-1 => auto-scale from area)
     fertile_patches: int = -1  # green grounds where food prefers to grow
