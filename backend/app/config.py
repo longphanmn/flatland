@@ -54,6 +54,7 @@ class Config:
 
     # Totem & clan depth (§P)
     totems_enabled: bool = True  # §P: each clan bears a totem (Wolf/Tree/Shield/Eye) with subtle buff
+    succession_enabled: bool = True  # §P: leader succession on death emits succession event
 
     # Corpses & scavenging
     corpses_enabled: bool = True

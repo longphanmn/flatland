@@ -92,7 +92,7 @@ class StateMessage(BaseModel):
 class HistoryEvent(BaseModel):
     type: Literal[
         "death", "birth", "promotion", "demotion", "outbreak", "recovery",
-        "bloom", "alliance", "rivalry", "predation", "war", "ruin", "settlement",
+        "bloom", "alliance", "rivalry", "predation", "war", "ruin", "settlement", "succession",
     ] = ("death")
     tick: int
     entity_id: int
@@ -133,6 +133,7 @@ class GodLaws(BaseModel):
     territory_radius: Optional[float] = Field(None, ge=1, le=50)
     trespass_decay: Optional[float] = Field(None, ge=0, le=5)
     totems_enabled: Optional[bool] = None
+    succession_enabled: Optional[bool] = None
 
     energy_decay_per_tick: Optional[float] = Field(None, ge=0, le=2)
     energy_from_food: Optional[float] = Field(None, ge=0, le=1000)

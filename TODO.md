@@ -360,8 +360,9 @@ beyond one house, no leaders. Deepen the social fabric.
       `simulation.py:1410` territory steering `0.35×steer` when outside radius,
       `simulation.py:793` `_update_territory` probabilistic `trespass_decay` → `_bump_relation` -1,
       `protocol.py:127` GodLaws, `frontend/CanvasRenderer.tsx:514` faint clan-color circles + dashed border).
-- [ ] [P2] Leadership & roles — clan leader (founder, then succession on death),
-      champion warrior, shaman; a leader's death emits a `succession` event.
+- [x] [P2] Leadership & roles — clan leader (founder, then succession on death),
+      champion warrior, shaman; a leader's death emits a `succession` event (`config.py:54` `succession_enabled`,
+      `simulation.py:323` `clan.leader_id` founder, `simulation.py:1225` `_kill` succession → oldest living member `payload clan_id/prev_leader/new_leader`, `protocol.py:129` `succession` event).
 - [ ] [P2] War refinement — skirmishes need not be lethal (`attack_damage` < 100 →
       wounded + fleeing, not always death); champions duel; raids on rival houses;
       wars can end (peace treaty once scores recover).
@@ -369,4 +370,4 @@ beyond one house, no leaders. Deepen the social fabric.
       / scavenger roles from environment + totem; reflected in behaviour.
 - [ ] [P2] Clan stats & history — leader lineage, war record, territory, population;
       a clan panel in the inspector/HUD.
-- [x] GodLaws: territory_enabled, territory_radius, trespass_decay, totems_enabled (Territory/Clan `config.py:49` `protocol.py:127` `main.py:191` `GodPanel.tsx:15`); war_lethality, succession_enabled still [P2] pending (new "Clan" law group)
+- [x] GodLaws: territory_enabled, territory_radius, trespass_decay, totems_enabled, succession_enabled (Territory/Clan `config.py:49` `protocol.py:127` `main.py:191` `GodPanel.tsx:15`); war_lethality still [P2] pending (new "Clan" law group)

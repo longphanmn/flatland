@@ -191,6 +191,7 @@ LAW_FIELDS = (
     "territory_radius",
     "trespass_decay",
     "totems_enabled",
+    "succession_enabled",
     "energy_max",
     "energy_decay_per_tick",
     "energy_from_food",

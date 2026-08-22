@@ -339,6 +339,7 @@ class Simulation:
             "born_tick": self.tick,
             "color": CLAN_COLORS[(cid - 1) % len(CLAN_COLORS)],
             "totem": totem,
+            "leader_id": founder.id,
         }
         if self.config.house_claim_enabled:
             self._claim_house_for_clan(cid)
@@ -1244,6 +1245,27 @@ class Simulation:
         self._events_this_tick.append(event)
         if self.on_event is not None:
             self.on_event(event)
+        # Leadership succession (§P)
+        if c.clan_id and self.config.succession_enabled:
+            clan = self.clans.get(c.clan_id)
+            if clan and clan.get("leader_id") == c.id:
+                candidates = [cc for cc in self.world.creatures() if cc.clan_id == c.clan_id]
+                if candidates:
+                    successor = sorted(candidates, key=lambda cc: (-cc.age, cc.id))[0]
+                    clan["leader_id"] = successor.id
+                    self._emit(
+                        HistoryEvent(
+                            type="succession",
+                            tick=self.tick + 1,
+                            entity_id=successor.id,
+                            caste=successor.caste,
+                            x=round(successor.x, 2),
+                            y=round(successor.y, 2),
+                            payload={"clan_id": c.clan_id, "prev_leader": c.id, "new_leader": successor.id, "clan_name": clan.get("name")},
+                        )
+                    )
+                else:
+                    clan["leader_id"] = None
 
     def _update_creature(self, c: Creature, houses: list[Entity]) -> None:
         cfg, w = self.config, self.world

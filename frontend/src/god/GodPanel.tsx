@@ -310,18 +310,32 @@ export default function GodPanel({ open, onClose }: Props) {
                 </label>
               )}
               {group === 'Clan' && (
-                <label className="god-row">
-                  <span title="each clan bears a totem (Wolf/Tree/Shield/Eye) granting a subtle buff; disabling makes all clans plain">Totems</span>
-                  <select
-                    value={String(laws.totems_enabled ?? true)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, totems_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
+                <>
+                  <label className="god-row">
+                    <span title="each clan bears a totem (Wolf/Tree/Shield/Eye) granting a subtle buff; disabling makes all clans plain">Totems</span>
+                    <select
+                      value={String(laws.totems_enabled ?? true)}
+                      onChange={(e) =>
+                        setLaws((l) => ({ ...l, totems_enabled: e.target.value === 'true' }))
+                      }
+                    >
+                      <option value="true">yes</option>
+                      <option value="false">no</option>
+                    </select>
+                  </label>
+                  <label className="god-row">
+                    <span title="leader succession on death emits succession event; disabling keeps founder as eternal leader">Succession</span>
+                    <select
+                      value={String(laws.succession_enabled ?? true)}
+                      onChange={(e) =>
+                        setLaws((l) => ({ ...l, succession_enabled: e.target.value === 'true' }))
+                      }
+                    >
+                      <option value="true">yes</option>
+                      <option value="false">no</option>
+                    </select>
+                  </label>
+                </>
               )}
               {group === 'Ecosystem' && (
                 <label className="god-row">
