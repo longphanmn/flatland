@@ -20,6 +20,7 @@ export interface EntityState {
   age?: number
   lifespan?: number
   stage?: 'infant' | 'juvenile' | 'adult' | 'elder'
+  irregularity?: number
   generation?: number
   born_tick?: number
   door_width?: number
@@ -43,7 +44,7 @@ export interface StateMessage {
 }
 
 export interface HistoryEvent {
-  type: 'death' | 'birth' | 'promotion'
+  type: 'death' | 'birth' | 'promotion' | 'demotion'
   tick: number
   entity_id: number
   caste?: string | null
@@ -153,6 +154,7 @@ export interface GodLaws {
   reproduction_cooldown?: number
   carrying_capacity?: number
   max_population?: number
+  euthanasia_threshold?: number
 
   door_clearance?: number
   house_min_size?: number

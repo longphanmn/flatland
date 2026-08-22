@@ -16,6 +16,9 @@ starvation when deprived of food too long.
   cause; the god law `Lifespan ×` scales all lifespans.
 - **Sight Recognition:** higher castes perceive farther (priests 1.35×, women
   0.8× the base sight radius) — Flatland's class hierarchy as natural law.
+- **Irregularity:** mutation may deform a child (scored 0.3–1.0). At adulthood
+  the world judges it: far from regular → painlessly consumed (`euthanasia`
+  death); slightly irregular → demoted to the lowest regular order (Soldier).
 - **Reproduction (Nature's Law):** adult polygons and women that meet (within
   `mate_radius`, well-fed) may beget children. Sons inherit one more side than
   their father (Square→Pentagon→…→Circle); isosceles sons instead creep +0.5°

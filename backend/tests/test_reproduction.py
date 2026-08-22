@@ -148,6 +148,51 @@ def test_births_disabled_by_law():
     assert not [c for c in s.world.creatures() if c.generation == 1]
 
 
+def test_mutation_scores_irregularity():
+    s = Simulation(empty_cfg(sex_ratio=1.0, mutation_rate=1.0))
+    pair(s, dict(sides=4), {})
+    s.step()
+    child = next(c for c in s.world.creatures() if c.generation == 1)
+    assert 0.3 <= child.irregularity <= 1.0
+
+
+def test_regular_children_are_never_judged():
+    s = Simulation(empty_cfg(sex_ratio=1.0, adult_age=5.0))
+    pair(s, dict(sides=4), {})
+    for _ in range(8):
+        s.step()
+    for c in s.world.creatures():
+        assert c.irregularity == 0.0
+        assert c.caste != "Soldier" or c.generation == 0
+    assert not [e for e in s.history if e.type in ("demotion", "death")]
+
+
+def test_irregular_child_demoted_at_maturity():
+    s = Simulation(empty_cfg(adult_age=10.0, euthanasia_threshold=0.7))
+    child = s.world.add(
+        Creature(x=25.0, y=25.0, sides=6, irregularity=0.4, energy=100.0)
+    )
+    for _ in range(12):
+        s.step()
+    assert child.id in s.world.entities  # spared
+    assert child.sides == 3 and child.caste == "Soldier"  # lowest regular order
+    demos = [e for e in s.history if e.type == "demotion"]
+    assert len(demos) == 1 and demos[0].entity_id == child.id
+
+
+def test_grossly_irregular_child_consumed_at_maturity():
+    s = Simulation(empty_cfg(adult_age=10.0, euthanasia_threshold=0.7))
+    child = s.world.add(
+        Creature(x=25.0, y=25.0, sides=6, irregularity=0.9, energy=100.0)
+    )
+    for _ in range(12):
+        s.step()
+    assert child.id not in s.world.entities
+    deaths = [e for e in s.history if e.type == "death"]
+    assert len(deaths) == 1 and deaths[0].cause == "euthanasia"
+    assert s._death_counts.get("euthanasia") == 1
+
+
 def test_isosceles_promotion_to_artisan():
     s = Simulation(empty_cfg(sex_ratio=1.0, mutation_rate=0.0))
     father = s.world.add(

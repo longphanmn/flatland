@@ -179,6 +179,7 @@ LAW_FIELDS = (
     "reproduction_cooldown",
     "carrying_capacity",
     "max_population",
+    "euthanasia_threshold",
     "door_clearance",
     "house_min_size",
     "house_max_size",

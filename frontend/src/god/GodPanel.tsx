@@ -38,6 +38,7 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'birth_rate', label: 'Birth rate', min: 0, max: 1, step: 0.05, group: 'Reproduction' },
   { key: 'sex_ratio', label: 'Son probability', min: 0, max: 1, step: 0.05, group: 'Reproduction' },
   { key: 'mutation_rate', label: 'Mutation rate', min: 0, max: 1, step: 0.01, group: 'Reproduction' },
+  { key: 'euthanasia_threshold', label: 'Euthanasia ≥', min: 0.3, max: 1, step: 0.05, group: 'Reproduction' },
   { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction' },
   { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction' },
   { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction' },
@@ -70,6 +71,7 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   birth_rate: 'chance per eligible pair per tick, before fertility',
   sex_ratio: 'probability a child is a son (polygons ascend; daughters are lines)',
   mutation_rate: 'chance a son’s side count deviates ±1 from inheritance',
+  euthanasia_threshold: 'irregular children at/above this are consumed at adulthood, below it demoted',
   carrying_capacity: 'above this population, fertility fades gradually',
 }
 

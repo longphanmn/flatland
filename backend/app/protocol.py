@@ -40,6 +40,7 @@ class EntityState(BaseModel):
     age: Optional[int] = None
     lifespan: Optional[float] = None
     stage: Optional[Literal["infant", "juvenile", "adult", "elder"]] = None
+    irregularity: Optional[float] = None
     generation: Optional[int] = None
     born_tick: Optional[int] = None
     door_width: Optional[float] = None
@@ -63,7 +64,7 @@ class StateMessage(BaseModel):
 
 
 class HistoryEvent(BaseModel):
-    type: Literal["death", "birth", "promotion"] = "death"
+    type: Literal["death", "birth", "promotion", "demotion"] = "death"
     tick: int
     entity_id: int
     caste: Optional[str] = None
@@ -114,6 +115,7 @@ class GodLaws(BaseModel):
     reproduction_cooldown: Optional[int] = Field(None, ge=0, le=100000)
     carrying_capacity: Optional[int] = Field(None, ge=2, le=2000)
     max_population: Optional[int] = Field(None, ge=2, le=5000)
+    euthanasia_threshold: Optional[float] = Field(None, ge=0, le=1)
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
     house_min_size: Optional[float] = Field(None, ge=3, le=60)
     house_max_size: Optional[float] = Field(None, ge=3, le=80)

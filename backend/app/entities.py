@@ -98,6 +98,8 @@ class Creature(Entity):
     mother_id: int = 0
     father_id: int = 0
     repro_cooldown: int = 0
+    irregularity: float = 0.0  # 0 = regular; mutation may deform a child
+    matured: bool = False  # set once the world judges an irregular at adulthood
     ticks_since_meal: int = 0
     meals: int = 0
     status: str = ""  # "" | "hungry" | "starving"

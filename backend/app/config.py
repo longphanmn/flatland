@@ -69,6 +69,7 @@ class Config:
     reproduction_cooldown: int = 300  # ticks both parents wait after a birth
     carrying_capacity: int = 60  # soft cap: fertility fades above it
     max_population: int = 120  # hard cap: no births beyond it
+    euthanasia_threshold: float = 0.7  # irregularity at/below -> demotion, above -> consumed
 
     # Houses
     house_min_size: float = 6.0

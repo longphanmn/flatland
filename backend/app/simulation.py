@@ -13,6 +13,7 @@ from .entities import (
     Entity,
     Food,
     House,
+    RADIUS_BY_CASTE,
     caste_name,
     traits_for,
 )
@@ -241,10 +242,13 @@ class Simulation:
                 # Law of Nature: a son has one more side than his father.
                 sides = min(father.sides + 1, cfg.max_sides)
                 iso = 60.0
+            irregularity = 0.0
             if self.rng.random() < cfg.mutation_rate:
+                # A deformed child: sides deviate AND the irregularity is scored.
                 sides = min(cfg.max_sides, max(3, sides + self.rng.choice((-1, 1))))
                 if sides != 3:
                     promoted = False
+                irregularity = round(self.rng.uniform(0.3, 1.0), 3)
             caste = caste_name(sides, "polygon", iso)
             child = Creature(
                 shape="polygon", sides=sides, iso_angle=iso,
@@ -252,6 +256,7 @@ class Simulation:
                 energy=cfg.energy_start, generation=gen, born_tick=tick,
                 mother_id=mother.id, father_id=father.id,
                 lifespan=traits_for(caste).lifespan * cfg.lifespan_mult,
+                irregularity=irregularity,
             )
         else:
             child = Creature(
@@ -318,6 +323,33 @@ class Simulation:
         c.age += 1
         if c.repro_cooldown > 0:
             c.repro_cooldown -= 1
+
+        # At adulthood the world judges the irregular: consumed if far from
+        # regular, otherwise demoted to the lowest of the regular orders.
+        if not c.matured and c.irregularity > 0 and c.age >= cfg.adult_age:
+            c.matured = True
+            if c.irregularity >= cfg.euthanasia_threshold:
+                self._kill(c, "euthanasia")
+                return
+            c.sides = 3
+            c.iso_angle = min(c.iso_angle, 59.5)
+            c.caste = caste_name(c.sides, "polygon", c.iso_angle)
+            traits = traits_for(c.caste)
+            c.speed = traits.speed
+            c.radius = RADIUS_BY_CASTE.get(c.caste, DEFAULT_RADIUS)
+            event = HistoryEvent(
+                type="demotion",
+                tick=self.tick + 1,
+                entity_id=c.id,
+                caste=c.caste,
+                x=round(c.x, 2),
+                y=round(c.y, 2),
+                payload={"irregularity": c.irregularity},
+            )
+            self.history.append(event)
+            self._events_this_tick.append(event)
+            if self.on_event is not None:
+                self.on_event(event)
 
         # Hunger and life stage drive perception range and urgency; the
         # caste's Sight Recognition (aided by Fog) sets the base reach.
@@ -449,6 +481,7 @@ class Simulation:
                 age=e.age,
                 lifespan=round(e.lifespan, 1),
                 stage=e.stage,  # type: ignore[arg-type]
+                irregularity=e.irregularity,
                 generation=e.generation,
                 born_tick=e.born_tick,
             )

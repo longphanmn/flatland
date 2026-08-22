@@ -186,6 +186,14 @@ export default function App() {
                     </li>
                   )
                 }
+                if (ev.type === 'demotion') {
+                  return (
+                    <li key={key} className="ev-demote">
+                      <b>{ev.caste}</b> #{ev.entity_id} judged irregular and demoted
+                      at tick {ev.tick}
+                    </li>
+                  )
+                }
                 return (
                   <li key={key}>
                     <b>{ev.caste}</b> #{ev.entity_id} died of {ev.cause} at tick{' '}

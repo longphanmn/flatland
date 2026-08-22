@@ -59,9 +59,10 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
       creature outline tinted by clan color; DB `clans` table + `clan` on
       events; god laws: `clans_enabled`, `max_clans`; future: rivalries,
       alliances, clan-level famine stats
-- [ ] [P1] Irregularity — mutation may mark child irregular (deviation value);
-      below tolerance → demoted to lowest civil-servant caste;
-      above `euthanasia_threshold` → killed at maturity (cause `euthanasia`)
+- [x] [P1] Irregularity — mutated children score `irregularity` (0.3–1.0);
+      at adulthood the world judges them: ≥ `euthanasia_threshold` → consumed
+      (death cause `euthanasia`), below → demoted to Soldier (lowest regular
+      order, `demotion` event); god law `Euthanasia ≥` in God panel
 - [x] [P0] Caste traits table — `CASTE_TRAITS` per caste: lifespan, speed,
       Sight Recognition (`sight_mult` applied to perception), fertility
       (reserved for §B); women see least, priests see farthest and are
