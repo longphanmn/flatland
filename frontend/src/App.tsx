@@ -398,22 +398,6 @@ export default function App() {
             </option>
           ))}
         </select>
-        <span className="spark-wrap" title="alive creatures, recent ticks">
-          <svg viewBox="0 0 100 22" className="spark">
-            {aliveHist.length > 1 && (
-              <polyline
-                points={aliveHist
-                  .map(
-                    (v, i) =>
-                      `${(i / (aliveHist.length - 1)) * 100},${
-                        21 - ((v - Math.min(...aliveHist)) / (Math.max(...aliveHist, 1) - Math.min(...aliveHist) || 1)) * 20
-                      }`,
-                  )
-                  .join(' ')}
-              />
-            )}
-          </svg>
-        </span>
       </footer>
 
       <p className="key-hints">space pause · S step · R reset · F fit · +/− zoom</p>
@@ -442,48 +426,71 @@ export default function App() {
       )}
 
       {chronicleOpen && (
-        <aside className="chronicle">
-          <h3 className="chronicle-title" title="Live population — creatures (colored) + objects (Food/House) · history below. Creatures also in Caste graph.">
-            Chronicle
-            {(creatureEntries.length > 0 || objectEntries.length > 0) && (
-              <span className="chronicle-pop">
-                {' '}
-                —{' '}
-                {creatureEntries.map(([k, v], i) => (
-                  <span key={k} className="pop-chip" title={`${k}: ${v} alive — see Caste graph for trend`}>
-                    <span className="dot-inline" style={{ background: CASTE_COLORS[k] ?? '#8b949e' }} />
-                    {k} <b>{v}</b>
-                    {(i < creatureEntries.length - 1 || objectEntries.length > 0) && ' · '}
-                  </span>
-                ))}
-                {objectEntries.map(([k, v], i) => {
-                  const color = k === 'Food' ? '#3fb950' : k === 'House' ? '#8b949e' : k === 'Corpse' ? '#6e7681' : '#8b949e'
-                  return (
-                    <span key={k} className="pop-chip" title={`${k}: ${v} objects — Food are plants (growth variant), House are shelters, Corpse are remains`}>
-                      <span className="dot-inline" style={{ background: color }} />
+        <div className="right-stack">
+          <aside className="info-panel">
+            <h3 className="chronicle-title" title="Live population — creatures (colored) + objects (Food/House) · history below. Creatures also in Caste graph.">
+              Overview
+              {(creatureEntries.length > 0 || objectEntries.length > 0) && (
+                <span className="chronicle-pop">
+                  {' '}
+                  —{' '}
+                  {creatureEntries.map(([k, v], i) => (
+                    <span key={k} className="pop-chip" title={`${k}: ${v} alive — see Caste graph for trend`}>
+                      <span className="dot-inline" style={{ background: CASTE_COLORS[k] ?? '#8b949e' }} />
                       {k} <b>{v}</b>
-                      {i < objectEntries.length - 1 && ' · '}
+                      {(i < creatureEntries.length - 1 || objectEntries.length > 0) && ' · '}
                     </span>
-                  )
-                })}
+                  ))}
+                  {objectEntries.map(([k, v], i) => {
+                    const color = k === 'Food' ? '#3fb950' : k === 'House' ? '#8b949e' : k === 'Corpse' ? '#6e7681' : '#8b949e'
+                    return (
+                      <span key={k} className="pop-chip" title={`${k}: ${v} objects — Food are plants (growth variant), House are shelters, Corpse are remains`}>
+                        <span className="dot-inline" style={{ background: color }} />
+                        {k} <b>{v}</b>
+                        {i < objectEntries.length - 1 && ' · '}
+                      </span>
+                    )
+                  })}
+                </span>
+              )}
+            </h3>
+            <div className="info-spark" title="alive creatures, recent ticks (was at bottom left, now in info box)">
+              <div style={{ fontSize: '11px', color: '#8b949e', marginBottom: 2 }}>Alive — recent ticks</div>
+              <span className="spark-wrap" title="alive creatures, recent ticks">
+                <svg viewBox="0 0 100 22" className="spark">
+                  {aliveHist.length > 1 && (
+                    <polyline
+                      points={aliveHist
+                        .map(
+                          (v, i) =>
+                            `${(i / (aliveHist.length - 1)) * 100},${21 - ((v - Math.min(...aliveHist)) / (Math.max(...aliveHist, 1) - Math.min(...aliveHist) || 1)) * 20}`,
+                        )
+                        .join(' ')}
+                    />
+                  )}
+                </svg>
               </span>
+            </div>
+            <CasteChart history={popHist} />
+            <h4
+              style={{ margin: '10px 0 4px', fontSize: '0.85em', opacity: 0.8 }}
+              title="Trophic pyramid: stacked history of Food (plants, variant colors) → Herbivore (wild grazers, beast_ratio) → Predator (carnivores). Shows Lotka-Volterra oscillation: plants feed herbivores, herbivores feed predators. Spikes mean blooms or hunts."
+            >
+              Trophic pyramid — Food · Herbivore · Predator{' '}
+              <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span>
+            </h4>
+            <TrophicChart history={popHist} />
+            <ClanPanel />
+          </aside>
+          <aside className="chronicle">
+            <h3 className="chronicle-title" title="Event history — births, deaths, wars, plagues. Newest first.">
+              Chronicle — History
+            </h3>
+            {archiveMode && selectedRunId !== null && (
+              <p className="archive-banner">
+                viewing archive of world #{selectedRunId} — live feed paused
+              </p>
             )}
-          </h3>
-          {archiveMode && selectedRunId !== null && (
-            <p className="archive-banner">
-              viewing archive of world #{selectedRunId} — live feed paused
-            </p>
-          )}
-          <CasteChart history={popHist} />
-          <h4
-            style={{ margin: '10px 0 4px', fontSize: '0.85em', opacity: 0.8 }}
-            title="Trophic pyramid: stacked history of Food (plants, variant colors) → Herbivore (wild grazers, beast_ratio) → Predator (carnivores). Shows Lotka-Volterra oscillation: plants feed herbivores, herbivores feed predators. Spikes mean blooms or hunts."
-          >
-            Trophic pyramid — Food · Herbivore · Predator{' '}
-            <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span>
-          </h4>
-          <TrophicChart history={popHist} />
-          <ClanPanel />
           {!archiveMode && oldestLoadedRef.current !== null && (
             <button
               className="chron-btn"
@@ -577,6 +584,7 @@ export default function App() {
             </ul>
           )}
         </aside>
+        </div>
       )}
 
       {selectedId !== null && (
