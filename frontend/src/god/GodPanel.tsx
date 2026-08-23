@@ -20,7 +20,7 @@ interface LawSpec {
 
 const NUMBER_LAWS: LawSpec[] = [
   // Food & Energy — the economy of survival
-  { key: 'food_count', label: 'Food abundance', min: 0, max: 300, step: 1, group: 'Food & Energy' },
+  { key: 'food_count', label: 'Food abundance', min: 0, max: 1000, step: 5, group: 'Food & Energy' },
   { key: 'energy_max', label: 'Max energy', min: 10, max: 500, step: 5, group: 'Food & Energy' },
   { key: 'energy_decay_per_tick', label: 'Energy decay / tick', min: 0, max: 2, step: 0.01, group: 'Food & Energy' },
   { key: 'energy_from_food', label: 'Energy from food', min: 0, max: 100, step: 1, group: 'Food & Energy' },
@@ -91,8 +91,8 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction', gate: 'birth_enabled' },
   { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction', gate: 'birth_enabled' },
   { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction', gate: 'birth_enabled' },
-  { key: 'carrying_capacity', label: 'Carrying capacity', min: -1, max: 2000, step: 10, group: 'Reproduction', gate: 'birth_enabled' },
-  { key: 'max_population', label: 'Hard pop cap', min: -1, max: 5000, step: 10, group: 'Reproduction', gate: 'birth_enabled' },
+  { key: 'carrying_capacity', label: 'Carrying capacity', min: -1, max: 5000, step: 25, group: 'Reproduction', gate: 'birth_enabled' },
+  { key: 'max_population', label: 'Hard pop cap', min: -1, max: 8000, step: 25, group: 'Reproduction', gate: 'birth_enabled' },
   // Society — interaction & clan relations
   { key: 'cohesion_weight', label: 'Cohesion weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
   { key: 'alignment_weight', label: 'Alignment weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
@@ -436,10 +436,11 @@ export default function GodPanel({ open, onClose }: Props) {
         the law; no single life may be touched.
       </p>
       <div className="god-group" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, color: '#8b949e', width: '100%' }}>Presets — one click 1000-day world</span>
-        <button onClick={() => applyPreset('sustainable', false)} title="1000-day gentle: 180 food, winter 0.7, rare war/predation, fast drift" style={{ flex: 1, borderColor: '#3fb950', color: '#3fb950' }}>🌿 Sustainable</button>
+        <span style={{ fontSize: 11, color: '#8b949e', width: '100%' }}>Presets — one click worlds</span>
+        <button onClick={() => applyPreset('sustainable', false)} title="1000-day gentle: 450 food, carrying 2200, rare war/predation, calm society" style={{ flex: 1, borderColor: '#3fb950', color: '#3fb950' }}>🌿 Sustainable</button>
         <button onClick={() => applyPreset('chaos', false)} title="Chaos: famine, predators, wars, plagues, fires" style={{ flex: 1, borderColor: '#f85149', color: '#f85149' }}>🔥 Chaos</button>
-        <button onClick={() => applyPreset('extinction', false)} title="Extinction: 30 food, harsh winter 0.3, high decay" style={{ flex: 1 }}>💀 Extinction</button>
+        <button onClick={() => applyPreset('extinction', false)} title="Extinction: 100 food, harsh winter 0.3, high decay" style={{ flex: 1 }}>💀 Extinction</button>
+        <button onClick={() => applyPreset('boom', false)} title="Boom: 650 food, carrying 3500, max 5000 — massive population scale test" style={{ flex: 1, borderColor: '#79c0ff', color: '#79c0ff' }}>🚀 Boom</button>
         <button onClick={() => applyPreset('sustainable', true)} title="Apply sustainable + reset world now" style={{ width: '100%', marginTop: 4 }}>🌿 Sustainable + Reset</button>
       </div>
 

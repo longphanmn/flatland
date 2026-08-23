@@ -116,3 +116,23 @@ def test_websocket_hello_then_state_then_step(client):
         ws.send_json({"action": "reset", "key": "test-key"})
         state3 = ws.receive_json()
         assert state3["tick"] == 0
+
+
+def test_presets_list_and_apply_all(client):
+    """Verify all presets are exposed and can be applied cleanly."""
+    r = client.get("/api/presets")
+    assert r.status_code == 200
+    presets = r.json()["presets"]
+    assert "sustainable" in presets
+    assert "chaos" in presets
+    assert "extinction" in presets
+    assert "boom" in presets
+
+    for name in presets:
+        resp = client.post(f"/api/presets/{name}?reset=true")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["preset"] == name
+        assert data["reset"] is True
+        assert RT.sim.tick == 0
+

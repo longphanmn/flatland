@@ -132,7 +132,7 @@ class GodLaws(BaseModel):
     """Laws of nature god may set. God cannot touch individual creatures."""
 
     boundary: Optional[Literal["wrap", "clamp"]] = None
-    food_count: Optional[int] = Field(None, ge=0, le=500)
+    food_count: Optional[int] = Field(None, ge=0, le=2000)
     energy_max: Optional[float] = Field(None, gt=1, le=10000)
 
     # Plants & nutrient cycle (§H) + biodiversity (§O)
@@ -179,8 +179,8 @@ class GodLaws(BaseModel):
     max_sides: Optional[int] = Field(None, ge=3, le=64)
     birth_energy_cost: Optional[float] = Field(None, ge=0, le=1000)
     reproduction_cooldown: Optional[int] = Field(None, ge=0, le=100000)
-    carrying_capacity: Optional[int] = Field(None, ge=-1, le=2000)
-    max_population: Optional[int] = Field(None, ge=-1, le=5000)
+    carrying_capacity: Optional[int] = Field(None, ge=-1, le=10000)
+    max_population: Optional[int] = Field(None, ge=-1, le=15000)
     euthanasia_threshold: Optional[float] = Field(None, ge=0, le=1)
 
     # Health & disease

@@ -437,19 +437,19 @@ LAW_FIELDS = (
 # --- T: presets ----------------------------------------------------------------
 # Recalculated for the 400x300 default map (pop ~156, schism/comm/war enabled, war rare).
 # Area-tuned numbers scale x3 from the 200x200 baseline: food bounty and population
-# caps track the density-scaled population; per-tick rates/radii/seasons are unchanged.
-# Sustainable is gentle 1000-day: a bit more food for 156+ (270), same rare war as default but even gentler
+# Recalculated for high-scale population on modern / low-end CPUs (e.g., Intel N150).
+# Area-tuned numbers support 2000-4000+ active inhabitants with 60 FPS batched rendering.
 PRESETS: dict[str, dict] = {
     "sustainable": dict(
-        food_count=270,  # was 70 for ~52 pop, then 90; now 270 for ~156 pop on 400x300
-        plant_growth_rate=0.05,
-        plant_spread_rate=0.007,
-        winter_food_mult=0.7,
+        food_count=450,  # generous food for a thriving multi-generational civilization
+        plant_growth_rate=0.06,
+        plant_spread_rate=0.008,
+        winter_food_mult=0.75,
         poison_rate=0.0,
         perceive_radius=18,
         energy_decay_per_tick=0.025,
-        carrying_capacity=1350,  # was 450 on 200x200 — x3 with map area
-        max_population=1650,  # was 550 — x3 with map area
+        carrying_capacity=2200,  # soft cap for steady flourishing
+        max_population=3000,  # hard cap
         disease_enabled=True,
         disease_outbreak_rate=0.0001,
         disease_rate=0.05,
@@ -462,10 +462,10 @@ PRESETS: dict[str, dict] = {
         predator_ratio=0.03,
         bite_damage=40,
         bite_cooldown=12,
-        relation_drift_rate=2.8,  # even calmer than default 2.2
-        rivalry_threshold=-85,  # rarer than default -75
+        relation_drift_rate=2.8,  # calm society
+        rivalry_threshold=-85,
         trespass_decay=0.0,
-        house_capacity=12,
+        house_capacity=16,
         season_length=14400,
         schism_enabled=True,
         schism_threshold=0.55,
@@ -473,15 +473,15 @@ PRESETS: dict[str, dict] = {
         communication_enabled=True,
     ),
     "chaos": dict(
-        food_count=240,  # was 80 on 200x200 — x3 with map area
+        food_count=320,
         plant_growth_rate=0.04,
         plant_spread_rate=0.006,
         winter_food_mult=0.5,
         poison_rate=0.03,
         perceive_radius=20,
         energy_decay_per_tick=0.045,
-        carrying_capacity=420,  # was 140 — x3 with map area
-        max_population=600,  # was 200 — x3 with map area
+        carrying_capacity=800,
+        max_population=1200,
         disease_enabled=True,
         disease_outbreak_rate=0.002,
         disease_rate=0.12,
@@ -497,7 +497,7 @@ PRESETS: dict[str, dict] = {
         relation_drift_rate=0.4,
         rivalry_threshold=-20,
         trespass_decay=1.5,
-        house_capacity=6,
+        house_capacity=8,
         season_length=2400,
         wildfire_enabled=True,
         fire_rate=0.001,
@@ -507,15 +507,15 @@ PRESETS: dict[str, dict] = {
         age_enabled=True,
     ),
     "extinction": dict(
-        food_count=90,  # was 30 on 200x200 — x3 with map area (still famine per capita)
+        food_count=100,
         plant_growth_rate=0.02,
         plant_spread_rate=0.003,
         winter_food_mult=0.3,
         poison_rate=0.05,
         perceive_radius=14,
         energy_decay_per_tick=0.08,
-        carrying_capacity=180,  # was 60 — x3 with map area
-        max_population=240,  # was 80 — x3 with map area
+        carrying_capacity=250,
+        max_population=400,
         disease_enabled=True,
         disease_outbreak_rate=0.001,
         disease_rate=0.15,
@@ -533,6 +533,31 @@ PRESETS: dict[str, dict] = {
         exposure_drain=0.15,
         storm_plant_damage=0.08,
         season_length=6000,
+    ),
+    "boom": dict(
+        food_count=650,
+        plant_growth_rate=0.08,
+        plant_spread_rate=0.012,
+        winter_food_mult=0.85,
+        poison_rate=0.0,
+        perceive_radius=20,
+        energy_decay_per_tick=0.02,
+        carrying_capacity=3500,  # massive population boom test
+        max_population=5000,
+        birth_rate=0.55,
+        adult_age=100,
+        mate_radius=12,
+        mate_energy_min=15,
+        birth_energy_cost=10,
+        reproduction_cooldown=80,
+        house_capacity=20,
+        relation_drift_rate=3.0,
+        rivalry_threshold=-95,
+        trespass_decay=0.0,
+        disease_enabled=False,
+        war_enabled=False,
+        season_length=14400,
+        communication_enabled=True,
     ),
 }
 

@@ -22,13 +22,14 @@ The world self-balances for 1000+ days at 400–500 head when tuned gentle.
 ## Defaults vs Presets
 
 - **Defaults** (what you get on fresh boot): 400×300 map, `food_count=210`, `season_length=14400` (12 days), `house_capacity=12`, `winter_food_mult=0.5` (harsh). Survives ~48 days deterministic seed 42.
-- **Sustainable preset** (`POST /api/presets/sustainable?reset=true`): `food 270`, `winter 0.7` (soft lean), `carrying 1350`/`max 1650` (plateau not churn), `predation`/`war`/`disease` ON but gentle (bite/attack 40 wound not kill, pred ratio 0.03, outbreak 0.0001, recovery 0.025, poison 0), `drift 2.8`/`rivalry -85`/`trespass 0` (calm society). Apply via God panel → Presets.
+- **Sustainable preset** (`POST /api/presets/sustainable?reset=true`): `food 450`, `winter 0.75` (soft lean), `carrying 2200`/`max 3000` (plateau not churn), `predation`/`war`/`disease` ON but gentle (bite/attack 40 wound not kill, pred ratio 0.03, outbreak 0.0001, recovery 0.025, poison 0), `drift 2.8`/`rivalry -85`/`trespass 0` (calm society). Apply via God panel → Presets.
 
 ## Presets
 
-- **sustainable** 🌿 — 1000-day gentle, rare war, wound not kill. One click 1000-day.
-- **chaos** 🔥 — famine, predators, wars, plagues, fires, schism. Stress test.
-- **extinction** 💀 — 90 food, 0.3 winter, high decay. Extinction in days.
+- **sustainable** 🌿 — 1000-day gentle: 450 food, carrying 2200, rare war, wound not kill. Multi-generational flourishing.
+- **chaos** 🔥 — 320 food, carrying 800, max 1200: famine, predators, wars, plagues, fires, schism. Stress test.
+- **extinction** 💀 — 100 food, carrying 250, max 400: 0.3 winter, high decay. Extinction in days.
+- **boom** 🚀 — 650 food, carrying 3500, max 5000: massive population boom scale test for low-end hardware (e.g. Intel N150).
 
 Use: `curl -X POST localhost:8000/api/presets/sustainable?reset=true` or God panel buttons.
 """
