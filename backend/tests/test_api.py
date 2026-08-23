@@ -21,7 +21,9 @@ def fresh_runtime():
 @pytest.fixture()
 def client():
     # No context manager: lifespan (background tick loop) must NOT run here.
-    return TestClient(app)
+    c = TestClient(app)
+    c.headers["X-God-Key"] = "test-key"
+    return c
 
 
 def test_healthz(client):
@@ -70,11 +72,11 @@ def test_websocket_hello_then_state_then_step(client):
         assert state["type"] == "state"
         assert state["tick"] == 0
 
-        ws.send_json({"action": "pause"})
-        ws.send_json({"action": "step"})
+        ws.send_json({"action": "pause", "key": "test-key"})
+        ws.send_json({"action": "step", "key": "test-key"})
         state2 = ws.receive_json()
         assert state2["tick"] == 1
 
-        ws.send_json({"action": "reset"})
+        ws.send_json({"action": "reset", "key": "test-key"})
         state3 = ws.receive_json()
         assert state3["tick"] == 0

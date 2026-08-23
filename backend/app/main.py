@@ -10,11 +10,12 @@ from contextlib import asynccontextmanager, suppress
 from dataclasses import asdict, replace
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import ValidationError
 
+from .auth import PasskeyAuth, SetupPasskey, require_god
 from .config import Config
 from .db import Database
 from .protocol import ControlAction, ControlMessage, GodLaws, HelloMessage, StateMessage
@@ -130,6 +131,8 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Flatland World Simulation", version="0.1.0", lifespan=lifespan)
+AUTH = PasskeyAuth(DB)
+app.state.god_auth = AUTH
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -338,19 +341,21 @@ LAW_FIELDS = (
 
 
 # --- T: presets ----------------------------------------------------------------
-# Recalculated with new defaults (pop 52, schism/comm/war enabled, war rare)
-# Sustainable is gentle 1000-day: a bit more food for 52+ (90), same rare war as default but even gentler
+# Recalculated for the 400x300 default map (pop ~156, schism/comm/war enabled, war rare).
+# Area-tuned numbers scale x3 from the 200x200 baseline: food bounty and population
+# caps track the density-scaled population; per-tick rates/radii/seasons are unchanged.
+# Sustainable is gentle 1000-day: a bit more food for 156+ (270), same rare war as default but even gentler
 PRESETS: dict[str, dict] = {
     "sustainable": dict(
-        food_count=90,  # was 70 for 20 pop, now 90 for 52 pop
+        food_count=270,  # was 70 for ~52 pop, then 90; now 270 for ~156 pop on 400x300
         plant_growth_rate=0.05,
         plant_spread_rate=0.007,
         winter_food_mult=0.7,
         poison_rate=0.0,
         perceive_radius=18,
         energy_decay_per_tick=0.025,
-        carrying_capacity=450,
-        max_population=550,
+        carrying_capacity=1350,  # was 450 on 200x200 — x3 with map area
+        max_population=1650,  # was 550 — x3 with map area
         disease_enabled=True,
         disease_outbreak_rate=0.0001,
         disease_rate=0.05,
@@ -374,15 +379,15 @@ PRESETS: dict[str, dict] = {
         communication_enabled=True,
     ),
     "chaos": dict(
-        food_count=80,
+        food_count=240,  # was 80 on 200x200 — x3 with map area
         plant_growth_rate=0.04,
         plant_spread_rate=0.006,
         winter_food_mult=0.5,
         poison_rate=0.03,
         perceive_radius=20,
         energy_decay_per_tick=0.045,
-        carrying_capacity=140,
-        max_population=200,
+        carrying_capacity=420,  # was 140 — x3 with map area
+        max_population=600,  # was 200 — x3 with map area
         disease_enabled=True,
         disease_outbreak_rate=0.002,
         disease_rate=0.12,
@@ -408,15 +413,15 @@ PRESETS: dict[str, dict] = {
         age_enabled=True,
     ),
     "extinction": dict(
-        food_count=30,
+        food_count=90,  # was 30 on 200x200 — x3 with map area (still famine per capita)
         plant_growth_rate=0.02,
         plant_spread_rate=0.003,
         winter_food_mult=0.3,
         poison_rate=0.05,
         perceive_radius=14,
         energy_decay_per_tick=0.08,
-        carrying_capacity=60,
-        max_population=80,
+        carrying_capacity=180,  # was 60 — x3 with map area
+        max_population=240,  # was 80 — x3 with map area
         disease_enabled=True,
         disease_outbreak_rate=0.001,
         disease_rate=0.15,
@@ -496,6 +501,25 @@ async def ws_endpoint(ws: WebSocket) -> None:
                 msg = ControlMessage.model_validate(raw)
             except ValidationError:
                 continue
+            # God control over the socket needs the passkey too (pause/step/
+            # reset are as much a hand on the world as any law).
+            if not AUTH.verify(raw.get("key")):
+                configured = AUTH.configured()
+                await asyncio.wait_for(
+                    ws.send_json(
+                        {
+                            "type": "auth_error",
+                            "error": "god_key_not_configured" if not configured else "god_key_required",
+                            "detail": (
+                                "no god passkey exists yet — POST /api/auth/setup first"
+                                if not configured
+                                else "valid passkey required (key field) to control the world"
+                            ),
+                        }
+                    ),
+                    timeout=HUB.SEND_TIMEOUT,
+                )
+                continue
             await apply_control(msg)
     except WebSocketDisconnect:
         pass
@@ -566,7 +590,26 @@ async def read_laws() -> dict:
     return get_laws()
 
 
-@app.post("/api/laws")
+# --------------------------------------------------------------------- auth
+@app.get("/api/auth/status")
+async def auth_status() -> dict:
+    """Whether a god passkey exists (public — lets the client ask to enroll)."""
+    return {"configured": AUTH.configured()}
+
+
+@app.post("/api/auth/setup")
+async def auth_setup(body: SetupPasskey) -> dict:
+    """First-time enrollment: register the god passkey (only before one exists)."""
+    try:
+        AUTH.setup(body.passkey)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(409, {"error": "god_key_already_configured", "detail": str(exc)}) from exc
+    return {"ok": True, "configured": True}
+
+
+@app.post("/api/laws", dependencies=[Depends(require_god)])
 async def write_laws(laws: GodLaws, persist: bool = True) -> dict:
     """Set new laws of nature (god-writable).
 
@@ -582,7 +625,7 @@ async def list_presets() -> dict:
     return {"presets": list(PRESETS.keys()), "details": PRESETS}
 
 
-@app.post("/api/presets/{name}")
+@app.post("/api/presets/{name}", dependencies=[Depends(require_god)])
 async def apply_preset(name: str, persist: bool = True, reset: bool = False) -> dict:
     """Apply a named preset bundle. reset=true also resets the world with new laws."""
     if name not in PRESETS:
@@ -939,6 +982,6 @@ async def get_god_laws_md():
     raise HTTPException(404, "god-laws.md not found")
 
 
-@app.post("/api/control")
+@app.post("/api/control", dependencies=[Depends(require_god)])
 async def post_control(msg: ControlMessage) -> dict:
     return await apply_control(msg)

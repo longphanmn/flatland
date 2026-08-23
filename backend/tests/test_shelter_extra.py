@@ -31,7 +31,9 @@ def fresh_runtime():
 
 @pytest.fixture()
 def client():
-    return TestClient(app)  # no lifespan: the tick loop must not run
+    c = TestClient(app)  # no lifespan: the tick loop must not run
+    c.headers["X-God-Key"] = "test-key"
+    return c
 
 
 def _step_into_night(s: Simulation, guard: int = 10) -> None:

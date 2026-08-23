@@ -20,7 +20,9 @@ def fresh_runtime():
 
 @pytest.fixture()
 def client():
-    return TestClient(app)
+    c = TestClient(app)
+    c.headers["X-God-Key"] = "test-key"
+    return c
 
 
 def creature_count(s: Simulation) -> int:

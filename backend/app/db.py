@@ -66,6 +66,11 @@ CREATE TABLE IF NOT EXISTS snapshots (
     payload TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_events_world ON events(world_id, id);
 CREATE INDEX IF NOT EXISTS idx_creatures_world ON creatures(world_id, entity_id);
 """
@@ -296,6 +301,27 @@ class Database:
             self._conn.commit()  # type: ignore[union-attr]
 
     # -------------------------------------------------------------- snapshots
+    def get_setting(self, key: str) -> str | None:
+        with self._lock:
+            row = self._require().execute(
+                "SELECT value FROM settings WHERE key=?", (key,)
+            ).fetchone()
+        return row["value"] if row is not None else None
+
+    def set_setting(self, key: str, value: str) -> None:
+        with self._lock:
+            self._require().execute(
+                "INSERT INTO settings(key,value,created_at) VALUES (?,?,?)"
+                " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, value, _now()),
+            )
+            self._conn.commit()  # type: ignore[union-attr]
+
+    def delete_setting(self, key: str) -> None:
+        with self._lock:
+            self._require().execute("DELETE FROM settings WHERE key=?", (key,))
+            self._conn.commit()  # type: ignore[union-attr]
+
     def save_snapshot(self, world_id: int, tick: int, payload: str) -> int:
         with self._lock:
             cur = self._require().execute(

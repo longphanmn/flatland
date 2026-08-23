@@ -171,6 +171,8 @@ export type ControlAction = 'pause' | 'resume' | 'step' | 'reset' | 'set_speed'
 export interface ControlMessage {
   action: ControlAction
   value?: number
+  /** god passkey — control actions are rejected without it */
+  key?: string
 }
 
 /** Laws of nature god may set — never per-creature interventions. */

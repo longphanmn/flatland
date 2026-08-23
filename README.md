@@ -117,18 +117,48 @@ an individual creature's life:
 ```bash
 curl localhost:8000/api/laws
 curl -X POST localhost:8000/api/laws -H 'content-type: application/json' \
+     -H "X-God-Key: $KEY" \
      -d '{"food_count": 5}'   # famine
 ```
+
+## God passkey (auth)
+
+God-touching endpoints — `POST /api/laws`, `POST /api/presets/{name}`,
+`POST /api/control` and control messages over the WebSocket — require a
+passkey. Viewing (`/ws`, `/api/state`, history, clans…) stays open.
+
+- **First time** (no credential exists): any god call answers `409`, and the
+  web UI asks you to **create** a passkey. Enroll directly with
+  `POST /api/auth/setup {"passkey": …}` if you prefer.
+- **After that**: every god call needs the key. The web UI remembers it in
+  localStorage; REST callers send `X-God-Key: <passkey>`; WebSocket control
+  messages carry `"key": "<passkey>"`.
+- **Lost passkey?** Reset it from the server's command line — there is no web
+  route for this:
+
+  ```bash
+  cd backend
+  uv run python -m app.godkey reset <new-passkey>  # overwrite (or create)
+  uv run python -m app.godkey clear                # forget → UI asks again on next visit
+  ```
+
+- **TUI / scripts**: no interactive auth, no bypass — pass the same key from
+  the command line: `./run.sh tui ws://host:8000/ws <passkey>` or export
+  `FLATWORLD_GOD_KEY=<passkey>`. Viewing works without it.
+- `FLATWORLD_GOD_KEY` also seeds the server-side credential at boot (handy for
+  headless deploys); only a PBKDF2 hash is stored, so clearing the database
+  wipes the credential and the next visit enrolls again.
 
 ## Configuration (env vars)
 
 | Variable | Default | Description |
 |---|---|---|
-| `FLATWORLD_WIDTH` | `200` | World width (grid units) |
-| `FLATWORLD_HEIGHT` | `200` | World height |
+| `FLATWORLD_WIDTH` | `400` | World width (grid units) |
+| `FLATWORLD_HEIGHT` | `300` | World height |
 | `FLATWORLD_BOUNDARY` | `wrap` | `wrap` or `clamp` edge behaviour |
 | `FLATWORLD_SEED` | `42` | RNG seed (same seed ⇒ identical simulation) |
 | `FLATWORLD_TICK_RATE` | `10` | Initial ticks per second |
+| `FLATWORLD_GOD_KEY` | — | Seed/override the god passkey at boot |
 
 **World generation:** population and houses scale with map area (densities ×
 area, ±25% jitter, Flatland social pyramid). **Reset** rolls a fresh random

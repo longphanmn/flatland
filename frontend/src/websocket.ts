@@ -6,6 +6,8 @@ interface Handlers {
   onHello?: (msg: HelloMessage) => void
   onState?: (msg: StateMessage) => void
   onStatus?: (status: ConnStatus) => void
+  /** server rejected a control message for lack of a valid passkey */
+  onAuthError?: () => void
 }
 
 /** WebSocket client with exponential-backoff auto-reconnect. */
@@ -46,6 +48,7 @@ export class WorldSocket {
       const msg = JSON.parse(raw)
       if (msg.type === 'state') this.handlers.onState?.(msg as StateMessage)
       else if (msg.type === 'hello') this.handlers.onHello?.(msg as HelloMessage)
+      else if (msg.type === 'auth_error') this.handlers.onAuthError?.()
     } catch {
       // ignore malformed frames
     }

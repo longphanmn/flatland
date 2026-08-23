@@ -6,6 +6,7 @@ import ClanPanel from './render/ClanPanel'
 import PlotsPanel from './render/PlotsPanel'
 import Collapsible from './render/Collapsible'
 import GodPanel from './god/GodPanel'
+import { AuthModal, ensureGodKey, forgetKey } from './god/auth'
 import Wiki from './wiki/Wiki'
 import ClanDetails from './clan/ClanDetails'
 import WorldEndSummary from './summary/WorldEndSummary'
@@ -183,42 +184,6 @@ export default function App() {
     }
   }, [tooltip])
 
-  // Keyboard controls: space pause · S step · R reset · +/- zoom · F fit.
-  useEffect(() => {
-    const onKey = (ev: KeyboardEvent) => {
-      const t = ev.target as HTMLElement | null
-      if (t && ['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName)) return
-      switch (ev.code) {
-        case 'Space':
-          ev.preventDefault()
-          setPaused((p) => {
-            sockRef.current?.send({ action: p ? 'resume' : 'pause' })
-            return !p
-          })
-          break
-        case 'KeyS':
-          sockRef.current?.send({ action: 'step' })
-          break
-        case 'KeyR':
-          sockRef.current?.send({ action: 'reset' })
-          break
-        case 'KeyF':
-          window.dispatchEvent(new Event('flatworld-fit'))
-          break
-        case 'Equal':
-        case 'NumpadAdd':
-          window.dispatchEvent(new CustomEvent('flatworld-zoom', { detail: { factor: 1.25 } }))
-          break
-        case 'Minus':
-        case 'NumpadSubtract':
-          window.dispatchEvent(new CustomEvent('flatworld-zoom', { detail: { factor: 0.8 } }))
-          break
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-
   const refreshWorlds = useCallback(async () => {
     try {
       const d = await fetch('/api/worlds').then((r) => r.json())
@@ -236,6 +201,10 @@ export default function App() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
     const sock = new WorldSocket(`${proto}://${location.host}/ws`, {
       onStatus: setStatus,
+      onAuthError: () => {
+        // the stored passkey stopped working (db reset, wrong world) — re-ask next time
+        forgetKey()
+      },
       onHello: (msg) => {
         setHello(msg)
         setSpeed(msg.tick_rate)
@@ -295,20 +264,66 @@ export default function App() {
     }
   }, [state?.creatures_alive, state?.tick, showWorldEnd, archiveMode])
 
+  const sendControl = useCallback(async (action: 'pause' | 'resume' | 'step' | 'reset', after?: () => void) => {
+    const key = await ensureGodKey()
+    if (!key) return // cancelled dialog — world untouched
+    sockRef.current?.send({ action, key })
+    after?.()
+  }, [])
   const sendPause = useCallback(() => {
-    sockRef.current?.send({ action: 'pause' })
-    setPaused(true)
-  }, [])
+    void sendControl('pause', () => setPaused(true))
+  }, [sendControl])
   const sendResume = useCallback(() => {
-    sockRef.current?.send({ action: 'resume' })
-    setPaused(false)
-  }, [])
-  const sendStep = useCallback(() => sockRef.current?.send({ action: 'step' }), [])
-  const sendReset = useCallback(() => sockRef.current?.send({ action: 'reset' }), [])
-  const changeSpeed = useCallback((v: number) => {
-    setSpeed(v)
-    sockRef.current?.send({ action: 'set_speed', value: v })
-  }, [])
+    void sendControl('resume', () => setPaused(false))
+  }, [sendControl])
+  const sendStep = useCallback(() => void sendControl('step'), [sendControl])
+  const sendReset = useCallback(() => void sendControl('reset'), [sendControl])
+  const changeSpeed = useCallback(
+    (v: number) => {
+      setSpeed(v)
+      void ensureGodKey().then((key) => {
+        if (!key) return
+        sockRef.current?.send({ action: 'set_speed', value: v, key })
+      })
+    },
+    [],
+  )
+
+  // Keyboard controls: space pause · S step · R reset · +/- zoom · F fit.
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const t = ev.target as HTMLElement | null
+      if (t && ['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName)) return
+      switch (ev.code) {
+        case 'Space':
+          ev.preventDefault()
+          setPaused((p) => {
+            void sendControl(p ? 'resume' : 'pause', () => setPaused(!p))
+            return !p
+          })
+          break
+        case 'KeyS':
+          sendStep()
+          break
+        case 'KeyR':
+          sendReset()
+          break
+        case 'KeyF':
+          window.dispatchEvent(new Event('flatworld-fit'))
+          break
+        case 'Equal':
+        case 'NumpadAdd':
+          window.dispatchEvent(new CustomEvent('flatworld-zoom', { detail: { factor: 1.25 } }))
+          break
+        case 'Minus':
+        case 'NumpadSubtract':
+          window.dispatchEvent(new CustomEvent('flatworld-zoom', { detail: { factor: 0.8 } }))
+          break
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sendControl, sendStep, sendReset])
 
   const takeSnapshot = useCallback(async () => {
     await fetch('/api/snapshot', { method: 'POST' })
@@ -938,6 +953,7 @@ export default function App() {
           </label>
         </div>
       )}
+      <AuthModal />
     </div>
   )
 }

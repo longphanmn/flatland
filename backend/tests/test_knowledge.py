@@ -210,6 +210,7 @@ def test_knowledge_laws_roundtrip():
     from app.main import app
 
     client = TestClient(app)
+    client.headers["X-God-Key"] = "test-key"
     r = client.post(
         "/api/laws?persist=false",
         json={"knowledge_share_rate": 0.2, "defense_weight": 1.5,

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { godFetch } from '../god/auth'
 
 type WikiData = {
   laws: string[]
@@ -23,9 +24,13 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
   if (!open) return null
 
   const applyPreset = async (name: string) => {
-    const r = await fetch(`/api/presets/${name}?persist=true`, { method: 'POST' })
-    if (r.ok) alert(`${name} preset applied`)
-    else alert('preset failed')
+    try {
+      const r = await godFetch(`/api/presets/${name}?persist=true`, { method: 'POST' })
+      if (r.ok) alert(`${name} preset applied`)
+      else alert('preset failed')
+    } catch {
+      /* cancelled passkey prompt */
+    }
   }
 
   // filter helpers
@@ -103,7 +108,8 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
             </div>
             <h4 style={{ marginTop: 12 }}>Curl playground</h4>
             <pre style={{ background: '#161b22', padding: 12, borderRadius: 6, overflow: 'auto', fontSize: 12 }}><code>{`curl ${location.origin}/api/laws
-curl -X POST ${location.origin}/api/presets/sustainable?reset=true
+curl -X POST ${location.origin}/api/laws -H 'content-type: application/json' -H 'X-God-Key: <passkey>' -d '{"food_count": 90}'
+curl -X POST ${location.origin}/api/presets/sustainable?reset=true -H 'X-God-Key: <passkey>'
 curl ${location.origin}/api/state | jq .tick
 curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
           </div>
@@ -147,7 +153,7 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <b style={{ color: '#e6edf3' }}>{name}</b>
                   <button onClick={() => applyPreset(name)} style={{ marginLeft: 'auto', padding: '4px 8px', fontSize: 12 }}>Apply</button>
-                  <button onClick={async () => { await fetch(`/api/presets/${name}?persist=true&reset=true`, { method: 'POST' }); alert(name + ' + reset'); }} style={{ padding: '4px 8px', fontSize: 12 }}>Apply + Reset</button>
+                  <button onClick={async () => { try { const r = await godFetch(`/api/presets/${name}?persist=true&reset=true`, { method: 'POST' }); if (r.ok) alert(name + ' + reset'); else alert('preset failed') } catch { /* cancelled */ } }} style={{ padding: '4px 8px', fontSize: 12 }}>Apply + Reset</button>
                 </div>
                 <div style={{ fontSize: 11, color: '#8b949e', marginTop: 6, wordBreak: 'break-all' }}>
                   {Object.entries(laws).slice(0, 8).map(([k, v]) => <span key={k} style={{ marginRight: 8 }}><code>{k}={String(v)}</code></span>)}

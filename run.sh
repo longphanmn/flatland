@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Flatland launcher.
 #   ./run.sh                  backend (:8000) + web UI (:5173) — full stack
-#   ./run.sh tui [ws-url]     terminal TUI ONLY — attaches to an already-running
+#   ./run.sh tui [ws-url] [god-passkey]
+#                             terminal TUI ONLY — attaches to an already-running
 #                             world, never starts any server
 #                             (default url ws://localhost:8000/ws, env FLATWORLD_WS)
+#                             The passkey (3rd arg or FLATWORLD_GOD_KEY) is sent
+#                             with every control/laws call — no prompt, ever.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,6 +22,9 @@ port_busy() { lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
 if [ "$MODE" = "tui" ]; then
   WS_URL="${2:-${FLATWORLD_WS:-ws://localhost:8000/ws}}"
   export FLATWORLD_WS="$WS_URL"
+  # God passkey: 3rd arg wins, else the env var. The server rejects control
+  # calls without it — there is no auth bypass, just no interactive prompt.
+  if [ -n "${3:-}" ]; then export FLATWORLD_GOD_KEY="$3"; fi
   HTTP_BASE="$(printf '%s' "$WS_URL" | sed -E 's~^wss://~https://~; s~^ws://~http://~; s~(/api)?/ws$~~')"
 
   command -v uv >/dev/null || { echo "Error: uv not found (brew install uv)." >&2; exit 1; }
@@ -34,6 +40,7 @@ if [ "$MODE" = "tui" ]; then
     echo "      (the TUI keeps retrying in the meantime)" >&2
   fi
   echo "[tui] keys: space pause · s step · r reset · f fit · +/- zoom · hjkl pan · enter inspect · g laws · ? help · q quit"
+  echo "[tui] auth: pass FLATWORLD_GOD_KEY (or 3rd arg) to control the world; without it, viewing works"
   exec uv run -m tui
 fi
 

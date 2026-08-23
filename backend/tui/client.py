@@ -12,12 +12,18 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import os
 from typing import Any, Callable
 
 import httpx
 import websockets
 
 from .state import HelloMessage, StateMessage
+
+
+def god_key() -> str | None:
+    """Passkey from the environment — the TUI itself never prompts for auth."""
+    return os.environ.get("FLATWORLD_GOD_KEY") or None
 
 
 def http_base_for(ws_url: str) -> str:
@@ -77,6 +83,9 @@ class WSClient:
         ws = self._ws
         if ws is None:
             return
+        key = god_key()
+        if key and "key" not in payload:
+            payload = {**payload, "key": key}
         try:
             await ws.send(json.dumps(payload))
         except Exception:
@@ -120,7 +129,10 @@ class RESTClient:
     """Thin httpx wrapper over the Flatland REST API."""
 
     def __init__(self, base_url: str, transport: httpx.AsyncBaseTransport | None = None) -> None:
-        self._client = httpx.AsyncClient(base_url=base_url, timeout=5.0, transport=transport)
+        headers = {"X-God-Key": god_key()} if god_key() else {}
+        self._client = httpx.AsyncClient(
+            base_url=base_url, timeout=5.0, transport=transport, headers=headers
+        )
 
     async def aclose(self) -> None:
         await self._client.aclose()

@@ -129,6 +129,7 @@ def test_corpses_behind_a_rock_are_given_up_on_too():
 
 def test_food_giveup_ticks_law_roundtrip():
     client = TestClient(app)
+    client.headers["X-God-Key"] = "test-key"
     r = client.post("/api/laws?persist=false", json={"food_giveup_ticks": 77})
     assert r.status_code == 200
     assert r.json()["food_giveup_ticks"] == 77

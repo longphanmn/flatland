@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { godFetch } from './auth'
 import type { GodLaws } from '../types'
 
 type NumberLawKey = Exclude<keyof GodLaws, 'boundary'>
@@ -252,7 +253,7 @@ export default function GodPanel({ open, onClose }: Props) {
     setSaved(false)
     try {
       const qs = persist ? '?persist=true' : '?persist=false'
-      const res = await fetch(`/api/laws${qs}`, {
+      const res = await godFetch(`/api/laws${qs}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(laws),
@@ -269,6 +270,7 @@ export default function GodPanel({ open, onClose }: Props) {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (e) {
+      if (e instanceof Error && e.message === 'cancelled') return
       setError(e instanceof Error ? e.message : 'failed to apply law')
     }
   }
@@ -278,13 +280,14 @@ export default function GodPanel({ open, onClose }: Props) {
     setError(null)
     setSaved(false)
     try {
-      const res = await fetch(`/api/presets/${name}?persist=true${reset ? '&reset=true' : ''}`, { method: 'POST' })
+      const res = await godFetch(`/api/presets/${name}?persist=true${reset ? '&reset=true' : ''}`, { method: 'POST' })
       if (!res.ok) throw new Error((await res.json()).detail ?? 'preset failed')
       const data = await res.json()
       setLaws(data.laws)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (e) {
+      if (e instanceof Error && e.message === 'cancelled') return
       setError(e instanceof Error ? e.message : 'preset failed')
     }
   }

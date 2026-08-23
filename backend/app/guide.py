@@ -257,12 +257,23 @@ CONFIG_OPS_MD = """
 ## Env vars (`FLATWORLD_*`)
 | Variable | Default | Description |
 |---|---|---|
-| `FLATWORLD_WIDTH` | `200` | World width (grid units) |
-| `FLATWORLD_HEIGHT` | `200` | World height |
+| `FLATWORLD_WIDTH` | `400` | World width (grid units) |
+| `FLATWORLD_HEIGHT` | `300` | World height |
 | `FLATWORLD_BOUNDARY` | `wrap` | `wrap` or `clamp` |
 | `FLATWORLD_SEED` | `42` | RNG seed |
 | `FLATWORLD_TICK_RATE` | `10` | Ticks per second |
 | `FLATWORLD_DB` | `backend/flatworld.db` | SQLite path |
+| `FLATWORLD_GOD_KEY` | — | Seed/override the god passkey at boot |
+
+## God passkey (auth)
+
+`POST /api/laws`, `POST /api/presets/{{name}}`, `POST /api/control` and
+WebSocket control messages need the god passkey (`X-God-Key` header, `key`
+field on the socket). No credential yet → any god call answers `409` and the
+web UI asks to create one (`POST /api/auth/setup`). Lost it? Recover on the
+server only: `cd backend && uv run python -m app.godkey reset <new>` (or
+`clear`). The TUI takes no prompt: `./run.sh tui ws://host/ws <passkey>` or
+export `FLATWORLD_GOD_KEY`. Only a PBKDF2 hash is stored.
 
 ## Persistence (`db.py:20`)
 SQLite `flatworld.db` (WAL, thread lock). Tables:
