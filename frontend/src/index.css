@@ -839,7 +839,7 @@ select {
   .album { left: 8px; right: 8px; width: auto; max-width: none; top: auto; bottom: 56px; }
   .snap-banner { left: 8px; right: 8px; width: auto; transform: none; max-width: none; font-size: 12px; text-align: center; }
   .run-switcher { left: 8px; right: auto; bottom: 62px; max-width: calc(100vw - 16px); }
-  .top-right-panel { top: 6px; right: 8px; gap: 6px; }
+  .top-right-panel { top: calc(44px + env(safe-area-inset-top)); right: 8px; gap: 6px; margin-top: 4px; }
   .top-right-panel .god-btn{ min-height: 32px; padding: 4px 8px; font-size: 12px; }
   .version-bar { bottom: 52px; left: 8px; right: auto; transform: none; font-size: 9px; padding: 1px 6px; }
   /* larger touch targets */
