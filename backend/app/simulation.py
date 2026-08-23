@@ -2701,13 +2701,12 @@ class Simulation:
         for mother in females:
             father = None
             best_d2 = mate_r2 + 1e-9
-            # AF: query candidate males via spatial index instead of scanning all males
-            for m in self.world.query_radius(mother.x, mother.y, cfg.mate_radius):
+            # AF: query candidate males via spatial index with precomputed distance
+            for m, d2 in self.world.query_radius_with_dist_sq(mother.x, mother.y, cfg.mate_radius):
                 if not isinstance(m, Creature) or m.shape == "line":
                     continue
                 if m.repro_cooldown > 0 or m.energy < cfg.mate_energy_min or not eligible(m):
                     continue
-                d2 = self.world.distance_sq(mother.x, mother.y, m.x, m.y)
                 if d2 < best_d2:
                     father, best_d2 = m, d2
             if father is None:
@@ -3139,12 +3138,11 @@ class Simulation:
                 hunt_r = cfg.hunt_radius + self._totem_stat(c, "hunt_radius")
                 best_prey: Creature | None = None
                 best_prey_d_sq = hunt_r * hunt_r + 1e-9
-                for o in w.query_radius(c.x, c.y, hunt_r):
+                for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, hunt_r):
                     if not isinstance(o, Creature) or o.id == c.id or o.is_predator:
                         continue
                     if o.id not in w.entities or o.indoors:
                         continue  # indoors prey are safe (predator refuge)
-                    d2 = w.distance_sq(c.x, c.y, o.x, o.y)
                     if d2 < best_prey_d_sq:
                         best_prey_d_sq, best_prey = d2, o
                 if best_prey is not None:
@@ -3173,12 +3171,11 @@ class Simulation:
                 # Find nearest predator within fear_radius to flee from
                 best_pred: Creature | None = None
                 best_pred_d_sq = fear_radius_eff * fear_radius_eff + 1e-9
-                for o in w.query_radius(c.x, c.y, fear_radius_eff):
+                for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, fear_radius_eff):
                     if not isinstance(o, Creature) or not o.is_predator:
                         continue
                     if o.id not in w.entities:
                         continue
-                    d2 = w.distance_sq(c.x, c.y, o.x, o.y)
                     if d2 < best_pred_d_sq:
                         best_pred_d_sq, best_pred = d2, o
                 flee_target = best_pred
@@ -3186,7 +3183,7 @@ class Simulation:
         # 2. Perceive the nearest meal — food or the fallen. Diet strictness (§O) filters.
         target: Entity | None = None
         best_sq = perceive * perceive
-        for e in w.query_radius(c.x, c.y, perceive):
+        for e, d2 in w.query_radius_with_dist_sq(c.x, c.y, perceive):
             if e.kind not in ("food", "corpse") or e.id in self._eaten:
                 continue
             # A meal given up on (unreachable behind stone or wall) is ignored
@@ -3218,7 +3215,6 @@ class Simulation:
                 if c.trait == "greedy" and isinstance(e, Food) and e.variant == "grass":
                     if self.rng.random() < 0.45:
                         continue
-            d2 = w.distance_sq(c.x, c.y, e.x, e.y)
             if d2 < best_sq:
                 best_sq, target = d2, e
 

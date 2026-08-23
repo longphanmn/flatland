@@ -166,6 +166,78 @@ class World:
                     if edx * edx + edy * edy <= r2:
                         yield e
 
+    def query_radius_with_dist_sq(self, x: float, y: float, radius: float) -> Iterator[tuple[Entity, float]]:
+        """Yield (entity, dist_sq) within `radius` of (x, y) without recomputing distances."""
+        cs = self.cell_size
+        r2 = radius * radius
+        cols = self.cols
+        rows = self.rows
+        buckets = self._buckets
+        w = self.config.width
+        h = self.config.height
+        half_w = w * 0.5
+        half_h = h * 0.5
+        is_wrap = self.config.boundary == "wrap"
+
+        if is_wrap:
+            cx_center = int(x // cs) % cols if cols else 0
+            cy_center = int(y // cs) % rows if rows else 0
+            rx = int(math.ceil(radius / cs)) + 1
+            ry = int(math.ceil(radius / cs)) + 1
+            need_seen = (rx * 2 + 1 >= cols) or (ry * 2 + 1 >= rows)
+            if need_seen:
+                seen: set[int] = set()
+                for dx_grid in range(-rx, rx + 1):
+                    cx = (cx_center + dx_grid) % cols
+                    for dy_grid in range(-ry, ry + 1):
+                        cy = (cy_center + dy_grid) % rows
+                        bucket = buckets[cy * cols + cx]
+                        for e in bucket:
+                            if e.id in seen:
+                                continue
+                            seen.add(e.id)
+                            edx = abs(x - e.x)
+                            if edx > half_w:
+                                edx -= w
+                            edy = abs(y - e.y)
+                            if edy > half_h:
+                                edy -= h
+                            d2 = edx * edx + edy * edy
+                            if d2 <= r2:
+                                yield e, d2
+                return
+            for dx_grid in range(-rx, rx + 1):
+                cx = (cx_center + dx_grid) % cols
+                for dy_grid in range(-ry, ry + 1):
+                    cy = (cy_center + dy_grid) % rows
+                    bucket = buckets[cy * cols + cx]
+                    for e in bucket:
+                        edx = abs(x - e.x)
+                        if edx > half_w:
+                            edx -= w
+                        edy = abs(y - e.y)
+                        if edy > half_h:
+                            edy -= h
+                        d2 = edx * edx + edy * edy
+                        if d2 <= r2:
+                            yield e, d2
+            return
+        # clamp: no wrap
+        x0 = max(0, int((x - radius) // cs))
+        x1 = min(cols - 1, int((x + radius) // cs))
+        y0 = max(0, int((y - radius) // cs))
+        y1 = min(rows - 1, int((y + radius) // cs))
+        for cy in range(y0, y1 + 1):
+            row_off = cy * cols
+            for cx in range(x0, x1 + 1):
+                bucket = buckets[row_off + cx]
+                for e in bucket:
+                    edx = x - e.x
+                    edy = y - e.y
+                    d2 = edx * edx + edy * edy
+                    if d2 <= r2:
+                        yield e, d2
+
     # -------------------------------------------------------------- boundaries
     def normalize(self, x: float, y: float) -> tuple[float, float]:
         """Clamp or wrap a position back inside the world bounds."""
