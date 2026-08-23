@@ -947,23 +947,37 @@ class Simulation:
 
     def _resolve_rock_collision(self, c: Creature) -> dict | None:
         """Push a creature out of any rock it has wandered into; return the rock."""
-        hit = None
+        w, h = self.config.width, self.config.height
+        is_wrap = self.config.boundary == "wrap"
+        half_w = w * 0.5
+        half_h = h * 0.5
         for rock in self.rocks:
-            d = self.world.distance(c.x, c.y, rock["x"], rock["y"])
             min_d = rock["r"] + c.radius
-            if d < min_d:
-                ux, uy = self.world.delta(c.x, c.y, rock["x"], rock["y"])
+            rx, ry = rock["x"], rock["y"]
+            dx = abs(c.x - rx)
+            if is_wrap and dx > half_w:
+                dx -= w
+            if abs(dx) > min_d:
+                continue
+            dy = abs(c.y - ry)
+            if is_wrap and dy > half_h:
+                dy -= h
+            if abs(dy) > min_d:
+                continue
+            d2 = dx * dx + dy * dy
+            if d2 < min_d * min_d:
+                ux, uy = self.world.delta(c.x, c.y, rx, ry)
                 if abs(ux) < 1e-6 and abs(uy) < 1e-6:
                     ang = self.rng.uniform(0, 2 * math.pi)
                     ux, uy = math.cos(ang), math.sin(ang)
                 norm = math.hypot(ux, uy) or 1.0
                 c.x, c.y = self.world.normalize(
-                    rock["x"] + ux / norm * min_d,
-                    rock["y"] + uy / norm * min_d,
+                    rx + ux / norm * min_d,
+                    ry + uy / norm * min_d,
                 )
                 c.angle = math.atan2(uy, ux)
-                hit = rock
-        return hit
+                return rock
+        return None
 
     def _segment_hits_circle(
         self, ax: float, ay: float, bx: float, by: float, rock: dict, pad: float = 0.0
@@ -1172,10 +1186,17 @@ class Simulation:
         self.world.rebuild_index()
         self._refresh_cache()
         houses = [e for e in self.world.entities.values() if e.kind == "house" and not e.is_ruin]  # type: ignore[union-attr]
+        tod = self._time_of_day()
+        is_night = self._is_night(tod)
+        env_sight = self.env_sight_mult()
+        env_speed = self.env_speed_mult()
+        clan_house_map: dict[int, House] = {
+            h.clan_id: h for h in houses if isinstance(h, House) and h.clan_id and not h.is_ruin
+        }
         for creature in list(self._cached_creatures):
             if creature.id not in self.world.entities:
                 continue
-            self._update_creature(creature, houses)
+            self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
         self._refresh_cache()
         self._update_disease()
         # AA: positions moved this tick; re-bucket so the spatial war/mob
@@ -2306,14 +2327,13 @@ class Simulation:
             food_near = 0
             corpse_near = 0
             if house is not None:
-                for e in self.world.entities.values():
-                    if e.kind == "food" and self.world.distance(e.x, e.y, house.x, house.y) < 18:
+                for e in self.world.query_radius(house.x, house.y, 18.0):
+                    if e.kind == "food":
                         food_near += 1
-                    elif e.kind == "corpse" and self.world.distance(e.x, e.y, house.x, house.y) < 18:
+                    elif e.kind == "corpse":
                         corpse_near += 1
-                # fertile patches near house also farmer
                 for fp in self.fertile:
-                    if self.world.distance(fp["x"], fp["y"], house.x, house.y) < 20:
+                    if self.world.distance_sq(fp["x"], fp["y"], house.x, house.y) < 400.0:
                         food_near += 1
             # small drift per tick
             # warrior up if wars, farmer up if food_near, scavenger up if corpse_near
@@ -2673,22 +2693,23 @@ class Simulation:
                 and c.energy >= cfg.mate_energy_min
             )
 
-        females = [c for c in creatures if c.sex == "female" and eligible(c)]
+        females = [c for c in creatures if c.shape == "line" and eligible(c)]
         if not females:
             return
 
+        mate_r2 = cfg.mate_radius * cfg.mate_radius
         for mother in females:
             father = None
-            best = math.inf
+            best_d2 = mate_r2 + 1e-9
             # AF: query candidate males via spatial index instead of scanning all males
             for m in self.world.query_radius(mother.x, mother.y, cfg.mate_radius):
-                if not isinstance(m, Creature) or m.sex != "male":
+                if not isinstance(m, Creature) or m.shape == "line":
                     continue
                 if m.repro_cooldown > 0 or m.energy < cfg.mate_energy_min or not eligible(m):
                     continue
-                d = self.world.distance(mother.x, mother.y, m.x, m.y)
-                if d <= cfg.mate_radius and d < best:
-                    father, best = m, d
+                d2 = self.world.distance_sq(mother.x, mother.y, m.x, m.y)
+                if d2 < best_d2:
+                    father, best_d2 = m, d2
             if father is None:
                 continue
             fert = (
@@ -2965,8 +2986,30 @@ class Simulation:
                 else:
                     clan["leader_id"] = None
 
-    def _update_creature(self, c: Creature, houses: list[Entity]) -> None:
+    def _update_creature(
+        self,
+        c: Creature,
+        houses: list[Entity],
+        tod: float | None = None,
+        is_night: bool | None = None,
+        env_sight: float | None = None,
+        env_speed: float | None = None,
+        clan_house_map: dict[int, House] | None = None,
+    ) -> None:
         cfg, w = self.config, self.world
+        if tod is None:
+            tod = self._time_of_day()
+        if is_night is None:
+            is_night = self._is_night(tod)
+        if env_sight is None:
+            env_sight = self.env_sight_mult()
+        if env_speed is None:
+            env_speed = self.env_speed_mult()
+        if clan_house_map is None:
+            clan_house_map = {
+                h.clan_id: h for h in houses if isinstance(h, House) and h.clan_id and not h.is_ruin
+            }
+
         c.ticks_since_meal += 1
         c.age += 1
         if c.repro_cooldown > 0:
@@ -2982,8 +3025,6 @@ class Simulation:
         # Starving creatures skip sleep to forage — survival over comfort.
         c.sleeping = False
         c.indoors = False
-        tod = self._time_of_day()
-        # hunger check for shelter: starving creatures ignore the call of home
         ratio = c.energy / cfg.energy_max if cfg.energy_max > 0 else 1.0
         is_starving = ratio <= cfg.starving_ratio
         if (
@@ -2992,7 +3033,7 @@ class Simulation:
             and not c.is_predator
             and not c.is_herbivore
             and not is_starving
-            and self._is_night(tod)
+            and is_night
             and houses
         ):
             # Assigned roof (room-aware, §L); if we're not under it but stand
@@ -3069,7 +3110,7 @@ class Simulation:
             c.status = ""
 
         stage_speed, stage_sight = STAGE_MULT[c.stage]
-        perceive = cfg.perceive_radius * c.sight_mult * stage_sight * self.env_sight_mult()
+        perceive = cfg.perceive_radius * c.sight_mult * stage_sight * env_sight
         # Totem sight (§P): Eye +25%, Owl +35%, Raven +15% …
         perceive *= 1.0 + self._totem_stat(c, "sight")
         speed_mult = 1.0
@@ -3097,17 +3138,17 @@ class Simulation:
                 # Find nearest non-predator prey within hunt_radius (+2 Wolf totem)
                 hunt_r = cfg.hunt_radius + self._totem_stat(c, "hunt_radius")
                 best_prey: Creature | None = None
-                best_prey_d = hunt_r + 1e-9
+                best_prey_d_sq = hunt_r * hunt_r + 1e-9
                 for o in w.query_radius(c.x, c.y, hunt_r):
                     if not isinstance(o, Creature) or o.id == c.id or o.is_predator:
                         continue
                     if o.id not in w.entities or o.indoors:
                         continue  # indoors prey are safe (predator refuge)
-                    d = w.distance(c.x, c.y, o.x, o.y)
-                    if d < best_prey_d:
-                        best_prey_d, best_prey = d, o
+                    d2 = w.distance_sq(c.x, c.y, o.x, o.y)
+                    if d2 < best_prey_d_sq:
+                        best_prey_d_sq, best_prey = d2, o
                 if best_prey is not None:
-                    if best_prey_d <= cfg.eat_radius:
+                    if best_prey_d_sq <= cfg.eat_radius * cfg.eat_radius:
                         # Bite — instant kill, predator feeds
                         self._kill(best_prey, "predation")
                         c.energy = min(cfg.energy_max, c.energy + cfg.energy_from_prey)
@@ -3131,20 +3172,20 @@ class Simulation:
             elif not c.is_predator:
                 # Find nearest predator within fear_radius to flee from
                 best_pred: Creature | None = None
-                best_pred_d = fear_radius_eff + 1e-9
+                best_pred_d_sq = fear_radius_eff * fear_radius_eff + 1e-9
                 for o in w.query_radius(c.x, c.y, fear_radius_eff):
                     if not isinstance(o, Creature) or not o.is_predator:
                         continue
                     if o.id not in w.entities:
                         continue
-                    d = w.distance(c.x, c.y, o.x, o.y)
-                    if d < best_pred_d:
-                        best_pred_d, best_pred = d, o
+                    d2 = w.distance_sq(c.x, c.y, o.x, o.y)
+                    if d2 < best_pred_d_sq:
+                        best_pred_d_sq, best_pred = d2, o
                 flee_target = best_pred
 
         # 2. Perceive the nearest meal — food or the fallen. Diet strictness (§O) filters.
         target: Entity | None = None
-        best = math.inf
+        best_sq = perceive * perceive
         for e in w.query_radius(c.x, c.y, perceive):
             if e.kind not in ("food", "corpse") or e.id in self._eaten:
                 continue
@@ -3167,8 +3208,6 @@ class Simulation:
                 # higher castes prefer richer food when strict: skip grass if berry nearby (approx)
                 if not c.is_herbivore and not c.is_predator and e.kind == "food" and cfg.diet_strictness > 0.5:
                     if isinstance(e, Food) and e.variant == "grass":
-                        # peek if a berry/mushroom is also within perceive — if so, ignore grass
-                        # (cheaper than full scan: just skip grass with 70% chance when strict)
                         if self.rng.random() < 0.7:
                             continue
                 # herbivores avoid poisonous when strict
@@ -3179,9 +3218,9 @@ class Simulation:
                 if c.trait == "greedy" and isinstance(e, Food) and e.variant == "grass":
                     if self.rng.random() < 0.45:
                         continue
-            d = w.distance(c.x, c.y, e.x, e.y)
-            if d < best:
-                best, target = d, e  # type: ignore[assignment]
+            d2 = w.distance_sq(c.x, c.y, e.x, e.y)
+            if d2 < best_sq:
+                best_sq, target = d2, e
 
         # §AC Desperation: the starving may hunt the living. Sated/hungry
         # creatures never do; a cooldown separates desperate kills.
@@ -3219,7 +3258,7 @@ class Simulation:
                 close = (
                     cfg.help_call_enabled
                     and cfg.knowledge_enabled
-                    and w.distance(c.x, c.y, flee_target.x, flee_target.y) < cfg.help_radius * 0.6
+                    and w.distance_sq(c.x, c.y, flee_target.x, flee_target.y) < (cfg.help_radius * 0.6) ** 2
                 )
                 if self.rng.random() < cfg.alarm_call_rate or close:
                     kind = "help" if close else "alarm"
@@ -3255,13 +3294,14 @@ class Simulation:
         signal_food_target = None
         signal_alarm_target = None
         signal_help_target = None
-        best_help_d = math.inf
+        best_help_d_sq = math.inf
         if cfg.communication_enabled and self.signals:
-            best_food = math.inf
-            best_alarm = math.inf
+            sig_r2 = cfg.signal_radius * cfg.signal_radius
+            best_food_sq = math.inf
+            best_alarm_sq = math.inf
             for sg in self.signals:
-                d = w.distance(c.x, c.y, sg["x"], sg["y"])
-                if d > cfg.signal_radius:
+                d2 = w.distance_sq(c.x, c.y, sg["x"], sg["y"])
+                if d2 > sig_r2:
                     continue
                 # clan weighting: clan-mates 1.0, strangers 0.35
                 is_kin = sg.get("clan_id") and sg.get("clan_id") == c.clan_id
@@ -3271,22 +3311,21 @@ class Simulation:
                     # food signal points to food_x/food_y if present, else sender pos
                     fx = sg.get("food_x", sg["x"])
                     fy = sg.get("food_y", sg["y"])
-                    df = w.distance(c.x, c.y, fx, fy)
-                    if df < best_food:
-                        best_food = df
+                    df2 = w.distance_sq(c.x, c.y, fx, fy)
+                    if df2 < best_food_sq:
+                        best_food_sq = df2
                         signal_food_target = (fx, fy)
                 elif sg["kind"] == "knowledge" and cfg.knowledge_enabled:
                     self._hear_fact(c, sg.get("fact"))
-                    fact_kind = (sg.get("fact") or {}).get("kind")
                     f = (sg.get("fact") or {})
                     if (
-                        fact_kind == "food"
+                        f.get("kind") == "food"
                         and c.status in ("hungry", "starving")
                         and signal_food_target is None
                     ):
-                        df = w.distance(c.x, c.y, f.get("x", sg["x"]), f.get("y", sg["y"]))
-                        if df < best_food:
-                            best_food = df
+                        df2 = w.distance_sq(c.x, c.y, f.get("x", sg["x"]), f.get("y", sg["y"]))
+                        if df2 < best_food_sq:
+                            best_food_sq = df2
                             signal_food_target = (f.get("x", sg["x"]), f.get("y", sg["y"]))
                 elif sg["kind"] == "help" and cfg.help_call_enabled and is_kin:
                     # §X Mobbing: rally to the defender's aid — warriors first,
@@ -3296,20 +3335,20 @@ class Simulation:
                         continue
                     if c.trait == "peaceful" and self.rng.random() < 0.7:
                         continue
-                    if not c.is_predator and not c.is_herbivore and d < best_help_d:
-                        best_help_d = d
+                    if not c.is_predator and not c.is_herbivore and d2 < best_help_d_sq:
+                        best_help_d_sq = d2
                         signal_help_target = (sg.get("threat_x", sg["x"]), sg.get("threat_y", sg["y"]))
                 elif sg["kind"] == "alarm" and flee_target is None:
-                    if d < best_alarm:
-                        best_alarm = d
+                    if d2 < best_alarm_sq:
+                        best_alarm_sq = d2
                         signal_alarm_target = sg
         # §X Danger zones: remembered predator sightings are avoided on sight of memory
         danger_avoid_target = None
         if cfg.knowledge_enabled and flee_target is None and c.status != "":
             danger_fact = self._fact_fresh(c, "danger")
             if danger_fact is not None and "x" in danger_fact:
-                dd = w.distance(c.x, c.y, danger_fact["x"], danger_fact["y"])
-                if dd < cfg.fear_radius * 1.5:
+                dd2 = w.distance_sq(c.x, c.y, danger_fact["x"], danger_fact["y"])
+                if dd2 < (cfg.fear_radius * 1.5) ** 2:
                     danger_avoid_target = (danger_fact["x"], danger_fact["y"])
         if flee_target is not None:
             # Prey flees directly away from predator (with extra urgency when starving)
@@ -3356,10 +3395,10 @@ class Simulation:
             desired = math.atan2(dy, dx)
             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
             c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
-        elif cfg.sleep_enabled and not c.is_predator and not c.is_herbivore and self._is_night(self._time_of_day()) and houses:
+        elif cfg.sleep_enabled and not c.is_predator and not c.is_herbivore and is_night and houses:
             home = self._house_for(c, houses)
             if home is None:
-                home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
+                home = min(houses, key=lambda h: w.distance_sq(c.x, c.y, h.x, h.y))
             # Edge-follow door seek: slide along the near wall to the gap
             # instead of bumping the centre and grinding at the wall face.
             if self._inside_house(c, home):
@@ -3422,14 +3461,10 @@ class Simulation:
 
         # 2d. Territory preference — members drift toward own settlement when outside radius (§P)
         if cfg.territory_enabled and c.clan_id and not c.is_predator and not c.is_herbivore:
-            own_house = None
-            for h in houses:
-                if isinstance(h, House) and h.clan_id == c.clan_id and not h.is_ruin:
-                    own_house = h
-                    break
+            own_house = clan_house_map.get(c.clan_id)
             if own_house is not None:
-                dist_home = w.distance(c.x, c.y, own_house.x, own_house.y)
-                if dist_home > cfg.territory_radius:
+                d2 = w.distance_sq(c.x, c.y, own_house.x, own_house.y)
+                if d2 > cfg.territory_radius * cfg.territory_radius:
                     dx, dy = w.delta(own_house.x, own_house.y, c.x, c.y)
                     desired = math.atan2(dy, dx)
                     diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
@@ -3437,7 +3472,7 @@ class Simulation:
                     c.angle += max(-cap, min(cap, diff))
 
         # 3. Move (hunger speeds up the desperate; rain slows every body).
-        step_len = c.speed * speed_mult * stage_speed * self.env_speed_mult()
+        step_len = c.speed * speed_mult * stage_speed * env_speed
         px, py = c.x, c.y
         nx = c.x + math.cos(c.angle) * step_len
         ny = c.y + math.sin(c.angle) * step_len
@@ -3454,9 +3489,16 @@ class Simulation:
         # The doorway is too small for the Carnivore caste (§L refuge) — predators see a closed wall.
         mdx, mdy = w.delta(c.x, c.y, px, py)
         was_blocked = False
-        if math.hypot(mdx, mdy) <= step_len * 1.5:  # skip wrap teleports
+        if mdx * mdx + mdy * mdy <= step_len * step_len * 2.25:  # skip wrap teleports
             for h in houses:
                 assert isinstance(h, House)
+                # Quick AABB check before full line segment intersection
+                hx_dist = abs(px - h.x)
+                if hx_dist > h.size * 1.2 and abs(hx_dist - cfg.width) > h.size * 1.2:
+                    continue
+                hy_dist = abs(py - h.y)
+                if hy_dist > h.size * 1.2 and abs(hy_dist - cfg.height) > h.size * 1.2:
+                    continue
                 crosses = (
                     _path_crosses_wall(px, py, px + mdx, py + mdy, h, predator_blocked=c.is_predator)
                     if c.is_predator
@@ -3509,14 +3551,14 @@ class Simulation:
             prey_target is not None
             and prey_target.id in w.entities
             and c.id in w.entities
-            and w.distance(c.x, c.y, prey_target.x, prey_target.y) <= cfg.eat_radius
+            and w.distance_sq(c.x, c.y, prey_target.x, prey_target.y) <= cfg.eat_radius * cfg.eat_radius
         ):
             self._do_cannibalism(c, prey_target)
             if c.id not in w.entities:  # a kin-eater may have been exiled (still alive)
                 return
 
         # 5. Eat. §O variant yields: grass low, berry high (autumn), mushroom decomposer, poisonous sickens.
-        if target is not None and best <= cfg.eat_radius:
+        if target is not None and best_sq <= cfg.eat_radius * cfg.eat_radius:
             w.remove(target.id)
             self._eaten.add(target.id)
             c.ticks_since_meal = 0

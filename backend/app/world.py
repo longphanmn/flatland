@@ -97,55 +97,73 @@ class World:
         """Yield entities within `radius` of (x, y); requires a fresh index.
 
         T: toroidal dx iteration for fixed 8; correct wrap handling.
-        AF: squared distance check eliminates math.hypot / math.sqrt overhead.
+        AF: inlined squared distance check eliminates math.hypot / math.sqrt and tuple allocation overhead.
         """
         cs = self.cell_size
         r2 = radius * radius
         cols = self.cols
         rows = self.rows
         buckets = self._buckets
-        dist_sq = self.distance_sq
+        w = self.config.width
+        h = self.config.height
+        half_w = w * 0.5
+        half_h = h * 0.5
+        is_wrap = self.config.boundary == "wrap"
 
-        if self.config.boundary == "wrap":
-            cx_center = int(math.floor(x / cs)) % cols if cols else 0
-            cy_center = int(math.floor(y / cs)) % rows if rows else 0
+        if is_wrap:
+            cx_center = int(x // cs) % cols if cols else 0
+            cy_center = int(y // cs) % rows if rows else 0
             rx = int(math.ceil(radius / cs)) + 1
             ry = int(math.ceil(radius / cs)) + 1
             need_seen = (rx * 2 + 1 >= cols) or (ry * 2 + 1 >= rows)
             if need_seen:
                 seen: set[int] = set()
-                for dx in range(-rx, rx + 1):
-                    cx = (cx_center + dx) % cols
-                    for dy in range(-ry, ry + 1):
-                        cy = (cy_center + dy) % rows
+                for dx_grid in range(-rx, rx + 1):
+                    cx = (cx_center + dx_grid) % cols
+                    for dy_grid in range(-ry, ry + 1):
+                        cy = (cy_center + dy_grid) % rows
                         bucket = buckets[cy * cols + cx]
                         for e in bucket:
                             if e.id in seen:
                                 continue
                             seen.add(e.id)
-                            if dist_sq(x, y, e.x, e.y) <= r2:
+                            edx = abs(x - e.x)
+                            if edx > half_w:
+                                edx -= w
+                            edy = abs(y - e.y)
+                            if edy > half_h:
+                                edy -= h
+                            if edx * edx + edy * edy <= r2:
                                 yield e
                 return
-            for dx in range(-rx, rx + 1):
-                cx = (cx_center + dx) % cols
-                for dy in range(-ry, ry + 1):
-                    cy = (cy_center + dy) % rows
+            for dx_grid in range(-rx, rx + 1):
+                cx = (cx_center + dx_grid) % cols
+                for dy_grid in range(-ry, ry + 1):
+                    cy = (cy_center + dy_grid) % rows
                     bucket = buckets[cy * cols + cx]
                     for e in bucket:
-                        if dist_sq(x, y, e.x, e.y) <= r2:
+                        edx = abs(x - e.x)
+                        if edx > half_w:
+                            edx -= w
+                        edy = abs(y - e.y)
+                        if edy > half_h:
+                            edy -= h
+                        if edx * edx + edy * edy <= r2:
                             yield e
             return
         # clamp: no wrap
-        x0 = max(0, int(math.floor((x - radius) / cs)))
-        x1 = min(cols - 1, int(math.floor((x + radius) / cs)))
-        y0 = max(0, int(math.floor((y - radius) / cs)))
-        y1 = min(rows - 1, int(math.floor((y + radius) / cs)))
+        x0 = max(0, int((x - radius) // cs))
+        x1 = min(cols - 1, int((x + radius) // cs))
+        y0 = max(0, int((y - radius) // cs))
+        y1 = min(rows - 1, int((y + radius) // cs))
         for cy in range(y0, y1 + 1):
-            row_offset = cy * cols
+            row_off = cy * cols
             for cx in range(x0, x1 + 1):
-                bucket = buckets[row_offset + cx]
+                bucket = buckets[row_off + cx]
                 for e in bucket:
-                    if dist_sq(x, y, e.x, e.y) <= r2:
+                    edx = x - e.x
+                    edy = y - e.y
+                    if edx * edx + edy * edy <= r2:
                         yield e
 
     # -------------------------------------------------------------- boundaries
