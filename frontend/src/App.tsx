@@ -6,6 +6,8 @@ import ClanPanel from './render/ClanPanel'
 import PlotsPanel from './render/PlotsPanel'
 import GodPanel from './god/GodPanel'
 import Wiki from './wiki/Wiki'
+import ClanDetails from './clan/ClanDetails'
+import WorldEndSummary from './summary/WorldEndSummary'
 import Inspector from './inspect/Inspector'
 import { WorldSocket, type ConnStatus } from './websocket'
 import type { HelloMessage, HistoryEvent, StateMessage, WorldSummary } from './types'
@@ -42,9 +44,15 @@ export default function App() {
   })
   const [helpOpen, setHelpOpen] = useState(false)
   const [wikiOpen, setWikiOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [statusExpanded, setStatusExpanded] = useState(false)
+  const [sheetState, setSheetState] = useState<'peek' | 'half' | 'full'>('peek')
+  const [sheetTab, setSheetTab] = useState<'world' | 'clans' | 'chronicle' | 'plots'>('world')
   const [versionInfo, setVersionInfo] = useState<{ version: string; revision: string } | null>(null)
   const [log, setLog] = useState<HistoryEvent[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedClanId, setSelectedClanId] = useState<number | null>(null)
+  const [showWorldEnd, setShowWorldEnd] = useState(false)
   const [aliveHist, setAliveHist] = useState<number[]>([])
   const [popHist, setPopHist] = useState<Array<Record<string, number>>>([])
   const [album, setAlbum] = useState<Array<{ id: number; tick: number }>>([])
@@ -85,6 +93,13 @@ export default function App() {
       .then((r) => r.json())
       .then((d) => setVersionInfo({ version: d.version ?? '0.1.0', revision: d.revision ?? '' }))
       .catch(() => setVersionInfo({ version: '0.1.0', revision: '' }))
+  }, [])
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768)
+    onResize()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
 
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
@@ -258,6 +273,16 @@ export default function App() {
     return () => sock.dispose()
   }, [])
 
+  // World end detection — extinction summary
+  useEffect(() => {
+    if (state && state.creatures_alive === 0 && state.tick > 30 && !showWorldEnd && !archiveMode) {
+      setShowWorldEnd(true)
+    }
+    if (state && state.creatures_alive > 0 && showWorldEnd) {
+      setShowWorldEnd(false)
+    }
+  }, [state?.creatures_alive, state?.tick, showWorldEnd, archiveMode])
+
   const sendPause = useCallback(() => {
     sockRef.current?.send({ action: 'pause' })
     setPaused(true)
@@ -388,21 +413,18 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="hud">
+      <header className={`hud ${isMobile ? 'hud-compact' : ''}`} onClick={isMobile ? () => setStatusExpanded(o => !o) : undefined} style={isMobile ? { cursor: 'pointer' } : undefined}>
         <span className="title">Flatland</span>
         <span className={`dot ${status}`} title={STATUS_LABEL[status]} />
         <span className="chip">{STATUS_LABEL[status]}</span>
         {paused && <span className="chip paused">PAUSED</span>}
-        <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Same seed ⇒ same world." onClick={(e) => alert((e.currentTarget as HTMLElement).title)} style={{ cursor: 'help' }}>
+        <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Same seed ⇒ same world.">
           tick <b>{state?.tick ?? 0}</b>
-        </span>
-        <span className="chip" title="Total entities in world (creatures + Food plants + Houses + Corpses).">
-          entities <b>{state?.entities.length ?? 0}</b>
         </span>
         <span className="chip alive" title="Alive creatures — Flatland castes + Predators + Herbivores. Hover Caste chart for breakdown.">
           alive <b>{state?.creatures_alive ?? 0}</b>
         </span>
-        <span className="chip dead" title={`${deadBreakdown} — hover for per-cause breakdown (starvation/old_age/euthanasia/disease/predation/war/poison).`}>
+        <span className="chip dead desktop-only" title={`${deadBreakdown} — hover for per-cause breakdown (starvation/old_age/euthanasia/disease/predation/war/poison).`}>
           dead <b>{state?.creatures_dead ?? 0}</b>
         </span>
         {hungryCount > 0 && (
@@ -416,28 +438,28 @@ export default function App() {
           </span>
         )}
         {(state?.infected_count ?? 0) > 0 && (
-          <span className="chip sick" title="Infected — loses 0.15 energy/tick + 1.0 health/tick (winter ×1.5 spread), green pulsing ring, may recover.">
+          <span className="chip sick desktop-only" title="Infected — loses 0.15 energy/tick + 1.0 health/tick (winter ×1.5 spread), green pulsing ring, may recover.">
             infected <b>{state?.infected_count}</b>
           </span>
         )}
         {(state?.entities.filter((e) => (e.chill ?? 0) >= 12).length ?? 0) > 0 && (
-          <span className="chip" style={{ color: '#79c0ff' }} title="Chilled: built rain/storm/winter-night outside, past 12 drains health 0.18/tick (death cause chill). Shelter sheds 2.5× faster.">
+          <span className="chip desktop-only" style={{ color: '#79c0ff' }} title="Chilled: built rain/storm/winter-night outside, past 12 drains health 0.18/tick (death cause chill). Shelter sheds 2.5× faster.">
             🥶 chilled <b>{state?.entities.filter((e) => (e.chill ?? 0) >= 12).length}</b>
           </span>
         )}
         {raining && exposedCount > 0 && (
-          <span className="chip exposed" title="Exposed: awake, outdoors, not in a House during rain/storm or winter night — loses 0.03 energy/tick extra. Shelter is scarce.">
+          <span className="chip exposed desktop-only" title="Exposed: awake, outdoors, not in a House during rain/storm or winter night — loses 0.03 energy/tick extra. Shelter is scarce.">
             ⛈ exposed <b>{exposedCount}</b>
           </span>
         )}
         {hello && (
-          <span className="chip" title="Seed determines entire world deterministically; width×height is world size; wrap vs clamp is edge behavior. Reset rolls a new seed.">
+          <span className="chip desktop-only" title="Seed determines entire world deterministically; width×height is world size; wrap vs clamp is edge behavior. Reset rolls a new seed.">
             seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×
             {state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}
           </span>
         )}
         {state && state.age && (
-          <span className="chip" title={`Age ${state.age} — super-season bending world: Ice (food×0.55 chill×1.4), Chaos (mutation×1.8), Plague (disease×1.8), Golden (food×1.25 birth×1.3). God sets age_length.`}>
+          <span className="chip desktop-only" title={`Age ${state.age} — super-season bending world: Ice (food×0.55 chill×1.4), Chaos (mutation×1.8), Plague (disease×1.8), Golden (food×1.25 birth×1.3). God sets age_length.`}>
             🗓 age <b>{state.age}</b> · tick {state.age_tick}
           </span>
         )}
@@ -447,7 +469,21 @@ export default function App() {
             {weatherIcon && ` · ${weatherIcon}`}
           </span>
         )}
+        {isMobile && <span className="chip" style={{ marginLeft: 'auto', fontSize: 10, color: '#8b949e' }}>{statusExpanded ? '▲' : '▼'}</span>}
       </header>
+      {isMobile && statusExpanded && (
+        <div className="hud-detail-sheet" onClick={() => setStatusExpanded(false)}>
+          <span className="chip">entities <b>{state?.entities.length ?? 0}</b></span>
+          <span className="chip dead">dead <b>{state?.creatures_dead ?? 0}</b></span>
+          <span className="chip" style={{ fontSize: 10, color: '#8b949e' }}>{deadBreakdown}</span>
+          {(state?.infected_count ?? 0) > 0 && <span className="chip sick">infected <b>{state?.infected_count}</b></span>}
+          {(state?.entities.filter((e) => (e.chill ?? 0) >= 12).length ?? 0) > 0 && <span className="chip" style={{ color: '#79c0ff' }}>🥶 chilled <b>{state?.entities.filter((e) => (e.chill ?? 0) >= 12).length}</b></span>}
+          {raining && exposedCount > 0 && <span className="chip exposed">⛈ exposed <b>{exposedCount}</b></span>}
+          {hello && <span className="chip">seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×{state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}</span>}
+          {state?.age && <span className="chip">🗓 age <b>{state.age}</b> · tick {state.age_tick}</span>}
+          <span className="chip">hungry <b>{hungryCount}</b> · starving <b>{starvingCount}</b></span>
+        </div>
+      )}
 
       <main className="stage">
         <CanvasRenderer
@@ -456,6 +492,77 @@ export default function App() {
           onTapCreature={(id) => setSelectedId(id)}
         />
       </main>
+
+      {/* Mobile thumb bar — persistent 48px */}
+      {isMobile && (
+        <div className="mobile-thumb-bar">
+          <button onClick={paused ? sendResume : sendPause} title={paused ? 'Resume (space)' : 'Pause (space)'}>{paused ? '▶' : '⏸'}</button>
+          <button onClick={sendStep} title="Step (S)">⏭</button>
+          <button onClick={() => setGodOpen(true)} title="God laws">⚖</button>
+          <button onClick={() => { setSheetTab('chronicle'); setSheetState('half'); }} title="Chronicle">📜</button>
+          <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))} title="Fit view (F)">⛶</button>
+          <button onClick={takeSnapshot} title="Snapshot 📷">📷</button>
+          <button onClick={openAlbum} title="Album">🖼</button>
+          <select value={speed} onChange={e => changeSpeed(Number(e.target.value))} title="ticks/s">
+            {SPEEDS.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </div>
+      )}
+
+      {/* Mobile tabbed sheet — World / Clans / Chronicle / Plots */}
+      {isMobile && (
+        <div className="mobile-sheet" data-state={sheetState}>
+          <div
+            className="mobile-sheet-handle"
+            onClick={() => setSheetState(s => s === 'peek' ? 'half' : s === 'half' ? 'full' : 'peek')}
+            onTouchStart={e => {
+              const startY = e.touches[0].clientY
+              const startState = sheetState
+              const onMove = (ev: TouchEvent) => {
+                const dy = ev.touches[0].clientY - startY
+                if (dy < -40 && startState === 'peek') setSheetState('half')
+                else if (dy < -40 && startState === 'half') setSheetState('full')
+                else if (dy > 40 && startState === 'full') setSheetState('half')
+                else if (dy > 40 && startState === 'half') setSheetState('peek')
+              }
+              const onEnd = () => {
+                window.removeEventListener('touchmove', onMove as any)
+                window.removeEventListener('touchend', onEnd as any)
+              }
+              window.addEventListener('touchmove', onMove as any, { passive: true })
+              window.addEventListener('touchend', onEnd as any)
+            }}
+          />
+          <div className="mobile-sheet-tabs">
+            <button className={sheetTab === 'world' ? 'active' : ''} onClick={() => setSheetTab('world')}>World</button>
+            <button className={sheetTab === 'clans' ? 'active' : ''} onClick={() => setSheetTab('clans')}>Clans</button>
+            <button className={sheetTab === 'chronicle' ? 'active' : ''} onClick={() => setSheetTab('chronicle')}>Log</button>
+            <button className={sheetTab === 'plots' ? 'active' : ''} onClick={() => setSheetTab('plots')}>Plots</button>
+          </div>
+          <div className="mobile-sheet-body">
+            {sheetTab === 'world' && (
+              <>
+                <h3 className="chronicle-title">Overview — <span className="chronicle-pop">{creatureEntries.map(([k,v],i)=>(<span key={k} className="pop-chip"><span className="dot-inline" style={{background:CASTE_COLORS[k]??'#8b949e'}}/>{k} <b>{v}</b>{(i<creatureEntries.length-1||objectEntries.length>0)&&' · '}</span>))}{objectEntries.map(([k,v],i)=>(<span key={k} className="pop-chip">{k} <b>{v}</b>{i<objectEntries.length-1&&' · '}</span>))}</span></h3>
+                <CasteChart history={popHist} showLegend={false} />
+                <div style={{ fontSize: 11, color: '#8b949e', margin: '6px 0 2px' }}>Alive — recent ticks</div>
+                <span className="spark-wrap" style={{ display:'block', width:'100%' }}><svg viewBox="0 0 100 22" className="spark" style={{ width:'100%', height:28 }}>{aliveHist.length>1 && <polyline points={aliveHist.map((v,i)=> `${(i/(aliveHist.length-1))*100},${21-((v-Math.min(...aliveHist))/(Math.max(...aliveHist,1)-Math.min(...aliveHist)||1))*20}`).join(' ')} />}</svg></span>
+                <h4 style={{ margin:'10px 0 4px', fontSize:'0.85em', opacity:0.8 }}>Trophic — Food · Herbivore · Predator</h4>
+                <TrophicChart history={popHist} showLegend={false} />
+              </>
+            )}
+            {sheetTab === 'clans' && <ClanPanel onSelectClan={setSelectedClanId} />}
+            {sheetTab === 'plots' && <PlotsPanel />}
+            {sheetTab === 'chronicle' && (
+              <div className="chronicle" style={{ background:'transparent', border:'none', padding:0, maxHeight:'none' }}>
+                <h3 className="chronicle-title">Chronicle — History</h3>
+                {archiveMode && selectedRunId!==null && <p className="archive-banner">viewing archive #{selectedRunId} — live paused</p>}
+                {!archiveMode && oldestLoadedRef.current!==null && <button className="chron-btn" onClick={loadOlder} disabled={loadingOlder||noMoreHistory}>{loadingOlder?'loading…':noMoreHistory?'no older events':'load older'}</button>}
+                {(() => { const filtered=log.filter(ev=>ev.type!=='bloom'); if(filtered.length===0) return <p className="chip">no major events yet</p>; return <ul>{filtered.slice(0,60).map(ev=>{ const key=`${ev.tick}:${ev.entity_id}:${ev.type}`; if(ev.type==='birth'){ const p=ev.payload as any; return <li key={key} className="ev-birth"><b>{p.personal_name??ev.caste} {p.glyph??''}</b> #{ev.entity_id} born at {ev.tick}</li>} return <li key={key}><b>{(ev.payload as any)?.personal_name??ev.caste}</b> #{ev.entity_id} {ev.type} at {ev.tick}</li>})}</ul> })()}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <footer className="controls">
         {paused ? (
@@ -571,7 +678,7 @@ export default function App() {
               <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span>
             </h4>
             <TrophicChart history={popHist} showLegend={false} />
-            <ClanPanel />
+            <ClanPanel onSelectClan={setSelectedClanId} />
             <PlotsPanel />
           </aside>
           <aside className="chronicle">
@@ -734,6 +841,12 @@ export default function App() {
 
       <GodPanel open={godOpen} onClose={() => setGodOpen(false)} />
       <Wiki open={wikiOpen} onClose={() => setWikiOpen(false)} />
+      {selectedClanId !== null && (
+        <ClanDetails clanId={selectedClanId} onClose={() => setSelectedClanId(null)} onSelectCreature={(id) => { setSelectedClanId(null); setSelectedId(id) }} />
+      )}
+      {showWorldEnd && state && (
+        <WorldEndSummary state={state} onReset={() => { sendReset(); setShowWorldEnd(false) }} onClose={() => setShowWorldEnd(false)} />
+      )}
 
       {helpOpen && (
         <div className="help-backdrop" onClick={() => setHelpOpen(false)}>

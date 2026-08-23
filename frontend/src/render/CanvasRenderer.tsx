@@ -192,6 +192,32 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       return [it[0], it[1]]
     }
 
+    let lastTap: { x: number; y: number; t: number } | null = null
+    let longPressTimer: number | null = null
+    let longPressFired = false
+    const showQuickInfo = (clientX: number, clientY: number) => {
+      const id = pickCreature(clientX, clientY)
+      if (id === null) return
+      const state = stateRef.current
+      const ent = state?.entities.find(e => e.id === id)
+      if (!ent) return
+      // small quick-info tooltip near the creature (no inspector)
+      const tip = document.createElement('div')
+      tip.className = 'custom-tooltip'
+      tip.style.left = `${clientX}px`
+      tip.style.top = `${clientY - 12}px`
+      tip.style.transform = 'translate(-50%, -100%)'
+      tip.textContent = `${(ent as any).personal_name ?? ent.caste ?? 'Creature'} #${id} ${ent.caste ?? ''} ${ent.stage ?? ''}`.trim()
+      document.body.appendChild(tip)
+      setTimeout(() => tip.remove(), 1800)
+      // also briefly highlight
+      if (onTapCreature) {
+        const prev = (selectedRef as any)?.current
+        if (selectedRef) (selectedRef as any).current = id
+        setTimeout(() => { if ((selectedRef as any) && (selectedRef as any).current === id) (selectedRef as any).current = prev ?? null }, 1200)
+      }
+    }
+
     const onPointerDown = (ev: PointerEvent) => {
       canvas.setPointerCapture(ev.pointerId)
       pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY })
@@ -201,8 +227,18 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         lastMid = mid(a, b)
       }
       tapStart = { x: ev.clientX, y: ev.clientY, t: performance.now() }
+      longPressFired = false
+      if (longPressTimer) window.clearTimeout(longPressTimer)
+      // long-press 500ms → quick info (keep pan/pinch/tap)
+      longPressTimer = window.setTimeout(() => {
+        if (tapStart && Math.hypot(ev.clientX - tapStart.x, ev.clientY - tapStart.y) * dpr() < 10 * dpr()) {
+          longPressFired = true
+          showQuickInfo(tapStart.x, tapStart.y)
+          // haptic feedback if available
+          try { (navigator as any).vibrate?.(30) } catch {}
+        }
+      }, 500) as unknown as number
       canvas.style.cursor = 'grab'
-      // prevent scroll/zoom at edge of screen from swallowing the tap
       if (ev.cancelable) ev.preventDefault()
     }
 
@@ -237,9 +273,11 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       if (!state) return
       pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY })
       const ratio = dpr()
-
+      // cancel long-press on move
+      if (tapStart && Math.hypot(ev.clientX - tapStart.x, ev.clientY - tapStart.y) * ratio > 10 * ratio) {
+        if (longPressTimer) { window.clearTimeout(longPressTimer); longPressTimer = null }
+      }
       if (pointers.size === 1) {
-        // Dead zone: small moves are still taps, not drags (fixes edge-tap → hand/drag)
         if (tapStart) {
           const dragDist = Math.hypot(ev.clientX - tapStart.x, ev.clientY - tapStart.y) * ratio
           if (dragDist < 6 * ratio) return
@@ -251,14 +289,13 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         return
       }
       if (pointers.size >= 2) {
+        if (longPressTimer) { window.clearTimeout(longPressTimer); longPressTimer = null }
         const [a, b] = twoPointers()
         const m = mid(a, b)
         const d = dist(a, b)
         if (lastMid && lastPinchDist > 0 && d > 0) {
-          // pan with midpoint motion...
           cam.ox += (m.x - lastMid.x) * ratio
           cam.oy += (m.y - lastMid.y) * ratio
-          // ...then zoom anchored at the midpoint
           zoomAt(state, d / lastPinchDist, m.x * ratio, m.y * ratio)
         }
         lastPinchDist = d
@@ -268,21 +305,39 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
 
     const onPointerUp = (ev: PointerEvent) => {
       pointers.delete(ev.pointerId)
+      if (longPressTimer) { window.clearTimeout(longPressTimer); longPressTimer = null }
       if (pointers.size < 2) {
         lastPinchDist = 0
         lastMid = null
       }
       if (pointers.size === 0) canvas.style.cursor = 'grab'
-      // A short, still press is a tap → select the nearest creature.
-      // Use the original tap position (not release) so a slight drag doesn't miss the creature.
-      if (
-        tapStart &&
-        onTapCreature &&
-        performance.now() - tapStart.t < 500 &&
-        Math.hypot(ev.clientX - tapStart.x, ev.clientY - tapStart.y) * dpr() <
-          10 * dpr()
-      ) {
+      if (!tapStart || !onTapCreature) { tapStart = null; return }
+      const isTap = performance.now() - tapStart.t < 500 && Math.hypot(ev.clientX - tapStart.x, ev.clientY - tapStart.y) * dpr() < 10 * dpr()
+      if (!isTap) { tapStart = null; return }
+      if (longPressFired) { longPressFired = false; tapStart = null; return }
+      const now = performance.now()
+      const isDoubleTap = lastTap && now - lastTap.t < 300 && Math.hypot(tapStart.x - lastTap.x, tapStart.y - lastTap.y) < 24
+      if (isDoubleTap) {
+        // double-tap → inspect + zoom to creature
+        const id = pickCreature(tapStart.x, tapStart.y)
+        if (id !== null) {
+          onTapCreature(id)
+          const st = stateRef.current
+          const ent = st?.entities.find(e => e.id === id)
+          if (ent && st) {
+            // center and zoom in a bit
+            const targetScale = Math.min(MAX_SCALE, cam.scale * 1.6)
+            cam.ox = canvas.width / 2 - ent.x * targetScale
+            cam.oy = canvas.height / 2 - ent.y * targetScale
+            cam.scale = targetScale
+            clampCamera(st)
+          }
+        }
+        lastTap = null
+      } else {
+        // single tap → inspect
         onTapCreature(pickCreature(tapStart.x, tapStart.y))
+        lastTap = { x: tapStart.x, y: tapStart.y, t: now }
       }
       tapStart = null
     }

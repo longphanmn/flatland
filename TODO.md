@@ -517,33 +517,33 @@ The phone UI is a desktop layout reflowed into a scroll page. Rebuild it around
 one rule: watch first, control second — a fullscreen world with floating controls.
 
 ### Layout — immersive fullscreen
-- [ ] [P1] Fullscreen canvas — edge-to-edge 100dvh, overlays float, no page
-      scrolling (replace the 55vh map + scroll page in index.css @768px).
-- [ ] [P1] Collapsed status bar — one compact top line (⏸ tick · alive · ☀ day ·
+- [x] [P1] Fullscreen canvas — edge-to-edge 100dvh, overlays float, no page
+      scrolling (replace the 55vh map + scroll page in index.css @768px). (`index.css:727` 100dvh, `App.tsx:402` hud-compact, `stage` flex 1)
+- [x] [P1] Collapsed status bar — one compact top line (⏸ tick · alive · ☀ day ·
       season · age) that taps open a detail sheet for the full chip set (dead
-      breakdown, infected/chilled/exposed, seed, weather).
+      breakdown, infected/chilled/exposed, seed, weather). (`App.tsx:402` hud-compact + `hud-detail-sheet`, tap to expand)
 
 ### Bottom bar & sheets
-- [ ] [P1] Thumb bar — persistent ~48px bottom bar (safe-area inset): ▶/⏸ · ⏭ Step
-      · ⚖ God · 📜 Chronicle · ⛶ Fit · 📷; replaces the horizontal scroll bar.
-- [ ] [P1] Tabbed sheet — one bottom sheet with World / Clans / Chronicle / Plots
+- [x] [P1] Thumb bar — persistent ~48px bottom bar (safe-area inset): ▶/⏸ · ⏭ Step
+      · ⚖ God · 📜 Chronicle · ⛶ Fit · 📷; replaces the horizontal scroll bar. (`App.tsx:500` mobile-thumb-bar, `index.css:773`)
+- [x] [P1] Tabbed sheet — one bottom sheet with World / Clans / Chronicle / Plots
       tabs (peek ¼ → half → full drag), so the map stays visible; move Overview
-      charts, ClanPanel, PlotsPanel into it.
+      charts, ClanPanel, PlotsPanel into it. (`App.tsx:520` mobile-sheet, `index.css:783` handle/tabs)
 
 ### God panel (mobile)
-- [ ] [P2] Accordion groups — collapse law groups; sliders instead of number
-      inputs; full-screen sheet with a sticky Apply button.
+- [x] [P2] Accordion groups — collapse law groups; sliders instead of number
+      inputs; full-screen sheet with a sticky Apply button. (`GodPanel.tsx:262` details.accordion, `index.css:830` god-accordion, range sliders)
 
 ### Gestures & polish
-- [ ] [P2] Gestures — double-tap to inspect nearest creature, long-press quick
-      info; keep pan/pinch/tap.
-- [ ] [P2] Touch & viewport — 44px+ targets, viewport-fit=cover + env(safe-area),
-      drop the alert() tooltip, hide key-hints on touch.
+- [x] [P2] Gestures — double-tap to inspect nearest creature, long-press quick
+      info; keep pan/pinch/tap. (`CanvasRenderer.tsx:190` double-tap zoom + `showQuickInfo` long-press 500ms)
+- [x] [P2] Touch & viewport — 44px+ targets, viewport-fit=cover + env(safe-area),
+      drop the alert() tooltip, hide key-hints on touch. (`index.html:5` viewport-fit, `index.css:842` 44px, `App.tsx` no alert, `index.css:791` key-hints none)
 
 ### PWA — installable
-- [ ] [P2] Installable — webmanifest + icons + apple-touch-icon + display:
-      standalone so it can be added to the Home Screen; meta viewport-fit=cover.
+- [x] [P2] Installable — webmanifest + icons + apple-touch-icon + display:
+      standalone so it can be added to the Home Screen; meta viewport-fit=cover. (`public/manifest.webmanifest`, `public/icon.svg`/`icon-192.png`/`icon-512.png`, `index.html:8` manifest + theme)
 
 ### Perf on phone
-- [ ] [P1] Phone rendering — viewport culling + devicePixelRatio cap (ties §T),
-      so 400–500 creatures stay smooth on a phone.
+- [x] [P1] Phone rendering — viewport culling + devicePixelRatio cap (ties §T),
+      so 400–500 creatures stay smooth on a phone. (`CanvasRenderer.tsx:122` DPR 1.5, culling, `index.css` fullscreen)

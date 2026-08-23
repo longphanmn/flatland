@@ -258,6 +258,7 @@ export default function GodPanel({ open, onClose }: Props) {
   }
   const apply = () => postLaws(false)
   const save = () => postLaws(true)
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
   const applyPreset = async (name: string, reset: boolean) => {
     setError(null)
     setSaved(false)
@@ -311,287 +312,189 @@ export default function GodPanel({ open, onClose }: Props) {
             </select>
           </label>
 
-          {GROUP_ORDER.map((group) => (
-            <section key={group} className="god-group">
-              <h3>{group}</h3>
-              {group === 'Reproduction' && (
-                <label className="god-row">
-                  <span title="whether new life may begin at all">Births allowed</span>
-                  <select
-                    value={String(laws.birth_enabled ?? true)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, birth_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
-              )}
-              {group === 'Disease' && (
-                <label className="god-row">
-                  <span title="plagues walk the world; disabling freezes all sickness">
-                    Plagues allowed
+          {GROUP_ORDER.map((group) => {
+            const lawsInGroup = NUMBER_LAWS.filter((l) => l.group === group)
+            const special = (
+              <>
+                {group === 'Reproduction' && (
+                  <label className="god-row">
+                    <span title="whether new life may begin at all">Births allowed</span>
+                    <select value={String(laws.birth_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, birth_enabled: e.target.value === 'true' }))}>
+                      <option value="true">yes</option><option value="false">no</option>
+                    </select>
+                  </label>
+                )}
+                {group === 'Disease' && (
+                  <label className="god-row">
+                    <span title="plagues walk the world; disabling freezes all sickness">Plagues allowed</span>
+                    <select value={String(laws.disease_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, disease_enabled: e.target.value === 'true' }))}>
+                      <option value="true">yes</option><option value="false">no</option>
+                    </select>
+                  </label>
+                )}
+                {group === 'Sky & Seasons' && (
+                  <>
+                    <label className="god-row">
+                      <span title="whether the weather ever turns">Weather allowed</span>
+                      <select value={String(laws.weather_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, weather_enabled: e.target.value === 'true' }))}>
+                        <option value="true">yes</option><option value="false">no</option>
+                      </select>
+                    </label>
+                    <label className="god-row">
+                      <span title="creatures shelter in houses after dark">Night rest</span>
+                      <select value={String(laws.sleep_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, sleep_enabled: e.target.value === 'true' }))}>
+                        <option value="true">yes</option><option value="false">no</option>
+                      </select>
+                    </label>
+                  </>
+                )}
+                {group === 'Shelter' && (
+                  <label className="god-row">
+                    <span title="creatures may claim roofs; disabling leaves all exposed">Shelter allowed</span>
+                    <select value={String(laws.shelter_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, shelter_enabled: e.target.value === 'true' }))}>
+                      <option value="true">yes</option><option value="false">no</option>
+                    </select>
+                  </label>
+                )}
+                {group === 'Territory' && (
+                  <label className="god-row">
+                    <span title="clans claim a circle around their house; disabling removes borders">Territory claimed</span>
+                    <select value={String(laws.territory_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, territory_enabled: e.target.value === 'true' }))}>
+                      <option value="true">yes</option><option value="false">no</option>
+                    </select>
+                  </label>
+                )}
+                {group === 'Weather Sickness' && (
+                  <label className="god-row">
+                    <span title="chill and wet contagion — rain/storm/winter nights build chill, past threshold drains health; wet catches disease faster">Weather sickness</span>
+                    <select value={String(laws.weather_sickness_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, weather_sickness_enabled: e.target.value === 'true' }))}>
+                      <option value="true">yes</option><option value="false">no</option>
+                    </select>
+                  </label>
+                )}
+                {group === 'Communication' && (
+                  <label className="god-row">
+                    <span title="food + alarm calls — clan-mates respond strongly, strangers weakly; rendered as ripples">Communication</span>
+                    <select value={String(laws.communication_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, communication_enabled: e.target.value === 'true' }))}>
+                      <option value="true">yes</option><option value="false">no</option>
+                    </select>
+                  </label>
+                )}
+                {group === 'Wildfire & Disasters' && (
+                  <>
+                    <label className="god-row">
+                      <span title="fire ignites via storm lightning / fire_rate and spreads grass→plant→house; ash fertilizes">Wildfire</span>
+                      <select value={String(laws.wildfire_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, wildfire_enabled: e.target.value === 'true' }))}>
+                        <option value="true">yes</option><option value="false">no</option>
+                      </select>
+                    </label>
+                    <label className="god-row">
+                      <span title="meteor/flood stochastic — god sets frequency, never a specific strike">Disasters</span>
+                      <select value={String(laws.disaster_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, disaster_enabled: e.target.value === 'true' }))}>
+                        <option value="true">yes</option><option value="false">no</option>
+                      </select>
+                    </label>
+                  </>
+                )}
+                {group === 'Culture' && (
+                  <label className="god-row">
+                    <span title="culture spreads to allied neighbours, can split into rival traditions; grants small collective bonus">Culture</span>
+                    <select value={String(laws.culture_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, culture_enabled: e.target.value === 'true' }))}>
+                      <option value="true">yes</option><option value="false">no</option>
+                    </select>
+                  </label>
+                )}
+                {group === 'Genetics' && (
+                  <div className="god-note" style={{ fontSize: 11, opacity: 0.7 }}>Heritable traits: greedy/peaceful/paranoid/bold — mutation {laws.trait_mutation_rate ?? 0.02}</div>
+                )}
+                {group === 'Ages' && (
+                  <label className="god-row">
+                    <span title="super-seasons: Golden/ Ice/ Chaos/ Plague — each bends food/mutation/disease/chill. God sets length, world cycles.">Ages</span>
+                    <select value={String(laws.age_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, age_enabled: e.target.value === 'true' }))}>
+                      <option value="true">yes</option><option value="false">no</option>
+                    </select>
+                  </label>
+                )}
+                {group === 'Rebellion' && (
+                  <label className="god-row">
+                    <span title="unhappy members (starving/homeless) split off to found new clan then war parent — schism_threshold fraction to trigger">Schism allowed</span>
+                    <select value={String(laws.schism_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, schism_enabled: e.target.value === 'true' }))}>
+                      <option value="true">yes</option><option value="false">no</option>
+                    </select>
+                  </label>
+                )}
+                {group === 'Clan' && (
+                  <>
+                    <label className="god-row">
+                      <span title="each clan bears a totem (Wolf/Tree/Shield/Eye) granting a subtle buff; disabling makes all clans plain">Totems</span>
+                      <select value={String(laws.totems_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, totems_enabled: e.target.value === 'true' }))}>
+                        <option value="true">yes</option><option value="false">no</option>
+                      </select>
+                    </label>
+                    <label className="god-row">
+                      <span title="leader succession on death emits succession event; disabling keeps founder as eternal leader">Succession</span>
+                      <select value={String(laws.succession_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, succession_enabled: e.target.value === 'true' }))}>
+                        <option value="true">yes</option><option value="false">no</option>
+                      </select>
+                    </label>
+                  </>
+                )}
+                {group === 'Ecosystem' && (
+                  <label className="god-row">
+                    <span title="grass/berry/mushroom/poisonous diversity; disabling makes all plants grass">Plant variants</span>
+                    <select value={String(laws.plant_variants_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, plant_variants_enabled: e.target.value === 'true' }))}>
+                      <option value="true">yes</option><option value="false">no</option>
+                    </select>
+                  </label>
+                )}
+                {group === 'Predation' && (
+                  <label className="god-row">
+                    <span title="predators hunt prey; disabling makes them docile">Predation allowed</span>
+                    <select value={String(laws.predation_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, predation_enabled: e.target.value === 'true' }))}>
+                      <option value="true">yes</option><option value="false">no</option>
+                    </select>
+                  </label>
+                )}
+                {group === 'Clan War' && (
+                  <label className="god-row">
+                    <span title="rival clans fight on contact; disabling enforces peace">War allowed</span>
+                    <select value={String(laws.war_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, war_enabled: e.target.value === 'true' }))}>
+                      <option value="true">yes</option><option value="false">no</option>
+                    </select>
+                  </label>
+                )}
+              </>
+            )
+            const rows = lawsInGroup.map(({ key, label, min, max, step }) => (
+              <label className="god-row" key={key}>
+                <span title={LAW_HINTS[key]}>{label}</span>
+                {isMobile ? (
+                  <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input type="range" min={min} max={max} step={step} value={(laws[key] as number | undefined) ?? min} onChange={(e) => set(key, e.target.value)} style={{ width: 96 }} />
+                    <span style={{ minWidth: 36, textAlign: 'right', fontSize: 11, color: '#8b949e' }}>{(laws[key] as number | undefined)?.toFixed?.(step < 1 ? 2 : 0) ?? ''}</span>
                   </span>
-                  <select
-                    value={String(laws.disease_enabled ?? false)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, disease_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
-              )}
-              {group === 'Sky & Seasons' && (
-                <>
-                  <label className="god-row">
-                    <span title="whether the weather ever turns">Weather allowed</span>
-                    <select
-                      value={String(laws.weather_enabled ?? true)}
-                      onChange={(e) =>
-                        setLaws((l) => ({ ...l, weather_enabled: e.target.value === 'true' }))
-                      }
-                    >
-                      <option value="true">yes</option>
-                      <option value="false">no</option>
-                    </select>
-                  </label>
-                  <label className="god-row">
-                    <span title="creatures shelter in houses after dark">Night rest</span>
-                    <select
-                      value={String(laws.sleep_enabled ?? true)}
-                      onChange={(e) =>
-                        setLaws((l) => ({ ...l, sleep_enabled: e.target.value === 'true' }))
-                      }
-                    >
-                      <option value="true">yes</option>
-                      <option value="false">no</option>
-                    </select>
-                  </label>
-                </>
-              )}
-              {group === 'Shelter' && (
-                <label className="god-row">
-                  <span title="creatures may claim roofs; disabling leaves all exposed">
-                    Shelter allowed
-                  </span>
-                  <select
-                    value={String(laws.shelter_enabled ?? true)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, shelter_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
-              )}
-              {group === 'Territory' && (
-                <label className="god-row">
-                  <span title="clans claim a circle around their house; disabling removes borders">Territory claimed</span>
-                  <select
-                    value={String(laws.territory_enabled ?? true)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, territory_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
-              )}
-              {group === 'Weather Sickness' && (
-                <label className="god-row">
-                  <span title="chill and wet contagion — rain/storm/winter nights build chill, past threshold drains health; wet catches disease faster">Weather sickness</span>
-                  <select
-                    value={String(laws.weather_sickness_enabled ?? false)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, weather_sickness_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
-              )}
-              {group === 'Communication' && (
-                <label className="god-row">
-                  <span title="food + alarm calls — clan-mates respond strongly, strangers weakly; rendered as ripples">Communication</span>
-                  <select
-                    value={String(laws.communication_enabled ?? false)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, communication_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
-              )}
-              {group === 'Wildfire & Disasters' && (
-                <>
-                  <label className="god-row">
-                    <span title="fire ignites via storm lightning / fire_rate and spreads grass→plant→house; ash fertilizes">Wildfire</span>
-                    <select
-                      value={String(laws.wildfire_enabled ?? false)}
-                      onChange={(e) =>
-                        setLaws((l) => ({ ...l, wildfire_enabled: e.target.value === 'true' }))
-                      }
-                    >
-                      <option value="true">yes</option>
-                      <option value="false">no</option>
-                    </select>
-                  </label>
-                  <label className="god-row">
-                    <span title="meteor/flood stochastic — god sets frequency, never a specific strike">Disasters</span>
-                    <select
-                      value={String(laws.disaster_enabled ?? false)}
-                      onChange={(e) =>
-                        setLaws((l) => ({ ...l, disaster_enabled: e.target.value === 'true' }))
-                      }
-                    >
-                      <option value="true">yes</option>
-                      <option value="false">no</option>
-                    </select>
-                  </label>
-                </>
-              )}
-              {group === 'Culture' && (
-                <label className="god-row">
-                  <span title="culture spreads to allied neighbours, can split into rival traditions; grants small collective bonus">Culture</span>
-                  <select
-                    value={String(laws.culture_enabled ?? false)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, culture_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
-              )}
-              {group === 'Genetics' && (
-                <div className="god-note" style={{ fontSize: 11, opacity: 0.7 }}>
-                  Heritable traits: greedy/peaceful/paranoid/bold — mutation {laws.trait_mutation_rate ?? 0.02}
-                </div>
-              )}
-              {group === 'Ages' && (
-                <label className="god-row">
-                  <span title="super-seasons: Golden/ Ice/ Chaos/ Plague — each bends food/mutation/disease/chill. God sets length, world cycles.">Ages</span>
-                  <select
-                    value={String(laws.age_enabled ?? false)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, age_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
-              )}
-              {group === 'Rebellion' && (
-                <label className="god-row">
-                  <span title="unhappy members (starving/homeless) split off to found new clan then war parent — schism_threshold fraction to trigger">Schism allowed</span>
-                  <select
-                    value={String(laws.schism_enabled ?? false)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, schism_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
-              )}
-              {group === 'Clan' && (
-                <>
-                  <label className="god-row">
-                    <span title="each clan bears a totem (Wolf/Tree/Shield/Eye) granting a subtle buff; disabling makes all clans plain">Totems</span>
-                    <select
-                      value={String(laws.totems_enabled ?? true)}
-                      onChange={(e) =>
-                        setLaws((l) => ({ ...l, totems_enabled: e.target.value === 'true' }))
-                      }
-                    >
-                      <option value="true">yes</option>
-                      <option value="false">no</option>
-                    </select>
-                  </label>
-                  <label className="god-row">
-                    <span title="leader succession on death emits succession event; disabling keeps founder as eternal leader">Succession</span>
-                    <select
-                      value={String(laws.succession_enabled ?? true)}
-                      onChange={(e) =>
-                        setLaws((l) => ({ ...l, succession_enabled: e.target.value === 'true' }))
-                      }
-                    >
-                      <option value="true">yes</option>
-                      <option value="false">no</option>
-                    </select>
-                  </label>
-                </>
-              )}
-              {group === 'Ecosystem' && (
-                <label className="god-row">
-                  <span title="grass/berry/mushroom/poisonous diversity; disabling makes all plants grass">
-                    Plant variants
-                  </span>
-                  <select
-                    value={String(laws.plant_variants_enabled ?? true)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, plant_variants_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
-              )}
-              {group === 'Predation' && (
-                <label className="god-row">
-                  <span title="predators hunt prey; disabling makes them docile">Predation allowed</span>
-                  <select
-                    value={String(laws.predation_enabled ?? false)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, predation_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
-              )}
-              {group === 'Clan War' && (
-                <label className="god-row">
-                  <span title="rival clans fight on contact; disabling enforces peace">War allowed</span>
-                  <select
-                    value={String(laws.war_enabled ?? false)}
-                    onChange={(e) =>
-                      setLaws((l) => ({ ...l, war_enabled: e.target.value === 'true' }))
-                    }
-                  >
-                    <option value="true">yes</option>
-                    <option value="false">no</option>
-                  </select>
-                </label>
-              )}
-              {NUMBER_LAWS.filter((l) => l.group === group).map(({ key, label, min, max, step }) => (
-                <label className="god-row" key={key}>
-                  <span title={LAW_HINTS[key]}>{label}</span>
-                  <input
-                    type="number"
-                    min={min}
-                    max={max}
-                    step={step}
-                    value={(laws[key] as number | undefined) ?? ''}
-                    onChange={(e) => set(key, e.target.value)}
-                  />
-                </label>
-              ))}
-            </section>
-          ))}
+                ) : (
+                  <input type="number" min={min} max={max} step={step} value={(laws[key] as number | undefined) ?? ''} onChange={(e) => set(key, e.target.value)} />
+                )}
+              </label>
+            ))
+            if (isMobile) {
+              return (
+                <details key={group} className="god-accordion" open={group === 'Food & Energy'}>
+                  <summary>{group} <span style={{ fontSize: 10, color: '#8b949e' }}>{lawsInGroup.length}</span></summary>
+                  {special}
+                  {rows}
+                </details>
+              )
+            }
+            return (
+              <section key={group} className="god-group">
+                <h3>{group}</h3>
+                {special}
+                {rows}
+              </section>
+            )
+          })}
 
           <footer className="god-foot">
             {error && <span className="god-error">{error}</span>}

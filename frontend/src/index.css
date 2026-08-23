@@ -723,160 +723,129 @@ select {
   font-size: 12px;
 }
 
-/* ─────────────── phone: make UI thumb-friendly ─────────────── */
+/* ─────────────── phone: immersive fullscreen + thumb bar + sheet ─────────────── */
 @media (max-width: 768px) {
+  html, body, #root { height: 100dvh; overflow: hidden; }
+  .app {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* collapsed status bar — single line, tap to expand */
   .hud {
     gap: 8px;
     padding: 8px 10px;
-  }
-  .title {
-    font-size: 13px;
-  }
-  .chip {
-    font-size: 11px;
-  }
-
-  /* right-stack becomes flow below map so it never covers canvas */
-  .app {
-    height: auto;
-    min-height: 100dvh;
-  }
-  .stage {
-    flex: none;
-    height: 55vh;
-    min-height: 360px;
-  }
-  .right-stack {
-    position: static;
-    left: auto;
-    right: auto;
-    width: auto;
-    max-width: none;
-    max-height: none;
-    margin: 8px;
-    gap: 8px;
-  }
-  .info-panel {
-    max-height: 280px;
-    padding: 8px 10px;
-  }
-  .chronicle {
-    min-height: 80px;
-    max-height: 240px;
-    padding: 8px 10px;
-  }
-  .chronicle li {
-    font-size: 11px;
-  }
-
-  /* controls: horizontal scroll, larger taps */
-  .controls {
-    gap: 6px;
-    padding: 8px 10px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .controls::-webkit-scrollbar {
-    display: none;
-  }
-  .controls button,
-  .controls select {
+    padding-right: 96px;
     min-height: 36px;
-    flex: none;
-    padding: 6px 12px;
-    font-size: 13px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+    z-index: 6;
   }
-  .key-hints {
-    display: none;
+  .hud.hud-compact { cursor: pointer; }
+  .hud.hud-compact .chip { font-size: 11px; }
+  .hud .title { font-size: 13px; flex: none; }
+  .hud .chip { font-size: 11px; }
+  /* hide overflow chips; they live in detail sheet */
+  .hud .chip.desktop-only { display: none !important; }
+  .hud-detail-sheet{
+    position: fixed; top: 44px; left: 8px; right: 8px; z-index: 20;
+    background: rgba(13,17,23,0.98); border: 1px solid #30363d; border-radius: 10px;
+    padding: 10px 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    display: flex; flex-wrap: wrap; gap: 8px; max-height: 40vh; overflow: auto;
   }
-
-  /* drawers become bottom sheets */
+  .hud-detail-sheet .chip{ font-size: 11px; }
+  /* immersive stage — edge-to-edge, overlays float */
+  .stage {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+  /* hide desktop right-stack & controls; replaced by sheet + thumb bar */
+  .right-stack { display: none !important; }
+  .controls { display: none !important; }
+  .key-hints { display: none !important; }
+  /* thumb bar — persistent 48px bottom bar */
+  .mobile-thumb-bar{
+    position: fixed; left: 0; right: 0; bottom: 0;
+    height: 48px; padding: 6px 8px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    background: rgba(13,17,23,0.96); border-top: 1px solid #21262d;
+    display: flex; gap: 6px; align-items: center; justify-content: space-between;
+    z-index: 12; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .mobile-thumb-bar::-webkit-scrollbar{ display:none; }
+  .mobile-thumb-bar button{
+    flex: 1 1 0; min-width: 44px; min-height: 36px; padding: 6px 8px; font-size: 13px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  }
+  .mobile-thumb-bar select{
+    min-width: 64px; min-height: 36px; font-size: 13px;
+  }
+  /* tabbed bottom sheet — peek 1/4 → half → full drag */
+  .mobile-sheet{
+    position: fixed; left: 0; right: 0; bottom: 48px;
+    background: #0d1117; border-top: 1px solid #30363d; border-radius: 12px 12px 0 0;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.5); z-index: 10;
+    display: flex; flex-direction: column; overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom);
+    transition: height 0.25s ease;
+  }
+  .mobile-sheet[data-state="peek"]{ height: 22vh; }
+  .mobile-sheet[data-state="half"]{ height: 44vh; }
+  .mobile-sheet[data-state="full"]{ height: 72vh; }
+  .mobile-sheet-handle{
+    width: 36px; height: 4px; border-radius: 2px; background: #30363d; margin: 8px auto 6px; flex: none;
+  }
+  .mobile-sheet-tabs{
+    display: flex; gap: 6px; padding: 0 10px 8px; border-bottom: 1px solid #21262d; overflow-x: auto; scrollbar-width: none;
+  }
+  .mobile-sheet-tabs button{
+    flex: none; min-height: 32px; padding: 4px 10px; font-size: 12px;
+    background: #161b22; border: 1px solid #30363d; color: #8b949e;
+  }
+  .mobile-sheet-tabs button.active{ background:#21262d; color:#e6edf3; border-color:#58a6ff; }
+  .mobile-sheet-body{ flex: 1; overflow: auto; padding: 10px; }
+  .mobile-sheet-body .info-panel,
+  .mobile-sheet-body .chronicle{ background: transparent; border: none; border-radius: 0; padding: 0; max-height: none; pointer-events: auto; }
+  .mobile-sheet-body .chronicle li{ font-size: 11px; }
+  /* drawers become full bottom sheets */
   .inspector {
-    top: auto;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: auto;
-    max-width: none;
-    height: 62vh;
-    max-height: 78vh;
-    border-right: none;
-    border-top: 1px solid #30363d;
-    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55);
-    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    top: auto; left: 0; right: 0; bottom: 0;
+    width: auto; max-width: none; height: 62vh; max-height: 78vh;
+    border-right: none; border-top: 1px solid #30363d; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55);
+    padding-bottom: max(14px, env(safe-area-inset-bottom)); z-index: 14;
   }
   .god-panel {
-    left: 0;
-    right: 0;
-    width: auto;
-    max-width: none;
-    top: auto;
-    bottom: 0;
-    height: 72vh;
-    max-height: 84vh;
-    border-left: none;
-    border-top: 1px solid #30363d;
-    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55);
-    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    left: 0; right: 0; width: auto; max-width: none; top: auto; bottom: 0;
+    height: 84vh; max-height: 86vh; border-left: none; border-top: 1px solid #30363d;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55); padding-bottom: max(14px, env(safe-area-inset-bottom)); z-index: 16;
   }
-  .album {
-    left: 8px;
-    right: 8px;
-    width: auto;
-    max-width: none;
-    top: auto;
-    bottom: 56px;
+  .god-panel .god-foot{ position: sticky; bottom: 0; background: #0d1117; padding-top: 10px; margin-top: 12px; }
+  .god-accordion{ border: 1px solid #21262d; border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+  .god-accordion summary{ list-style: none; cursor: pointer; padding: 8px 10px; font-size: 11px; color: #e3b341; letter-spacing: 0.06em; text-transform: uppercase; background: #161b22; display: flex; align-items: center; justify-content: space-between; }
+  .god-accordion summary::-webkit-details-marker{ display:none; }
+  .god-accordion[open] summary{ border-bottom: 1px solid #21262d; }
+  .god-accordion .god-row{ padding: 6px 10px; }
+  .god-accordion input[type="range"]{ width: 96px; accent-color: #e3b341; }
+  .clan-details-panel, .world-end-panel{
+    left: 0; right: 0; width: auto; max-width: none; top: auto; bottom: 0; height: 72vh; max-height: 84vh; border-radius: 12px 12px 0 0; padding-bottom: max(14px, env(safe-area-inset-bottom));
   }
-  .snap-banner {
-    left: 8px;
-    right: 8px;
-    width: auto;
-    transform: none;
-    max-width: none;
-    font-size: 12px;
-    text-align: center;
-  }
-  .run-switcher {
-    left: 8px;
-    right: auto;
-    bottom: 56px;
-    max-width: calc(100vw - 16px);
-  }
-  .top-right-panel {
-    top: 6px;
-    right: 8px;
-  }
-  .hud {
-    padding-right: 92px;
-  }
-  .version-bar {
-    bottom: 6px;
-    left: 8px;
-    right: auto;
-    transform: none;
-    font-size: 9px;
-    padding: 1px 6px;
-  }
-  /* hide some HUD chips on very small screens to reduce height */
-  .hud .chip:nth-of-type(n+6) {
-    display: none;
-  }
-  .hud .chip.alive,
-  .hud .chip.dead,
-  .hud .chip.starving,
-  .hud .chip.sick {
-    display: inline-flex;
-  }
-  .run-select {
-    max-width: 42vw;
-  }
-
+  .world-end-backdrop, .clan-details-backdrop{ align-items: flex-end; padding: 0; }
+  .album { left: 8px; right: 8px; width: auto; max-width: none; top: auto; bottom: 56px; }
+  .snap-banner { left: 8px; right: 8px; width: auto; transform: none; max-width: none; font-size: 12px; text-align: center; }
+  .run-switcher { left: 8px; right: auto; bottom: 62px; max-width: calc(100vw - 16px); }
+  .top-right-panel { top: 6px; right: 8px; gap: 6px; }
+  .top-right-panel .god-btn{ min-height: 32px; padding: 4px 8px; font-size: 12px; }
+  .version-bar { bottom: 52px; left: 8px; right: auto; transform: none; font-size: 9px; padding: 1px 6px; }
   /* larger touch targets */
-  button {
-    min-height: 34px;
-  }
+  button, a, select{ min-height: 44px; }
+  button{ min-height: 44px; }
+  .mobile-sheet-tabs button, .top-right-panel .god-btn{ min-height: 32px; }
 }
 
 /* top-right God button */
@@ -974,6 +943,14 @@ select {
 .wiki-panel a{color:#58a6ff}
 .wiki-panel code{background:#161b22;border:1px solid #21262d;padding:1px 4px;border-radius:3px}
 .wiki-panel pre{background:#161b22;border:1px solid #30363d;padding:12px;border-radius:6px;overflow:auto}
+.clan-details-backdrop, .world-end-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:32;display:flex;align-items:center;justify-content:center;padding:16px
+}
+.clan-details-panel, .world-end-panel{
+  background:#0d1117;border:1px solid #30363d;border-radius:10px;width:min(560px,96vw);max-height:88vh;overflow:auto;padding:16px;box-shadow:0 12px 32px rgba(0,0,0,0.6)
+}
+.world-end-panel{ width:min(640px,96vw); border-color:#f85149; }
+.world-end-panel h2{ color:#f85149; }
 @media (max-width: 380px) {
   .hud {
     gap: 6px;

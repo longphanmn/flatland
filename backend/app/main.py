@@ -557,6 +557,60 @@ async def get_worlds() -> dict:
     return {"worlds": DB.worlds()}
 
 
+@app.get("/api/clans/{clan_id}")
+async def get_clan(clan_id: int) -> dict:
+    """Single clan details with members and history."""
+    if clan_id not in RT.sim.clans:
+        raise HTTPException(404, "clan not found")
+    info = RT.sim.clans[clan_id]
+    # members
+    members = []
+    for c in RT.sim.world.creatures():
+        if c.clan_id == clan_id:
+            members.append({
+                "id": c.id,
+                "caste": c.caste,
+                "sex": c.sex,
+                "age": c.age,
+                "lifespan": c.lifespan,
+                "stage": c.stage,
+                "energy": round(c.energy, 1),
+                "health": round(c.health, 1),
+                "status": c.status,
+                "personal_name": __import__('app.simulation', fromlist=['personal_name_for']).personal_name_for(c.id, RT.sim.config.seed, c.generation),
+                "glyph": __import__('app.simulation', fromlist=['glyph_for']).glyph_for(c.id, RT.sim.config.seed, c.generation),
+            })
+    # house
+    house = None
+    for ent in RT.sim.world.entities.values():
+        if ent.kind == "house" and getattr(ent, "clan_id", 0) == clan_id and not getattr(ent, "is_ruin", False):
+            house = {"x": ent.x, "y": ent.y, "size": getattr(ent, "size", 0), "is_ruin": False, "clan_color": getattr(ent, "clan_color", None)}
+            break
+    # war record
+    wins = sum(1 for e in RT.sim.history if e.type == "war" and int(e.payload.get("b", 0) or 0) == clan_id)
+    losses = sum(1 for e in RT.sim.history if e.type == "war" and int(e.payload.get("a", 0) or 0) == clan_id)
+    # recent events for this clan
+    clan_events = [e for e in RT.sim.history if (e.payload.get("a") == clan_id or e.payload.get("b") == clan_id or e.payload.get("clan_id") == clan_id) ][-20:]
+    return {
+        "id": clan_id,
+        "name": info.get("name"),
+        "color": info.get("color"),
+        "totem": info.get("totem"),
+        "founder_id": info.get("founder_id"),
+        "leader_id": info.get("leader_id"),
+        "born_tick": info.get("born_tick"),
+        "population": len(members),
+        "house": house,
+        "war_wins": wins,
+        "war_losses": losses,
+        "territory_radius": RT.sim.config.territory_radius if RT.sim.config.territory_enabled else None,
+        "specialization": info.get("specialization"),
+        "culture": info.get("culture"),
+        "members": members,
+        "events": [e.model_dump(mode="json") for e in clan_events],
+    }
+
+
 @app.get("/api/clans")
 async def get_clans() -> dict:
     """Clan roster with lineage, territory and war record."""
