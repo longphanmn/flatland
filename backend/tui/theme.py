@@ -1,0 +1,90 @@
+"""Theme — the single source of truth for TUI colors, glyphs and icons.
+
+Mirrors frontend/src/render/CanvasRenderer.tsx so both clients read alike.
+"""
+
+from __future__ import annotations
+
+# Caste colors (match CASTE_COLORS in CanvasRenderer.tsx)
+CASTE_COLORS: dict[str, str] = {
+    "Soldier": "#ff7b72",
+    "Artisan": "#f2cc60",
+    "Gentleman": "#ffa657",
+    "Professional": "#d2a8ff",
+    "Noble": "#79c0ff",
+    "Priest": "#e6edf3",
+    "Woman": "#ff9bce",
+    "Predator": "#ff3838",
+    "Herbivore": "#90be6d",
+}
+
+DEFAULT_CREATURE_COLOR = "#8b949e"
+
+# Plant variants (match variantColors in CanvasRenderer.tsx)
+VARIANT_COLORS: dict[str, str] = {
+    "grass": "#3fb950",
+    "berry": "#f85149",
+    "mushroom": "#a67c52",
+    "poisonous": "#8957e5",
+}
+
+# Soul-code glyphs per creature come from EntityState.glyph; these are the
+# fallback marks when a state has none (or for special kinds).
+FALLBACK_GLYPHS: dict[str, str] = {
+    "Soldier": "s",
+    "Artisan": "a",
+    "Gentleman": "g",
+    "Professional": "p",
+    "Noble": "n",
+    "Priest": "o",
+    "Woman": "w",
+}
+
+GLYPH_PREDATOR = "^"
+GLYPH_HERBIVORE = "h"
+GLYPH_CORPSE = "x"
+GLYPH_HOUSE_WALL_H = "-"
+GLYPH_HOUSE_WALL_V = "|"
+GLYPH_HOUSE_CORNER = "+"
+GLYPH_HOUSE_DOOR = "/"
+GLYPH_ROCK = "@"
+GLYPH_FOOD_SPROUT = "."
+GLYPH_FOOD_MATURE = "*"
+GLYPH_FIRE = "&"
+GLYPH_SIGNAL = "~"
+
+# Chronicle event colors (match index.css/App.tsx ev-* classes)
+EVENT_COLORS: dict[str, str] = {
+    "birth": "#3fb950",
+    "promotion": "#d2a8ff",
+    "demotion": "#ff7b72",
+    "death": "#8b949e",
+    "predation": "#ff3838",
+    "war": "#f85149",
+    "alliance": "#3fb950",
+    "rivalry": "#d29922",
+    "schism": "#e3b341",
+    "succession": "#d2a8ff",
+    "settlement": "#79c0ff",
+    "conquest": "#ff7b72",
+    "culture": "#bc8cff",
+    "fire": "#ff6b35",
+    "disaster": "#e3b341",
+    "outbreak": "#d29922",
+    "recovery": "#3fb950",
+    "bloom": "#56d364",
+    "ruin": "#8b949e",
+}
+
+SIGNAL_COLORS = {"food": "#3fb950", "alarm": "#f85149", "help": "#f85149"}
+
+SEASON_ICONS = {"spring": "*", "summer": "S", "autumn": "%", "winter": "W"}
+WEATHER_ICONS = {"clear": "O", "rain": ",", "fog": "=", "storm": "/"}
+
+STATUS_COLORS = {"hungry": "#d29922", "starving": "#f85149"}
+
+
+def caste_color(caste: str | None) -> str:
+    if caste is None:
+        return DEFAULT_CREATURE_COLOR
+    return CASTE_COLORS.get(caste, DEFAULT_CREATURE_COLOR)

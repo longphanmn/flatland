@@ -73,3 +73,77 @@ def test_healthz_surfaces_last_error():
         assert "injected" in body["last_tick_error"]
     finally:
         RT.last_tick_error = None
+
+
+# -------------------------------------------------------------------------- #
+# Wedged-client freeze (prod incident @ tick 10469): a half-dead WebSocket — #
+# phone slept, proxy closed, TCP zero window — made `await ws.send_text()`
+# block FOREVER inside Hub.broadcast, parking the tick loop at the broadcast
+# await. HTTP kept serving, healthz said ok:true, nothing was logged: the
+# world froze silently. Broadcasts must be per-client-timeboxed and wedged
+# clients dropped; healthy clients must keep receiving.
+# -------------------------------------------------------------------------- #
+
+
+class _FakeWS:
+    """Minimal stand-in for starlette WebSocket."""
+
+    def __init__(self, delay: float | None = None, fail: bool = False):
+        self.delay = delay  # None → instant; float seconds → slow/wedged
+        self.fail = fail
+        self.sent: list[str] = []
+        self.dropped = False
+
+    async def send_text(self, text: str) -> None:
+        if self.fail:
+            raise RuntimeError("connection gone")
+        if self.delay is None:
+            self.sent.append(text)
+        else:
+            await asyncio.sleep(self.delay)  # never appends if wedged
+
+
+def test_broadcast_survives_wedged_client_and_keeps_others_alive():
+    hub = Hub()
+    fast = _FakeWS()
+    slow = _FakeWS(delay=hub.SEND_TIMEOUT * 10)  # effectively frozen socket
+    broken = _FakeWS(fail=True)
+    hub.clients.update({fast, slow, broken})
+
+    old_timeout = Hub.SEND_TIMEOUT
+    Hub.SEND_TIMEOUT = 0.05
+    try:
+        asyncio.run(hub.broadcast({"type": "state", "tick": 1}))
+    finally:
+        Hub.SEND_TIMEOUT = old_timeout
+
+    assert len(fast.sent) == 1            # healthy client got the frame
+    assert fast in hub.clients
+    assert slow not in hub.clients        # wedged client was cut loose
+    assert broken not in hub.clients      # erroring client was cut loose
+
+
+def test_tick_loop_keeps_ticking_with_a_wedged_client_connected(capsys):
+    rt = RuntimeState(quiet_cfg(num_triangles=2))
+    hub = Hub()
+    wedged = _FakeWS(delay=999)           # accepts frames but never drains
+    hub.clients.add(wedged)
+
+    Hub.SEND_TIMEOUT = 0.05
+    try:
+        asyncio.run(_drive_ticks(rt, hub, seconds=0.6))
+    finally:
+        Hub.SEND_TIMEOUT = 10.0
+
+    assert rt.sim.tick >= 3               # world advanced despite the wedge
+    assert wedged not in hub.clients      # and the wedge was evicted
+
+
+async def _drive_ticks(rt: RuntimeState, hub: Hub, seconds: float) -> None:
+    task = asyncio.create_task(tick_loop(rt, hub))
+    await asyncio.sleep(seconds)
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass

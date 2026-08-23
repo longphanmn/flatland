@@ -38,11 +38,13 @@ starvation when deprived of food too long.
 
 - **Backend:** Python 3.12 · FastAPI · deterministic fixed-tick loop over WebSocket
 - **Frontend:** React 18 + Vite + TypeScript · HTML5 Canvas renderer
+- **Terminal client:** Textual TUI (`backend/tui/`) — watch/control the live world from the shell
 
 ## Quickstart
 
 ```bash
-./run.sh
+./run.sh          # web UI (backend :8000 + frontend :5173)
+./run.sh tui      # terminal client instead of the web frontend
 ```
 
 - Frontend: http://localhost:5173 (open this)
@@ -70,6 +72,27 @@ npm install
 npm run dev                              # dev server with /ws + /api proxy
 npm run build                            # type-check + production build
 ```
+
+## Terminal TUI
+
+A Textual client that watches/controls the live sim over the same `/ws` + REST
+API — no browser needed (backend only):
+
+```bash
+cd backend
+uv run -m tui                            # FLATWORLD_WS=ws://localhost:8000/ws by default
+./run.sh tui                             # or from the repo root: backend + TUI in one shot
+uv run textual serve -m tui.serve        # optional: serve the TUI in the browser
+```
+
+Half-block char-grid world renderer (creatures wear their soul-code glyph in
+caste colors, houses are clan-colored boxes with doors, plants/corpses/fires/
+signals all drawn), HUD, color-coded Chronicle, Clans table, Plots progress,
+population sparkline — plus god-laws form (`g`) posting to `/api/laws`.
+
+Keys: `space` pause · `s` step · `r` reset · `f` fit · `+/-` zoom (wheel too) ·
+`hjkl`/arrows pan · click select · `enter` inspect · `c` clan · `g` god laws ·
+`o` older events · `1-9` speed · `?` help · `q` quit.
 
 ## Controls
 
@@ -145,6 +168,12 @@ frontend/src/
 ├── websocket.ts    # reconnecting WS client
 ├── render/CanvasRenderer.tsx  # rAF loop drawing latest snapshot
 └── App.tsx         # HUD (tick/population/seed) + controls
+backend/tui/        # terminal client (Textual) — pure /ws + REST consumer
+├── state.py        # tolerant typed mirror of protocol.py
+├── client.py       # WSClient (reconnect+backoff) + RESTClient (httpx)
+├── theme.py        # caste colors, glyphs (single source of truth)
+├── widgets/        # world_view (half-block renderer), hud, chronicle, …
+└── screens/        # god_laws form, inspector, clan details, help
 ```
 
 Protocol: server pushes `{type:"hello"}` then `{type:"state"}` snapshots every

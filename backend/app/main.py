@@ -26,7 +26,16 @@ MAX_SPEED = 120.0
 
 
 class Hub:
-    """Tracks connected WebSocket clients and broadcasts snapshots."""
+    """Tracks connected WebSocket clients and broadcasts snapshots.
+
+    A half-dead client (phone slept, NAT dropped, proxy closed) makes
+    `send_text` block forever — that used to park the whole tick loop at
+    the broadcast await while HTTP stayed fine (world frozen, ok:true,
+    nothing logged). Now every send gets a timeout; wedged clients are
+    dropped and the world keeps ticking.
+    """
+
+    SEND_TIMEOUT = 5.0  # seconds a client may take per frame before we cut it
 
     def __init__(self) -> None:
         self.clients: set[WebSocket] = set()
@@ -38,18 +47,21 @@ class Hub:
     def disconnect(self, ws: WebSocket) -> None:
         self.clients.discard(ws)
 
+    async def _send(self, ws: WebSocket, text: str) -> None:
+        try:
+            await asyncio.wait_for(ws.send_text(text), timeout=self.SEND_TIMEOUT)
+        except Exception:
+            self.disconnect(ws)
+
     async def broadcast(self, payload: dict) -> None:
         if not self.clients:
             return
         text = json.dumps(payload, separators=(",", ":"))
-        dead: list[WebSocket] = []
-        for ws in list(self.clients):
-            try:
-                await ws.send_text(text)
-            except Exception:
-                dead.append(ws)
-        for ws in dead:
-            self.disconnect(ws)
+        # Concurrent fan-out: one slow client costs nobody else its timeout.
+        await asyncio.gather(
+            *(self._send(ws, text) for ws in list(self.clients)),
+            return_exceptions=True,
+        )
 
 
 class RuntimeState:
@@ -471,8 +483,13 @@ def apply_laws(laws: GodLaws, persist: bool = True) -> dict:
 async def ws_endpoint(ws: WebSocket) -> None:
     await HUB.connect(ws)
     try:
-        await ws.send_json(hello_payload())
-        await ws.send_json(RT.sim.snapshot().model_dump(mode="json"))
+        # A client that accepts the socket but never reads must not leak a
+        # hung handler task — bound the handshake sends like broadcasts.
+        await asyncio.wait_for(ws.send_json(hello_payload()), timeout=HUB.SEND_TIMEOUT)
+        await asyncio.wait_for(
+            ws.send_json(RT.sim.snapshot().model_dump(mode="json")),
+            timeout=HUB.SEND_TIMEOUT,
+        )
         while True:
             raw = await ws.receive_json()
             try:
@@ -489,7 +506,12 @@ async def ws_endpoint(ws: WebSocket) -> None:
 # --------------------------------------------------------------------- rest
 @app.get("/healthz")
 async def healthz() -> dict:
-    out: dict = {"ok": True, "tick": RT.sim.tick, "paused": RT.paused}
+    out: dict = {
+        "ok": True,
+        "tick": RT.sim.tick,
+        "paused": RT.paused,
+        "clients": len(HUB.clients),
+    }
     if RT.last_tick_error:
         out["ok"] = False
         out["last_tick_error"] = RT.last_tick_error

@@ -1,0 +1,43 @@
+/* Flatland TUI layout + theme */
+
+Screen {
+    background: #0d1117;
+    color: #c9d1d9;
+}
+
+#main { height: 1fr; }
+
+#world-col { width: 1fr; }
+
+#world {
+    height: 1fr;
+    border: round #30363d;
+    border-title-align: left;
+}
+
+#side {
+    width: 52;
+    min-width: 40;
+    border-left: solid #30363d;
+}
+
+Hud { dock: top; }
+
+TabbedContent { height: 1fr; background: #161b22; }
+
+TabPane { padding: 0; background: #161b22; }
+
+#side Tabs { dock: top; background: #161b22; }
+
+/* side panes — exactly one visible at a time (Tabs toggles display) */
+#overview, #chronicle, #clans-table, #plots-panel {
+    height: 1fr;
+    display: none;
+    background: #161b22;
+}
+
+#chronicle { border: none; background: #0d1117; }
+
+Footer { background: #161b22; }
+
+.modal-actions Button { margin-left: 1; }

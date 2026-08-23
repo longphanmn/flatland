@@ -594,6 +594,18 @@ by_caste). Replace with spatial settlement seeding so any caste can share a clan
       `/healthz` (`ok:false` when the last tick failed); deploy.sh excludes
       `*.log` from rsync --delete so backend.log survives deploys.
       Tests: `tests/test_resilience.py`.
+- [x] World freeze with ok:true — wedged WS client parks tick loop (prod
+      incident @ tick 10469): a half-dead WebSocket client (vite proxy closed,
+      TCP zero window — server side stuck CLOSE-WAIT with 2.6MB Send-Q) made
+      `await ws.send_text()` inside `Hub.broadcast` block FOREVER; the tick
+      loop parked at that await while HTTP stayed fine and healthz reported
+      ok:true (no exception ever raised → nothing logged). Fix: per-client
+      send timeout (`Hub.SEND_TIMEOUT` 5s), concurrent fan-out via
+      asyncio.gather so one slow client costs nobody else's time, wedged/
+      erroring clients evicted from the hub; /ws handshake sends timeboxed
+      too; `/healthz` now reports connected `clients` count.
+      Tests: `tests/test_resilience.py` (wedged client dropped, healthy
+      keeps receiving; tick loop keeps ticking with a wedge attached).
 - [x] Stuck-against-obstacle starvation — creatures chasing a meal whose straight
       path crosses a rock circle (or a house wall) used to grind at the obstacle
       until they starved. Now the blocked meal is abandoned: per-meal grudges
@@ -676,3 +688,63 @@ creatures learn, teach their clan, and rally to each other's defence.
       sections, and HUD detail chips. (`render/Collapsible.tsx` fl-collapsed-* keys,
       index.css .collapsible*; wrapped Overview caste/trophic/clans/plots blocks,
       Chronicle event feed, Inspector Family + Chronicle sections.)
+
+## Z. Terminal frontend — Textual TUI  [P1] — ✅ implemented
+A terminal client that watches/controls the live sim over the existing /ws +
+REST API — no browser. Separate client, never touches backend logic.
+
+### Stack & deps
+- [x] textual>=8, websockets>=12, httpx>=0.27 in backend/pyproject.toml;
+      run via `uv run -m tui` (env FLATWORLD_WS), optional
+      `uv run textual serve -m tui.serve`.
+
+### Structure (backend/tui/)
+- [x] client.py — WSClient (connect, hear state, send control actions) +
+      RESTClient (httpx: laws/clans/creature/plots/presets/worlds/history);
+      reconnect w/ capped exponential backoff.
+- [x] state.py — typed mirror of protocol.py (StateMessage/EntityState/
+      HistoryEvent/Hello), tolerant parse (unknown fields ignored).
+- [x] theme.py — caste colors, glyph map, variant colors (single source of
+      truth, mirrors CanvasRenderer.tsx).
+- [x] app.py — FlatlandApp(App): WS lifecycle, pollers (clans/plots/worlds),
+      keybindings, selection tracking.
+- [x] widgets/ — world_view, hud, chronicle, clan_panel, plots_panel, overview
+      (+ inspector/clan_details/god_laws/help as screens/).
+- [x] screens/ — god_laws (grouped form → POST /api/laws, Apply vs Save,
+      presets, filter box), inspector (live dossier + family + chronicle),
+      clan_details (roster + war record), help.
+- [x] flatland.tcss — layout + theme.
+
+### WorldView (char-grid renderer)
+- [x] Camera pan/zoom (f fit, +/- zoom + wheel, hjkl/arrows pan); half-block
+      ▀▄ for 2:1 cell aspect; culling inherent to grid lookup; Strip cache via
+      render_line run-length segments.
+- [x] Glyph/color map: creature → soul-code glyph (caste color, dim elder/
+      sleeping, ▲ predator, h herbivore); food variant color ∝ growth; corpse
+      ×; house ─│+/door / clan color, ruins dim; rock ●; fertile bg; territory
+      ring (dim clan color); signals ~ / fires & transient; click selection →
+      Enter inspect, Tab panel focus.
+
+### Panels & modals
+- [x] Hud (pause/tick/alive/dead/day/season/weather/age + caste chips + ws
+      status + selection line), Chronicle (color-coded RichLog, dedup by
+      (tick,type,id)), Clans DataTable (REST poll 3s), Plots progress bars,
+      Overview ASCII sparkline + trophic counts + dead-by-cause + runs list;
+      CreatureInspector (1 Hz refresh, clickable kin), ClanDetails, GodLaws
+      modals.
+
+### Keybindings
+- [x] space pause · s step · r reset · f fit · +/- zoom · hjkl/arrows pan ·
+      enter inspect · tab panel focus · c clan of selection · g laws · o older
+      events · ? help · 1-9 speed · q quit (escape closes modals).
+
+### Milestones
+- [x] M1 wireframe: deps + client + app + hud + WS connect + control actions.
+- [x] M2 world renderer: camera, half-block grid, glyph map, selection cursor.
+- [x] M3 panels: Chronicle/Clans/Plots/Overview + runs list (`load older` via
+      `o` paginates GET /api/history).
+- [x] M4 modals: inspector + clan details + god laws + help.
+- [x] M5 tests/polish: Textual Pilot tests (tests/test_tui.py — WS→HUD tick +
+      glyph grid, pause/step/speed actions over WS, click-select, laws POST
+      roundtrip against the real FastAPI app via ASGITransport, chronicle
+      formatting, zoom/fit smoke), run.sh hook (`./run.sh tui`), README blurb.
