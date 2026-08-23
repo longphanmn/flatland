@@ -46,9 +46,9 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
             onChange={e => setQ(e.target.value)}
             style={{ flex: 1, minWidth: 160, background: '#161b22', color: '#e6edf3', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}
           />
-          <a href="/wiki" target="_blank" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>Open /wiki ↗</a>
-          <a href="/guide" target="_blank" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>/guide</a>
-          <a href="/docs" target="_blank" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>/docs</a>
+          <a href="/wiki" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>Open /wiki ↗</a>
+          <a href="/guide" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>/guide</a>
+          <a href="/docs" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>/docs</a>
         </div>
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -66,7 +66,7 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
             <h4>How to use</h4>
             <ul>
               <li><b>God panel</b> (⚖ God) — edit laws, presets (sustainable/chaos/extinction), Apply vs Save.</li>
-              <li><b>Wiki</b> (this page) — docs + API playground. Backend wiki at <a href="/wiki" target="_blank">/wiki</a>.</li>
+              <li><b>Wiki</b> (this page) — docs + API playground. Backend wiki at <a href="/wiki">/wiki</a>.</li>
               <li><b>Controls</b>: space pause, S step, R reset, F fit, +/- zoom, drag/pinch.</li>
             </ul>
             <h4>Quickstart</h4>
@@ -77,9 +77,9 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
             <p><code>tick_loop → sim.step() → snapshot → WS /ws</code> throttled ~30 Hz. Client sends <code>{"{"}"action":"pause"{"}"}</code>.</p>
             <h4>Links</h4>
             <ul>
-              <li><a href="/wiki" target="_blank">Backend Wiki (/wiki)</a> — full docs with presets & playground</li>
-              <li><a href="/guide" target="_blank">Guide (/guide)</a> — minimal living docs</li>
-              <li><a href="/docs" target="_blank">Swagger (/docs)</a> + <a href="/openapi.json" target="_blank">/openapi.json</a></li>
+              <li><a href="/wiki">Backend Wiki (/wiki)</a> — full docs with presets & playground</li>
+              <li><a href="/guide">Guide (/guide)</a> — minimal living docs</li>
+              <li><a href="/docs">Swagger (/docs)</a> + <a href="/openapi.json">/openapi.json</a></li>
             </ul>
           </div>
         )}
@@ -159,7 +159,7 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
         )}
 
         <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #21262d', fontSize: 11, color: '#8b949e' }}>
-          Wiki is live — <code>{data?.laws.length ?? 0} laws</code> · <code>{data?.routes.length ?? 0} routes</code> · <code>{Object.keys(data?.presets ?? {}).length} presets</code> · <a href="/wiki" target="_blank">/wiki HTML</a> · <a href="/api/wiki" target="_blank">/api/wiki JSON</a>
+          Wiki is live — <code>{data?.laws.length ?? 0} laws</code> · <code>{data?.routes.length ?? 0} routes</code> · <code>{Object.keys(data?.presets ?? {}).length} presets</code> · <a href="/wiki">/wiki HTML</a> · <a href="/api/wiki">/api/wiki JSON</a>
         </div>
       </div>
     </div>

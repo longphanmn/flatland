@@ -635,24 +635,44 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: #0d1117;
+  z-index: 3;
+  padding: 8px 0;
+  border-bottom: 1px solid #21262d;
+  margin: -14px -16px 8px -16px;
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
 .god-head h2 {
   margin: 0;
   font-size: 15px;
-  color: #e3b341;
+  color: #e6edf3;
   letter-spacing: 0.04em;
 }
 
 .god-close {
-  padding: 2px 10px;
-  font-size: 16px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 12px;
+  font-size: 20px;
+  line-height: 1;
+  background: #21262d;
+  color: #e6edf3;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .god-note {
   margin: 0;
   font-size: 12px;
-  color: #8b949e;
+  color: #c9d1d9;
   font-style: italic;
 }
 
@@ -839,7 +859,7 @@ select {
   .album { left: 8px; right: 8px; width: auto; max-width: none; top: auto; bottom: 56px; }
   .snap-banner { left: 8px; right: 8px; width: auto; transform: none; max-width: none; font-size: 12px; text-align: center; }
   .run-switcher { left: 8px; right: auto; bottom: 62px; max-width: calc(100vw - 16px); }
-  .top-right-panel { top: calc(44px + env(safe-area-inset-top)); right: 8px; gap: 6px; margin-top: 4px; }
+  .top-right-panel { top: calc(56px + env(safe-area-inset-top)); right: 8px; gap: 6px; margin-top: 4px; background: rgba(13,17,23,0.9); padding: 4px; border-radius: 8px; border: 1px solid #21262d; }
   .top-right-panel .god-btn{ min-height: 32px; padding: 4px 8px; font-size: 12px; }
   .version-bar { bottom: 52px; left: 8px; right: auto; transform: none; font-size: 9px; padding: 1px 6px; }
   /* larger touch targets */
