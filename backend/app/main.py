@@ -10,7 +10,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import ValidationError
 
 from .config import Config
@@ -854,6 +854,26 @@ async def get_wiki_json():
     from .wiki import get_wiki_json as _get
 
     return _get(app)
+
+
+@app.get("/docs/god-laws.md", response_class=PlainTextResponse)
+async def get_god_laws_md():
+    """Serve the markdown docs for god laws — used by wiki + GodPanel hints."""
+    candidates = [
+        Path("docs/god-laws.md"),
+        Path("../docs/god-laws.md"),
+        Path(__file__).resolve().parent.parent.parent / "docs" / "god-laws.md",
+        Path(__file__).resolve().parent.parent / "public" / "docs" / "god-laws.md",
+        Path("frontend/public/docs/god-laws.md"),
+        Path("../frontend/public/docs/god-laws.md"),
+    ]
+    for p in candidates:
+        try:
+            if p.exists():
+                return PlainTextResponse(p.read_text(encoding="utf-8"), media_type="text/markdown; charset=utf-8")
+        except Exception:
+            continue
+    raise HTTPException(404, "god-laws.md not found")
 
 
 @app.post("/api/control")

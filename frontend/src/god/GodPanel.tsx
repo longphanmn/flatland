@@ -259,6 +259,7 @@ export default function GodPanel({ open, onClose }: Props) {
   const apply = () => postLaws(false)
   const save = () => postLaws(true)
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
+  const [openHint, setOpenHint] = useState<string | null>(null)
   const applyPreset = async (name: string, reset: boolean) => {
     setError(null)
     setSaved(false)
@@ -465,19 +466,47 @@ export default function GodPanel({ open, onClose }: Props) {
                 )}
               </>
             )
-            const rows = lawsInGroup.map(({ key, label, min, max, step }) => (
-              <label className="god-row" key={key}>
-                <span title={LAW_HINTS[key]}>{label}</span>
-                {isMobile ? (
-                  <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <input type="range" min={min} max={max} step={step} value={(laws[key] as number | undefined) ?? min} onChange={(e) => set(key, e.target.value)} style={{ width: 96 }} />
-                    <span style={{ minWidth: 36, textAlign: 'right', fontSize: 11, color: '#8b949e' }}>{(laws[key] as number | undefined)?.toFixed?.(step < 1 ? 2 : 0) ?? ''}</span>
-                  </span>
-                ) : (
-                  <input type="number" min={min} max={max} step={step} value={(laws[key] as number | undefined) ?? ''} onChange={(e) => set(key, e.target.value)} />
-                )}
-              </label>
-            ))
+            const rows = lawsInGroup.map(({ key, label, min, max, step }) => {
+              const hint = LAW_HINTS[key]
+              const isOpen = openHint === key
+              return (
+                <div key={key} style={{ borderBottom: '1px solid rgba(48,54,61,0.3)', paddingBottom: isOpen ? 6 : 0 }}>
+                  <label className="god-row">
+                    <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span title={hint}>{label}</span>
+                      {hint && (
+                        <button
+                          onClick={() => setOpenHint(isOpen ? null : key)}
+                          title={hint}
+                          style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #30363d', background: isOpen ? '#21262d' : '#161b22', color: isOpen ? '#e6edf3' : '#8b949e', fontSize: 11, lineHeight: 1, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
+                          aria-label={`hint for ${label}`}
+                        >
+                          ?
+                        </button>
+                      )}
+                    </span>
+                    {isMobile ? (
+                      <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <input type="range" min={min} max={max} step={step} value={(laws[key] as number | undefined) ?? min} onChange={(e) => set(key, e.target.value)} style={{ width: 96 }} />
+                        <span style={{ minWidth: 36, textAlign: 'right', fontSize: 11, color: '#8b949e' }}>{(laws[key] as number | undefined)?.toFixed?.(step < 1 ? 2 : 0) ?? ''}</span>
+                      </span>
+                    ) : (
+                      <input type="number" min={min} max={max} step={step} value={(laws[key] as number | undefined) ?? ''} onChange={(e) => set(key, e.target.value)} />
+                    )}
+                  </label>
+                  {isOpen && hint && (
+                    <div style={{ fontSize: 11, color: '#c9d1d9', background: '#161b22', border: '1px solid #21262d', borderRadius: 6, padding: '6px 8px', margin: '4px 10px 8px 10px', lineHeight: 1.4 }}>
+                      {hint}
+                      <div style={{ marginTop: 6 }}>
+                        <a href="/docs/god-laws.md" rel="noreferrer" style={{ fontSize: 11, color: '#58a6ff' }}>Open docs/god-laws.md ↗</a>
+                        {' · '}
+                        <a href="/wiki#god-laws" style={{ fontSize: 11, color: '#58a6ff' }}>Wiki → God laws</a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })
             if (isMobile) {
               return (
                 <details key={group} className="god-accordion" open={group === 'Food & Energy'}>

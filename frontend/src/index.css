@@ -852,6 +852,7 @@ select {
   .god-accordion[open] summary{ border-bottom: 1px solid #21262d; }
   .god-accordion .god-row{ padding: 6px 10px; }
   .god-accordion input[type="range"]{ width: 96px; accent-color: #e3b341; }
+  .god-row button[aria-label^="hint"]{ min-height: 20px !important; min-width: 20px !important; padding: 0 !important; flex: none; }
   .clan-details-panel, .world-end-panel{
     left: 0; right: 0; width: auto; max-width: none; top: auto; bottom: 0; height: 72vh; max-height: 84vh; border-radius: 12px 12px 0 0; padding-bottom: max(14px, env(safe-area-inset-bottom));
   }

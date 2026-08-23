@@ -115,7 +115,7 @@ table{{border-collapse:collapse;width:100%;margin:12px 0}} th,td{{border:1px sol
 h1{{border-bottom:1px solid #21262d;padding-bottom:6px;color:#e6edf3}} h2{{margin-top:28px;color:#e6edf3}} h3{{color:#e6edf3}}
 .search{{width:100%;padding:8px;border-radius:6px;border:1px solid #30363d;background:#0d1117;color:#c9d1d9;margin:8px 0}}
 .badge{{display:inline-block;padding:2px 6px;border-radius:10px;font-size:11px;border:1px solid #30363d;background:#161b22;color:#8b949e;margin-left:6px}}
-@media(max-width:800px){{nav{{position:relative;width:auto;height:auto}} main{{margin-left:0}}}}
+@media(max-width:800px){{nav{{position:relative;width:auto;height:auto}} main{{margin-left:0}} table{{display:block;overflow-x:auto; -webkit-overflow-scrolling:touch}}}}
 </style></head><body>
 <nav>
 <h3>Flatland Wiki</h3>
@@ -186,6 +186,56 @@ def build_wiki_html(app: Any) -> str:
     return WIKI_TEMPLATE.format(nav=nav_html, content=content_html, laws=len(GodLaws.model_fields), routes=len(app.routes), presets=len(PRESETS))
 
 
+LAW_HINTS_MD = {
+    "food_count": "the world keeps this much food alive — bounty or famine (winter ×0.5, summer ×1.2)",
+    "plant_growth_rate": "how fast plants mature (0.05) — berry 0.65×, mushroom 0.85×, poison 0.6×, season multiplies",
+    "plant_spread_rate": "chance a mature plant seeds a nearby sprout each tick",
+    "nutrient_cycle_rate": "corpse decay boost to nearby plants (0.65) — death feeds life",
+    "poison_rate": "chance a new sprout is poisonous (0.01) — 1% sicken, berry heals +1, poison -30 health",
+    "beast_ratio": "wild herbivores as fraction of creature density — grazers that feed predators",
+    "diet_strictness": "0 omnivore, 1 strict — herbivore ignores meat, predator ignores plants",
+    "territory_radius": "clan territory circle radius around house (14) — members steer home, trespass sours relations",
+    "trespass_decay": "relation points lost per tick a rival trespasses inside territory",
+    "house_decay_ticks": "abandoned house ticks before crumbling to ruin (2400 = 2 seasons)",
+    "energy_decay_per_tick": "how fast all life burns without eating (0.025) — winter/rain adds 0.03 exposure if roofless",
+    "energy_from_food": "base energy from a mature plant (32) — berry 48, mushroom 24, grass 32, poison 8",
+    "perceive_radius": "base sight (20) — each caste scales it (Woman 0.8×, Priest 1.35×), night 0.6×, fog 0.6×, Eye totem 1.25×",
+    "lifespan_mult": "scales every caste’s natural lifespan",
+    "door_clearance": "doorways scale with the largest creature × this (1.5)",
+    "house_min_size": "applies to houses built after the next reset (6)",
+    "house_max_size": "applies to houses built after the next reset (10)",
+    "adult_age": "creatures must be this many ticks old to mate (200)",
+    "birth_rate": "chance per eligible pair per tick, before fertility (0.35)",
+    "sex_ratio": "probability a child is a son (polygons ascend; daughters are lines)",
+    "mutation_rate": "chance a son’s side count deviates ±1 from inheritance (0.05)",
+    "euthanasia_threshold": "irregular children at/above this are consumed at adulthood, below it demoted (0.7)",
+    "carrying_capacity": "above this population, fertility fades gradually (80)",
+    "max_population": "hard cap — no births beyond (140)",
+    "house_capacity": "beds per house (8) — overflow sleeps outside and suffers exposure",
+    "exposure_drain": "energy lost per tick outdoors in rain/storm/night (0.03)",
+    "rest_recovery_mult": "health regen multiplier when sleeping indoors (2.0)",
+    "rain_growth_mult": "rain/storm boost to plant growth (1.25) — soaked ground regrows faster",
+    "fog_mushroom_mult": "fog boost to mushroom growth (1.35) — the decomposer tier loves mist",
+    "storm_plant_damage": "chance a storm strips growth from exposed plants (0.02) — occasionally uproots",
+    "chill_rate": "chill built per tick unsheltered in rain/storm/winter night (0.04)",
+    "chill_threshold": "chill at which creature sickens (12) — shelter sheds 2.5× faster",
+    "chill_drain": "health drain per tick when chilled (0.18) — death cause chill",
+    "wet_disease_mult": "wet/cold catch disease faster and recover slower (1.5×)",
+    "age_length": "ticks per age (12000 = 5 seasons) — Golden×1.25 food, Ice×0.55 food + chill, Chaos×1.8 mutation, Plague×1.8 disease",
+    "culture_spread_rate": "allied clans within territory adopt same culture with this chance/tick (0.005)",
+    "trait_mutation_rate": "chance mutation adds heritable trait greedy/peaceful/paranoid/bold (0.02) — bold war, paranoid flee, greedy food",
+    "fire_rate": "chance a random mature plant ignites each tick (0.0005) — storm lightning raises to 0.002",
+    "fire_spread_rate": "spread to neighboring plants within 6 (0.08) — kills creatures/plants, ash fertilizes",
+    "disaster_rate": "meteor/flood stochastic gated by this per tick (0.0003) — crater/water reshapes terrain",
+    "signal_radius": "heard within this range (12) — clan-mates respond strongly, strangers weakly",
+    "food_call_rate": "well-fed finds food → calls with this chance/tick (0.08)",
+    "alarm_call_rate": "sees predator → alarm call chance/tick (0.12)",
+    "food_memory_ttl": "ticks a creature remembers last food position (300)",
+    "winter_food_mult": "winter bounty × winter_food_mult (0.7 gentle, 0.5 harsh, 0.3 extinction) — lean season target = food_count × winter_food_mult",
+    "schism_threshold": "fraction unhappy (starving/homeless) to split (0.4)",
+    "schism_min_pop": "minimum clan population to consider schism (4)",
+}
+
 def get_wiki_json(app: Any) -> dict:
     from .main import PRESETS
     return {
@@ -199,5 +249,5 @@ def get_wiki_json(app: Any) -> dict:
         "laws": list(GodLaws.model_fields.keys()),
         "routes": [getattr(r, "path", "") for r in app.routes],
         "presets": PRESETS,
-        "law_details": {name: {"type": str(f.annotation), "default": getattr(Config(), name, None) if hasattr(Config(), name) else None} for name, f in GodLaws.model_fields.items()},
+        "law_details": {name: {"type": str(f.annotation), "default": getattr(Config(), name, None) if hasattr(Config(), name) else None, "hint": LAW_HINTS_MD.get(name, "")} for name, f in GodLaws.model_fields.items()},
     }

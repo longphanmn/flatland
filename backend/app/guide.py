@@ -109,17 +109,16 @@ def _md_to_html(md: str) -> str:
 
 
 def _god_laws_table() -> str:
-    """Auto-generated table of every GodLaws field with type/range/default."""
+    """Auto-generated table of every GodLaws field with type/range/default + hint."""
     cfg = Config()
+    # keep hints in sync with frontend/src/god/GodPanel.tsx LAW_HINTS and docs/god-laws.md
+    try:
+        from .wiki import LAW_HINTS_MD
+    except Exception:
+        LAW_HINTS_MD = {}
     rows = []
     for name, field in GodLaws.model_fields.items():
         ann = str(field.annotation)
-        # extract range from field metadata
-        ge = getattr(field, "ge", None)
-        le = getattr(field, "le", None)
-        gt = getattr(field, "gt", None)
-        # use json_schema_extra or field constraints
-        # Pydantic v2 stores in metadata
         constraints = []
         for m in getattr(field, "metadata", []):
             if hasattr(m, "ge") and m.ge is not None:
@@ -128,17 +127,19 @@ def _god_laws_table() -> str:
                 constraints.append(f"≤{m.le}")
             if hasattr(m, "gt") and m.gt is not None:
                 constraints.append(f">{m.gt}")
-        # fallback: check field description
         default = getattr(cfg, name, None) if hasattr(cfg, name) else None
         typ = ann.replace("Optional", "").replace("[", "").replace("]", "").strip(" |None")
+        hint = html.escape(LAW_HINTS_MD.get(name, "")) if 'LAW_HINTS_MD' in locals() else ""
+        hint_cell = f'<small style="color:#8b949e">{hint}</small> <a href="/docs/god-laws.md#{html.escape(name)}" style="font-size:10px">md</a>' if hint else "—"
         rows.append(
             f"<tr><td><code>{html.escape(name)}</code></td>"
             f"<td>{html.escape(typ)}</td>"
             f"<td>{html.escape(', '.join(constraints) or '—')}</td>"
-            f"<td>{html.escape(str(default))}</td></tr>"
+            f"<td>{html.escape(str(default))}</td>"
+            f"<td>{hint_cell}</td></tr>"
         )
-    header = "<tr><th>Law</th><th>Type</th><th>Range</th><th>Default</th></tr>"
-    return f"<table><thead>{header}</thead><tbody>{''.join(rows)}</tbody></table>"
+    header = "<tr><th>Law</th><th>Type</th><th>Range</th><th>Default</th><th>Hint + docs</th></tr>"
+    return f'<div style="overflow-x:auto"><table><thead>{header}</thead><tbody>{"".join(rows)}</tbody></table></div>'
 
 
 def _api_table(app: Any) -> str:

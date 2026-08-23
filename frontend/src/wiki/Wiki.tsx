@@ -46,9 +46,9 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
             onChange={e => setQ(e.target.value)}
             style={{ flex: 1, minWidth: 160, background: '#161b22', color: '#e6edf3', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}
           />
-          <a href="/wiki" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>Open /wiki ↗</a>
-          <a href="/guide" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>/guide</a>
-          <a href="/docs" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>/docs</a>
+          <span className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>/wiki</span>
+          <span className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>/guide</span>
+          <span className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>/docs</span>
         </div>
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -112,19 +112,19 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
         {tab === 'laws' && (
           <div>
             <h3>God Laws — {data?.laws.length ?? 0} laws</h3>
-            <p className="god-note">Type/range/default from live <code>GodLaws</code>. Edit in God panel or <code>POST /api/laws</code>.</p>
-            <div style={{ maxHeight: 380, overflowY: 'auto', border: '1px solid #21262d', borderRadius: 6 }}>
-              <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
-                <thead><tr><th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid #21262d' }}>Law</th><th style={{ padding: '6px 8px', borderBottom: '1px solid #21262d' }}>Default</th><th style={{ padding: '6px 8px', borderBottom: '1px solid #21262d' }}>Type</th></tr></thead>
+            <p className="god-note">Type/range/default + hint from <code>docs/god-laws.md</code>. Edit in God panel or <code>POST /api/laws</code>. Tap law for hint.</p>
+            <div style={{ maxHeight: 380, overflow: 'auto', border: '1px solid #21262d', borderRadius: 6 }}>
+              <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', minWidth: 480 }}>
+                <thead><tr><th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid #21262d' }}>Law</th><th style={{ padding: '6px 8px', borderBottom: '1px solid #21262d' }}>Default</th><th style={{ padding: '6px 8px', borderBottom: '1px solid #21262d' }}>Hint</th></tr></thead>
                 <tbody>
-                  {(data?.laws ?? []).filter(n => match(n)).sort().map(name => {
+                  {(data?.laws ?? []).filter(n => match(n) || ((data?.law_details as any)?.[n]?.hint ?? '').toLowerCase().includes(q.toLowerCase())).sort().map(name => {
                     const det = (data?.law_details as any)?.[name]
                     const cur = (laws as any)?.[name]
                     return (
                       <tr key={name} style={{ borderBottom: '1px solid #21262d' }}>
                         <td style={{ padding: '6px 8px' }}><code>{name}</code></td>
                         <td style={{ padding: '6px 8px' }}>{String(cur ?? det?.default ?? '—')}</td>
-                        <td style={{ padding: '6px 8px', fontSize: 11, color: '#8b949e' }}>{String(det?.type ?? '').slice(0, 40)}</td>
+                        <td style={{ padding: '6px 8px', fontSize: 11, color: '#c9d1d9', maxWidth: 280 }}>{det?.hint ?? ''} <a href="/docs/god-laws.md" style={{ color: '#58a6ff', fontSize: 10 }}>md</a> · <a href="/wiki#god-laws" style={{ color: '#58a6ff', fontSize: 10 }}>wiki</a></td>
                       </tr>
                     )
                   })}
