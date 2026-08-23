@@ -511,3 +511,39 @@ CPU (Intel N150), where conflict exists but is rare and rarely fatal.
 - [x] [P1] Frontend culling — skip entities outside the camera rect; merge the 4
       state.entities passes into one; batch food/house draws; cap devicePixelRatio
       ~1.5 (CanvasRenderer.tsx:649). (`CanvasRenderer.tsx:122` DPR cap 1.5, visible culling, merged passes)
+
+## U. Mobile UI/UX — a first-class phone experience  [P1]
+The phone UI is a desktop layout reflowed into a scroll page. Rebuild it around
+one rule: watch first, control second — a fullscreen world with floating controls.
+
+### Layout — immersive fullscreen
+- [ ] [P1] Fullscreen canvas — edge-to-edge 100dvh, overlays float, no page
+      scrolling (replace the 55vh map + scroll page in index.css @768px).
+- [ ] [P1] Collapsed status bar — one compact top line (⏸ tick · alive · ☀ day ·
+      season · age) that taps open a detail sheet for the full chip set (dead
+      breakdown, infected/chilled/exposed, seed, weather).
+
+### Bottom bar & sheets
+- [ ] [P1] Thumb bar — persistent ~48px bottom bar (safe-area inset): ▶/⏸ · ⏭ Step
+      · ⚖ God · 📜 Chronicle · ⛶ Fit · 📷; replaces the horizontal scroll bar.
+- [ ] [P1] Tabbed sheet — one bottom sheet with World / Clans / Chronicle / Plots
+      tabs (peek ¼ → half → full drag), so the map stays visible; move Overview
+      charts, ClanPanel, PlotsPanel into it.
+
+### God panel (mobile)
+- [ ] [P2] Accordion groups — collapse law groups; sliders instead of number
+      inputs; full-screen sheet with a sticky Apply button.
+
+### Gestures & polish
+- [ ] [P2] Gestures — double-tap to inspect nearest creature, long-press quick
+      info; keep pan/pinch/tap.
+- [ ] [P2] Touch & viewport — 44px+ targets, viewport-fit=cover + env(safe-area),
+      drop the alert() tooltip, hide key-hints on touch.
+
+### PWA — installable
+- [ ] [P2] Installable — webmanifest + icons + apple-touch-icon + display:
+      standalone so it can be added to the Home Screen; meta viewport-fit=cover.
+
+### Perf on phone
+- [ ] [P1] Phone rendering — viewport culling + devicePixelRatio cap (ties §T),
+      so 400–500 creatures stay smooth on a phone.

@@ -230,6 +230,7 @@ export interface GodLaws {
   // Environment: sky, seasons, weather
   day_length?: number
   season_length?: number
+  winter_food_mult?: number
   night_sight_mult?: number
   weather_enabled?: boolean
   weather_change_rate?: number

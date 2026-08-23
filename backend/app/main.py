@@ -786,6 +786,22 @@ async def get_guide(format: str | None = None):
     return HTMLResponse(build_guide_html(app))
 
 
+@app.get("/wiki", response_class=HTMLResponse)
+async def get_wiki():
+    """Wiki — richer guide with presets, sustainability, playground."""
+    from .wiki import build_wiki_html
+
+    return HTMLResponse(build_wiki_html(app))
+
+
+@app.get("/api/wiki")
+async def get_wiki_json():
+    """Structured wiki data for frontend Wiki.tsx."""
+    from .wiki import get_wiki_json as _get
+
+    return _get(app)
+
+
 @app.post("/api/control")
 async def post_control(msg: ControlMessage) -> dict:
     return await apply_control(msg)

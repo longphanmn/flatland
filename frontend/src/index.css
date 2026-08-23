@@ -963,6 +963,17 @@ select {
 .help-panel li { font-size: 12px; color: #c9d1d9; margin: 6px 0; }
 .help-panel li b { color: #e3b341; }
 
+.wiki-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:35;display:flex;align-items:center;justify-content:center;padding:16px
+}
+.wiki-panel{
+  background:#0d1117;border:1px solid #30363d;border-radius:10px;width:min(960px,96vw);max-height:88vh;overflow:auto;padding:16px;box-shadow:0 12px 32px rgba(0,0,0,0.6)
+}
+.wiki-panel h3{margin:12px 0 6px;color:#e6edf3}
+.wiki-panel h4{margin:10px 0 6px;color:#e6edf3}
+.wiki-panel a{color:#58a6ff}
+.wiki-panel code{background:#161b22;border:1px solid #21262d;padding:1px 4px;border-radius:3px}
+.wiki-panel pre{background:#161b22;border:1px solid #30363d;padding:12px;border-radius:6px;overflow:auto}
 @media (max-width: 380px) {
   .hud {
     gap: 6px;
@@ -977,4 +988,5 @@ select {
   .chronicle {
     max-height: 18vh;
   }
+  .wiki-panel{width:96vw;max-height:92vh;padding:12px}
 }

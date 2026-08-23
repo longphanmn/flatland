@@ -5,6 +5,7 @@ import TrophicChart from './render/TrophicChart'
 import ClanPanel from './render/ClanPanel'
 import PlotsPanel from './render/PlotsPanel'
 import GodPanel from './god/GodPanel'
+import Wiki from './wiki/Wiki'
 import Inspector from './inspect/Inspector'
 import { WorldSocket, type ConnStatus } from './websocket'
 import type { HelloMessage, HistoryEvent, StateMessage, WorldSummary } from './types'
@@ -40,6 +41,7 @@ export default function App() {
     return true
   })
   const [helpOpen, setHelpOpen] = useState(false)
+  const [wikiOpen, setWikiOpen] = useState(false)
   const [versionInfo, setVersionInfo] = useState<{ version: string; revision: string } | null>(null)
   const [log, setLog] = useState<HistoryEvent[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -731,6 +733,7 @@ export default function App() {
       )}
 
       <GodPanel open={godOpen} onClose={() => setGodOpen(false)} />
+      <Wiki open={wikiOpen} onClose={() => setWikiOpen(false)} />
 
       {helpOpen && (
         <div className="help-backdrop" onClick={() => setHelpOpen(false)}>
@@ -758,8 +761,11 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* God + Help — top right panel */}
+      {/* God + Help + Wiki — top right panel */}
       <div className="top-right-panel">
+        <button className="god-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )">
+          📖 Wiki
+        </button>
         <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls">
           ?
         </button>
