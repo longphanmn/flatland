@@ -275,8 +275,8 @@ export default function GodPanel({ open, onClose }: Props) {
     }
   }
 
-  return (
-    <aside className="god-panel">
+  const panel = (
+    <aside className="god-panel" onClick={e => e.stopPropagation()}>
       <header className="god-head">
         <h2>⚖ Laws of Nature</h2>
         <button className="god-close" onClick={onClose} aria-label="close">
@@ -537,4 +537,12 @@ export default function GodPanel({ open, onClose }: Props) {
       )}
     </aside>
   )
+  if (isMobile) {
+    return (
+      <div className="god-backdrop" onClick={onClose}>
+        {panel}
+      </div>
+    )
+  }
+  return panel
 }

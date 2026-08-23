@@ -845,8 +845,12 @@ select {
     padding-bottom: max(14px, env(safe-area-inset-bottom)); z-index: 16;
   }
   .god-backdrop{
-    position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 15;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 35;
     display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .god-backdrop .god-panel{
+    position: relative; left: auto; right: auto; top: auto; bottom: auto; transform: none;
+    width: min(420px,92vw); max-height: 80vh; margin: 0;
   }
   .god-panel .god-foot{ position: sticky; bottom: 0; background: #0d1117; padding-top: 10px; margin-top: 12px; }
   .god-accordion{ border: 1px solid #21262d; border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
