@@ -166,15 +166,16 @@ class WorldView(Widget, can_focus=True):
             self._paint_rock(put, rock["x"], rock["y"], rock["r"])
 
         # --- territory rings (§P): faint clan-colored band around each claimed house ---
-        houses = [e for e in st.entities if e.kind == "house" and e.clan_id]
-        if st.clans and houses:
-            for h in houses:
-                color = h.clan_color or theme.DEFAULT_CREATURE_COLOR
-                r = max(h.size or 6, 6) * 2.0
-                self._paint_ring(put, h.x, h.y, r, dim(color))
+        all_houses = [e for e in st.entities if e.kind == "house"]
+        if st.clans and all_houses:
+            for h in all_houses:
+                if h.clan_id and not h.is_ruin:
+                    color = h.clan_color or theme.DEFAULT_CREATURE_COLOR
+                    r = max(h.size or 6, 6) * 2.0
+                    self._paint_ring(put, h.x, h.y, r, dim(color))
 
         # --- houses: box outline in clan color, door gap marked ---
-        for h in houses:
+        for h in all_houses:
             self._paint_house(put, h)
 
         # --- entities ---
