@@ -9,7 +9,7 @@ from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, DataTable, RichLog
+from textual.widgets import Button, DataTable, RichLog, Static
 
 from .. import theme
 

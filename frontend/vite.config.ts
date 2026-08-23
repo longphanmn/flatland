@@ -6,6 +6,8 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    // production is reached via http://world.minhnhan.in → :5173
+    allowedHosts: ['world.minhnhan.in'],
     proxy: {
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
       '/ws': { target: 'ws://localhost:8000', ws: true },

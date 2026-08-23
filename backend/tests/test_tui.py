@@ -262,6 +262,24 @@ def test_click_selects_and_enter_opens_inspector():
     asyncio.run(scenario())
 
 
+def test_clan_key_pushes_details_screen_without_crash():
+    """'c' with a selected creature opens ClanDetailsScreen (REST may fail)."""
+    async def scenario() -> None:
+        async with FakeWorldServer() as server:
+            async with run_app_with(server) as pilot:
+                await _wait_world(pilot)
+                # select creature #12 directly, then press c
+                pilot.app.selected_id = 12
+                await pilot.press("c")
+                await pilot.pause()
+                assert type(pilot.app.screen).__name__ == "ClanDetailsScreen"
+                assert pilot.app.screen.clan_id == 1
+                await pilot.press("escape")
+                await pilot.pause()
+
+    asyncio.run(scenario())
+
+
 def test_rest_laws_post_roundtrip_against_real_backend():
     """RESTClient against the live FastAPI app (ASGITransport): read + apply."""
     from app.main import RT
