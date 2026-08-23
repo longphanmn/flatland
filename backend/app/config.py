@@ -171,7 +171,7 @@ class Config:
     # Shelter — tuned for sustainability (exposure was 0.3, now 0.03)
     shelter_enabled: bool = True  # houses are scarce, contested and life-saving
     exposure_drain: float = 0.03  # extra energy/tick outdoors in rain/storm or at night (was 0.3)
-    house_capacity: int = 12  # beds per house per tick; overflow sleeps outside (was 8) — 12 tested longest survival with 12-day seasons (48.8d vs 34.5d at 8)
+    house_capacity: int = 12  # beds in an 8×8 hall; scales with floor area (small hut < grand hall) — overflow spills to the nearest roof with space
     house_claim_enabled: bool = True  # clans claim houses as settlements
     rest_recovery_mult: float = 2.0  # indoor sleeping health regen multiplier
     house_decay_ticks: int = 2400  # abandoned house stands this many ticks before crumbling to ruin

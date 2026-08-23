@@ -114,7 +114,7 @@ All laws are in `backend/app/config.py` and `protocol.py:GodLaws`. Presets: `sus
 | Law | Range | Default | Hint |
 |-----|-------|---------|------|
 | `exposure_drain` | 0–2 | 0.03 | extra energy/tick outdoors in rain/storm or at night |
-| `house_capacity` | 1–20 | 12 (was 8) | beds per house; overflow sleeps outside |
+| `house_capacity` | 1–20 | 12 (was 8) | beds in an 8×8 hall — scales with floor area; overflow spills to the nearest roof with space, only queues outside when every roof is full |
 | `rest_recovery_mult` | 0.5–5 | 2.0 | indoor sleeping health regen multiplier |
 | `house_decay_ticks` | 100–100000 | 2400 | abandoned house ticks before crumbling to ruin |
 

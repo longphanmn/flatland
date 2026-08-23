@@ -187,7 +187,7 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   euthanasia_threshold: 'irregular children at/above this are consumed at adulthood, below it demoted (0.7)',
   carrying_capacity: 'above this population, fertility fades gradually (-1 = scale with map area, 80 per 200×200)',
   max_population: 'hard cap — no births beyond (-1 = scale with map area, 140 per 200×200)',
-  house_capacity: 'beds per house (8) — overflow sleeps outside and suffers exposure',
+  house_capacity: 'beds in an 8×8 hall (12) — scales with floor area, so a small hut cannot hold a whole clan; overflow spills to the nearest roof with space',
   exposure_drain: 'energy lost per tick outdoors in rain/storm/night (0.03)',
   rest_recovery_mult: 'health regen multiplier when sleeping indoors (2.0)',
   totems_enabled: 'each clan bears a totem with a subtle buff — Wolf 🐺 Tree 🌳 Shield 🛡️ Eye 👁️ Bear 🐻 Stag 🦌 Owl 🦉 Rabbit 🐇 Boar 🐗 Fox 🦊 Raven 🐦‍⬛ Serpent 🐍',

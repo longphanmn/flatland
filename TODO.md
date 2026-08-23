@@ -229,6 +229,17 @@ after dark (§N night rest). Shelter should be scarce, contested and life-saving
 - [x] GodLaws: shelter_enabled, exposure_drain, house_capacity, house_claim_enabled,
         rest_recovery_mult, house_decay_ticks (Shelter group) — defaults tuned for 30-day survival
         (`config.py:108`, food 48, decay 0.05, perceive 18, mate 10/30, birth 0.35, adult 200)
+- [x] [P1] Beds ∝ floor area — `house_capacity` counts beds in an 8×8 reference
+        hall (`HOUSE_REF_AREA`, `simulation.py` `_house_beds`): a cramped hut
+        holds half a grand hall's beds, so a whole clan can never cram into one
+        shelter. Full roof ⇒ overflow spills to the NEAREST roof WITH space
+        (`_house_for`; kin-preferred among free roofs), queueing at a door only
+        when every roof is full; a sleeper already inside any roof with a free
+        bed takes it instead of trekking on. Rest means STILL — a sleeping body
+        holds its exact position until dawn (early-return night branch).
+        Tests: `tests/test_shelter.py` (beds scale with size, spill to second
+        roof, sleeping = zero movement); live check @321 pop: 0 over-capacity
+        houses, 154/321 asleep across 72 houses.
 
 ## Cross-system synergies (emergent depth)
 Not features — acceptance criteria. Tick only after the behaviour is observable in a
@@ -794,3 +805,69 @@ to the old implementation (same seed ⇒ same world).
 - [x] [P2] Keep uvicorn at 1 worker for the sim; documented single-threaded-
       by-design (determinism) + multi-core as non-goal (README "Concurrency &
       performance", guide.py ops → "Concurrency stance").
+
+## AB. Politics — coalitions, leaders, resources & betrayal  [P1]
+Build a politics layer on the clan/relation/leader/knowledge stack: multi-clan
+coalitions, leader agency, shared resources, and treachery. God sets laws; politics
+emerge.
+
+### Coalitions
+- [ ] [P1] Explicit coalitions — a leader proposes a coalition; clans with relation
+      ≥ coalition_threshold (or existing allies) join; coalition holds leader,
+      members, shared-enemy list. Mutual defence: attack one → all at war.
+- [ ] [P2] Coalition effects — faster knowledge sharing between members; bloc war
+      declarations; dissolve when a member's relations sour.
+- [ ] Events: coalition_formed / coalition_joined / coalition_dissolved.
+
+### Leader agency
+- [ ] [P1] Decisions as plots — the clan leader autonomously declares war (on a
+      remembered enemy), proposes/accepts alliance, breaks alliance, negotiates
+      peace (when weakened), demands tribute; surfaced as §S plots (god sees, can't
+      veto). Leader trait biases it (bold→war, peaceful→peace, paranoid→betrayal).
+
+### Resource sharing
+- [ ] [P1] Clan larder — a food store at the settlement; well-fed members deposit
+      surplus, starving members withdraw (formalises §Q recruitment into an economy).
+- [ ] [P2] Allied aid — a surplus ally feeds a starving ally during famine.
+- [ ] [P2] Tribute — a weak clan pays periodic tribute to a stronger protector in
+      exchange for protection (subjugation relation).
+
+### Betrayal & treason
+- [ ] [P1] Ally backstab — a leader breaks an alliance and attacks (relations → rivalry,
+      war); gated by betrayal_rate + leader trait.
+- [ ] [P2] Defection — unhappy members (or a faction) defect to a rival clan.
+- [ ] [P2] Treason — a clan sows false knowledge to turn allies against each other.
+
+### Laws
+- [ ] GodLaws: coalitions_enabled, coalition_threshold, coalition_min_size,
+      leader_decisions_enabled, resource_sharing_enabled, larder_capacity, aid_rate,
+      tribute_enabled, betrayal_enabled, defection_enabled (new "Politics" group).
+- [ ] Events: peace, tribute, betrayal, defection (+ coalition events above).
+
+## AC. Desperation cannibalism — eat the enemy & the weak  [P2]
+When starving, a creature may hunt and eat another living creature; sated/hungry
+creatures never do. Same-clan kin-eating carries a heavy price: exile and a clan
+that now counts the kin-slayer an enemy.
+
+### The hunger-driven hunt
+- [ ] [P2] Gate — only when `starving` (energy ≤ cannibalism_hunger_ratio, default
+      starving_ratio); sated/hungry creatures never eat the living.
+- [ ] [P2] Targets — a starving creature perceives eligible living prey: enemy-clan
+      members (rival/negative relation) and weak members (starving/elder/wounded) of
+      any clan; never predators, healthy same-clan adults, or infants.
+- [ ] [P2] Kill & feed — on contact (eat_radius) → death `cannibalism`, gain
+      cannibalism_energy, target leaves a partial corpse; cannibalism_cooldown.
+
+### The price of kin-eating
+- [ ] [P1] Kin stigma — same-clan cannibalism: relation hit + the clan remembers the
+      kin-slayer via §X knowledge.
+- [ ] [P1] Exile — the kin-eater is kicked out of the clan (clanless, or founds a
+      one-being outcast band), like a schism of one.
+- [ ] [P1] Rebel & enemy — the former clan marks the outcast an enemy (relations →
+      rivalry, eligible for war/plots); the outcast may seek refuge with a rival.
+
+### Laws
+- [ ] GodLaws: cannibalism_enabled, cannibalism_hunger_ratio, cannibalism_energy,
+      eat_enemy_enabled, eat_kin_enabled, kin_stigma, exile_on_kin_eat (new
+      "Desperation" group).
+- [ ] Events: `cannibalism`, `exile`; death cause `cannibalism`.

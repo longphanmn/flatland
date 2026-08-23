@@ -52,6 +52,9 @@ AGE_BIRTH_MULT = {"Golden": 1.3, "Ice": 0.85, "Chaos": 1.0, "Plague": 0.9}
 
 YIELD_RADIUS = 2.5  # lower castes step aside within this range
 
+# §L shelter: reference floor area for the house_capacity law (8×8 hall)
+HOUSE_REF_AREA = 64.0
+
 # §H Plants & the nutrient cycle
 SPREAD_RADIUS = 6.0  # mature plants seed new ground within this range
 NUTRIENT_RADIUS = 10.0  # a fully decayed corpse fertilises plants within this range
@@ -272,10 +275,16 @@ class Simulation:
     def _claim_bed(self, house: House) -> bool:
         """One bed per occupant until the house is full; creatures arrive in id order."""
         taken = self._beds.get(house.id, 0)
-        if taken >= max(0, self.config.house_capacity):
+        if taken >= self._house_beds(house):
             return False
         self._beds[house.id] = taken + 1
         return True
+
+    def _house_beds(self, house: House) -> int:
+        """Beds scale with floor area: `house_capacity` is the law for an
+        average 8×8 hall — a cramped 6×6 hut holds barely half that, a grand
+        hall twice it. No village can cram a whole clan into one shelter."""
+        return max(1, int(self.config.house_capacity * (house.size * house.size) / HOUSE_REF_AREA))
 
     # ------------------------------------------------------------------ setup
     def _rand_pos(self) -> tuple[float, float]:
@@ -733,15 +742,40 @@ class Simulation:
                 )
 
     def _house_for(self, c: Creature, houses: list[Entity]) -> House | None:
-        """Preferred shelter: clan's claimed house if enabled, else nearest."""
+        """Preferred shelter: the clan's own roof while it has beds free; when
+        it is full (or the creature is clanless) the nearest roof WITH space —
+        a house's capacity depends on its size, so overflow spills across the
+        village instead of queueing all night at one packed door. Only when
+        every roof is full does the nearest door queue for tomorrow."""
         if not houses:
             return None
+
+        def dist(h: House) -> float:
+            return self.world.distance(c.x, c.y, h.x, h.y)
+
+        def has_room(h: House) -> bool:
+            return self._beds.get(h.id, 0) < self._house_beds(h)
+
+        own: House | None = None
         if self.config.house_claim_enabled and c.clan_id:
-            for h in houses:
-                if isinstance(h, House) and h.clan_id == c.clan_id:
-                    return h  # type: ignore[return-value]
-        # Fall back to nearest house by wrap-aware distance
-        return min(houses, key=lambda h: self.world.distance(c.x, c.y, h.x, h.y))  # type: ignore[arg-type]
+            own = next(
+                (
+                    h  # type: ignore[union-attr]
+                    for h in houses
+                    if isinstance(h, House) and h.clan_id == c.clan_id
+                ),
+                None,
+            )
+        if own is not None and has_room(own):
+            return own
+        free = [h for h in houses if isinstance(h, House) and has_room(h)]
+        if free:
+            # kin keep to kin where several roofs of their clan have space
+            # (conquest/settlements can leave a clan more than one house)
+            own_free = [h for h in free if own is not None and h.clan_id == c.clan_id]
+            return min(own_free or free, key=dist)
+        # every roof is full: fall back to own (or nearest) and queue at the door
+        return own or min(houses, key=dist)  # type: ignore[arg-type,return-value]
 
     def _door_pos(self, h: House) -> tuple[float, float]:
         """Center of the doorway gap (where creatures can pass)."""
@@ -2358,12 +2392,20 @@ class Simulation:
             and self._is_night(tod)
             and houses
         ):
-            home = self._house_for(c, houses)
-            inside = (
-                abs(c.x - home.x) < home.size / 2 - 0.3
-                and abs(c.y - home.y) < home.size / 2 - 0.3
-            )
-            if inside and self._claim_bed(home):
+            # Assigned roof (room-aware, §L); if we're not under it but stand
+            # inside ANOTHER roof with a free bed, rest here instead of
+            # trekking across the village. No bed ⇒ no rest: capacity is law.
+            assigned = self._house_for(c, houses)
+            home: House | None = None
+            if assigned is not None and self._inside_house(c, assigned):
+                home = assigned
+            else:
+                for h in houses:
+                    hh = cast(House, h)
+                    if self._inside_house(c, hh) and self._beds.get(hh.id, 0) < self._house_beds(hh):
+                        home = hh
+                        break
+            if home is not None and self._claim_bed(home):
                 c.indoors = True
                 c.sleeping = True
                 if cfg.knowledge_enabled:
@@ -2382,6 +2424,8 @@ class Simulation:
                     self._kill(c, "disease")
                 elif c.age >= c.lifespan:
                     self._kill(c, "old_age")
+                # Asleep means STILL: no steering, no wandering, no fleeing —
+                # the body does not move again until dawn (or death).
                 return
 
         # At adulthood the world judges the irregular: consumed if far from
