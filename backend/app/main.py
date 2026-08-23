@@ -4,6 +4,8 @@ import asyncio
 import json
 import os
 import random
+import sys
+import traceback
 from contextlib import asynccontextmanager, suppress
 from dataclasses import asdict, replace
 from pathlib import Path
@@ -59,6 +61,10 @@ class RuntimeState:
         self.paused = False
         self.speed = self.config.tick_rate
         self.world_id: int | None = None
+        # Last failed tick (if any), sticky for diagnosis — surfaced via
+        # /healthz so a sick world is visible without ssh-ing into the box.
+        self.last_tick_error: str | None = None
+        self.tick_failures = 0
         # Baseline laws that survive Reset (Save). Apply mutates only self.config.
         self.saved_config = self.config
 
@@ -131,14 +137,30 @@ async def tick_loop(rt: RuntimeState, hub: Hub) -> None:
         interval = 1.0 / max(rt.speed, MIN_SPEED)
         started = loop.time()
         if not rt.paused:
-            rt.sim.step()
-            # T: throttle broadcast to ~30 Hz instead of every tick (saves JSON + WS at 120 tps)
-            tick_counter += 1
-            every = max(1, int(round(rt.speed / 30))) if rt.speed > 30 else 1
-            if tick_counter % every == 0 or rt.sim.tick % every == 0:
-                await hub.broadcast(rt.sim.snapshot().model_dump(mode="json"))
-            elif not hub.clients:
-                pass  # no clients, skip serialize entirely (snapshot still computed for DB if needed? no)
+            try:
+                rt.sim.step()
+            except Exception as exc:
+                # The world must never die silently: one failed tick is logged
+                # loudly and skipped — the loop keeps turning (a frozen tick
+                # used to look like a crash and needed a restart to fix).
+                rt.tick_failures += 1
+                rt.last_tick_error = f"{type(exc).__name__}: {exc}"
+                print(
+                    f"\n[tick-loop] step() FAILED at tick={rt.sim.tick}: {rt.last_tick_error} — skipping\n",
+                    flush=True,
+                )
+                traceback.print_exc()
+                sys.stdout.flush()
+            else:
+                # T: throttle broadcast to ~30 Hz instead of every tick
+                tick_counter += 1
+                every = max(1, int(round(rt.speed / 30))) if rt.speed > 30 else 1
+                if tick_counter % every == 0 or rt.sim.tick % every == 0:
+                    try:
+                        await hub.broadcast(rt.sim.snapshot().model_dump(mode="json"))
+                    except Exception:
+                        traceback.print_exc()
+                        sys.stdout.flush()
         elapsed = loop.time() - started
         await asyncio.sleep(max(0.0, interval - elapsed))
 
@@ -467,7 +489,11 @@ async def ws_endpoint(ws: WebSocket) -> None:
 # --------------------------------------------------------------------- rest
 @app.get("/healthz")
 async def healthz() -> dict:
-    return {"ok": True}
+    out: dict = {"ok": True, "tick": RT.sim.tick, "paused": RT.paused}
+    if RT.last_tick_error:
+        out["ok"] = False
+        out["last_tick_error"] = RT.last_tick_error
+    return out
 
 
 @app.get("/api/version")

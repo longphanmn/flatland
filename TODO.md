@@ -582,6 +582,18 @@ by_caste). Replace with spatial settlement seeding so any caste can share a clan
       test_reproduction.py founding test rewritten for settlements.)
 
 ## X. Fixes
+- [x] Silent world freeze at random ticks (recurring, "fixed" by restart) — the
+      tick task died on any exception escaping `step()` (prime suspect: DB event
+      sink hitting `sqlite3.OperationalError: database is locked` — connection
+      had no busy_timeout), and because uvicorn's lifespan holds the task
+      reference asyncio never reported it: HTTP kept serving while the tick
+      froze forever. Hardened: `db.py` connect with `timeout=5.0` +
+      `PRAGMA busy_timeout=5000`; `tick_loop` wraps step/broadcast in
+      try/except — logs `[tick-loop] step() FAILED at tick=N` loudly and keeps
+      ticking; sticky `RT.last_tick_error` + `tick_failures` surfaced via
+      `/healthz` (`ok:false` when the last tick failed); deploy.sh excludes
+      `*.log` from rsync --delete so backend.log survives deploys.
+      Tests: `tests/test_resilience.py`.
 - [x] Stuck-against-obstacle starvation — creatures chasing a meal whose straight
       path crosses a rock circle (or a house wall) used to grind at the obstacle
       until they starved. Now the blocked meal is abandoned: per-meal grudges

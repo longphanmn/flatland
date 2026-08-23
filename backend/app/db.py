@@ -89,9 +89,12 @@ class Database:
         if self._conn is not None:
             return
         os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
-        self._conn = sqlite3.connect(self.path, check_same_thread=False)
+        # timeout: wait up to 5s on lock contention instead of failing instantly
+        # (a concurrent reader/writer must never crash the tick loop)
+        self._conn = sqlite3.connect(self.path, check_same_thread=False, timeout=5.0)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA busy_timeout=5000")
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
 

@@ -27,7 +27,9 @@ def client():
 def test_healthz(client):
     r = client.get("/healthz")
     assert r.status_code == 200
-    assert r.json() == {"ok": True}
+    body = r.json()
+    assert body["ok"] is True
+    assert "tick" in body and "paused" in body
 
 
 def test_get_config(client):
