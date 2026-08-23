@@ -526,15 +526,7 @@ class Simulation:
             (c.radius for c in self.world.creatures()), default=DEFAULT_RADIUS
         )
         size = self.rng.uniform(cfg.house_min_size, cfg.house_max_size)
-        if near is not None:
-            # scatter near founder but keep inside world
-            x = (near.x + self.rng.uniform(-12, 12)) % cfg.width
-            y = (near.y + self.rng.uniform(-12, 12)) % cfg.height
-            # keep whole house inside clamp? we use normalize wrap path, so just clamp margin
-            x = max(size / 2, min(cfg.width - size / 2, x))
-            y = max(size / 2, min(cfg.height - size / 2, y))
-        else:
-            x, y = self._rand_house_pos(size)
+        x, y = self._find_non_overlapping_house_pos(size, near=near)
         door_width = min(size * 0.8, 2.0 * max_radius * cfg.door_clearance)
         house = House(
             x=x, y=y, size=size, door_width=door_width,
@@ -734,14 +726,48 @@ class Simulation:
             return override
         return max(0, round(total * share))
 
-    def _rand_house_pos(self, size: float) -> tuple[float, float]:
-        """Position keeping the whole house inside the world edge."""
+    def _house_overlaps(self, x: float, y: float, size: float) -> bool:
+        """Check if a house at x,y,size would overlap any existing house or rock."""
+        # check houses
+        for e in self.world.entities.values():
+            if isinstance(e, House) and not e.is_ruin:
+                # use world distance for wrap
+                dist = self.world.distance(x, y, e.x, e.y)
+                min_dist = (size + e.size) / 2 + 1.5  # 1.5 padding so doors have space
+                if dist < min_dist:
+                    return True
+        # check rocks
+        for r in self.rocks:
+            dist = self.world.distance(x, y, r["x"], r["y"])
+            if dist < size / 2 + r["r"] + 1.0:
+                return True
+        return False
+
+    def _find_non_overlapping_house_pos(self, size: float, near: Creature | None = None) -> tuple[float, float]:
+        """Find a non-overlapping house position, trying near founder if given."""
         cfg = self.config
         margin = size / 2
-        return (
-            self.rng.uniform(margin, max(margin, cfg.width - margin)),
-            self.rng.uniform(margin, max(margin, cfg.height - margin)),
-        )
+        # try near founder first
+        if near is not None:
+            for _ in range(30):
+                x = (near.x + self.rng.uniform(-12, 12)) % cfg.width
+                y = (near.y + self.rng.uniform(-12, 12)) % cfg.height
+                x = max(margin, min(cfg.width - margin, x))
+                y = max(margin, min(cfg.height - margin, y))
+                if not self._house_overlaps(x, y, size):
+                    return x, y
+        # fallback to random with retries
+        for _ in range(50):
+            x = self.rng.uniform(margin, max(margin, cfg.width - margin))
+            y = self.rng.uniform(margin, max(margin, cfg.height - margin))
+            if not self._house_overlaps(x, y, size):
+                return x, y
+        # last resort: return random even if overlaps (avoid infinite loop on crowded map)
+        return self.rng.uniform(margin, max(margin, cfg.width - margin)), self.rng.uniform(margin, max(margin, cfg.height - margin))
+
+    def _rand_house_pos(self, size: float) -> tuple[float, float]:
+        """Position keeping the whole house inside the world edge (with overlap avoidance)."""
+        return self._find_non_overlapping_house_pos(size)
 
     def _refresh_cache(self) -> None:
         """T: cache creatures once per tick and clan→members map."""
