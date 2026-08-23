@@ -48,7 +48,7 @@ export default function App() {
   const [wikiOpen, setWikiOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [statusExpanded, setStatusExpanded] = useState(false)
-  const [sheetState, setSheetState] = useState<'peek' | 'half' | 'full'>('peek')
+  const [sheetState, setSheetState] = useState<'hidden' | 'peek' | 'half' | 'full'>('hidden')
   const [sheetTab, setSheetTab] = useState<'world' | 'clans' | 'chronicle' | 'plots'>('world')
   const [versionInfo, setVersionInfo] = useState<{ version: string; revision: string } | null>(null)
   const [log, setLog] = useState<HistoryEvent[]>([])
@@ -480,12 +480,12 @@ export default function App() {
           dead <b>{state?.creatures_dead ?? 0}</b>
         </span>
         {hungryCount > 0 && (
-          <span className="chip hungry" title="Hungry: energy ≤ 35% of max — perceives food farther (1.3×), still fertile.">
+          <span className="chip hungry desktop-only" title="Hungry: energy ≤ 35% of max — perceives food farther (1.3×), still fertile.">
             hungry <b>{hungryCount}</b>
           </span>
         )}
         {starvingCount > 0 && (
-          <span className="chip starving" title="Starving: energy ≤ 15% — sees farthest (1.6×) and moves 1.35× faster, pulsing red, will die soon.">
+          <span className="chip starving desktop-only" title="Starving: energy ≤ 15% — sees farthest (1.6×) and moves 1.35× faster, pulsing red, will die soon.">
             starving <b>{starvingCount}</b>
           </span>
         )}
@@ -521,19 +521,54 @@ export default function App() {
             {weatherIcon && ` · ${weatherIcon}`}
           </span>
         )}
-        {isMobile && <span className="chip" style={{ marginLeft: 'auto', fontSize: 10, color: '#8b949e' }}>{statusExpanded ? '▲' : '▼'}</span>}
+        {isMobile && <span className="chip" style={{ marginLeft: 'auto', fontSize: 10, color: '#58a6ff' }}>{statusExpanded ? '▲ Close' : '▼ More'}</span>}
       </header>
       {isMobile && statusExpanded && (
-        <div className="hud-detail-sheet" onClick={() => setStatusExpanded(false)}>
-          <span className="chip">entities <b>{state?.entities.length ?? 0}</b></span>
-          <span className="chip dead">dead <b>{state?.creatures_dead ?? 0}</b></span>
-          <span className="chip" style={{ fontSize: 10, color: '#8b949e' }}>{deadBreakdown}</span>
-          {(state?.infected_count ?? 0) > 0 && <span className="chip sick">infected <b>{state?.infected_count}</b></span>}
-          {(state?.entities.filter((e) => (e.chill ?? 0) >= 12).length ?? 0) > 0 && <span className="chip" style={{ color: '#79c0ff' }}>🥶 chilled <b>{state?.entities.filter((e) => (e.chill ?? 0) >= 12).length}</b></span>}
-          {raining && exposedCount > 0 && <span className="chip exposed">⛈ exposed <b>{exposedCount}</b></span>}
-          {hello && <span className="chip">seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×{state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}</span>}
-          {state?.age && <span className="chip">🗓 age <b>{state.age}</b> · tick {state.age_tick}</span>}
-          <span className="chip">hungry <b>{hungryCount}</b> · starving <b>{starvingCount}</b></span>
+        <div className="hud-detail-sheet" onClick={(e) => { if ((e.target as HTMLElement).tagName !== 'SELECT' && (e.target as HTMLElement).tagName !== 'BUTTON') setStatusExpanded(false); }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#e6edf3' }}>World Details & Navigation</span>
+            <button onClick={() => setStatusExpanded(false)} style={{ background: 'transparent', border: 'none', color: '#8b949e', fontSize: 16, cursor: 'pointer', padding: 0, minHeight: 24 }}>✕</button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <span className="chip">entities <b>{state?.entities.length ?? 0}</b></span>
+            <span className="chip dead">dead <b>{state?.creatures_dead ?? 0}</b></span>
+            <span className="chip" style={{ fontSize: 10, color: '#8b949e' }}>{deadBreakdown}</span>
+            {(state?.infected_count ?? 0) > 0 && <span className="chip sick">infected <b>{state?.infected_count}</b></span>}
+            {(state?.entities.filter((e) => (e.chill ?? 0) >= 12).length ?? 0) > 0 && <span className="chip" style={{ color: '#79c0ff' }}>🥶 chilled <b>{state?.entities.filter((e) => (e.chill ?? 0) >= 12).length}</b></span>}
+            {raining && exposedCount > 0 && <span className="chip exposed">⛈ exposed <b>{exposedCount}</b></span>}
+            {hello && <span className="chip">seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×{state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}</span>}
+            {state?.age && <span className="chip">🗓 age <b>{state.age}</b> · tick {state.age_tick}</span>}
+            <span className="chip">hungry <b>{hungryCount}</b> · starving <b>{starvingCount}</b></span>
+          </div>
+          {worlds.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, paddingTop: 6, borderTop: '1px solid #21262d' }}>
+              <span style={{ fontSize: 12, color: '#8b949e', flex: 'none' }}>History Run:</span>
+              <select
+                className="run-select"
+                value={String(selectedRunId ?? liveWorldId ?? '')}
+                onChange={(e) => selectRun(e.target.value)}
+                style={{ flex: 1, minHeight: 32, fontSize: 12 }}
+              >
+                {worlds.map((w) => (
+                  <option key={w.id} value={String(w.id)}>
+                    #{w.id} · seed {w.seed} · {fmtStart(w.started_at)}
+                    {w.ended_at === null ? ' · (live)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button className="god-btn" onClick={() => { setStatusExpanded(false); setWikiOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
+              📖 Wiki
+            </button>
+            <button className="god-btn" onClick={() => { setStatusExpanded(false); setHelpOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
+              ❓ Guide
+            </button>
+            <button className="god-btn god-main-btn" onClick={() => { setStatusExpanded(false); setGodOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
+              ⚖ God Laws
+            </button>
+          </div>
         </div>
       )}
 
@@ -551,12 +586,25 @@ export default function App() {
           <button onClick={paused ? sendResume : sendPause} title={paused ? 'Resume (space)' : 'Pause (space)'}>{paused ? '▶' : '⏸'}</button>
           <button onClick={sendStep} title="Step (S)">⏭</button>
           <button onClick={() => setGodOpen(true)} title="God laws">⚖</button>
-          <button onClick={() => { setSheetTab('chronicle'); setSheetState('half'); }} title="Chronicle">📜</button>
+          <button
+            className={sheetState !== 'hidden' ? 'active-sheet-btn' : ''}
+            onClick={() => {
+              if (sheetState === 'hidden') {
+                setSheetTab('chronicle')
+                setSheetState('half')
+              } else {
+                setSheetState('hidden')
+              }
+            }}
+            title="Toggle stats & log sheet"
+          >
+            📊
+          </button>
           <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))} title="Fit view (F)">⛶</button>
           <button onClick={takeSnapshot} title="Snapshot 📷">📷</button>
           <button onClick={openAlbum} title="Album">🖼</button>
           <select value={speed} onChange={e => changeSpeed(Number(e.target.value))} title="ticks/s">
-            {SPEEDS.map(v => <option key={v} value={v}>{v}</option>)}
+            {SPEEDS.map(v => <option key={v} value={v}>{v}t/s</option>)}
           </select>
         </div>
       )}
@@ -566,16 +614,18 @@ export default function App() {
         <div className="mobile-sheet" data-state={sheetState}>
           <div
             className="mobile-sheet-handle"
-            onClick={() => setSheetState(s => s === 'peek' ? 'half' : s === 'half' ? 'full' : 'peek')}
+            onClick={() => setSheetState(s => s === 'hidden' ? 'peek' : s === 'peek' ? 'half' : s === 'half' ? 'full' : 'hidden')}
             onTouchStart={e => {
               const startY = e.touches[0].clientY
               const startState = sheetState
               const onMove = (ev: TouchEvent) => {
                 const dy = ev.touches[0].clientY - startY
-                if (dy < -40 && startState === 'peek') setSheetState('half')
-                else if (dy < -40 && startState === 'half') setSheetState('full')
-                else if (dy > 40 && startState === 'full') setSheetState('half')
-                else if (dy > 40 && startState === 'half') setSheetState('peek')
+                if (dy < -30 && startState === 'hidden') setSheetState('peek')
+                else if (dy < -30 && startState === 'peek') setSheetState('half')
+                else if (dy < -30 && startState === 'half') setSheetState('full')
+                else if (dy > 30 && startState === 'full') setSheetState('half')
+                else if (dy > 30 && startState === 'half') setSheetState('peek')
+                else if (dy > 30 && startState === 'peek') setSheetState('hidden')
               }
               const onEnd = () => {
                 window.removeEventListener('touchmove', onMove as any)
@@ -585,11 +635,21 @@ export default function App() {
               window.addEventListener('touchend', onEnd as any)
             }}
           />
-          <div className="mobile-sheet-tabs">
-            <button className={sheetTab === 'world' ? 'active' : ''} onClick={() => setSheetTab('world')}>World</button>
-            <button className={sheetTab === 'clans' ? 'active' : ''} onClick={() => setSheetTab('clans')}>Clans</button>
-            <button className={sheetTab === 'chronicle' ? 'active' : ''} onClick={() => setSheetTab('chronicle')}>Log</button>
-            <button className={sheetTab === 'plots' ? 'active' : ''} onClick={() => setSheetTab('plots')}>Plots</button>
+          <div className="mobile-sheet-header">
+            <div className="mobile-sheet-tabs">
+              <button className={sheetTab === 'world' ? 'active' : ''} onClick={() => { setSheetTab('world'); if (sheetState === 'hidden') setSheetState('half'); }}>World</button>
+              <button className={sheetTab === 'clans' ? 'active' : ''} onClick={() => { setSheetTab('clans'); if (sheetState === 'hidden') setSheetState('half'); }}>Clans</button>
+              <button className={sheetTab === 'chronicle' ? 'active' : ''} onClick={() => { setSheetTab('chronicle'); if (sheetState === 'hidden') setSheetState('half'); }}>Log</button>
+              <button className={sheetTab === 'plots' ? 'active' : ''} onClick={() => { setSheetTab('plots'); if (sheetState === 'hidden') setSheetState('half'); }}>Plots</button>
+            </div>
+            <button
+              className="mobile-sheet-close"
+              onClick={() => setSheetState('hidden')}
+              title="Hide sheet"
+              aria-label="Close bottom sheet"
+            >
+              ✕
+            </button>
           </div>
           <div className="mobile-sheet-body">
             {sheetTab === 'world' && (
@@ -1020,50 +1080,44 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* God + Help + Wiki — top right panel */}
-      <div className="top-right-panel">
-        <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )">
-          📖<span className="hide-mobile"> Wiki</span>
-        </button>
-        <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls">
-          ?
-        </button>
-        <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life">
-          ⚖<span className="hide-mobile"> God</span>
-        </button>
-      </div>
-      {/* version + revision at bottom */}
-      <div className="version-bar" title={versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'Flatland'}>
-        {versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'v0.1.0'}
-      </div>
-      {tooltip && (
-        <div
-          className="custom-tooltip"
-          style={{ left: tooltip.x, top: tooltip.y - 8, transform: 'translate(-50%, -100%)' }}
-          onClick={() => setTooltip(null)}
-        >
-          {tooltip.text}
-        </div>
-      )}
-      {worlds.length > 0 && (
-        <div className="run-switcher">
-          <label className="chip run-label" htmlFor="run-bottom">
-            run
-            <select
-              id="run-bottom"
-              className="run-select"
-              value={String(selectedRunId ?? liveWorldId ?? '')}
-              onChange={(e) => selectRun(e.target.value)}
-            >
-              {worlds.map((w) => (
-                <option key={w.id} value={String(w.id)}>
-                  #{w.id} · seed {w.seed} · {fmtStart(w.started_at)}
-                  {w.ended_at === null ? ' · (live)' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+      {/* Desktop only floating panels — on mobile these live cleanly in the thumb bar and detail drawer */}
+      {!isMobile && (
+        <>
+          <div className="top-right-panel">
+            <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )">
+              📖 Wiki
+            </button>
+            <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls">
+              ?
+            </button>
+            <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life">
+              ⚖ God
+            </button>
+          </div>
+          <div className="version-bar" title={versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'Flatland'}>
+            {versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'v0.1.0'}
+          </div>
+          {worlds.length > 0 && (
+            <div className="run-switcher">
+              <label className="chip run-label" htmlFor="run-bottom">
+                run
+                <select
+                  id="run-bottom"
+                  className="run-select"
+                  value={String(selectedRunId ?? liveWorldId ?? '')}
+                  onChange={(e) => selectRun(e.target.value)}
+                >
+                  {worlds.map((w) => (
+                    <option key={w.id} value={String(w.id)}>
+                      #{w.id} · seed {w.seed} · {fmtStart(w.started_at)}
+                      {w.ended_at === null ? ' · (live)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+        </>
       )}
       <AuthModal />
     </div>

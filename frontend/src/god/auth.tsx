@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'flatworld-god-key'
 
-type Mode = 'create' | 'enter'
+type Mode = 'create' | 'enter' | 'reset'
 
 interface PromptState {
   mode: Mode
@@ -101,7 +101,7 @@ export async function godFetch(url: string, init?: RequestInit): Promise<Respons
       statusKnown = false
       key = await requestPasskey('create')
     } else {
-      key = await requestPasskey('enter', 'wrong passkey — try again')
+      key = await requestPasskey('enter', 'wrong passkey — try again or reset')
     }
   }
   throw new Error('cancelled')
@@ -111,6 +111,7 @@ export async function godFetch(url: string, init?: RequestInit): Promise<Respons
 export function AuthModal() {
   const [tick, setTick] = useState(0)
   const [value, setValue] = useState('')
+  const [resetMode, setResetMode] = useState(false)
   useEffect(() => {
     const l = () => setTick((t) => t + 1)
     listeners.add(l)
@@ -120,6 +121,7 @@ export function AuthModal() {
   }, [])
   useEffect(() => {
     setValue('')
+    setResetMode(false)
   }, [current?.mode, tick])
   if (!current) return null
   const submitting = false
@@ -132,12 +134,15 @@ export function AuthModal() {
     resolve?.(key)
   }
 
+  const currentMode = current.mode
+
   const submit = async () => {
     const passkey = value.trim()
     if (!passkey) return
-    if (current?.mode === 'create') {
+    if (currentMode === 'create' || resetMode) {
       try {
-        const r = await fetch('/api/auth/setup', {
+        const endpoint = resetMode ? '/api/auth/reset' : '/api/auth/setup'
+        const r = await fetch(endpoint, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ passkey }),
@@ -150,17 +155,17 @@ export function AuthModal() {
         }
         if (r.status === 409) {
           statusKnown = true
-          current = { mode: 'enter', error: 'a passkey already exists — enter it' }
+          current = { mode: 'enter', error: 'a passkey already exists — enter it or reset' }
           emit()
           return
         }
         const body = await r.json().catch(() => null)
         const detail = typeof body?.detail === 'string' ? body.detail : 'could not save passkey'
-        current = { mode: 'create', error: detail }
+        current = { mode: currentMode, error: detail }
         emit()
         return
       } catch {
-        current = { mode: 'create', error: 'backend unreachable — try again' }
+        current = { mode: currentMode, error: 'backend unreachable — try again' }
         emit()
         return
       }
@@ -169,16 +174,19 @@ export function AuthModal() {
     close(passkey)
   }
 
+  const mode = resetMode ? 'reset' : currentMode
+
   return (
     <div
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(1,4,9,0.8)',
+        background: 'rgba(1,4,9,0.85)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
+        padding: 16,
       }}
       onKeyDown={(e) => e.stopPropagation()}
     >
@@ -189,26 +197,37 @@ export function AuthModal() {
           border: '1px solid #30363d',
           borderRadius: 12,
           padding: 20,
-          width: 320,
+          width: 'min(360px, 92vw)',
           display: 'flex',
-          gap: 10,
+          gap: 12,
           flexDirection: 'column',
+          boxShadow: '0 16px 36px rgba(0,0,0,0.6)',
         }}
       >
-        <h3 style={{ margin: 0 }}>
-          {current.mode === 'create' ? 'Create a god passkey' : 'God passkey'}
-        </h3>
-        <p style={{ margin: 0, fontSize: 12, color: '#8b949e' }}>
-          {current.mode === 'create'
-            ? 'No passkey exists yet. Pick one — you will need it to set laws and control the world.'
-            : 'Setting laws and controlling the world needs your passkey.'}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ margin: 0, fontSize: 16 }}>
+            {mode === 'create' ? 'Create a god passkey' : mode === 'reset' ? 'Reset god passkey' : 'God passkey'}
+          </h3>
+          <button
+            onClick={() => close(null)}
+            style={{ background: 'transparent', border: 'none', color: '#8b949e', fontSize: 18, cursor: 'pointer', padding: 0, minHeight: 28 }}
+          >
+            ✕
+          </button>
+        </div>
+        <p style={{ margin: 0, fontSize: 12, color: '#8b949e', lineHeight: 1.4 }}>
+          {mode === 'create'
+            ? 'No passkey exists yet. Pick one (min 4 chars) to control the world.'
+            : mode === 'reset'
+            ? 'Enter a new passkey (min 4 chars) to overwrite the previous one.'
+            : 'Setting laws and controlling the world requires your passkey.'}
         </p>
         {current.error && <p style={{ margin: 0, fontSize: 12, color: '#f85149' }}>{current.error}</p>}
         <input
           autoFocus
           type="password"
           value={value}
-          placeholder={current.mode === 'create' ? 'new passkey' : 'passkey'}
+          placeholder={mode === 'create' ? 'new passkey' : mode === 'reset' ? 'enter new passkey' : 'passkey'}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') void submit()
@@ -218,21 +237,35 @@ export function AuthModal() {
             background: '#010409',
             border: '1px solid #30363d',
             borderRadius: 6,
-            padding: '8px 10px',
+            padding: '10px 12px',
             color: '#c9d1d9',
+            fontSize: 16,
           }}
         />
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={() => close(null)} style={{ padding: '6px 12px' }}>
-            Cancel
-          </button>
-          <button
-            onClick={() => void submit()}
-            disabled={submitting}
-            style={{ padding: '6px 12px', borderColor: '#d29922', color: '#d29922' }}
-          >
-            {current.mode === 'create' ? 'Create' : 'Unlock'}
-          </button>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
+          {current.mode === 'enter' ? (
+            <button
+              type="button"
+              onClick={() => setResetMode((m) => !m)}
+              style={{ background: 'transparent', border: 'none', color: '#58a6ff', fontSize: 12, cursor: 'pointer', padding: 0, minHeight: 32 }}
+            >
+              {resetMode ? '← Back to unlock' : 'Forgot / Reset?'}
+            </button>
+          ) : (
+            <span />
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => close(null)} style={{ padding: '6px 12px', minHeight: 36 }}>
+              Cancel
+            </button>
+            <button
+              onClick={() => void submit()}
+              disabled={submitting}
+              style={{ padding: '6px 14px', borderColor: '#d29922', color: '#d29922', minHeight: 36, fontWeight: 600 }}
+            >
+              {mode === 'create' ? 'Create' : mode === 'reset' ? 'Reset' : 'Unlock'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

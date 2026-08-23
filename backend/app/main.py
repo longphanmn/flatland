@@ -732,6 +732,16 @@ async def auth_setup(body: SetupPasskey) -> dict:
     return {"ok": True, "configured": True}
 
 
+@app.post("/api/auth/reset")
+async def auth_reset(body: SetupPasskey) -> dict:
+    """Reset the god passkey to a new value."""
+    try:
+        AUTH.reset(body.passkey)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {"ok": True, "configured": True}
+
+
 @app.post("/api/laws", dependencies=[Depends(require_god)])
 async def write_laws(laws: GodLaws, persist: bool = True) -> dict:
     """Set new laws of nature (god-writable).

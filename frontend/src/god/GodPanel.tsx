@@ -281,7 +281,15 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   kin_stigma: 'relation hit between a kin-eater\'s outcast band and their former clan (40) — they become rivals',
 }
 
-function Switch({ checked, onChange, title }: { checked: boolean; onChange: (v: boolean) => void; title?: string }) {
+function Switch({
+  checked,
+  onChange,
+  title,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  title?: string
+}) {
   return (
     <button
       type="button"
@@ -289,26 +297,30 @@ function Switch({ checked, onChange, title }: { checked: boolean; onChange: (v: 
       aria-checked={checked}
       title={title}
       onClick={() => onChange(!checked)}
+      className="god-switch-btn"
       style={{
         width: 38,
-        height: 21,
+        height: 22,
+        minHeight: 22,
+        maxHeight: 22,
         borderRadius: 11,
-        border: '1px solid #444c56',
-        background: checked ? '#238636' : '#30363d',
+        background: checked ? '#238636' : '#21262d',
+        border: `1px solid ${checked ? '#2ea043' : '#30363d'}`,
         position: 'relative',
-        padding: 0,
         cursor: 'pointer',
         flex: 'none',
+        padding: 0,
+        margin: 0,
         transition: 'background .15s',
       }}
     >
       <span
         style={{
           position: 'absolute',
-          top: 1,
+          top: 2,
           left: checked ? 18 : 2,
-          width: 15,
-          height: 15,
+          width: 16,
+          height: 16,
           borderRadius: '50%',
           background: '#e6edf3',
           boxShadow: '0 1px 2px rgba(0,0,0,0.4)',
@@ -328,8 +340,16 @@ interface Props {
 export default function GodPanel({ open, onClose }: Props) {
   const [laws, setLaws] = useState<GodLaws>({})
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768)
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -342,13 +362,18 @@ export default function GodPanel({ open, onClose }: Props) {
       .finally(() => setLoading(false))
   }, [open])
 
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
   const [openHint, setOpenHint] = useState<string | null>(null)
 
   if (!open) return null
 
-  const set = (key: NumberLawKey, raw: string) =>
+  const set = (key: NumberLawKey, raw: string | number) =>
     setLaws((l) => ({ ...l, [key]: raw === '' ? undefined : Number(raw) }))
+
+  const stepVal = (key: NumberLawKey, min: number, max: number, step: number, dir: 1 | -1) => {
+    const curr = (laws[key] as number | undefined) ?? min
+    const next = Math.max(min, Math.min(max, Number((curr + dir * step).toFixed(4))))
+    set(key, next)
+  }
 
   const boolVal = (k: BoolLawKey) => laws[k] ?? BOOL_DEFAULTS[k] ?? false
   const setBool = (k: BoolLawKey, v: boolean) => setLaws((l) => ({ ...l, [k]: v }))
@@ -368,6 +393,7 @@ export default function GodPanel({ open, onClose }: Props) {
   const postLaws = async (persist: boolean) => {
     setError(null)
     setSaved(false)
+    setSubmitting(true)
     try {
       const qs = persist ? '?persist=true' : '?persist=false'
       const res = await godFetch(`/api/laws${qs}`, {
@@ -385,10 +411,12 @@ export default function GodPanel({ open, onClose }: Props) {
       }
       setLaws(await res.json())
       setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      setTimeout(() => setSaved(false), 2500)
     } catch (e) {
       if (e instanceof Error && e.message === 'cancelled') return
       setError(e instanceof Error ? e.message : 'failed to apply law')
+    } finally {
+      setSubmitting(false)
     }
   }
   const apply = () => postLaws(false)
@@ -396,25 +424,29 @@ export default function GodPanel({ open, onClose }: Props) {
   const applyPreset = async (name: string, reset: boolean) => {
     setError(null)
     setSaved(false)
+    setSubmitting(true)
     try {
       const res = await godFetch(`/api/presets/${name}?persist=true${reset ? '&reset=true' : ''}`, { method: 'POST' })
       if (!res.ok) throw new Error((await res.json()).detail ?? 'preset failed')
       const data = await res.json()
       setLaws(data.laws)
       setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      setTimeout(() => setSaved(false), 2500)
     } catch (e) {
       if (e instanceof Error && e.message === 'cancelled') return
       setError(e instanceof Error ? e.message : 'preset failed')
+    } finally {
+      setSubmitting(false)
     }
   }
 
   const foot = (
     <footer className="god-foot">
       {error && <span className="god-error">{error}</span>}
-      {!error && saved && <span className="god-saved">laws applied</span>}
-      <button onClick={apply} title="apply to current world only (Reset reverts)">Apply</button>
-      <button onClick={save} title="save to current and future worlds (Reset keeps it)" className="god-save">
+      {!error && saved && <span className="god-saved">✓ Laws active</span>}
+      {!error && !saved && submitting && <span className="god-note" style={{ color: '#d29922' }}>Applying…</span>}
+      <button onClick={apply} disabled={submitting} title="apply to current world only (Reset reverts)">Apply</button>
+      <button onClick={save} disabled={submitting} title="save to current and future worlds (Reset keeps it)" className="god-save">
         Save
       </button>
     </footer>
@@ -574,12 +606,43 @@ export default function GodPanel({ open, onClose }: Props) {
                       )}
                     </span>
                     {isMobile ? (
-                      <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <input type="range" min={min} max={max} step={step} value={(laws[key] as number | undefined) ?? min} onChange={(e) => set(key, e.target.value)} style={{ width: 96 }} />
-                        <span style={{ minWidth: 36, textAlign: 'right', fontSize: 11, color: '#8b949e' }}>{(laws[key] as number | undefined)?.toFixed?.(step < 1 ? 2 : 0) ?? ''}</span>
+                      <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => stepVal(key, min, max, step, -1)}
+                          style={{ minHeight: 28, height: 28, width: 28, padding: 0, fontSize: 14, borderRadius: 4, background: '#21262d', border: '1px solid #30363d', color: '#c9d1d9', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
+                        >
+                          -
+                        </button>
+                        <input
+                          type="range"
+                          min={min}
+                          max={max}
+                          step={step}
+                          value={(laws[key] as number | undefined) ?? min}
+                          onChange={(e) => set(key, e.target.value)}
+                          style={{ width: 80, accentColor: '#e3b341' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => stepVal(key, min, max, step, 1)}
+                          style={{ minHeight: 28, height: 28, width: 28, padding: 0, fontSize: 14, borderRadius: 4, background: '#21262d', border: '1px solid #30363d', color: '#c9d1d9', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
+                        >
+                          +
+                        </button>
+                        <span style={{ minWidth: 36, textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#e6edf3' }}>
+                          {(laws[key] as number | undefined)?.toFixed?.(step < 1 ? 2 : 0) ?? ''}
+                        </span>
                       </span>
                     ) : (
-                      <input type="number" min={min} max={max} step={step} value={(laws[key] as number | undefined) ?? ''} onChange={(e) => set(key, e.target.value)} />
+                      <input
+                        type="number"
+                        min={min}
+                        max={max}
+                        step={step}
+                        value={(laws[key] as number | undefined) ?? ''}
+                        onChange={(e) => set(key, e.target.value)}
+                      />
                     )}
                   </label>
                   {isOpen && hint && (
