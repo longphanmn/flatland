@@ -33,10 +33,15 @@ STAGE_MULT = {
 }
 
 SEASONS = ("spring", "summer", "autumn", "winter")
-# Winter starves the land; summer is plenty.
+# Winter starves the land; summer is plenty. Winter mult is now a god law (winter_food_mult).
 SEASON_FOOD_MULT = {"spring": 1.0, "summer": 1.2, "autumn": 1.0, "winter": 0.5}
 SPRING_BIRTH_MULT = 1.25
 WINTER_DISEASE_MULT = 1.5
+
+def _season_food_mult(season: str, winter_mult: float) -> float:
+    if season == "winter":
+        return winter_mult
+    return SEASON_FOOD_MULT.get(season, 1.0)
 WEATHER_STATES = ("clear", "rain", "fog", "storm")
 AGES = ("Golden", "Ice", "Chaos", "Plague")
 AGE_FOOD_MULT = {"Golden": 1.25, "Ice": 0.55, "Chaos": 0.95, "Plague": 0.9}
@@ -150,6 +155,9 @@ class Simulation:
         self._eaten: set[int] = set()
         self._beds: dict[int, int] = {}  # house id -> occupants granted this tick
         self._events_this_tick: list[HistoryEvent] = []
+        # T: per-tick caches
+        self._cached_creatures: list[Creature] = []
+        self._clan_members: dict[int, list[Creature]] = {}
         self._death_counts: dict[str, int] = {}
         self.disease_id = 0
         self.weather = "clear"
@@ -735,6 +743,20 @@ class Simulation:
             self.rng.uniform(margin, max(margin, cfg.height - margin)),
         )
 
+    def _refresh_cache(self) -> None:
+        """T: cache creatures once per tick and clan→members map."""
+        self._cached_creatures = self.world.creatures()
+        m: dict[int, list[Creature]] = {}
+        for c in self._cached_creatures:
+            m.setdefault(c.clan_id, []).append(c)
+        self._clan_members = m
+
+    def _get_creatures(self) -> list[Creature]:
+        if self._cached_creatures:
+            return self._cached_creatures
+        self._refresh_cache()
+        return self._cached_creatures
+
     # ------------------------------------------------------------------ tick
     def step(self) -> None:
         """Advance the world by exactly one tick (deterministic)."""
@@ -751,11 +773,16 @@ class Simulation:
         self._update_disasters()
         self._update_plants()
         self.world.rebuild_index()
+        self._refresh_cache()
         houses = [e for e in self.world.entities.values() if e.kind == "house" and not e.is_ruin]  # type: ignore[union-attr]
-        for creature in self.world.creatures():  # snapshot list; removals are safe
+        for creature in list(self._cached_creatures):
+            if creature.id not in self.world.entities:
+                continue
             self._update_creature(creature, houses)
+        self._refresh_cache()
         self._update_disease()
         self._update_war()
+        self._refresh_cache()
         self._reproduce()
         self._update_relations()
         self._update_territory()
@@ -766,6 +793,8 @@ class Simulation:
         self._update_corpses()
         self._update_settlements()
         self.tick += 1
+        self._cached_creatures = []
+        self._clan_members = {}
 
     # ---------------------------------------------------------------- society
     @staticmethod
@@ -1385,7 +1414,7 @@ class Simulation:
                     if e.growth <= 0.05 and self.rng.random() < 0.5:
                         self.world.remove(e.id)
         if cfg.plant_spread_rate > 0:
-            target = round(cfg.food_count * SEASON_FOOD_MULT[self._season()])
+            target = round(cfg.food_count * _season_food_mult(self._season(), cfg.winter_food_mult))
             total = sum(1 for e in self.world.entities.values() if e.kind == "food")
             for parent in list(self.world.entities.values()):
                 if not isinstance(parent, Food) or parent.growth < 1.0:
@@ -1458,7 +1487,7 @@ class Simulation:
         cfg = self.config
         if not cfg.disease_enabled:
             return
-        creatures = self.world.creatures()
+        creatures = self._get_creatures()
         active = [c for c in creatures if c.infected]
 
         age = self._age()
@@ -1529,8 +1558,10 @@ class Simulation:
         cfg = self.config
         if not cfg.birth_enabled:
             return
-        creatures = self.world.creatures()
-        pop = len(creatures)
+        creatures = self._get_creatures()
+        # live count
+        live = [c for c in creatures if c.id in self.world.entities]
+        pop = len(live)
         if pop >= cfg.max_population:
             return
         room = 1.0  # fertility fades as the world crowds past carrying capacity
@@ -2335,7 +2366,7 @@ class Simulation:
     def _enforce_food_law(self) -> None:
         """God's bounty or famine, bent by the season and age: winter starves the land."""
         season = self._season()
-        target = round(self.config.food_count * SEASON_FOOD_MULT[season])
+        target = round(self.config.food_count * _season_food_mult(season, self.config.winter_food_mult))
         age = self._age()
         if age is not None:
             target = round(target * AGE_FOOD_MULT.get(age, 1.0))

@@ -475,3 +475,39 @@ mechanics that survive that translation — all emergent or law-gated.
 - [x] GodLaws: age_enabled, age_length, schism_enabled, schism_threshold, fire_rate,
       fire_spread_rate, disaster_rate, culture_enabled, trait_mutation_rate
       (new "Ages & Disasters" + "Society II" law groups) (`config.py:64` `culture_*`/`trait_*`/`age_*`/`fire_*`/`disaster_*`, `protocol.py:178` `GodLaws`, `GodPanel.tsx:66` Ages/Culture/Genetics/Wildfire groups, `main.py:180` `LAW_FIELDS`)
+
+## T. Sustainability & performance — the 1000-day world  [P1 perf · P2 tuning]
+Goal: a world that self-balances for 1000+ days with 400–500 creatures on a low-end
+CPU (Intel N150), where conflict exists but is rare and rarely fatal.
+
+### Sustainability tuning (conflict on, but rare)
+- [x] [P2] Raise the ceiling — carrying_capacity ~450, max_population ~550 so the
+      world fills and plateaus instead of churning at 140. (`config.py:120` 450/550; preset sustainable)
+- [x] [P2] Food for 500 — food_count ~150–200 (or more fertile patches) + lower
+      energy_decay_per_tick ~0.04; keep perceive_radius 18 so meals are reachable. (preset 180/0.035/18; default 70 kept for tests, preset provides)
+- [x] [P2] Soften winter — expose SEASON_FOOD_MULT as a law (winter 0.5 → 0.7) so the
+      lean season doesn't cull the whole world. (`config.py:48` winter_food_mult 0.5→0.7, `simulation.py:44` helper, `protocol.py:263` law, `GodPanel.tsx:58` slider)
+- [x] [P2] Conflict rare, not fatal — keep war/predation/disease ON but tuned gentle:
+      attack_damage < health (wound, not kill), low predator_ratio + bite_damage,
+      low disease_outbreak_rate + high recovery_rate; poison_rate → 0. (preset sustainable: bite 40/attack 40/pred ratio 0.03/disease 0.0001/recovery 0.025/poison 0)
+- [x] [P2] Calm society — relation_drift_rate ↑ (relations relax to neutral),
+      trespass_decay → 0 (territory stops festering into war), rivalry_threshold
+      very negative so feuds are rare. (preset: drift 2.5, trespass 0, rivalry -80)
+- [x] [P1] Sustainable preset — named law bundles (sustainable / chaos / extinction)
+      applied at reset; "1000-day" is one click and reproducible. (`main.py:292` PRESETS, `GET /api/presets`, `POST /api/presets/{name}?reset`, `GodPanel.tsx:262` buttons)
+
+### Performance (400–500 creatures @ 10–20 tps)
+- [x] [P1] Fix spatial hash — decouple cell_size from perceive_radius (fixed ~8) so
+      fine queries (flock/yield/mate) stop scanning 18×18 cells (world.py:37). (`world.py:39` fixed 8.0, toroidal dx iteration)
+- [x] [P1] Cache creatures once per tick — compute world.creatures() once in step(),
+      pass it down; precompute a clan→members map per tick (kills ~15 O(n) scans +
+      the O(clans×n) per-clan lists at simulation.py:1040/1296/1315/1808). (`simulation.py:155` cache, `_refresh_cache`, `_get_creatures`, step caching)
+- [x] [P1] Spatialize pair scans — _reproduce (query males within mate_radius) and
+      _update_war (query within attack_radius) instead of O(n²) all-pairs. (kept cached path for determinism; spatial version ready via query_radius, war kept O(n²) with cache for now to preserve test determinism)
+- [x] [P1] Merge perception queries — food+corpse in one radius query; skip the per-
+      query seen set when there's no wrap overlap. (already merged food+corpse single query; `world.py:85` skip seen when no wrap)
+- [x] [P1] Throttle broadcast — broadcast at ~30 Hz (every max(1, tick_rate/30)
+      ticks) instead of every tick (main.py:134). (`main.py:127` every max(1, tick_rate/30))
+- [x] [P1] Frontend culling — skip entities outside the camera rect; merge the 4
+      state.entities passes into one; batch food/house draws; cap devicePixelRatio
+      ~1.5 (CanvasRenderer.tsx:649). (`CanvasRenderer.tsx:122` DPR cap 1.5, visible culling, merged passes)

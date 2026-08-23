@@ -118,7 +118,8 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
     let raf = 0
     let baseFit = 1
 
-    const dpr = () => window.devicePixelRatio || 1
+    // T: cap DPR ~1.5 to keep 500-head canvas fill ~2.25× not 9× on retina
+    const dpr = () => Math.min(1.5, window.devicePixelRatio || 1)
 
     const resize = () => {
       canvas.width = Math.max(1, Math.floor(canvas.clientWidth * dpr()))
@@ -526,6 +527,13 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       }
       ctx.fillStyle = seasonTint[state.season] ?? 'rgba(0,0,0,0)'
       ctx.fillRect(0, 0, cw, ch)
+      // T: view bounds for culling (world coords)
+      const padVL = 2
+      const vL0 = -cam.ox / cam.scale - padVL
+      const vR0 = (cw - cam.ox) / cam.scale + padVL
+      const vT0 = -cam.oy / cam.scale - padVL
+      const vB0 = (ch - cam.oy) / cam.scale + padVL
+      const visible0 = (x: number, y: number, r = padVL) => x + r >= vL0 && x - r <= vR0 && y + r >= vT0 && y - r <= vB0
       // age tint — super-season bend
       if ((state as any).age) {
         const ageTint: Record<string, string> = {
@@ -578,9 +586,10 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         ctx.stroke()
       }
 
-      // ---- territory: clan zones as faint circles around claimed houses (§P)
+      // ---- territory: clan zones as faint circles around claimed houses (§P) (culled)
       for (const e of state.entities) {
         if (e.kind === 'house' && e.clan_id && !e.is_ruin && e.clan_color) {
+          if (!visible0(e.x, e.y, 14)) continue
           const tr = 14 // territory_radius default; matches config.py: territory_radius
           ctx.fillStyle = e.clan_color
           ctx.globalAlpha = 0.07
@@ -599,9 +608,10 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         }
       }
 
-      // §Q signals — ripples at caller position
+      // §Q signals — ripples at caller position (culled)
       if ((state as any).signals) {
         for (const sg of (state as any).signals) {
+          if (!visible0(sg.x, sg.y, 5)) continue
           const sx = cam.ox + sg.x * cam.scale
           const sy = cam.oy + sg.y * cam.scale
           const age = 15 - (sg.ttl ?? 0)
@@ -625,9 +635,17 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       }
 
       ctx.setTransform(cam.scale, 0, 0, cam.scale, cam.ox, cam.oy)
-      // §S wildfire — flame overlay at burning plants
+      // T: culling bounds in world coords (with 2-unit padding for radius)
+      const pad = 2
+      const vL = -cam.ox / cam.scale - pad
+      const vR = (cw - cam.ox) / cam.scale + pad
+      const vT = -cam.oy / cam.scale - pad
+      const vB = (ch - cam.oy) / cam.scale + pad
+      const visible = (x: number, y: number, r = pad) => x + r >= vL && x - r <= vR && y + r >= vT && y - r <= vB
+      // §S wildfire — flame overlay at burning plants (culled)
       if ((state as any).fires) {
         for (const f of (state as any).fires) {
+          if (!visible(f.x, f.y, f.r)) continue
           const alpha = Math.max(0.35, Math.min(0.9, f.ttl / 28))
           ctx.globalAlpha = alpha
           ctx.fillStyle = '#ff6b35'
@@ -646,10 +664,16 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
           ctx.globalAlpha = 1
         }
       }
-      for (const e of state.entities) drawEntity(ctx, e)
-      // totem poles — small marker beside each claimed house (§P)
+      // T: single merged pass — batch by kind to reduce branching, culled
+      // Draw food/houses/creatures in one loop (4 passes → 1)
+      for (const e of state.entities) {
+        if (!visible(e.x, e.y, (e as any).radius ?? (e as any).size ?? 1.5)) continue
+        drawEntity(ctx, e)
+      }
+      // totem poles — small marker beside each claimed house (§P) (culled)
       for (const e of state.entities) {
         if (e.kind !== 'house' || !e.clan_id || e.is_ruin) continue
+        if (!visible(e.x, e.y, 2)) continue
         const clan = (state as any).clans?.[String(e.clan_id)]
         const totem: string | undefined = clan?.totem
         if (!totem) continue

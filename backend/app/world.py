@@ -34,7 +34,8 @@ class World:
         self.config = config
         self.entities: dict[int, Entity] = {}
         self._next_id = 1
-        self.cell_size = max(4.0, config.perceive_radius)
+        # T: fixed ~8 so fine queries don't scan 81 cells
+        self.cell_size = 8.0
         self.cols = max(1, math.ceil(config.width / self.cell_size))
         self.rows = max(1, math.ceil(config.height / self.cell_size))
         self._cells: dict[tuple[int, int], list[Entity]] = {}
@@ -81,20 +82,58 @@ class World:
         return math.hypot(dx, dy)
 
     def query_radius(self, x: float, y: float, radius: float) -> Iterator[Entity]:
-        """Yield entities within `radius` of (x, y); requires a fresh index."""
+        """Yield entities within `radius` of (x, y); requires a fresh index.
+
+        T: toroidal dx iteration for fixed 8; correct wrap handling.
+        """
         cs = self.cell_size
-        seen: set[int] = set()
+        if self.config.boundary == "wrap":
+            cx_center = int(math.floor(x / cs)) % self.cols if self.cols else 0
+            cy_center = int(math.floor(y / cs)) % self.rows if self.rows else 0
+            rx = int(math.ceil(radius / cs)) + 1
+            ry = int(math.ceil(radius / cs)) + 1
+            need_seen = (rx * 2 + 1 >= self.cols) or (ry * 2 + 1 >= self.rows)
+            if need_seen:
+                seen: set[int] = set()
+                for dx in range(-rx, rx + 1):
+                    cx = (cx_center + dx) % self.cols
+                    for dy in range(-ry, ry + 1):
+                        cy = (cy_center + dy) % self.rows
+                        bucket = self._cells.get((cx, cy))
+                        if not bucket:
+                            continue
+                        for e in bucket:
+                            if e.id in seen:
+                                continue
+                            seen.add(e.id)
+                            if self.distance(x, y, e.x, e.y) <= radius:
+                                yield e
+                return
+            for dx in range(-rx, rx + 1):
+                cx = (cx_center + dx) % self.cols
+                for dy in range(-ry, ry + 1):
+                    cy = (cy_center + dy) % self.rows
+                    bucket = self._cells.get((cx, cy))
+                    if not bucket:
+                        continue
+                    for e in bucket:
+                        if self.distance(x, y, e.x, e.y) <= radius:
+                            yield e
+            return
+        # clamp: no wrap
+        cs = self.cell_size
         x0, x1 = int(math.floor((x - radius) / cs)), int(math.floor((x + radius) / cs))
         y0, y1 = int(math.floor((y - radius) / cs)), int(math.floor((y + radius) / cs))
         for cx in range(x0, x1 + 1):
+            if cx < 0 or cx >= self.cols:
+                continue
             for cy in range(y0, y1 + 1):
-                bucket = self._cells.get((cx % self.cols, cy % self.rows))
+                if cy < 0 or cy >= self.rows:
+                    continue
+                bucket = self._cells.get((cx, cy))
                 if not bucket:
                     continue
                 for e in bucket:
-                    if e.id in seen:
-                        continue
-                    seen.add(e.id)
                     if self.distance(x, y, e.x, e.y) <= radius:
                         yield e
 

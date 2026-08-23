@@ -56,6 +56,7 @@ const NUMBER_LAWS: LawSpec[] = [
   // Sky & Seasons — the turning of the world
   { key: 'day_length', label: 'Day length (ticks)', min: 4, max: 20000, step: 4, group: 'Sky & Seasons' },
   { key: 'season_length', label: 'Season length (ticks)', min: 4, max: 100000, step: 10, group: 'Sky & Seasons' },
+  { key: 'winter_food_mult', label: 'Winter food ×', min: 0.1, max: 1.5, step: 0.05, group: 'Sky & Seasons' },
   { key: 'night_sight_mult', label: 'Night sight ×', min: 0.05, max: 2, step: 0.05, group: 'Sky & Seasons' },
   { key: 'weather_change_rate', label: 'Weather turn chance', min: 0, max: 1, step: 0.001, group: 'Sky & Seasons' },
   { key: 'fog_sight_mult', label: 'Fog sight ×', min: 0.05, max: 2, step: 0.05, group: 'Sky & Seasons' },
@@ -81,8 +82,8 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction' },
   { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction' },
   { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction' },
-  { key: 'carrying_capacity', label: 'Carrying capacity', min: 2, max: 400, step: 2, group: 'Reproduction' },
-  { key: 'max_population', label: 'Hard pop cap', min: 2, max: 1000, step: 2, group: 'Reproduction' },
+  { key: 'carrying_capacity', label: 'Carrying capacity', min: 2, max: 2000, step: 10, group: 'Reproduction' },
+  { key: 'max_population', label: 'Hard pop cap', min: 2, max: 5000, step: 10, group: 'Reproduction' },
   // Society — interaction & clan relations
   { key: 'cohesion_weight', label: 'Cohesion weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
   { key: 'alignment_weight', label: 'Alignment weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
@@ -198,6 +199,7 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   food_call_rate: 'well-fed finds food → calls with this chance/tick (0.08)',
   alarm_call_rate: 'sees predator → alarm call chance/tick (0.12)',
   food_memory_ttl: 'ticks a creature remembers last food position (300)',
+  winter_food_mult: 'winter bounty × winter_food_mult (0.7 gentle, 0.5 harsh, 0.3 extinction) — lean season target = food_count × winter_food_mult',
   schism_threshold: 'fraction unhappy (starving/homeless) to split (0.4)',
   schism_min_pop: 'minimum clan population to consider schism (4)',
 }
@@ -256,6 +258,20 @@ export default function GodPanel({ open, onClose }: Props) {
   }
   const apply = () => postLaws(false)
   const save = () => postLaws(true)
+  const applyPreset = async (name: string, reset: boolean) => {
+    setError(null)
+    setSaved(false)
+    try {
+      const res = await fetch(`/api/presets/${name}?persist=true${reset ? '&reset=true' : ''}`, { method: 'POST' })
+      if (!res.ok) throw new Error((await res.json()).detail ?? 'preset failed')
+      const data = await res.json()
+      setLaws(data.laws)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'preset failed')
+    }
+  }
 
   return (
     <aside className="god-panel">
@@ -270,6 +286,13 @@ export default function GodPanel({ open, onClose }: Props) {
         You are god: set the rules, never the fates. Creatures and the world obey
         the law; no single life may be touched.
       </p>
+      <div className="god-group" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, color: '#8b949e', width: '100%' }}>Presets — one click 1000-day world</span>
+        <button onClick={() => applyPreset('sustainable', false)} title="1000-day gentle: 180 food, winter 0.7, rare war/predation, fast drift" style={{ flex: 1, borderColor: '#3fb950', color: '#3fb950' }}>🌿 Sustainable</button>
+        <button onClick={() => applyPreset('chaos', false)} title="Chaos: famine, predators, wars, plagues, fires" style={{ flex: 1, borderColor: '#f85149', color: '#f85149' }}>🔥 Chaos</button>
+        <button onClick={() => applyPreset('extinction', false)} title="Extinction: 30 food, harsh winter 0.3, high decay" style={{ flex: 1 }}>💀 Extinction</button>
+        <button onClick={() => applyPreset('sustainable', true)} title="Apply sustainable + reset world now" style={{ width: '100%', marginTop: 4 }}>🌿 Sustainable + Reset</button>
+      </div>
 
       {loading ? (
         <p className="god-note">reading the tablets…</p>

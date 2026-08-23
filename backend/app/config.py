@@ -45,6 +45,7 @@ class Config:
     poison_rate: float = 0.01  # was 0.03 — 1% keeps 30d alive
     beast_ratio: float = 0.0
     diet_strictness: float = 0.0
+    winter_food_mult: float = 0.5  # T: winter bounty mult (law, 0.5 harsh → 0.7 gentle)
 
     # Territory & clan depth (§P)
     territory_enabled: bool = True  # §P: clans claim zone around house, trespass sours relations

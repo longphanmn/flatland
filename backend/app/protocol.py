@@ -259,3 +259,6 @@ class GodLaws(BaseModel):
     war_enabled: Optional[bool] = None
     attack_radius: Optional[float] = Field(None, ge=0.5, le=10)
     attack_damage: Optional[float] = Field(None, ge=0, le=1000)
+
+    # T: soften winter
+    winter_food_mult: Optional[float] = Field(None, ge=0.1, le=2)

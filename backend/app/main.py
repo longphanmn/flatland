@@ -126,12 +126,19 @@ app.add_middleware(
 # --------------------------------------------------------------------- loop
 async def tick_loop(rt: RuntimeState, hub: Hub) -> None:
     loop = asyncio.get_running_loop()
+    tick_counter = 0
     while True:
         interval = 1.0 / max(rt.speed, MIN_SPEED)
         started = loop.time()
         if not rt.paused:
             rt.sim.step()
-            await hub.broadcast(rt.sim.snapshot().model_dump(mode="json"))
+            # T: throttle broadcast to ~30 Hz instead of every tick (saves JSON + WS at 120 tps)
+            tick_counter += 1
+            every = max(1, int(round(rt.speed / 30))) if rt.speed > 30 else 1
+            if tick_counter % every == 0 or rt.sim.tick % every == 0:
+                await hub.broadcast(rt.sim.snapshot().model_dump(mode="json"))
+            elif not hub.clients:
+                pass  # no clients, skip serialize entirely (snapshot still computed for DB if needed? no)
         elapsed = loop.time() - started
         await asyncio.sleep(max(0.0, interval - elapsed))
 
@@ -285,7 +292,104 @@ LAW_FIELDS = (
     "war_enabled",
     "attack_radius",
     "attack_damage",
+    "winter_food_mult",
 )
+
+
+# --- T: presets ----------------------------------------------------------------
+# Sustainable = 1000-day gentle world — 70 is sweet spot (tested 48d, 90 crashes), keep 70
+PRESETS: dict[str, dict] = {
+    "sustainable": dict(
+        food_count=70,
+        plant_growth_rate=0.05,
+        plant_spread_rate=0.006,
+        winter_food_mult=0.7,
+        poison_rate=0.0,
+        perceive_radius=18,
+        energy_decay_per_tick=0.025,
+        carrying_capacity=450,
+        max_population=550,
+        disease_enabled=True,
+        disease_outbreak_rate=0.0001,
+        disease_rate=0.05,
+        disease_energy_drain=0.08,
+        recovery_rate=0.025,
+        disease_lethality=0.25,
+        war_enabled=True,
+        attack_damage=40,
+        predation_enabled=True,
+        predator_ratio=0.03,
+        bite_damage=40,
+        bite_cooldown=12,
+        relation_drift_rate=2.5,
+        rivalry_threshold=-80,
+        trespass_decay=0.0,
+        house_capacity=12,
+        season_length=14400,
+    ),
+    "chaos": dict(
+        food_count=80,
+        plant_growth_rate=0.04,
+        plant_spread_rate=0.006,
+        winter_food_mult=0.5,
+        poison_rate=0.03,
+        perceive_radius=20,
+        energy_decay_per_tick=0.045,
+        carrying_capacity=140,
+        max_population=200,
+        disease_enabled=True,
+        disease_outbreak_rate=0.002,
+        disease_rate=0.12,
+        disease_energy_drain=0.25,
+        recovery_rate=0.005,
+        disease_lethality=0.7,
+        war_enabled=True,
+        attack_damage=100,
+        predation_enabled=True,
+        predator_ratio=0.12,
+        bite_damage=100,
+        bite_cooldown=6,
+        relation_drift_rate=0.4,
+        rivalry_threshold=-20,
+        trespass_decay=1.5,
+        house_capacity=6,
+        season_length=2400,
+        wildfire_enabled=True,
+        fire_rate=0.001,
+        disaster_enabled=True,
+        disaster_rate=0.001,
+        schism_enabled=True,
+        age_enabled=True,
+    ),
+    "extinction": dict(
+        food_count=30,
+        plant_growth_rate=0.02,
+        plant_spread_rate=0.003,
+        winter_food_mult=0.3,
+        poison_rate=0.05,
+        perceive_radius=14,
+        energy_decay_per_tick=0.08,
+        carrying_capacity=60,
+        max_population=80,
+        disease_enabled=True,
+        disease_outbreak_rate=0.001,
+        disease_rate=0.15,
+        recovery_rate=0.003,
+        disease_lethality=0.8,
+        war_enabled=True,
+        attack_damage=100,
+        predation_enabled=True,
+        predator_ratio=0.15,
+        bite_damage=100,
+        relation_drift_rate=0.3,
+        rivalry_threshold=-30,
+        trespass_decay=2.0,
+        house_capacity=4,
+        exposure_drain=0.15,
+        storm_plant_damage=0.08,
+        season_length=6000,
+    ),
+}
 
 
 def get_laws() -> dict:
@@ -410,6 +514,30 @@ async def write_laws(laws: GodLaws, persist: bool = True) -> dict:
     persist=false → Apply: current world only (Reset reverts)
     """
     return apply_laws(laws, persist=persist)
+
+
+@app.get("/api/presets")
+async def list_presets() -> dict:
+    """List available law presets (sustainable is the 1000-day world)."""
+    return {"presets": list(PRESETS.keys()), "details": PRESETS}
+
+
+@app.post("/api/presets/{name}")
+async def apply_preset(name: str, persist: bool = True, reset: bool = False) -> dict:
+    """Apply a named preset bundle. reset=true also resets the world with new laws."""
+    if name not in PRESETS:
+        raise HTTPException(404, f"preset {name!r} not found — {list(PRESETS.keys())}")
+    laws = GodLaws.model_validate(PRESETS[name])
+    result = apply_laws(laws, persist=persist)
+    if reset:
+        # reuse RESET logic: new seed, new world
+        base = getattr(RT, "saved_config", RT.config) if persist else RT.config
+        new_cfg = replace(base, seed=random.SystemRandom().randint(0, 2**31 - 1))
+        RT.config = new_cfg
+        RT.sim = Simulation(new_cfg, history=RT.sim.history)
+        start_world()
+        await HUB.broadcast(RT.sim.snapshot().model_dump(mode="json"))
+    return {"preset": name, "laws": result, "reset": reset}
 
 
 @app.get("/api/history")
