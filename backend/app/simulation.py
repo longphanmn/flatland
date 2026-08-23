@@ -384,7 +384,8 @@ class Simulation:
             for _ in range(n_herbivores):
                 self._spawn_herbivore()
 
-    def _found_clan(self, founder: Creature) -> int:
+    def _new_clan(self, founder: Creature | None) -> int:
+        """Register a clan: seeded name/totem/culture/specialization (no house yet)."""
         cid = self._next_clan_id
         self._next_clan_id += 1
         # Procedural name: deterministic adj+noun from seed+cid (no rng consumption to keep determinism)
@@ -411,18 +412,33 @@ class Simulation:
         culture = f"{CULTURE_ADJECTIVES[(cid * 11 + self.config.seed) % len(CULTURE_ADJECTIVES)]} {CULTURE_NOUNS[(cid * 19 + self.config.seed) % len(CULTURE_NOUNS)]}"
         self.clans[cid] = {
             "name": name,
-            "founder_id": founder.id,
+            "founder_id": founder.id if founder is not None else None,
             "born_tick": self.tick,
             "color": CLAN_COLORS[(cid - 1) % len(CLAN_COLORS)],
             "totem": totem,
-            "leader_id": founder.id,
+            "leader_id": founder.id if founder is not None else None,
             "specialization": spec,
             "culture": culture,
             "culture_id": cid,
         }
-        if self.config.house_claim_enabled:
-            self._claim_house_for_clan(cid)
         return cid
+
+    def _functional_houses(self) -> list[House]:
+        """Non-ruin houses in id order — the possible settlement anchors (§V)."""
+        return sorted(
+            [e for e in self.world.entities.values() if isinstance(e, House) and not e.is_ruin],
+            key=lambda h: h.id,
+        )
+
+    def _nearest_house_to(self, x: float, y: float, houses: list[House]) -> House | None:
+        """Wrap-aware nearest house; ties broken by lower house id (deterministic)."""
+        if not houses:
+            return None
+        return min(houses, key=lambda h: (self.world.distance(x, y, h.x, h.y), h.id))
+
+    def _clan_centroid(self, members: list[Creature]) -> tuple[float, float]:
+        n = max(1, len(members))
+        return sum(m.x for m in members) / n, sum(m.y for m in members) / n
 
     def _totem_of(self, c: Creature) -> str | None:
         if not self.config.totems_enabled or not c.clan_id:
@@ -430,64 +446,162 @@ class Simulation:
         return self.clans.get(c.clan_id, {}).get("totem")
 
     def _found_founding_clans(self) -> None:
-        """The founding generation seeds one clan per caste."""
-        by_caste: dict[str, Creature] = {}
-        for c in self.world.creatures():
-            by_caste.setdefault(c.caste, c)
-        for caste, first in sorted(by_caste.items()):
-            cid = self._found_clan(first)
-            for c in self.world.creatures():
-                if c.caste == caste:
-                    c.clan_id = cid
-        self._assign_house_claims()
+        """§V Settlement seeding — every functional house anchors one clan and each
+        founding creature joins its nearest house's clan, so soldiers, women,
+        nobles and priests mix inside a settlement. `max_clans` caps society
+        granularity: -1 = one clan per house; N ≥ 1 clusters the founders into
+        exactly N spatial clans instead (greedy k-centre). Deterministic given
+        the seed — never touches the rng."""
+        cfg = self.config
+        founders = sorted(self.world.creatures(), key=lambda c: c.id)
+        if not founders:
+            return
+        houses = self._functional_houses()
+        taken_leaders: set[int] = set()
 
-    def _assign_house_claims(self) -> None:
-        """Each clan claims a distinct house as its settlement (distinct if enough houses)."""
+        def found(members: list[Creature], anchor: House | None) -> int:
+            leader: Creature | None = None
+            pool = [m for m in members if m.id not in taken_leaders]
+            if members and not pool:
+                pool = list(members)  # more settlements than founders: share leaders
+            if pool:
+                if anchor is not None:
+                    leader = min(
+                        pool,
+                        key=lambda c: (self.world.distance(c.x, c.y, anchor.x, anchor.y), c.id),
+                    )
+                else:
+                    ax, ay = self._clan_centroid(members)
+                    leader = min(pool, key=lambda c: (self.world.distance(c.x, c.y, ax, ay), c.id))
+            if leader is not None:
+                taken_leaders.add(leader.id)
+            cid = self._new_clan(leader)
+            for m in members:
+                m.clan_id = cid
+            return cid
+
+        if cfg.max_clans >= 0:
+            k = min(cfg.max_clans, len(founders))
+            for members in self._cluster_founders_kcenter(founders, k) if k > 0 else []:
+                found(members, None)
+            # Anchor claims: each clan settles at the free house nearest its people.
+            self._anchor_homeless_clans(sorted(self.clans.keys()))
+        elif houses:
+            buckets: dict[int, list[Creature]] = {h.id: [] for h in houses}
+            for c in founders:
+                home = self._nearest_house_to(c.x, c.y, houses)
+                buckets[home.id].append(c)
+            for h in houses:
+                cid = found(buckets[h.id], h)
+                if cfg.house_claim_enabled:
+                    h.clan_id = cid
+                    h.clan_color = self.clans[cid]["color"]
+        # No houses and no cap: roofless founders stay clanless — a settlement
+        # defines a clan (§V); clans rise later from the generations.
+
+    def _cluster_founders_kcenter(self, founders: list[Creature], k: int) -> list[list[Creature]]:
+        """Greedy k-centre over the founding generation (deterministic, rng-free).
+
+        First centre is the founder nearest the world's heart; each next centre
+        is the founder farthest from every chosen centre (ties → lowest id).
+        Membership goes to the nearest centre (ties → earliest centre)."""
+        w = self.world
+        cx, cy = self.config.width / 2, self.config.height / 2
+        centres = [min(founders, key=lambda c: (w.distance(c.x, c.y, cx, cy), c.id))]
+        while len(centres) < k:
+            rest = [c for c in founders if all(c.id != ct.id for ct in centres)]
+            if not rest:
+                break
+            nxt = max(
+                rest,
+                key=lambda c: (min(w.distance(c.x, c.y, ct.x, ct.y) for ct in centres), -c.id),
+            )
+            centres.append(nxt)
+        groups: list[list[Creature]] = [[] for _ in centres]
+        for c in founders:
+            best_i, best_d = 0, math.inf
+            for i, ct in enumerate(centres):
+                d = w.distance(c.x, c.y, ct.x, ct.y)
+                if d < best_d:
+                    best_i, best_d = i, d
+            groups[best_i].append(c)
+        return [g for g in groups if g]
+
+    def _anchor_homeless_clans(self, clan_ids: list[int]) -> None:
+        """§V anchor claims — greedy matching over (clan, house) pairs by distance:
+        every homeless clan settles at its nearest free house, each house hosts at
+        most one clan. Clans left over (housing shortage) found a new settlement
+        via `_claim_house_for_clan` (which respects pinned `num_houses`)."""
         if not self.config.house_claim_enabled:
             return
-        houses = sorted(
-            [e for e in self.world.entities.values() if isinstance(e, House) and not e.is_ruin],
-            key=lambda h: h.id,
-        )
+        houses = [h for h in self._functional_houses() if h.clan_id == 0]
         if not houses:
+            for cid in clan_ids:
+                self._claim_house_for_clan(cid)
             return
+        pairs: list[tuple[float, int, int]] = []
+        for cid in sorted(clan_ids):
+            members = [c for c in self.world.creatures() if c.clan_id == cid]
+            if not members:
+                continue
+            ax, ay = self._clan_centroid(members)
+            for h in houses:
+                pairs.append((self.world.distance(ax, ay, h.x, h.y), cid, h.id))
+        claimed: set[int] = set()
+        houses_by_id = {h.id: h for h in houses}
+        for _, cid, hid in sorted(pairs):
+            if cid in claimed or hid in claimed:
+                continue
+            claimed.add(cid)
+            claimed.add(hid)
+            h = houses_by_id[hid]
+            h.clan_id = cid
+            h.clan_color = self.clans[cid]["color"]
+        # clans without a free house: build a settlement when unpinned (§L)
+        # (ghost clans with no living members never build)
+        for cid in sorted(clan_ids):
+            if not any(h.clan_id == cid for h in self._functional_houses()):
+                if any(c.clan_id == cid for c in self.world.creatures()):
+                    self._claim_house_for_clan(cid)
+
+    def _assign_house_claims(self) -> None:
+        """§V Anchor claims — each homeless clan settles at the free house nearest
+        its people (never round-robin): a clan's settlement IS its nearest house."""
+        if not self.config.house_claim_enabled:
+            return
+        houses = self._functional_houses()
         # Clear stale claims from previous world generation / disabled period
         for h in houses:
             if h.clan_id and h.clan_id not in self.clans:
                 h.clan_id = 0
                 h.clan_color = None
-        # Assign each unclaimed clan a free house round-robin
-        free = [h for h in houses if h.clan_id == 0]
-        for cid in sorted(self.clans.keys()):
-            if any(h.clan_id == cid for h in houses):
-                continue  # already has a settlement
-            if not free:
-                break  # housing shortage: some clans remain homeless
-            h = free.pop(0)
-            h.clan_id = cid
-            h.clan_color = self.clans[cid]["color"]
+        homeless = [
+            cid
+            for cid in sorted(self.clans.keys())
+            if not any(h.clan_id == cid for h in houses)
+        ]
+        if not homeless:
+            return
+        self._anchor_homeless_clans(homeless)
 
     def _claim_house_for_clan(self, clan_id: int) -> None:
-        """Give a newly founded clan the first free house, if any — or found a new one."""
+        """Settle a clan at the free house nearest its members (§V anchor claim);
+        with none free it founds a new settlement (§L settlement economy)."""
         if not self.config.house_claim_enabled:
             return
-        houses = sorted(
-            [e for e in self.world.entities.values() if isinstance(e, House) and not e.is_ruin],
-            key=lambda h: h.id,
-        )
-        for h in houses:
-            if h.clan_id == 0:
-                h.clan_id = clan_id
-                h.clan_color = self.clans[clan_id]["color"]
-                return
+        houses = self._functional_houses()
+        members = [c for c in self.world.creatures() if c.clan_id == clan_id]
+        free = [h for h in houses if h.clan_id == 0]
+        if free and members:
+            ax, ay = self._clan_centroid(members)
+            h = self._nearest_house_to(ax, ay, free)
+            h.clan_id = clan_id
+            h.clan_color = self.clans.get(clan_id, {}).get("color")
+            return
         # No free house: a new clan founds a new settlement (§L settlement economy)
         # But respect explicit overrides: tests/scenarios that pin num_houses keep housing shortage
         if self.config.shelter_enabled and self.config.num_houses < 0:
-            founder = None
-            for c in self.world.creatures():
-                if c.clan_id == clan_id:
-                    founder = c
-                    break
+            founder = min(members, key=lambda c: (-c.age, c.id)) if members else None
             self._spawn_settlement_house(clan_id, near=founder)
 
     def _refresh_house_claims(self) -> None:
@@ -699,8 +813,9 @@ class Simulation:
         variant = self._pick_variant(x, y)
         return Food(x=x, y=y, growth=growth, variant=variant)
 
-    def _resolve_rock_collision(self, c: Creature) -> None:
-        """Push a creature out of any rock it has wandered into."""
+    def _resolve_rock_collision(self, c: Creature) -> dict | None:
+        """Push a creature out of any rock it has wandered into; return the rock."""
+        hit = None
         for rock in self.rocks:
             d = self.world.distance(c.x, c.y, rock["x"], rock["y"])
             min_d = rock["r"] + c.radius
@@ -715,6 +830,40 @@ class Simulation:
                     rock["y"] + uy / norm * min_d,
                 )
                 c.angle = math.atan2(uy, ux)
+                hit = rock
+        return hit
+
+    def _segment_hits_circle(
+        self, ax: float, ay: float, bx: float, by: float, rock: dict, pad: float = 0.0
+    ) -> bool:
+        """Wrap-aware test: does the straight path a→b cross a rock circle?"""
+        dx, dy = self.world.delta(ax, ay, bx, by)
+        b2x, b2y = ax + dx, ay + dy
+        dxc, dyc = self.world.delta(ax, ay, rock["x"], rock["y"])
+        cx, cy = ax + dxc, ay + dyc
+        vx, vy = b2x - ax, b2y - ay
+        seg2 = vx * vx + vy * vy
+        t = 0.0 if seg2 == 0 else max(0.0, min(1.0, ((cx - ax) * vx + (cy - ay) * vy) / seg2))
+        px_, py_ = ax + t * vx, ay + t * vy
+        rr = rock["r"] + pad
+        return (px_ - cx) ** 2 + (py_ - cy) ** 2 <= rr * rr
+
+    def _give_up_on(self, c: Creature, target: Entity) -> None:
+        """A meal is unreachable (behind stone or wall): abandon it for a while
+        and seek food somewhere else — no creature starves grinding at an obstacle.
+        Grudges are per-meal and never refreshed while fresh, so each memory
+        always fades and the creature keeps retrying other meals meanwhile."""
+        ttl = self.config.food_giveup_ticks
+        if ttl <= 0:
+            return
+        grudges = c.give_ups
+        if len(grudges) > 8:  # keep the memory small
+            expired = [k for k, t0 in grudges.items() if self.tick - t0 >= ttl]
+            for k in expired:
+                del grudges[k]
+        if self.tick - grudges.get(target.id, -ttl) < ttl:
+            return
+        grudges[target.id] = self.tick
 
     def _jittered(self, target: float) -> int:
         v = self.config.spawn_variance
@@ -1371,7 +1520,10 @@ class Simulation:
                 pop = len(members)
                 if pop < self.config.schism_min_pop:
                     continue
-                has_house = any(h.clan_id == cid and not h.is_ruin for h in self.world.entities.values() if hasattr(h, "clan_id"))
+                has_house = any(
+                    isinstance(h, House) and h.clan_id == cid and not h.is_ruin
+                    for h in self.world.entities.values()
+                )
                 unhappy = sum(1 for c in members if c.energy / self.config.energy_max <= self.config.starving_ratio or not has_house)
                 frac = unhappy / pop if pop else 0
                 if frac >= self.config.schism_threshold * 0.5:  # show even half-way
@@ -1798,8 +1950,16 @@ class Simulation:
 
         self.world.add(child)
         if child.clan_id == 0:
-            # Children belong to their mother's clan; orphans found new ones.
-            child.clan_id = mother.clan_id or father.clan_id or self._found_clan(child)
+            # Children belong to their mother's clan; orphans found new ones
+            # (clan set before the claim so the founder counts as a member, §V).
+            parent_clan = mother.clan_id or father.clan_id
+            if parent_clan:
+                child.clan_id = parent_clan
+            else:
+                cid_new = self._new_clan(child)
+                child.clan_id = cid_new
+                if self.config.house_claim_enabled:
+                    self._claim_house_for_clan(cid_new)
         event_payload = {
             "mother": mother.id, "father": father.id,
             "sides": child.sides, "generation": gen, "sex": child.sex,
@@ -2051,6 +2211,14 @@ class Simulation:
         for e in w.query_radius(c.x, c.y, perceive):
             if e.kind not in ("food", "corpse") or e.id in self._eaten:
                 continue
+            # A meal given up on (unreachable behind stone or wall) is ignored
+            # until its memory fades — the hungry look elsewhere instead of
+            # grinding against the obstacle until they starve.
+            if cfg.food_giveup_ticks > 0 and (
+                self.tick - c.give_ups.get(e.id, -cfg.food_giveup_ticks)
+                < cfg.food_giveup_ticks
+            ):
+                continue
             # Diet & preference (§O): herbivore↔plants, carnivore↔meat, omnivore both; strictness gates.
             if cfg.diet_strictness > 0:
                 if c.is_herbivore and e.kind == "corpse":
@@ -2272,6 +2440,8 @@ class Simulation:
                 if crosses:
                     c.x, c.y = w.normalize(px, py)
                     c.angle += math.pi + self.rng.uniform(-0.4, 0.4)
+                    if target is not None and cfg.food_giveup_ticks > 0:
+                        self._give_up_on(c, target)  # meal sits behind a wall
                     break
         # Predator refuge safety net: even if a predator spawns inside a house, push it out
         if c.is_predator and houses:
@@ -2292,9 +2462,13 @@ class Simulation:
                     c.angle += math.pi
                     break
 
-        # 4b. Rocks are solid: push out and face away.
+        # 4b. Rocks are solid: push out and face away. A meal whose straight path
+        # crosses the stone is abandoned — give up and look somewhere else.
         if self.rocks:
-            self._resolve_rock_collision(c)
+            hit_rock = self._resolve_rock_collision(c)
+            if hit_rock is not None and target is not None and cfg.food_giveup_ticks > 0:
+                if self._segment_hits_circle(c.x, c.y, target.x, target.y, hit_rock, pad=c.radius):
+                    self._give_up_on(c, target)
 
         # 5. Eat. §O variant yields: grass low, berry high (autumn), mushroom decomposer, poisonous sickens.
         if target is not None and best <= cfg.eat_radius:
@@ -2302,6 +2476,7 @@ class Simulation:
             self._eaten.add(target.id)
             c.ticks_since_meal = 0
             c.meals += 1
+            c.give_ups.clear()  # fed: old grudges against unreachable food fade
             self._eaters_this_tick.append(c.id)
             gain = cfg.energy_from_food
             health_delta = 0.0

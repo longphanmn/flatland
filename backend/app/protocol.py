@@ -147,6 +147,9 @@ class GodLaws(BaseModel):
     totems_enabled: Optional[bool] = None
     succession_enabled: Optional[bool] = None
 
+    # Clan founding (§V) — settlement granularity
+    max_clans: Optional[int] = Field(None, ge=-1, le=64)
+
     energy_decay_per_tick: Optional[float] = Field(None, ge=0, le=2)
     energy_from_food: Optional[float] = Field(None, ge=0, le=1000)
     hungry_ratio: Optional[float] = Field(None, gt=0, le=1)
@@ -158,6 +161,7 @@ class GodLaws(BaseModel):
     desperate_perceive_mult: Optional[float] = Field(None, ge=1, le=4)
     hungry_perceive_mult: Optional[float] = Field(None, ge=1, le=4)
     desperate_speed_mult: Optional[float] = Field(None, ge=1, le=4)
+    food_giveup_ticks: Optional[int] = Field(None, ge=0, le=100000)
     lifespan_mult: Optional[float] = Field(None, ge=0.01, le=100)
 
     # Reproduction & inheritance (Nature's Law)

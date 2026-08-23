@@ -193,12 +193,10 @@ def test_grossly_irregular_child_consumed_at_maturity():
     assert s._death_counts.get("euthanasia") == 1
 
 
-def test_clans_founded_per_caste_and_inherited():
+def test_clans_founded_by_settlement_and_inherited():
     s = Simulation(Config(seed=77))  # default world, full pyramid
     founders = s.world.creatures()
     assert all(c.clan_id > 0 for c in founders)
-    castes = {c.caste for c in founders}
-    assert len(s.clans) == len(castes)  # one founding clan per caste
     assert all(cl["color"].startswith("#") for cl in s.clans.values())
 
     # a child inherits its mother's clan

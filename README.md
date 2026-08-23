@@ -16,8 +16,10 @@ starvation when deprived of food too long.
   cause; the god law `Lifespan ×` scales all lifespans.
 - **Sight Recognition:** higher castes perceive farther (priests 1.35×, women
   0.8× the base sight radius) — Flatland's class hierarchy as natural law.
-- **Clans & genealogy:** the founding generation seeds one clan per caste;
-  children inherit their mother's clan and wear its crest as a thin colored
+- **Clans & genealogy:** every non-ruin house founds a clan and the founding
+  generation joins the clan of its nearest house — castes mix inside
+  settlements (the `Max clans` law pins how many spatial clans arise).
+  Children inherit their mother's clan and wear its crest as a thin colored
   ring. Every birth/death is recorded in a `creatures` lineage table per world.
 - **Irregularity:** mutation may deform a child (scored 0.3–1.0). At adulthood
   the world judges it: far from regular → painlessly consumed (`euthanasia`

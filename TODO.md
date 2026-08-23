@@ -547,3 +547,96 @@ one rule: watch first, control second — a fullscreen world with floating contr
 ### Perf on phone
 - [x] [P1] Phone rendering — viewport culling + devicePixelRatio cap (ties §T),
       so 400–500 creatures stay smooth on a phone. (`CanvasRenderer.tsx:122` DPR 1.5, culling, `index.css` fullscreen)
+
+## V. Clan founding redesign — mixed-caste settlements  [P1] — ✅ implemented
+Clans are currently seeded one-per-caste (simulation.py:432 `_found_founding_clans`
+by_caste). Replace with spatial settlement seeding so any caste can share a clan.
+- [x] [P1] Settlement seeding — each (non-ruin) house founds a clan; founder/leader
+      = the founding creature nearest the house centre; every founding creature joins
+      its nearest house's clan (soldiers, women, nobles, priests mixed)
+      (`simulation.py:432` `_found_founding_clans` nearest-house buckets + `_new_clan`,
+      leader = nearest founder, one leader max via `taken_leaders`; ghost houses get
+      leaderless clans that decay with §L abandonment).
+- [x] [P1] max_clans law — God caps society granularity; -1 = one clan per house,
+      a pinned value clusters founding creatures into that many spatial clans
+      (greedy k-center) instead. (`config.py:56`, `protocol.py:151` GodLaws ge=-1,
+      `main.py` LAW_FIELDS, `GodPanel.tsx` Clan group slider + hint,
+      `simulation.py:487` `_cluster_founders_kcenter` rng-free deterministic;
+      applies at reset/world creation.)
+- [x] [P1] Anchor-house claims — a clan's settlement IS its nearest house; rewire
+      _assign_house_claims/_claim_house_for_clan to match clustering (no round-robin
+      double-claim); territory/totem/crest anchor to that house.
+      (`simulation.py:540` `_anchor_homeless_clans` greedy distance-sorted matching,
+      `_assign_house_claims` delegates after stale-claim cleanup,
+      `_claim_house_for_clan` nearest free house to clan centroid → else §L settlement
+      spawn near oldest member; orphan births set clan_id before claiming.)
+- [x] [P2] Docs — update guide.py:197 ("one clan per caste"), wiki.py, README to the
+      mixed-caste settlement model. (`guide.py` §C/I/P/V + codebase map, `wiki.py`
+      LAW_HINTS, README Clans bullet, docs/god-laws.md Society & Clans row.)
+- [x] [P2] Tests — assert founding clans are mixed-caste and spatially contiguous
+      (deterministic given seed); dominant-caste relation factor already works on
+      mixed clans (simulation.py:1053). (`tests/test_clans.py`: mixed-caste +
+      nearest-house membership reconstruction, anchor no-double-claim + crest,
+      max_clans 3/1 counts, k-centre cluster equality + greedy-matching fairness,
+      leader-nearest-centre walk, determinism same/diff seed;
+      test_reproduction.py founding test rewritten for settlements.)
+
+## X. Fixes
+- [x] Stuck-against-obstacle starvation — creatures chasing a meal whose straight
+      path crosses a rock circle (or a house wall) used to grind at the obstacle
+      until they starved. Now the blocked meal is abandoned: per-meal grudges
+      (`Creature.give_ups`, `food_giveup_ticks` TTL, never refreshed while fresh)
+      make perception skip it so the hungry seek food elsewhere; eating anything
+      clears all grudges; 0 disables. Triggers: wall bounce while steering at the
+      target, rock push-out with segment→target crossing the stone
+      (`simulation.py` `_segment_hits_circle`/`_give_up_on`; wall-bounce and
+      `_resolve_rock_collision` hooks). God law `food_giveup_ticks` (240) in the
+      Hunger & Sight group (`config.py:109`, `protocol.py`, `main.py` LAW_FIELDS,
+      `GodPanel.tsx`, wiki hint, docs/god-laws.md). Tests:
+      `tests/test_giveup.py` (rock + free-food switch, drift-away, house-wall
+      grudge, corpse behind stone, law roundtrip).
+
+## X. Communication II — knowledge, teaching & mobbing  [P2]
+Signals exist (food/alarm, §Q). Generalise them into a shared knowledge system so
+creatures learn, teach their clan, and rally to each other's defence.
+
+### Knowledge (learn & remember)
+- [ ] [P2] Typed facts — replace the single food_memory with a small per-creature
+      knowledge set: food_locs, danger_locs (predator sightings), enemy_clans (who
+      attacked me), safe_loc (own house/territory); each fact decays over
+      knowledge_ttl.
+- [ ] [P2] Learn from experience — attacked → learn enemy clan; see predator → learn
+      danger; find food → learn food; flee to house → learn safe.
+
+### Teaching (tell the clan)
+- [ ] [P2] Knowledge signal — a new signal kind carrying a fact (position/clan id) +
+      sender; creatures broadcast to clan-mates within signal_radius, gated by
+      knowledge_share_rate + signal_cooldown.
+- [ ] [P2] Rumor decay — confidence halves each hop, so retold knowledge is vaguer
+      than firsthand sighting.
+
+### Help & mobbing (defence)
+- [ ] [P2] Help call — an attacked creature (war/predation) emits a help signal;
+      nearby clan-mates converge and mob the attacker (warriors first, peaceful
+      last), turning contact-kills into cooperative skirmishes.
+
+### Clan aggregate
+- [ ] [P2] Clan memory — union of member knowledge surfaces as "the clan remembers":
+      enemies (feed §S Plots war foreshadowing), known food/danger zones (clan
+      avoids danger); shown in ClanPanel.
+
+### Laws
+- [ ] GodLaws: knowledge_enabled, knowledge_ttl, knowledge_share_rate,
+      help_call_enabled, help_radius, defense_weight (new "Communication II" group)
+
+## Y. UI polish — clickable names, collapsible panels, double-click zoom  [P2]
+- [ ] [P2] Clickable clan names — Chronicle alliance/rivalry/schism/conquest and
+      PlotsPanel clan names open the existing ClanDetails modal; show clan names
+      (state.clans lookup) instead of bare #ids.
+- [ ] [P2] Clickable leader/founder — ClanPanel + ClanDetails leader/founder chips
+      open the creature Inspector (add onSelectCreature wiring).
+- [ ] [P2] Double-click zoom out — Shift/Alt+double-click zooms out at the cursor
+      (plain double-click already zooms in, CanvasRenderer.tsx:319).
+- [ ] [P2] Collapsible panels — reusable <Collapsible> (header + chevron,
+      localStorage-persisted) around Overview sub-blocks, Chronicle, Inspector
+      sections, and HUD detail chips.

@@ -33,6 +33,7 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'hungry_perceive_mult', label: 'Hungry sight ×', min: 1, max: 3, step: 0.1, group: 'Hunger & Sight' },
   { key: 'desperate_perceive_mult', label: 'Starving sight ×', min: 1, max: 3, step: 0.1, group: 'Hunger & Sight' },
   { key: 'desperate_speed_mult', label: 'Starving speed ×', min: 1, max: 3, step: 0.05, group: 'Hunger & Sight' },
+  { key: 'food_giveup_ticks', label: 'Give-up ticks', min: 0, max: 2000, step: 10, group: 'Hunger & Sight' },
   // Movement — how bodies turn through the plane
   { key: 'wander_turn', label: 'Wander turn', min: 0, max: 2, step: 0.05, group: 'Movement' },
   { key: 'steer_turn', label: 'Steer turn', min: 0, max: 2, step: 0.05, group: 'Movement' },
@@ -79,6 +80,8 @@ const NUMBER_LAWS: LawSpec[] = [
   // Territory — clan land and trespass
   { key: 'territory_radius', label: 'Territory radius', min: 1, max: 50, step: 1, group: 'Territory' },
   { key: 'trespass_decay', label: 'Trespass decay / tick', min: 0, max: 5, step: 0.05, group: 'Territory' },
+  // Clan founding (§V) — settlements define clans
+  { key: 'max_clans', label: 'Max clans', min: -1, max: 24, step: 1, group: 'Clan' },
   { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction' },
   { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction' },
   { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction' },
@@ -166,6 +169,7 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   energy_decay_per_tick: 'how fast all life burns without eating (0.025) — winter/rain adds 0.03 exposure if roofless',
   energy_from_food: 'base energy from a mature plant (32) — berry 48, mushroom 24, grass 32, poison 8',
   perceive_radius: 'base sight (20) — each caste scales it (Woman 0.8×, Priest 1.35×), night 0.6×, fog 0.6×, Eye totem 1.25×',
+  food_giveup_ticks: 'a meal blocked by rock/wall is abandoned this many ticks — the hungry give up and seek food elsewhere (0 = never give up)',
   lifespan_mult: 'scales every caste’s natural lifespan',
   door_clearance: 'doorways scale with the largest creature × this (1.5)',
   house_min_size: 'applies to houses built after the next reset (6)',
@@ -182,6 +186,7 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   rest_recovery_mult: 'health regen multiplier when sleeping indoors (2.0)',
   totems_enabled: 'each clan bears Wolf/Tree/Shield/Eye with buffs',
   succession_enabled: 'leader succession on death emits succession event',
+  max_clans: 'society granularity: -1 = one clan per house; N ≥ 1 clusters founders into N spatial clans (applies at reset)',
   rain_growth_mult: 'rain/storm boost to plant growth (1.25) — soaked ground regrows faster',
   fog_mushroom_mult: 'fog boost to mushroom growth (1.35) — the decomposer tier loves mist',
   storm_plant_damage: 'chance a storm strips growth from exposed plants (0.02) — occasionally uproots',

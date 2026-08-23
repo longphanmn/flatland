@@ -52,6 +52,9 @@ class Config:
     territory_radius: float = 14.0  # radius of clan territory circle
     trespass_decay: float = 0.25  # was 1.0 — rare war: low trespass decay
 
+    # Clan founding (§V) — settlements define clans, castes mix inside them
+    max_clans: int = -1  # -1 = one clan per house; N ≥ 1 clusters founders into N spatial clans
+
     # Totem & clan depth (§P)
     totems_enabled: bool = True  # §P: each clan bears a totem (Wolf/Tree/Shield/Eye) with subtle buff
     succession_enabled: bool = True  # §P: leader succession on death emits succession event
@@ -105,6 +108,7 @@ class Config:
     hungry_perceive_mult: float = 1.3  # hungry creatures notice food farther away
     desperate_perceive_mult: float = 1.6  # starving: even farther
     desperate_speed_mult: float = 1.35  # starving: move faster
+    food_giveup_ticks: int = 240  # ticks a meal is abandoned when blocked by rock/wall; seek elsewhere
     lifespan_mult: float = 1.0  # god's law: scale every caste's natural lifespan
 
     # Reproduction & inheritance (Nature's Law) — tuned for 30-day survival

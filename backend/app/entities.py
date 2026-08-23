@@ -1,6 +1,6 @@
 """Entity model: Flatland creatures (social castes) and static objects."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # Polygons with at least this many sides are treated as Circles (priests).
 PRIEST_SIDES = 24
@@ -136,6 +136,7 @@ class Creature(Entity):
     food_memory_tick: int = 0  # when memory was stored
     signal_cooldown: int = 0  # ticks until next call allowed
     trait: str | None = None  # §S genetic trait: greedy/peaceful/paranoid/bold or None
+    give_ups: dict = field(default_factory=dict)  # meal id -> tick abandoned (behind rock/wall)
 
     def __post_init__(self) -> None:
         if not self.caste:

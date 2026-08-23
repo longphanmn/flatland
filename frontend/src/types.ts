@@ -189,6 +189,7 @@ export interface GodLaws {
   trespass_decay?: number
   totems_enabled?: boolean
   succession_enabled?: boolean
+  max_clans?: number
   energy_max?: number
   energy_decay_per_tick?: number
   energy_from_food?: number
@@ -201,6 +202,7 @@ export interface GodLaws {
   hungry_perceive_mult?: number
   desperate_perceive_mult?: number
   desperate_speed_mult?: number
+  food_giveup_ticks?: number
   lifespan_mult?: number
 
   // Reproduction & inheritance (Nature's Law)

@@ -35,6 +35,7 @@ All laws are in `backend/app/config.py` and `protocol.py:GodLaws`. Presets: `sus
 | `hungry_perceive_mult` | 1–3 | 1.3 | hungry sight multiplier |
 | `desperate_perceive_mult` | 1–3 | 1.6 | starving sight multiplier |
 | `desperate_speed_mult` | 1–3 | 1.35 | starving speed multiplier |
+| `food_giveup_ticks` | 0–100000 | 240 | a meal blocked by rock/wall is abandoned this many ticks — seek elsewhere; 0 = never give up |
 
 ## Movement
 
@@ -137,6 +138,7 @@ All laws are in `backend/app/config.py` and `protocol.py:GodLaws`. Presets: `sus
 | `rivalry_threshold` | -100–100 | -50 (-80 preset) | score at/below which two clans are rivals |
 | `totems_enabled` | bool | true | each clan bears Wolf/Tree/Shield/Eye with buffs |
 | `succession_enabled` | bool | true | leader succession on death emits succession event |
+| `max_clans` | -1–64 | -1 | settlement granularity: -1 = one clan per house, N ≥ 1 clusters founders into N spatial clans (applies at reset) |
 
 ## Communication
 
