@@ -46,7 +46,7 @@ export default function App() {
   })
   const [helpOpen, setHelpOpen] = useState(false)
   const [wikiOpen, setWikiOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768)
   const [statusExpanded, setStatusExpanded] = useState(false)
   const [sheetState, setSheetState] = useState<'hidden' | 'peek' | 'half' | 'full'>('hidden')
   const [sheetTab, setSheetTab] = useState<'world' | 'clans' | 'chronicle' | 'plots'>('world')
@@ -610,18 +610,17 @@ export default function App() {
       )}
 
       {/* Mobile tabbed sheet — World / Clans / Chronicle / Plots */}
-      {isMobile && (
+      {isMobile && sheetState !== 'hidden' && (
         <div className="mobile-sheet" data-state={sheetState}>
           <div
             className="mobile-sheet-handle"
-            onClick={() => setSheetState(s => s === 'hidden' ? 'peek' : s === 'peek' ? 'half' : s === 'half' ? 'full' : 'hidden')}
+            onClick={() => setSheetState(s => s === 'peek' ? 'half' : s === 'half' ? 'full' : 'peek')}
             onTouchStart={e => {
               const startY = e.touches[0].clientY
               const startState = sheetState
               const onMove = (ev: TouchEvent) => {
                 const dy = ev.touches[0].clientY - startY
-                if (dy < -30 && startState === 'hidden') setSheetState('peek')
-                else if (dy < -30 && startState === 'peek') setSheetState('half')
+                if (dy < -30 && startState === 'peek') setSheetState('half')
                 else if (dy < -30 && startState === 'half') setSheetState('full')
                 else if (dy > 30 && startState === 'full') setSheetState('half')
                 else if (dy > 30 && startState === 'half') setSheetState('peek')
@@ -637,14 +636,18 @@ export default function App() {
           />
           <div className="mobile-sheet-header">
             <div className="mobile-sheet-tabs">
-              <button className={sheetTab === 'world' ? 'active' : ''} onClick={() => { setSheetTab('world'); if (sheetState === 'hidden') setSheetState('half'); }}>World</button>
-              <button className={sheetTab === 'clans' ? 'active' : ''} onClick={() => { setSheetTab('clans'); if (sheetState === 'hidden') setSheetState('half'); }}>Clans</button>
-              <button className={sheetTab === 'chronicle' ? 'active' : ''} onClick={() => { setSheetTab('chronicle'); if (sheetState === 'hidden') setSheetState('half'); }}>Log</button>
-              <button className={sheetTab === 'plots' ? 'active' : ''} onClick={() => { setSheetTab('plots'); if (sheetState === 'hidden') setSheetState('half'); }}>Plots</button>
+              <button className={sheetTab === 'world' ? 'active' : ''} onClick={() => setSheetTab('world')}>World</button>
+              <button className={sheetTab === 'clans' ? 'active' : ''} onClick={() => setSheetTab('clans')}>Clans</button>
+              <button className={sheetTab === 'chronicle' ? 'active' : ''} onClick={() => setSheetTab('chronicle')}>Log</button>
+              <button className={sheetTab === 'plots' ? 'active' : ''} onClick={() => setSheetTab('plots')}>Plots</button>
             </div>
             <button
               className="mobile-sheet-close"
-              onClick={() => setSheetState('hidden')}
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                setSheetState('hidden')
+              }}
               title="Hide sheet"
               aria-label="Close bottom sheet"
             >
@@ -676,41 +679,45 @@ export default function App() {
         </div>
       )}
 
-      <footer className="controls">
-        {paused ? (
-          <button onClick={sendResume}>Resume</button>
-        ) : (
-          <button onClick={sendPause}>Pause</button>
-        )}
-        <button onClick={sendStep}>Step</button>
-        <button onClick={sendReset}>Reset</button>
-        <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))}>
-          Fit view
-        </button>
-        <button onClick={() => setChronicleOpen((o) => !o)}>
-          {chronicleOpen ? 'Hide' : 'Show'} chronicle
-        </button>
-        <button onClick={takeSnapshot} title="freeze the current moment into the album">
-          📷
-        </button>
-        <button onClick={openAlbum}>Album</button>
-        <label className="chip" htmlFor="speed">
-          ticks/s
-        </label>
-        <select
-          id="speed"
-          value={speed}
-          onChange={(e) => changeSpeed(Number(e.target.value))}
-        >
-          {SPEEDS.map((v) => (
-            <option key={v} value={v}>
-              {v}
-            </option>
-          ))}
-        </select>
-      </footer>
+      {!isMobile && (
+        <>
+          <footer className="controls">
+            {paused ? (
+              <button onClick={sendResume}>Resume</button>
+            ) : (
+              <button onClick={sendPause}>Pause</button>
+            )}
+            <button onClick={sendStep}>Step</button>
+            <button onClick={sendReset}>Reset</button>
+            <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))}>
+              Fit view
+            </button>
+            <button onClick={() => setChronicleOpen((o) => !o)}>
+              {chronicleOpen ? 'Hide' : 'Show'} chronicle
+            </button>
+            <button onClick={takeSnapshot} title="freeze the current moment into the album">
+              📷
+            </button>
+            <button onClick={openAlbum}>Album</button>
+            <label className="chip" htmlFor="speed">
+              ticks/s
+            </label>
+            <select
+              id="speed"
+              value={speed}
+              onChange={(e) => changeSpeed(Number(e.target.value))}
+            >
+              {SPEEDS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </footer>
 
-      <p className="key-hints">space pause · S step · R reset · F fit · +/− zoom</p>
+          <p className="key-hints">space pause · S step · R reset · F fit · +/− zoom</p>
+        </>
+      )}
 
       {viewSnapTick !== null && (
         <button className="snap-banner" onClick={exitSnapshot}>
@@ -735,7 +742,7 @@ export default function App() {
         </aside>
       )}
 
-      {chronicleOpen && (
+      {!isMobile && chronicleOpen && (
         <div className="right-stack">
           <aside className="info-panel">
             <h3 className="chronicle-title" title="Live population — creatures (colored) + objects (Food/House) · history below. Creatures also in Caste graph.">
