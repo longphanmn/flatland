@@ -3698,8 +3698,9 @@ class Simulation:
         population: dict[str, int] = {}
         alive = 0
         infected = 0
+        clans = self.clans
         for e in sorted(self.world.entities.values(), key=lambda e: e.id):
-            entities.append(self._entity_payload(e))
+            entities.append(self._entity_payload(e, clans))
             if isinstance(e, Creature):
                 label = e.caste
                 alive += 1
@@ -3746,66 +3747,70 @@ class Simulation:
         """Typed snapshot for cold paths (REST /api/state, tests)."""
         return StateMessage.model_validate(self.snapshot_payload())
 
-    def _entity_payload(self, e: Entity) -> dict:
-        base: dict = {
-            "id": e.id,
-            "kind": e.kind,
-            "x": round(e.x, 3),
-            "y": round(e.y, 3),
-            "angle": round(e.angle, 4),
-        }
+    def _entity_payload(self, e: Entity, clans: dict | None = None) -> dict:
+        if clans is None:
+            clans = self.clans
         if isinstance(e, Creature):
             name, glyph, hue_shift, scale_jitter, angle_jitter = self._cached_identity(
                 e.id, e.generation
             )
-            base.update(
-                shape=e.shape,
-                sides=e.sides,
-                caste=e.caste,
-                energy=round(e.energy, 2),
-                status=e.status,
-                radius=round(e.radius, 3),
-                age=e.age,
-                lifespan=round(e.lifespan, 1),
-                stage=e.stage,
-                irregularity=e.irregularity,
-                health=round(e.health, 1),
-                infected=e.infected,
-                sex=e.sex,
-                mother_id=e.mother_id or None,
-                father_id=e.father_id or None,
-                clan_id=e.clan_id or None,
-                clan_color=self.clans.get(e.clan_id, {}).get("color"),
-                clan_name=self.clans.get(e.clan_id, {}).get("name"),
-                is_predator=e.is_predator or None,
-                is_herbivore=e.is_herbivore or None,
-                sleeping=e.sleeping,
-                indoors=e.indoors,
-                generation=e.generation,
-                born_tick=e.born_tick,
-                personal_name=name,
-                glyph=glyph,
-                hue_shift=hue_shift,
-                scale_jitter=scale_jitter,
-                angle_jitter=angle_jitter,
-                chill=round(e.chill, 2),
-                trait=e.trait,
-            )
-            return base
+            c_meta = clans.get(e.clan_id) if e.clan_id else None
+            return {
+                "id": e.id,
+                "kind": e.kind,
+                "x": round(e.x, 3),
+                "y": round(e.y, 3),
+                "angle": round(e.angle, 4),
+                "shape": e.shape,
+                "sides": e.sides,
+                "caste": e.caste,
+                "energy": round(e.energy, 2),
+                "status": e.status,
+                "radius": round(e.radius, 3),
+                "age": e.age,
+                "lifespan": round(e.lifespan, 1),
+                "stage": e.stage,
+                "irregularity": e.irregularity,
+                "health": round(e.health, 1),
+                "infected": e.infected,
+                "sex": e.sex,
+                "mother_id": e.mother_id or None,
+                "father_id": e.father_id or None,
+                "clan_id": e.clan_id or None,
+                "clan_color": c_meta.get("color") if c_meta else None,
+                "clan_name": c_meta.get("name") if c_meta else None,
+                "is_predator": e.is_predator or None,
+                "is_herbivore": e.is_herbivore or None,
+                "sleeping": e.sleeping,
+                "indoors": e.indoors,
+                "generation": e.generation,
+                "born_tick": e.born_tick,
+                "personal_name": name,
+                "glyph": glyph,
+                "hue_shift": hue_shift,
+                "scale_jitter": scale_jitter,
+                "angle_jitter": angle_jitter,
+                "chill": round(e.chill, 2),
+                "trait": e.trait,
+            }
         if isinstance(e, House):
-            base.update(
-                size=round(e.size, 2),
-                door_width=round(e.door_width, 2),
-                door_offset=round(e.door_offset, 2),
-                door_side=e.door_side,
-                clan_id=e.clan_id or None,
-                clan_color=e.clan_color,
-                is_ruin=e.is_ruin or None,
-                abandoned_ticks=e.abandoned_ticks or None,
-            )
-            return base
+            return {
+                "id": e.id,
+                "kind": e.kind,
+                "x": round(e.x, 3),
+                "y": round(e.y, 3),
+                "angle": round(e.angle, 4),
+                "size": round(e.size, 2),
+                "door_width": round(e.door_width, 2),
+                "door_offset": round(e.door_offset, 2),
+                "door_side": e.door_side,
+                "clan_id": e.clan_id or None,
+                "clan_color": e.clan_color,
+                "is_ruin": e.is_ruin or None,
+                "abandoned_ticks": e.abandoned_ticks or None,
+            }
         if isinstance(e, Food):
-            base.update(growth=round(e.growth, 3), variant=e.variant)
+            is_withering = False
             if (
                 self.config.food_decay_enabled
                 and e.growth >= 1.0
@@ -3813,9 +3818,26 @@ class Simulation:
                 >= WILT_FRACTION
                 * max(1, round(self.config.food_lifespan_ticks * FOOD_LIFESPAN_MULT.get(e.variant, 1.0)))
             ):
-                base["withering"] = True
-            return base
-        return base
+                is_withering = True
+            d = {
+                "id": e.id,
+                "kind": e.kind,
+                "x": round(e.x, 3),
+                "y": round(e.y, 3),
+                "angle": round(e.angle, 4),
+                "growth": round(e.growth, 3),
+                "variant": e.variant,
+            }
+            if is_withering:
+                d["withering"] = True
+            return d
+        return {
+            "id": e.id,
+            "kind": e.kind,
+            "x": round(e.x, 3),
+            "y": round(e.y, 3),
+            "angle": round(e.angle, 4),
+        }
 
     def _entity_state(self, e: Entity) -> EntityState:
         return EntityState.model_validate(self._entity_payload(e))
