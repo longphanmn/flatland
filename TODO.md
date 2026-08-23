@@ -747,4 +747,7 @@ REST API — no browser. Separate client, never touches backend logic.
 - [x] M5 tests/polish: Textual Pilot tests (tests/test_tui.py — WS→HUD tick +
       glyph grid, pause/step/speed actions over WS, click-select, laws POST
       roundtrip against the real FastAPI app via ASGITransport, chronicle
-      formatting, zoom/fit smoke), run.sh hook (`./run.sh tui`), README blurb.
+      formatting, zoom/fit smoke), run.sh hook (`./run.sh tui [ws-url]` —
+      standalone pure client: never starts a server, attaches to any running
+      world incl. remote hosts, keeps retrying while the backend is down),
+      README blurb.

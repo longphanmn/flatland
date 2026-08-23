@@ -44,7 +44,7 @@ starvation when deprived of food too long.
 
 ```bash
 ./run.sh          # web UI (backend :8000 + frontend :5173)
-./run.sh tui      # terminal client instead of the web frontend
+./run.sh tui      # terminal client only — attaches to a running world
 ```
 
 - Frontend: http://localhost:5173 (open this)
@@ -75,15 +75,19 @@ npm run build                            # type-check + production build
 
 ## Terminal TUI
 
-A Textual client that watches/controls the live sim over the same `/ws` + REST
-API — no browser needed (backend only):
+A Textual client that watches/controls a running world over the same `/ws` +
+REST API — no browser, and **no server of its own**: it never starts a
+backend, it attaches to one that is already up (local machine, LAN box or
+production). Several TUIs can watch the same world at once.
 
 ```bash
-cd backend
-uv run -m tui                            # FLATWORLD_WS=ws://localhost:8000/ws by default
-./run.sh tui                             # or from the repo root: backend + TUI in one shot
-uv run textual serve -m tui.serve        # optional: serve the TUI in the browser
+./run.sh tui                                        # attach to localhost:8000
+./run.sh tui ws://192.168.1.21:8000/ws              # attach to another host
+cd backend && FLATWORLD_WS=ws://host:8000/ws uv run -m tui
+uv run textual serve -m tui.serve                   # optional: TUI in the browser
 ```
+
+If the world is down the TUI keeps reconnecting until it's back.
 
 Half-block char-grid world renderer (creatures wear their soul-code glyph in
 caste colors, houses are clan-colored boxes with doors, plants/corpses/fires/
