@@ -868,7 +868,10 @@ select {
   .snap-banner { left: 8px; right: 8px; width: auto; transform: none; max-width: none; font-size: 12px; text-align: center; }
   .run-switcher { left: 8px; right: auto; bottom: 62px; max-width: calc(100vw - 16px); }
   .top-right-panel { top: calc(56px + env(safe-area-inset-top)); right: 8px; gap: 6px; margin-top: 4px; background: rgba(13,17,23,0.9); padding: 4px; border-radius: 8px; border: 1px solid #21262d; flex-direction: column; }
-  .god-panel, .wiki-panel, .help-panel { padding-top: 3%; }
+  .god-panel, .wiki-panel, .help-panel { padding-top: 8%; }
+  .top-right-panel{ flex-direction: column; }
+  .god-panel .god-group[style*="flex"]{ flex-direction: column !important; }
+  .god-panel .god-group[style*="flex"] button{ width: 100% !important; flex: none !important; }
   .top-right-panel .god-btn{ min-height: 32px; padding: 4px 8px; font-size: 12px; }
   .version-bar { bottom: 52px; left: 8px; right: auto; transform: none; font-size: 9px; padding: 1px 6px; }
   /* larger touch targets */
