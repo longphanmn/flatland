@@ -601,42 +601,66 @@ Signals exist (food/alarm, §Q). Generalise them into a shared knowledge system 
 creatures learn, teach their clan, and rally to each other's defence.
 
 ### Knowledge (learn & remember)
-- [ ] [P2] Typed facts — replace the single food_memory with a small per-creature
+- [x] [P2] Typed facts — replace the single food_memory with a small per-creature
       knowledge set: food_locs, danger_locs (predator sightings), enemy_clans (who
       attacked me), safe_loc (own house/territory); each fact decays over
-      knowledge_ttl.
-- [ ] [P2] Learn from experience — attacked → learn enemy clan; see predator → learn
+      knowledge_ttl. (`entities.py` `Creature.facts` dict — "food"/"danger" →
+      {x,y,tick,conf}, "safe" → {x,y,tick}, "enemies" → {clan_id:{tick,conf}};
+      food_memory_* removed; `simulation.py` `_fact_fresh` prunes stale facts.)
+- [x] [P2] Learn from experience — attacked → learn enemy clan; see predator → learn
       danger; find food → learn food; flee to house → learn safe.
+      (`simulation.py` `_learn`/`_learn_enemy`: sight of Food/predator in perception,
+      war kill+wound both sides, sleep & rain-shelter indoors.)
 
 ### Teaching (tell the clan)
-- [ ] [P2] Knowledge signal — a new signal kind carrying a fact (position/clan id) +
+- [x] [P2] Knowledge signal — a new signal kind carrying a fact (position/clan id) +
       sender; creatures broadcast to clan-mates within signal_radius, gated by
-      knowledge_share_rate + signal_cooldown.
-- [ ] [P2] Rumor decay — confidence halves each hop, so retold knowledge is vaguer
-      than firsthand sighting.
+      knowledge_share_rate + signal_cooldown. (`_fact_to_share` picks freshest fact;
+      hearing merges via `_hear_fact` — better news overwrites.)
+- [x] [P2] Rumor decay — confidence halves each hop, so retold knowledge is vaguer
+      than firsthand sighting. (`_hear_fact` stores conf×0.5; firsthand 1.0 beats
+      any rumor; conf <0.05 forgotten.)
 
 ### Help & mobbing (defence)
-- [ ] [P2] Help call — an attacked creature (war/predation) emits a help signal;
+- [x] [P2] Help call — an attacked creature (war/predation) emits a help signal;
       nearby clan-mates converge and mob the attacker (warriors first, peaceful
       last), turning contact-kills into cooperative skirmishes.
+      (`_emit_help` on war kill/wound + teeth-close predator alarm; hearing gates:
+      YIELD_RANK ≥5 only bold, peaceful 70% ignore; mob steering converges on threat;
+      `_mob_defenders` counts clan-mates within `help_radius` → damage ÷(1+defense_weight×n),
+      applied to BOTH kill decision and wound application paths.)
 
 ### Clan aggregate
-- [ ] [P2] Clan memory — union of member knowledge surfaces as "the clan remembers":
+- [x] [P2] Clan memory — union of member knowledge surfaces as "the clan remembers":
       enemies (feed §S Plots war foreshadowing), known food/danger zones (clan
-      avoids danger); shown in ClanPanel.
+      avoids danger); shown in ClanPanel. (`clan_knowledge()` dedupes spots within 2u;
+      `/api/clans` "knowledge" block; ClanPanel 🧠 chip; Plots progress +2 for pairs
+      who remember each other; danger-avoidance steering away from fresh danger facts.)
 
 ### Laws
-- [ ] GodLaws: knowledge_enabled, knowledge_ttl, knowledge_share_rate,
+- [x] GodLaws: knowledge_enabled, knowledge_ttl, knowledge_share_rate,
       help_call_enabled, help_radius, defense_weight (new "Communication II" group)
+      (`config.py:90`, `protocol.py`, `main.py` LAW_FIELDS, `GodPanel.tsx` toggles +
+      sliders + hints, types.ts, wiki hints, docs/god-laws.md table, guide.py §Q/X;
+      knowledge/help ON by default; food_memory_ttl law removed). Tests:
+      `tests/test_knowledge.py` (learn food+danger, ttl fade, teach-at-half-conf,
+      two-hop rumor ≤0.25, war enemy learning + clan union, mobilisation +
+      softened blows vs control, safe roof while sleeping, laws roundtrip).
 
-## Y. UI polish — clickable names, collapsible panels, double-click zoom  [P2]
-- [ ] [P2] Clickable clan names — Chronicle alliance/rivalry/schism/conquest and
+## Y. UI polish — clickable names, collapsible panels, double-click zoom  [P2] — ✅ implemented
+- [x] [P2] Clickable clan names — Chronicle alliance/rivalry/schism/conquest and
       PlotsPanel clan names open the existing ClanDetails modal; show clan names
-      (state.clans lookup) instead of bare #ids.
-- [ ] [P2] Clickable leader/founder — ClanPanel + ClanDetails leader/founder chips
+      (state.clans lookup) instead of bare #ids. (`App.tsx` `clanLabel()` +
+      chronicle-name buttons → setSelectedClanId; PlotsPanel onSelectClan prop.)
+- [x] [P2] Clickable leader/founder — ClanPanel + ClanDetails leader/founder chips
       open the creature Inspector (add onSelectCreature wiring).
-- [ ] [P2] Double-click zoom out — Shift/Alt+double-click zooms out at the cursor
+      (`ClanPanel.tsx` onSelectCreature prop stop-propagation chips, App wires
+      setSelectedId at mobile sheet + desktop; ClanDetails founder/leader chips.)
+- [x] [P2] Double-click zoom out — Shift/Alt+double-click zooms out at the cursor
       (plain double-click already zooms in, CanvasRenderer.tsx:319).
-- [ ] [P2] Collapsible panels — reusable <Collapsible> (header + chevron,
+      (`CanvasRenderer.tsx` onDblClick → zoomAt ×1.8 / ÷1.8 at cursor, cleanup added.)
+- [x] [P2] Collapsible panels — reusable <Collapsible> (header + chevron,
       localStorage-persisted) around Overview sub-blocks, Chronicle, Inspector
-      sections, and HUD detail chips.
+      sections, and HUD detail chips. (`render/Collapsible.tsx` fl-collapsed-* keys,
+      index.css .collapsible*; wrapped Overview caste/trophic/clans/plots blocks,
+      Chronicle event feed, Inspector Family + Chronicle sections.)
