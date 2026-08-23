@@ -20,6 +20,7 @@ def minimal_cfg(**kw) -> Config:
         num_women=0,
         food_count=0,
         num_houses=0,
+        age_enabled=False,
     )
     base.update(kw)
     return Config(**base)
@@ -365,7 +366,7 @@ def test_infants_see_less_than_adults():
 
 
 def test_food_count_stable_over_many_ticks():
-    s = Simulation(Config(seed=9, width=60, height=60))
+    s = Simulation(Config(seed=9, width=60, height=60, age_enabled=False))
     for _ in range(30):
         s.step()
     foods = [e for e in s.world.entities.values() if e.kind == "food"]

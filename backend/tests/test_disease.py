@@ -11,7 +11,7 @@ def disease_cfg(**kw) -> Config:
     zeros = dict(
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,
         num_priests=0, num_women=0, food_count=0, num_houses=0,
-        disease_enabled=True, adult_age=0.0,
+        disease_enabled=True, adult_age=0.0, age_enabled=False,
     )
     zeros.update(kw)
     return Config(**zeros)

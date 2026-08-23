@@ -62,7 +62,7 @@ def test_high_mutation_triggers_irregularity_purge():
         mate_energy_min=10.0, birth_rate=1.0, sex_ratio=1.0,
         mutation_rate=1.0, euthanasia_threshold=0.35,
         birth_energy_cost=1.0, reproduction_cooldown=0,
-        energy_decay_per_tick=0.0, food_count=0,
+        energy_decay_per_tick=0.0, food_count=0, age_enabled=False,
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,
         num_priests=0, num_women=1, num_houses=0,
     )

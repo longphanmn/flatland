@@ -11,6 +11,7 @@ def plants_cfg(**kw) -> Config:
     zeros = dict(
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,
         num_priests=0, num_women=0, num_houses=0, weather_enabled=False,
+        age_enabled=False,
     )
     zeros.update(kw)
     return Config(**zeros)

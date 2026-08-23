@@ -3,6 +3,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from dataclasses import replace
+
 from app.config import Config
 from app.main import RT, app, start_world
 from app.simulation import Simulation
@@ -10,7 +12,8 @@ from app.simulation import Simulation
 
 @pytest.fixture(autouse=True)
 def fresh_runtime():
-    RT.config = Config.from_env()
+    # discard any laws set by earlier tests; ages off so exact food counts hold
+    RT.config = replace(Config.from_env(), age_enabled=False)
     RT.paused = False
     RT.speed = RT.config.tick_rate
     RT.sim = Simulation(RT.config)

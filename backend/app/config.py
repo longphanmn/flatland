@@ -65,7 +65,7 @@ class Config:
     schism_min_pop: int = 6  # minimum clan pop — 6 rarer than 4
 
     # Ages — super-seasons (§S)
-    age_enabled: bool = False  # long era bending world: Ice/Chaos/Plague/Golden
+    age_enabled: bool = True  # long era bending world: Ice/Chaos/Plague/Golden
     age_length: int = 12000  # ticks per age (5 seasons)
 
     # Culture & Traits (§S)
