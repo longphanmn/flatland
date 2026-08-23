@@ -13,7 +13,7 @@ interface Plot {
   pop?: number
 }
 
-export default function PlotsPanel() {
+export default function PlotsPanel({ onSelectClan }: { onSelectClan?: (id: number) => void }) {
   const [plots, setPlots] = useState<Plot[]>([])
   useEffect(() => {
     let alive = true
@@ -38,7 +38,27 @@ export default function PlotsPanel() {
           <div key={i} style={{ background: 'rgba(227,179,65,0.08)', border: '1px solid #7e6325', borderRadius: 4, padding: '6px 8px' }}>
             <div className="chip" style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>
-                {pl.type === 'war' ? `⚔ ${pl.a_name ?? pl.a} → ${pl.b_name ?? pl.b}` : `💔 ${pl.a_name ?? pl.a} schism`}
+                {pl.type === 'war' ? '⚔ ' : '💔 '}
+                <button
+                  className="chronicle-name"
+                  onClick={() => onSelectClan?.(pl.a)}
+                  title="show clan"
+                >
+                  {pl.a_name ?? `#${pl.a}`}
+                </button>
+                {pl.type === 'war' && (
+                  <>
+                    {' → '}
+                    <button
+                      className="chronicle-name"
+                      onClick={() => pl.b != null && onSelectClan?.(pl.b)}
+                      title="show clan"
+                    >
+                      {pl.b_name ?? `#${pl.b}`}
+                    </button>
+                  </>
+                )}
+                {pl.type === 'schism' && ' schism'}
               </span>
               <span>
                 {pl.progress}/{pl.max}

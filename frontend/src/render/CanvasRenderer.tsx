@@ -350,12 +350,22 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       zoomAt(state, factor, ev.clientX * dpr(), ev.clientY * dpr())
     }
 
+    // §Y double-click zoom: plain = in, Shift/Alt+double-click = out (at the cursor)
+    const onDblClick = (ev: MouseEvent) => {
+      ev.preventDefault()
+      const state = stateRef.current
+      if (!state || !cam.initialized) return
+      const out = ev.shiftKey || ev.altKey
+      zoomAt(state, out ? 1 / 1.8 : 1.8, ev.clientX * dpr(), ev.clientY * dpr())
+    }
+
     canvas.style.cursor = 'grab'
     canvas.addEventListener('pointerdown', onPointerDown)
     canvas.addEventListener('pointermove', onPointerMove)
     canvas.addEventListener('pointerup', onPointerUp)
     canvas.addEventListener('pointercancel', onPointerUp)
     canvas.addEventListener('wheel', onWheel, { passive: false })
+    canvas.addEventListener('dblclick', onDblClick)
 
     // ---- drawing ----
     const drawEntity = (ctx: CanvasRenderingContext2D, e: EntityState) => {
@@ -663,8 +673,14 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         }
       }
 
-      // §Q signals — ripples at caller position (culled)
+      // §Q/§X signals — ripples at caller position (culled); food green, alarm/help red, knowledge blue
       if ((state as any).signals) {
+        const SIGNAL_COLOR: Record<string, string> = {
+          food: '#3fb950',
+          alarm: '#f85149',
+          help: '#ffd166',
+          knowledge: '#79c0ff',
+        }
         for (const sg of (state as any).signals) {
           if (!visible0(sg.x, sg.y, 5)) continue
           const sx = cam.ox + sg.x * cam.scale
@@ -674,14 +690,15 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
           const alpha = Math.max(0, 0.45 - age * 0.03)
           if (alpha <= 0) continue
           ctx.globalAlpha = alpha
-          ctx.strokeStyle = sg.kind === 'food' ? '#3fb950' : '#f85149'
+          const signalColor = SIGNAL_COLOR[sg.kind] ?? '#f85149'
+          ctx.strokeStyle = signalColor
           ctx.lineWidth = 1.2
           ctx.beginPath()
           ctx.arc(sx, sy, radius, 0, TAU)
           ctx.stroke()
           // small dot at sender
           ctx.globalAlpha = 0.9
-          ctx.fillStyle = sg.kind === 'food' ? '#3fb950' : '#f85149'
+          ctx.fillStyle = signalColor
           ctx.beginPath()
           ctx.arc(sx, sy, 2, 0, TAU)
           ctx.fill()
@@ -790,6 +807,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       canvas.removeEventListener('pointerup', onPointerUp)
       canvas.removeEventListener('pointercancel', onPointerUp)
       canvas.removeEventListener('wheel', onWheel)
+      canvas.removeEventListener('dblclick', onDblClick)
     }
   }, [stateRef])
 

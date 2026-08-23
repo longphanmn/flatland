@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { EntityState, HistoryEvent } from '../types'
+import Collapsible from '../render/Collapsible'
 
 const CASTE_COLORS: Record<string, string> = {
   Soldier: '#ff7b72',
@@ -241,37 +242,39 @@ export default function Inspector({ id, onClose, onNavigate }: Props) {
           </div>
 
           {/* ---- family tree ---- */}
-          <h3 className="insp-h">Family</h3>
-          <div className="family-tree">
-            <div className="tree-row">
-              <KinNode kin={fam?.mother ?? null} label="♀ mother" onNavigate={onNavigate} />
-              <KinNode kin={fam?.father ?? null} label="♂ father" onNavigate={onNavigate} />
+          <Collapsible id="inspector-family" title={<h3 className="insp-h">Family</h3>}>
+            <div className="family-tree">
+              <div className="tree-row">
+                <KinNode kin={fam?.mother ?? null} label="♀ mother" onNavigate={onNavigate} />
+                <KinNode kin={fam?.father ?? null} label="♂ father" onNavigate={onNavigate} />
+              </div>
+              <div className="tree-self">#{id} ← you are here</div>
+              <div className="tree-row wrap">
+                {(fam?.children ?? []).length === 0 ? (
+                  <span className="chip">no children yet</span>
+                ) : (
+                  fam!.children.map((k) => (
+                    <KinNode key={k.id} kin={k} label="child" onNavigate={onNavigate} />
+                  ))
+                )}
+              </div>
             </div>
-            <div className="tree-self">#{id} ← you are here</div>
-            <div className="tree-row wrap">
-              {(fam?.children ?? []).length === 0 ? (
-                <span className="chip">no children yet</span>
-              ) : (
-                fam!.children.map((k) => (
-                  <KinNode key={k.id} kin={k} label="child" onNavigate={onNavigate} />
-                ))
-              )}
-            </div>
-          </div>
+          </Collapsible>
         </>
       )}
 
-      <h3 className="insp-h">Chronicle</h3>
-      <ul className="insp-events">
-        {(data?.events ?? []).slice().reverse().map((ev) => (
-          <li key={`${ev.tick}:${ev.type}`} className={`ev-${ev.type}`}>
-            tick {ev.tick}: {eventLine(ev)}
-          </li>
-        ))}
-        {(data?.events?.length ?? 0) === 0 && (
-          <li className="chip">nothing recorded yet</li>
-        )}
-      </ul>
+      <Collapsible id="inspector-chronicle" title={<h3 className="insp-h">Chronicle</h3>}>
+        <ul className="insp-events">
+          {(data?.events ?? []).slice().reverse().map((ev) => (
+            <li key={`${ev.tick}:${ev.type}`} className={`ev-${ev.type}`}>
+              tick {ev.tick}: {eventLine(ev)}
+            </li>
+          ))}
+          {(data?.events?.length ?? 0) === 0 && (
+            <li className="chip">nothing recorded yet</li>
+          )}
+        </ul>
+      </Collapsible>
     </aside>
   )
 }

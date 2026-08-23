@@ -3,7 +3,7 @@
 import math
 import random
 from collections import deque
-from typing import Callable
+from typing import Any, Callable
 
 from .config import Config
 from .entities import (
@@ -865,6 +865,90 @@ class Simulation:
             return
         grudges[target.id] = self.tick
 
+    # ------------------------------------------------------------- §X knowledge
+    def _fact_fresh(self, c: Creature, key, ttl: int | None = None) -> dict | None:
+        """Return a live fact or None (and prune it when stale)."""
+        f = c.facts.get(key)
+        if not isinstance(f, dict):
+            return None
+        limit = ttl if ttl is not None else max(1, self.config.knowledge_ttl)
+        if self.tick - int(f.get("tick", -limit)) > limit:
+            del c.facts[key]
+            return None
+        return f
+
+    def _learn(self, c: Creature, key, x: float | None = None, y: float | None = None,
+               conf: float = 1.0) -> None:
+        """§X firsthand experience becomes knowledge (conf 1.0)."""
+        if not self.config.knowledge_enabled or self.config.knowledge_ttl <= 0:
+            return
+        fact: dict = {"tick": self.tick, "conf": round(conf, 3)}
+        if x is not None and y is not None:
+            fact["x"], fact["y"] = round(x, 2), round(y, 2)
+        c.facts[key] = fact
+
+    def _hear_fact(self, c: Creature, msg_fact: dict | None) -> None:
+        """§X rumor: a heard fact lands with halved confidence — retold knowledge
+        is vaguer than firsthand sighting; only better news overwrites."""
+        if not msg_fact or not self.config.knowledge_enabled:
+            return
+        kind = msg_fact.get("kind")
+        conf = float(msg_fact.get("conf", 1.0)) * 0.5
+        if conf < 0.05:
+            return
+        if kind == "enemy":
+            clan_id = int(msg_fact.get("clan_id") or 0)
+            if not clan_id or clan_id == c.clan_id:
+                return
+            enemies = c.facts.setdefault("enemies", {})
+            old = enemies.get(clan_id)
+            if old is None or conf >= float(old.get("conf", 0.0)) * 0.9:
+                enemies[clan_id] = {"tick": self.tick, "conf": round(conf, 3)}
+            return
+        key = {"food": "food", "danger": "danger"}.get(kind)
+        if key is None:
+            return
+        old = self._fact_fresh(c, key)
+        if old is not None and float(old.get("conf", 0.0)) >= conf:
+            return  # firsthand beats rumor
+        c.facts[key] = {
+            "x": float(msg_fact.get("x", 0.0)),
+            "y": float(msg_fact.get("y", 0.0)),
+            "tick": self.tick,
+            "conf": round(conf, 3),
+        }
+
+    def _fact_to_share(self, c: Creature) -> dict | None:
+        """The freshest known fact worth telling (rumors included while they last)."""
+        ttl = max(1, self.config.knowledge_ttl)
+
+        def score(f: dict) -> float:
+            return float(f.get("conf", 1.0)) * 1000 - (self.tick - int(f.get("tick", 0)))
+
+        best_kind = None
+        best_score = -math.inf
+        payload: dict = {}
+        for kind in ("food", "danger"):
+            f = self._fact_fresh(c, kind)
+            if f is not None and score(f) > best_score:
+                best_kind, best_score = kind, score(f)
+                payload = {"kind": kind, "x": f["x"], "y": f["y"], "conf": f["conf"]}
+        enemies = c.facts.get("enemies")
+        if isinstance(enemies, dict):
+            for clan_id, meta in enemies.items():
+                if self.tick - int(meta.get("tick", 0)) > ttl:
+                    continue
+                if score(meta) > best_score:
+                    best_kind, best_score = "enemy", score(meta)
+                    payload = {
+                        "kind": "enemy",
+                        "clan_id": clan_id,
+                        "x": round(c.x, 2),
+                        "y": round(c.y, 2),
+                        "conf": meta.get("conf", 1.0),
+                    }
+        return payload if best_kind is not None else None
+
     def _jittered(self, target: float) -> int:
         v = self.config.spawn_variance
         return max(0, round(self.rng.uniform(target * (1 - v), target * (1 + v))))
@@ -990,6 +1074,44 @@ class Simulation:
             return -1  # rivals
         return 0  # neutral
 
+    def _learn_enemy(self, c: Creature, clan_id: int | None) -> None:
+        """§X firsthand: this clan attacked me — remembered fresh at full confidence."""
+        if not self.config.knowledge_enabled or not clan_id or clan_id == c.clan_id:
+            return
+        enemies = c.facts.setdefault("enemies", {})
+        old = enemies.get(clan_id)
+        enemies[clan_id] = {
+            "tick": self.tick,
+            "conf": 1.0,
+            **({"prev_conf": old["conf"]} if old else {}),
+        }
+
+    def _emit_help(self, victim: Creature, aggressor: Creature) -> None:
+        """§X Help call — an attacked creature rallies its clan to mob the attacker."""
+        if not (self.config.communication_enabled and self.config.help_call_enabled):
+            return
+        self.signals.append({
+            "x": round(victim.x, 2), "y": round(victim.y, 2),
+            "kind": "help", "sender": victim.id,
+            "clan_id": victim.clan_id or None, "ttl": 12,
+            "threat_x": round(aggressor.x, 2), "threat_y": round(aggressor.y, 2),
+            "threat_clan": aggressor.clan_id or None,
+        })
+
+    def _mob_defenders(self, loser: Creature, winner: Creature, roster: list[Creature]) -> int:
+        """Clan-mates of the victim within earshot of the fight (§X mobbing)."""
+        if not (self.config.help_call_enabled and self.config.knowledge_enabled):
+            return 0
+        return sum(
+            1
+            for o in roster
+            if o.clan_id == loser.clan_id
+            and o.id != loser.id
+            and not o.is_predator
+            and not o.is_herbivore
+            and self.world.distance(o.x, o.y, winner.x, winner.y) <= self.config.help_radius
+        )
+
     def _update_war(self) -> None:
         """Rival-clan creatures fight on contact (§I). Shield totem reduces damage (§P)."""
         cfg = self.config
@@ -1032,6 +1154,8 @@ class Simulation:
                     dmg *= 0.9
                 if self._totem_of(loser) == "Shield":
                     dmg *= 0.70
+                # §X mobbing: a surrounded attacker hits softer
+                dmg /= 1.0 + cfg.defense_weight * min(self._mob_defenders(loser, winner, creatures), 4)
                 if dmg >= loser.health:
                     to_kill.append((loser, winner))
                 else:
@@ -1039,6 +1163,9 @@ class Simulation:
         for loser, winner in to_kill:
             if loser.id not in self.world.entities:
                 continue
+            self._emit_help(loser, winner)  # §X dying cry — the clan remembers
+            self._learn_enemy(loser, winner.clan_id)
+            self._learn_enemy(winner, loser.clan_id)
             self._kill(loser, "war")
             self._emit(
                 HistoryEvent(
@@ -1075,6 +1202,9 @@ class Simulation:
         for loser, winner in to_wound:
             if loser.id not in self.world.entities:
                 continue
+            self._emit_help(loser, winner)  # §X wounded cry — rally the clan
+            self._learn_enemy(loser, winner.clan_id)
+            self._learn_enemy(winner, loser.clan_id)
             w_spec2 = self.clans.get(winner.clan_id, {}).get("specialization", {}).get("warrior", 0.33) if winner.clan_id else 0.33
             trait_mult = 1.0
             if winner.trait == "bold":
@@ -1084,6 +1214,8 @@ class Simulation:
             if loser.trait == "paranoid":
                 trait_mult *= 0.9
             dmg = cfg.attack_damage * (0.85 + w_spec2 * 0.45) * trait_mult * (0.70 if self._totem_of(loser) == "Shield" else 1.0)
+            # §X mobbing softens blows on the wound path too
+            dmg /= 1.0 + cfg.defense_weight * min(self._mob_defenders(loser, winner, creatures), 4)
             loser.health = max(0, loser.health - dmg)
             # wounded flees
             dx, dy = self.world.delta(loser.x, loser.y, winner.x, winner.y)
@@ -1489,6 +1621,42 @@ class Simulation:
             for k in spec:
                 spec[k] = round(spec[k]/tot, 3)
 
+    def clan_knowledge(self) -> dict[int, dict]:
+        """§X Clan memory — union of member knowledge: 'the clan remembers'."""
+        ttl = max(1, self.config.knowledge_ttl)
+        out: dict[int, dict] = {}
+        for cid in self.clans:
+            enemies: set[int] = set()
+            danger: list[dict] = []
+            food: list[dict] = []
+            safe_spots = 0
+            for m in self.world.creatures():
+                if m.clan_id != cid:
+                    continue
+                for clan_id, meta in (m.facts.get("enemies") or {}).items():
+                    if isinstance(meta, dict) and self.tick - int(meta.get("tick", 0)) <= ttl:
+                        enemies.add(int(clan_id))
+                for kind, sink in (("danger", danger), ("food", food)):
+                    f = self._fact_fresh(m, kind)
+                    if f is None or "x" not in f or len(sink) >= 6:
+                        continue
+                    if any(
+                        math.hypot(f["x"] - e["x"], f["y"] - e["y"]) < 2.0
+                        for e in sink
+                    ):
+                        continue  # same spot another member already reported
+                    sink.append({"x": f["x"], "y": f["y"], "conf": f["conf"]})
+                if self._fact_fresh(m, "safe") is not None:
+                    safe_spots += 1
+            enemies.discard(cid)
+            out[cid] = {
+                "enemy_clans": sorted(enemies),
+                "danger_zones": danger,
+                "food_spots": food,
+                "members_with_home_knowledge": safe_spots,
+            }
+        return out
+
     def get_plots(self) -> list[dict]:
         """§S Plots — upcoming war/schism as progress 0..10 for god observability."""
         plots = []
@@ -1503,8 +1671,15 @@ class Simulation:
                 continue
             # closest pair distance
             min_d = min(self.world.distance(ac.x, ac.y, bc.x, bc.y) for ac in a_members for bc in b_members)
-            # progress: base from how rival they are + proximity
-            base = max(0, (-score - self.config.rivalry_threshold) // 8)  # 0..6
+            # progress: base from how rival they are + proximity; clans that
+            # remember each other as enemies plot faster (§X clan memory)
+            memory_bonus = 0
+            if self.config.knowledge_enabled:
+                ka = self.clan_knowledge().get(a, {}).get("enemy_clans", [])
+                kb = self.clan_knowledge().get(b, {}).get("enemy_clans", [])
+                if b in ka or a in kb:
+                    memory_bonus = 2
+            base = max(0, (-score - self.config.rivalry_threshold) // 8) + memory_bonus  # 0..8
             prox = 0
             if min_d < self.config.attack_radius * 3:
                 prox = 4
@@ -2076,6 +2251,8 @@ class Simulation:
             if inside and self._claim_bed(home):
                 c.indoors = True
                 c.sleeping = True
+                if cfg.knowledge_enabled:
+                    self._learn(c, "safe", home.x, home.y)  # §X: this roof is safe
                 c.energy -= cfg.energy_decay_per_tick * cfg.sleep_energy_mult
                 if c.infected and cfg.disease_enabled:
                     c.energy -= cfg.disease_energy_drain
@@ -2246,14 +2423,16 @@ class Simulation:
             if d < best:
                 best, target = d, e  # type: ignore[assignment]
 
-        # §Q Food memory — remember last seen food
-        if target is not None and isinstance(target, Food):
-            c.food_memory_x = target.x
-            c.food_memory_y = target.y
-            c.food_memory_tick = self.tick
-        elif c.food_memory_tick and self.tick - c.food_memory_tick > cfg.food_memory_ttl:
-            c.food_memory_x = None
-            c.food_memory_y = None
+        # §X Knowledge — firsthand experience: seen meal, seen predator.
+        if cfg.knowledge_enabled:
+            if target is not None and isinstance(target, Food):
+                self._learn(c, "food", target.x, target.y)
+            if flee_target is not None:
+                self._learn(c, "danger", flee_target.x, flee_target.y)
+            if c.indoors:
+                home_fact = self._house_for(c, houses) if houses else None
+                if home_fact is not None:
+                    self._learn(c, "safe", home_fact.x, home_fact.y)
         if c.signal_cooldown > 0:
             c.signal_cooldown -= 1
         # §Q Communication — food and alarm calls
@@ -2263,13 +2442,30 @@ class Simulation:
                 if self.rng.random() < cfg.food_call_rate:
                     self.signals.append({"x": c.x, "y": c.y, "kind": "food", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 15, "food_x": target.x, "food_y": target.y})
                     c.signal_cooldown = 8
-            # Alarm call: sees predator → alarm
+            # Alarm call: sees predator → alarm; teeth-close → a cry for help (§X)
             if flee_target is not None and c.signal_cooldown == 0:
-                if self.rng.random() < cfg.alarm_call_rate:
-                    self.signals.append({"x": c.x, "y": c.y, "kind": "alarm", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 12})
+                close = (
+                    cfg.help_call_enabled
+                    and cfg.knowledge_enabled
+                    and w.distance(c.x, c.y, flee_target.x, flee_target.y) < cfg.help_radius * 0.6
+                )
+                if self.rng.random() < cfg.alarm_call_rate or close:
+                    kind = "help" if close else "alarm"
+                    sg: dict[str, Any] = {"x": c.x, "y": c.y, "kind": kind, "sender": c.id, "clan_id": c.clan_id or None, "ttl": 12}
+                    if kind == "help":
+                        sg.update({"threat_x": round(flee_target.x, 2), "threat_y": round(flee_target.y, 2), "threat_clan": flee_target.clan_id or None})
+                    self.signals.append(sg)
                     c.signal_cooldown = 10
+            # §X Teaching: broadcast the freshest fact to clan-mates
+            if cfg.knowledge_enabled and c.signal_cooldown == 0 and self.rng.random() < cfg.knowledge_share_rate:
+                fact_msg = self._fact_to_share(c)
+                if fact_msg is not None:
+                    self.signals.append({"x": c.x, "y": c.y, "kind": "knowledge", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 12, "fact": fact_msg})
+                    c.signal_cooldown = 14
             # Recruitment: sated clan-mate near starving one calls toward remembered food (§Q Care)
-            if c.food_memory_x is not None and c.energy / cfg.energy_max > 0.6:
+            food_fact = self._fact_fresh(c, "food") if cfg.knowledge_enabled else None
+            remembered_food = (food_fact["x"], food_fact["y"]) if food_fact is not None else None
+            if remembered_food is not None and c.energy / cfg.energy_max > 0.6:
                 for other in w.query_radius(c.x, c.y, cfg.flock_radius):
                     if not isinstance(other, Creature) or other.id == c.id:
                         continue
@@ -2278,14 +2474,16 @@ class Simulation:
                     if other.energy / cfg.energy_max > cfg.starving_ratio:
                         continue  # only starving
                     if c.signal_cooldown == 0 and self.rng.random() < 0.08:
-                        self.signals.append({"x": c.x, "y": c.y, "kind": "food", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 12, "food_x": c.food_memory_x, "food_y": c.food_memory_y})
+                        self.signals.append({"x": c.x, "y": c.y, "kind": "food", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 12, "food_x": remembered_food[0], "food_y": remembered_food[1]})
                         c.signal_cooldown = 12
                         break
 
         # 3. Steer — priority: flee > hunt > home for night > food > wander
-        # §Q Hearing signals — clan-mates respond strongly
+        # §Q Hearing signals — clan-mates respond strongly; §X knowledge & help
         signal_food_target = None
         signal_alarm_target = None
+        signal_help_target = None
+        best_help_d = math.inf
         if cfg.communication_enabled and self.signals:
             best_food = math.inf
             best_alarm = math.inf
@@ -2305,10 +2503,42 @@ class Simulation:
                     if df < best_food:
                         best_food = df
                         signal_food_target = (fx, fy)
+                elif sg["kind"] == "knowledge" and cfg.knowledge_enabled:
+                    self._hear_fact(c, sg.get("fact"))
+                    fact_kind = (sg.get("fact") or {}).get("kind")
+                    f = (sg.get("fact") or {})
+                    if (
+                        fact_kind == "food"
+                        and c.status in ("hungry", "starving")
+                        and signal_food_target is None
+                    ):
+                        df = w.distance(c.x, c.y, f.get("x", sg["x"]), f.get("y", sg["y"]))
+                        if df < best_food:
+                            best_food = df
+                            signal_food_target = (f.get("x", sg["x"]), f.get("y", sg["y"]))
+                elif sg["kind"] == "help" and cfg.help_call_enabled and is_kin:
+                    # §X Mobbing: rally to the defender's aid — warriors first,
+                    # the peaceful lag behind, high castes only when bold.
+                    rank = YIELD_RANK.get(c.caste, 3)
+                    if rank >= 5 and c.trait != "bold":
+                        continue
+                    if c.trait == "peaceful" and self.rng.random() < 0.7:
+                        continue
+                    if not c.is_predator and not c.is_herbivore and d < best_help_d:
+                        best_help_d = d
+                        signal_help_target = (sg.get("threat_x", sg["x"]), sg.get("threat_y", sg["y"]))
                 elif sg["kind"] == "alarm" and flee_target is None:
                     if d < best_alarm:
                         best_alarm = d
                         signal_alarm_target = sg
+        # §X Danger zones: remembered predator sightings are avoided on sight of memory
+        danger_avoid_target = None
+        if cfg.knowledge_enabled and flee_target is None and c.status != "":
+            danger_fact = self._fact_fresh(c, "danger")
+            if danger_fact is not None and "x" in danger_fact:
+                dd = w.distance(c.x, c.y, danger_fact["x"], danger_fact["y"])
+                if dd < cfg.fear_radius * 1.5:
+                    danger_avoid_target = (danger_fact["x"], danger_fact["y"])
         if flee_target is not None:
             # Prey flees directly away from predator (with extra urgency when starving)
             dx, dy = w.delta(c.x, c.y, flee_target.x, flee_target.y)
@@ -2322,6 +2552,20 @@ class Simulation:
             desired = math.atan2(dy, dx)
             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
             c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
+        elif signal_help_target is not None:
+            # §X Mobbing: converge on the attacker threatening a clan-mate
+            hx, hy = signal_help_target
+            dx, dy = w.delta(hx, hy, c.x, c.y)
+            desired = math.atan2(dy, dx)
+            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+            c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
+        elif danger_avoid_target is not None:
+            # §X steer away from a remembered danger zone
+            gx, gy = danger_avoid_target
+            dx, dy = w.delta(c.x, c.y, gx, gy)
+            desired = math.atan2(dy, dx)
+            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+            c.angle += max(-cfg.steer_turn * 0.6, min(cfg.steer_turn * 0.6, diff))
         elif hunt_target is not None:
             dx, dy = w.delta(hunt_target.x, hunt_target.y, c.x, c.y)
             desired = math.atan2(dy, dx)
@@ -2522,6 +2766,8 @@ class Simulation:
             home = self._house_for(c, houses)
             if self._inside_house(c, home) and self._claim_bed(home):
                 c.indoors = True
+                if cfg.knowledge_enabled:
+                    self._learn(c, "safe", home.x, home.y)  # §X: shelter from the rain
 
         # 6. Metabolism, sickness and mortality. §R chill builds when cold & wet
         c.energy -= cfg.energy_decay_per_tick

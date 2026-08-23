@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
 
+interface ClanKnowledge {
+  enemy_clans?: number[]
+  danger_zones?: { x: number; y: number; conf: number }[]
+  food_spots?: { x: number; y: number; conf: number }[]
+  members_with_home_knowledge?: number
+}
+
 interface ClanInfo {
   id: number
   name: string
@@ -16,9 +23,10 @@ interface ClanInfo {
   specialization?: { warrior: number; farmer: number; scavenger: number } | null
   culture?: string | null
   culture_id?: number | null
+  knowledge?: ClanKnowledge | null
 }
 
-export default function ClanPanel({ onSelectClan }: { onSelectClan?: (id: number) => void }) {
+export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelectClan?: (id: number) => void; onSelectCreature?: (id: number) => void }) {
   const [clans, setClans] = useState<ClanInfo[]>([])
   const [tick, setTick] = useState(0)
 
@@ -57,8 +65,20 @@ export default function ClanPanel({ onSelectClan }: { onSelectClan?: (id: number
               #{c.id} · pop <b>{c.population}</b> · {c.house ? (c.house.is_ruin ? 'ruins' : `house ${Math.round(c.house.x)},${Math.round(c.house.y)}`) : 'homeless'} · war {c.war_wins}W/{c.war_losses}L
             </div>
             <div className="chip">
-              leader #{c.leader_id ?? '—'} · founder #{c.founder_id} · born tick {c.born_tick}
+              leader{' '}
+              <button className="chronicle-name" onClick={(e) => { e.stopPropagation(); c.leader_id != null && onSelectCreature?.(c.leader_id) }} title="show leader profile">#{c.leader_id ?? '—'}</button>
+              {' · '}founder{' '}
+              <button className="chronicle-name" onClick={(e) => { e.stopPropagation(); onSelectCreature?.(c.founder_id) }} title="show founder profile">#{c.founder_id}</button>
+              {' · '}born tick {c.born_tick}
             </div>
+            {c.knowledge && (c.knowledge.enemy_clans?.length || c.knowledge.danger_zones?.length || c.knowledge.food_spots?.length) ? (
+              <div className="chip" title="Clan memory — the union of what members remember: enemy clans that struck them, danger zones (predator sightings), known food spots">
+                🧠 remembers:{' '}
+                {c.knowledge.enemy_clans?.length ? `enemies ${c.knowledge.enemy_clans.map((id) => '#' + id).join(' ')} · ` : ''}
+                {c.knowledge.danger_zones?.length ? `⚠ ${c.knowledge.danger_zones.length} · ` : ''}
+                {c.knowledge.food_spots?.length ? `🍃 ${c.knowledge.food_spots.length}` : ''}
+              </div>
+            ) : null}
             {c.specialization && (
               <div className="chip" title="Clan specialization drifts over generations — warrior (war), farmer (harvest), scavenger (corpse) — totem biases start, environment + history drift it">
                 <span style={{ color: '#f85149' }}>⚔ warrior {c.specialization.warrior.toFixed(2)}</span> · <span style={{ color: '#3fb950' }}>🌾 farmer {c.specialization.farmer.toFixed(2)}</span> · <span style={{ color: '#8b949e' }}>🦴 scavenger {c.specialization.scavenger.toFixed(2)}</span>

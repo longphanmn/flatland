@@ -79,7 +79,11 @@ export default function ClanDetails({ clanId, onClose, onSelectCreature }: { cla
         </header>
 
         <div className="chip" style={{ marginBottom: 8 }}>
-          Founder #{data.founder_id} · Leader #{data.leader_id ?? '—'} · Born tick {data.born_tick} · Pop <b>{data.population}</b> · War {data.war_wins}W/{data.war_losses}L
+          Founder{' '}
+          <button className="chronicle-name" onClick={() => data.founder_id != null && onSelectCreature?.(data.founder_id)} title="show founder profile">#{data.founder_id ?? '—'}</button>
+          {' · '}Leader{' '}
+          <button className="chronicle-name" onClick={() => data.leader_id != null && onSelectCreature?.(data.leader_id)} title="show leader profile">#{data.leader_id ?? '—'}</button>
+          {' · '}Born tick {data.born_tick} · Pop <b>{data.population}</b> · War {data.war_wins}W/{data.war_losses}L
           {data.house ? ` · House ${Math.round(data.house.x)},${Math.round(data.house.y)}` : ' · Homeless'}
           {data.territory_radius ? ` · Territory r${data.territory_radius}` : ''}
         </div>

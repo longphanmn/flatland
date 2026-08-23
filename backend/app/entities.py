@@ -131,9 +131,10 @@ class Creature(Entity):
     meals: int = 0
     status: str = ""  # "" | "hungry" | "starving"
     chill: float = 0.0  # §R: cold built when unsheltered in rain/storm/winter night; threshold → sick
-    food_memory_x: float | None = None  # §Q: last seen food position
-    food_memory_y: float | None = None
-    food_memory_tick: int = 0  # when memory was stored
+    facts: dict = field(default_factory=dict)
+    # §X knowledge set: "food"/"danger" -> {"x","y","tick","conf"},
+    # "safe" -> {"x","y","tick"}, "enemies" -> {clan_id: {"tick","conf"}}.
+    # Facts decay after knowledge_ttl; shared facts arrive with halved confidence.
     signal_cooldown: int = 0  # ticks until next call allowed
     trait: str | None = None  # §S genetic trait: greedy/peaceful/paranoid/bold or None
     give_ups: dict = field(default_factory=dict)  # meal id -> tick abandoned (behind rock/wall)

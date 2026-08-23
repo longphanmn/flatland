@@ -147,7 +147,16 @@ All laws are in `backend/app/config.py` and `protocol.py:GodLaws`. Presets: `sus
 | `signal_radius` | 3–40 | 12 | heard within this range |
 | `food_call_rate` | 0–1 | 0.08 | well-fed finds food → calls with this chance/tick |
 | `alarm_call_rate` | 0–1 | 0.12 | sees predator → alarm call chance/tick |
-| `food_memory_ttl` | 20–5000 | 300 | ticks a creature remembers last food position |
+## Communication II — knowledge, teaching & mobbing (§X)
+
+| Law | Range | Default | Hint |
+|-----|-------|---------|------|
+| `knowledge_enabled` | bool | true | creatures learn food spots, danger zones, enemy clans and safe homes from experience; the clan remembers |
+| `knowledge_ttl` | 20–100000 | 600 | ticks a fact stays in memory before it fades |
+| `knowledge_share_rate` | 0–1 | 0.05 | chance/tick to broadcast the freshest fact to clan-mates — rumors arrive at half confidence per hop |
+| `help_call_enabled` | bool | true | an attacked creature calls its clan; warriors rally first and mob the attacker |
+| `help_radius` | 2–60 | 12 | clan-mates rally within this range; defenders near the fight soften its blows |
+| `defense_weight` | 0–5 | 0.5 | damage reduction per defender mobbing the attacker |
 
 ## Rebellion, Culture, Genetics, Wildfire
 

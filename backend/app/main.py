@@ -207,7 +207,12 @@ LAW_FIELDS = (
     "signal_radius",
     "food_call_rate",
     "alarm_call_rate",
-    "food_memory_ttl",
+    "knowledge_enabled",
+    "knowledge_ttl",
+    "knowledge_share_rate",
+    "help_call_enabled",
+    "help_radius",
+    "defense_weight",
     "age_enabled",
     "age_length",
     "culture_enabled",
@@ -645,6 +650,8 @@ async def get_clans() -> dict:
     for ent in RT.sim.world.entities.values():
         if ent.kind == "house" and getattr(ent, "clan_id", 0):
             houses_by_clan[ent.clan_id] = {"x": ent.x, "y": ent.y, "size": getattr(ent, "size", 0), "is_ruin": getattr(ent, "is_ruin", False)}
+    # §X clan memory computed once for all clans
+    knowledge_by_clan = RT.sim.clan_knowledge() if RT.sim.config.knowledge_enabled else {}
     for cid, info in RT.sim.clans.items():
         pop = sum(1 for c in RT.sim.world.creatures() if c.clan_id == cid)
         house = houses_by_clan.get(cid)
@@ -661,10 +668,11 @@ async def get_clans() -> dict:
             "war_wins": war_wins.get(cid, 0),
             "war_losses": war_losses.get(cid, 0),
             "territory_radius": RT.sim.config.territory_radius if RT.sim.config.territory_enabled else None,
-            "specialization": info.get("specialization"),
-            "culture": info.get("culture"),
-            "culture_id": info.get("culture_id"),
-        })
+        "specialization": info.get("specialization"),
+        "culture": info.get("culture"),
+        "culture_id": info.get("culture_id"),
+        "knowledge": knowledge_by_clan.get(cid),
+    })
     # sort by population desc
     clans.sort(key=lambda c: (-c["population"], c["id"]))
     return {"clans": clans, "tick": RT.sim.tick}

@@ -179,6 +179,7 @@ def test_flocking_is_double_edged():
         cohesion_weight=1.5, separation_weight=1.0, alignment_weight=0.5, flock_radius=6,
         disease_enabled=True, disease_rate=0.3, disease_radius=4.0, recovery_rate=0.0, disease_outbreak_rate=0.0,
         energy_decay_per_tick=0.02,
+        knowledge_enabled=False, help_call_enabled=False,  # §X avoidance would change these trajectories
     )
     # Two worlds: one flocking, one not — same seed, same initial positions
     def world(flock: bool):

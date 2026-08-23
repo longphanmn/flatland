@@ -210,7 +210,14 @@ class GodLaws(BaseModel):
     signal_radius: Optional[float] = Field(None, ge=3, le=40)
     food_call_rate: Optional[float] = Field(None, ge=0, le=1)
     alarm_call_rate: Optional[float] = Field(None, ge=0, le=1)
-    food_memory_ttl: Optional[int] = Field(None, ge=20, le=5000)
+
+    # Communication II — knowledge, teaching & mobbing (§X)
+    knowledge_enabled: Optional[bool] = None
+    knowledge_ttl: Optional[int] = Field(None, ge=20, le=100000)
+    knowledge_share_rate: Optional[float] = Field(None, ge=0, le=1)
+    help_call_enabled: Optional[bool] = None
+    help_radius: Optional[float] = Field(None, ge=2, le=60)
+    defense_weight: Optional[float] = Field(None, ge=0, le=5)
     age_enabled: Optional[bool] = None
     age_length: Optional[int] = Field(None, ge=100, le=1000000)
     culture_enabled: Optional[bool] = None

@@ -85,7 +85,14 @@ class Config:
     signal_radius: float = 12.0  # heard within this range
     food_call_rate: float = 0.08  # well-fed finds food → calls with this chance/tick
     alarm_call_rate: float = 0.12  # sees predator → alarm call chance/tick
-    food_memory_ttl: int = 300  # ticks a creature remembers last food position
+
+    # Communication II — knowledge, teaching & mobbing (§X)
+    knowledge_enabled: bool = True  # creatures learn/remember/share facts
+    knowledge_ttl: int = 600  # ticks a fact stays in memory before it fades
+    knowledge_share_rate: float = 0.05  # chance/tick to broadcast freshest fact to clan
+    help_call_enabled: bool = True  # attacked creatures call their clan to mob the attacker
+    help_radius: float = 12.0  # clan-mates rally within this range; defenders soften blows
+    defense_weight: float = 0.5  # damage reduction per defender mobbing the attacker
 
     # Corpses & scavenging
     corpses_enabled: bool = True

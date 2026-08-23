@@ -262,7 +262,14 @@ export interface GodLaws {
   signal_radius?: number
   food_call_rate?: number
   alarm_call_rate?: number
-  food_memory_ttl?: number
+
+  // Communication II — knowledge, teaching & mobbing (§X)
+  knowledge_enabled?: boolean
+  knowledge_ttl?: number
+  knowledge_share_rate?: number
+  help_call_enabled?: boolean
+  help_radius?: number
+  defense_weight?: number
   age_enabled?: boolean
   age_length?: number
   culture_enabled?: boolean

@@ -106,7 +106,11 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'signal_radius', label: 'Signal radius', min: 3, max: 40, step: 1, group: 'Communication' },
   { key: 'food_call_rate', label: 'Food call rate', min: 0, max: 1, step: 0.01, group: 'Communication' },
   { key: 'alarm_call_rate', label: 'Alarm call rate', min: 0, max: 1, step: 0.01, group: 'Communication' },
-  { key: 'food_memory_ttl', label: 'Food memory TTL', min: 20, max: 5000, step: 10, group: 'Communication' },
+  // Communication II — knowledge, teaching & mobbing (§X)
+  { key: 'knowledge_ttl', label: 'Knowledge TTL', min: 20, max: 100000, step: 10, group: 'Communication II' },
+  { key: 'knowledge_share_rate', label: 'Share rate / tick', min: 0, max: 1, step: 0.01, group: 'Communication II' },
+  { key: 'help_radius', label: 'Help radius', min: 2, max: 60, step: 1, group: 'Communication II' },
+  { key: 'defense_weight', label: 'Defense weight', min: 0, max: 5, step: 0.05, group: 'Communication II' },
   // Rebellion — clan schism (§S)
   { key: 'schism_threshold', label: 'Schism threshold', min: 0, max: 1, step: 0.05, group: 'Rebellion' },
   { key: 'schism_min_pop', label: 'Schism min pop', min: 2, max: 100, step: 1, group: 'Rebellion' },
@@ -148,6 +152,7 @@ const GROUP_ORDER = [
   'Territory',
   'Clan',
   'Communication',
+  'Communication II',
   'Rebellion',
   'Interaction',
   'Predation',
@@ -203,7 +208,10 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   signal_radius: 'heard within this range (12) — clan-mates respond strongly, strangers weakly',
   food_call_rate: 'well-fed finds food → calls with this chance/tick (0.08)',
   alarm_call_rate: 'sees predator → alarm call chance/tick (0.12)',
-  food_memory_ttl: 'ticks a creature remembers last food position (300)',
+  knowledge_ttl: 'ticks a learned fact stays in memory before it fades (600)',
+  knowledge_share_rate: 'chance/tick a creature broadcasts its freshest fact to clan-mates (0.05) — rumors arrive at half confidence',
+  help_radius: 'clan-mates rally to a help call within this range (12); defenders near the fight soften its blows',
+  defense_weight: 'damage reduction per defender mobbing the attacker (0.5 → 2 defenders = 50% softer)',
   winter_food_mult: 'winter bounty × winter_food_mult (0.7 gentle, 0.5 harsh, 0.3 extinction) — lean season target = food_count × winter_food_mult',
   schism_threshold: 'fraction unhappy (starving/homeless) to split (0.4)',
   schism_min_pop: 'minimum clan population to consider schism (4)',
@@ -386,6 +394,22 @@ export default function GodPanel({ open, onClose }: Props) {
                       <option value="true">yes</option><option value="false">no</option>
                     </select>
                   </label>
+                )}
+                {group === 'Communication II' && (
+                  <>
+                    <label className="god-row">
+                      <span title="creatures learn facts from experience (food/danger/enemies/safe homes), share them as rumors at half confidence; the clan remembers">Knowledge</span>
+                      <select value={String(laws.knowledge_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, knowledge_enabled: e.target.value === 'true' }))}>
+                        <option value="true">yes</option><option value="false">no</option>
+                      </select>
+                    </label>
+                    <label className="god-row">
+                      <span title="an attacked creature calls its clan; warriors rally first and mob the attacker, defenders soften its blows">Help calls</span>
+                      <select value={String(laws.help_call_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, help_call_enabled: e.target.value === 'true' }))}>
+                        <option value="true">yes</option><option value="false">no</option>
+                      </select>
+                    </label>
+                  </>
                 )}
                 {group === 'Wildfire & Disasters' && (
                   <>

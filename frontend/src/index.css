@@ -364,6 +364,36 @@ body {
   padding-top: 8px;
 }
 
+/* §Y collapsible blocks — header + chevron, state persisted in localStorage */
+.collapsible {
+  margin: 4px 0;
+}
+.collapsible-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+  color: #e6edf3;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  padding: 6px 2px;
+  cursor: pointer;
+}
+.collapsible-head:hover {
+  color: #fff;
+}
+.collapsible-chevron {
+  color: #8b949e;
+  flex: none;
+}
+.collapsible-body {
+  padding-top: 4px;
+}
+
 .insp-events {
   margin: 0;
   padding: 0;

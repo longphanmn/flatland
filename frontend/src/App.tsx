@@ -4,6 +4,7 @@ import CasteChart from './render/CasteChart'
 import TrophicChart from './render/TrophicChart'
 import ClanPanel from './render/ClanPanel'
 import PlotsPanel from './render/PlotsPanel'
+import Collapsible from './render/Collapsible'
 import GodPanel from './god/GodPanel'
 import Wiki from './wiki/Wiki'
 import ClanDetails from './clan/ClanDetails'
@@ -63,6 +64,12 @@ export default function App() {
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null)
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [noMoreHistory, setNoMoreHistory] = useState(false)
+
+  /** §Y clan display name from live state, falling back to bare #id. */
+  const clanLabel = (id?: number | null): string => {
+    if (id == null) return '#?'
+    return state?.clans?.[String(id)]?.name ?? `#${id}`
+  }
 
   const stateRef = useRef<StateMessage | null>(null)
   const sockRef = useRef<WorldSocket | null>(null)
@@ -555,8 +562,8 @@ export default function App() {
                 <TrophicChart history={popHist} showLegend={false} />
               </>
             )}
-            {sheetTab === 'clans' && <ClanPanel onSelectClan={setSelectedClanId} />}
-            {sheetTab === 'plots' && <PlotsPanel />}
+            {sheetTab === 'clans' && <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />}
+            {sheetTab === 'plots' && <PlotsPanel onSelectClan={setSelectedClanId} />}
             {sheetTab === 'chronicle' && (
               <div className="chronicle" style={{ background:'transparent', border:'none', padding:0, maxHeight:'none' }}>
                 <h3 className="chronicle-title">Chronicle — History</h3>
@@ -657,7 +664,9 @@ export default function App() {
                 </span>
               )}
             </h3>
-            <CasteChart history={popHist} showLegend={false} />
+            <Collapsible id="overview-caste" title="Caste population" hint="Stacked per-caste population over recent ticks">
+              <CasteChart history={popHist} showLegend={false} />
+            </Collapsible>
             <div className="info-spark" title="alive creatures, recent ticks (was at bottom left, now in info box)">
               <div style={{ fontSize: '11px', color: '#8b949e', marginBottom: 2 }}>Alive — recent ticks</div>
               <span className="spark-wrap" title="alive creatures, recent ticks">
@@ -675,16 +684,19 @@ export default function App() {
                 </svg>
               </span>
             </div>
-            <h4
-              style={{ margin: '10px 0 4px', fontSize: '0.85em', opacity: 0.8 }}
-              title="Trophic pyramid: stacked history of Food (plants, variant colors) → Herbivore (wild grazers, beast_ratio) → Predator (carnivores). Shows Lotka-Volterra oscillation: plants feed herbivores, herbivores feed predators. Spikes mean blooms or hunts."
+            <Collapsible
+              id="overview-trophic"
+              title={<>Trophic pyramid — Food · Herbivore · Predator <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span></>}
+              hint="Trophic pyramid: stacked history of Food (plants, variant colors) → Herbivore (wild grazers, beast_ratio) → Predator (carnivores). Shows Lotka-Volterra oscillation."
             >
-              Trophic pyramid — Food · Herbivore · Predator{' '}
-              <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span>
-            </h4>
-            <TrophicChart history={popHist} showLegend={false} />
-            <ClanPanel onSelectClan={setSelectedClanId} />
-            <PlotsPanel />
+              <TrophicChart history={popHist} showLegend={false} />
+            </Collapsible>
+            <Collapsible id="overview-clans" title="Clans">
+              <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
+            </Collapsible>
+            <Collapsible id="overview-plots" title="Plots" defaultOpen={true}>
+              <PlotsPanel onSelectClan={setSelectedClanId} />
+            </Collapsible>
           </aside>
           <aside className="chronicle">
             <h3 className="chronicle-title" title="Event history — births, deaths, wars, plagues. Newest first.">
@@ -708,6 +720,7 @@ export default function App() {
                   : 'load older'}
             </button>
           )}
+          <Collapsible id="chronicle-feed" title="Event feed" hint="Newest first — deaths, wars, alliances, births">
           {(() => { const filtered = log.filter((ev) => ev.type !== 'bloom'); if (filtered.length === 0) return <p className="chip">no major events yet — blooms hidden</p>; return (<ul>{filtered.map((ev) => {
                 const key = `${ev.tick}:${ev.entity_id}:${ev.type}`
                 if (ev.type === 'birth') {
@@ -765,7 +778,7 @@ export default function App() {
                   const p = (ev.payload ?? {}) as { a?: number; b?: number; score?: number }
                   return (
                     <li key={key} className={ev.type === 'alliance' ? 'ev-alliance' : 'ev-rivalry'} style={{ color: ev.type === 'alliance' ? '#3fb950' : '#d29922' }}>
-                      Clans #{p.a} & #{p.b} {ev.type} (score {p.score}) at tick {ev.tick}
+                      Clans <button className="chronicle-name" onClick={() => p.a != null && setSelectedClanId(p.a)} title="show clan">{clanLabel(p.a)}</button> & <button className="chronicle-name" onClick={() => p.b != null && setSelectedClanId(p.b)} title="show clan">{clanLabel(p.b)}</button> {ev.type} (score {p.score}) at tick {ev.tick}
                     </li>
                   )
                 }
@@ -773,7 +786,7 @@ export default function App() {
                   const p = (ev.payload ?? {}) as { parent?: number; new_clan?: number; parent_name?: string; new_name?: string; members?: number[] }
                   return (
                     <li key={key} className="ev-schism" style={{ color: '#e3b341' }}>
-                      schism: {p.parent_name ?? `#${p.parent}`} → {p.new_name ?? `#${p.new_clan}`} ({(p.members as number[])?.length ?? 0} broke away) at tick {ev.tick}
+                      schism: <button className="chronicle-name" onClick={() => p.parent != null && setSelectedClanId(p.parent)} title="show parent clan">{p.parent_name ?? clanLabel(p.parent)}</button> → <button className="chronicle-name" onClick={() => p.new_clan != null && setSelectedClanId(p.new_clan)} title="show new clan">{p.new_name ?? clanLabel(p.new_clan)}</button> ({(p.members as number[])?.length ?? 0} broke away) at tick {ev.tick}
                     </li>
                   )
                 }
@@ -797,7 +810,7 @@ export default function App() {
                   const p = (ev.payload ?? {}) as { winner_clan?: number; loser_clan?: number; house_id?: number }
                   return (
                     <li key={key} className="ev-bloom" style={{ color: '#ff7b72' }}>
-                      conquest: clan {p.winner_clan} seized house {p.house_id} from clan {p.loser_clan} at tick {ev.tick}
+                      conquest: clan <button className="chronicle-name" onClick={() => p.winner_clan != null && setSelectedClanId(p.winner_clan)} title="show winner clan">{clanLabel(p.winner_clan)}</button> seized house {p.house_id} from clan <button className="chronicle-name" onClick={() => p.loser_clan != null && setSelectedClanId(p.loser_clan)} title="show loser clan">{clanLabel(p.loser_clan)}</button> at tick {ev.tick}
                     </li>
                   )
                 }
@@ -832,6 +845,7 @@ export default function App() {
               })}
             </ul>)
           })()}
+          </Collapsible>
         </aside>
         </div>
       )}
