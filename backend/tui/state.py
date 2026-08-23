@@ -162,8 +162,8 @@ class HistoryEvent:
 class HelloMessage:
     seed: int = 0
     tick_rate: float = 10.0
-    width: float = 200.0
-    height: float = 200.0
+    width: float = 400.0
+    height: float = 300.0
     boundary: str = "wrap"
 
     @classmethod
@@ -171,8 +171,8 @@ class HelloMessage:
         return cls(
             seed=_i(d, "seed"),
             tick_rate=_f(d, "tick_rate", 10.0),
-            width=_f(d, "width", 200.0),
-            height=_f(d, "height", 200.0),
+            width=_f(d, "width", 400.0),
+            height=_f(d, "height", 300.0),
             boundary=_s(d, "boundary", "wrap"),
         )
 
@@ -181,8 +181,8 @@ class HelloMessage:
 class StateMessage:
     tick: int = 0
     seed: int = 0
-    width: float = 200.0
-    height: float = 200.0
+    width: float = 400.0
+    height: float = 300.0
     boundary: str = "wrap"
     population: dict[str, int] = field(default_factory=dict)
     entities: list[EntityState] = field(default_factory=list)
@@ -209,8 +209,8 @@ class StateMessage:
         return cls(
             tick=_i(d, "tick"),
             seed=_i(d, "seed"),
-            width=_f(d, "width", 200.0),
-            height=_f(d, "height", 200.0),
+            width=_f(d, "width", 400.0),
+            height=_f(d, "height", 300.0),
             boundary=_s(d, "boundary", "wrap"),
             population=d.get("population") or {},
             entities=[EntityState.from_dict(e) for e in d.get("entities") or []],

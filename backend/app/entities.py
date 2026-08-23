@@ -138,6 +138,7 @@ class Creature(Entity):
     signal_cooldown: int = 0  # ticks until next call allowed
     trait: str | None = None  # §S genetic trait: greedy/peaceful/paranoid/bold or None
     give_ups: dict = field(default_factory=dict)  # meal id -> tick abandoned (behind rock/wall)
+    blocked_ticks: int = 0  # consecutive moves rebound by a house wall (wedge detector)
 
     def __post_init__(self) -> None:
         if not self.caste:

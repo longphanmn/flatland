@@ -11,9 +11,9 @@ def _env(name: str, cast, default):
 
 @dataclass(frozen=True)
 class Config:
-    # World geometry (grid units) — 200x200 = 4x the original 100x100 area
-    width: float = 200.0
-    height: float = 200.0
+    # World geometry (grid units) — 400x300 = 3x the original 200x200 area
+    width: float = 400.0
+    height: float = 300.0
     boundary: str = "wrap"  # "wrap" | "clamp"
 
     # Simulation
@@ -32,11 +32,11 @@ class Config:
     num_houses: int = -1
 
     # World generation densities (per grid unit²) and spawn jitter.
-    creature_density: float = 0.0013  # ~52 creatures on 200×200 map — at least 50 as requested
-    house_density: float = 0.0002  # ~8 houses for 50+ pop
+    creature_density: float = 0.0013  # ~156 creatures on the 400×300 map — at least 50 as requested
+    house_density: float = 0.0002  # ~24 houses for 150+ pop
     spawn_variance: float = 0.25  # ±25% around the density target
 
-    food_count: int = 70  # was 48 — 70 sustains 30d with §O variants + territory/totems (tested 30d alive 20)
+    food_count: int = 210  # was 70 on 200x200 — scales x3 with the 400x300 map (70 sustains ~52; tested 30d alive)
     # Plants & nutrient cycle (§H) + biodiversity (§O)
     plant_growth_rate: float = 0.05  # was 0.04 — a bit faster for winter
     plant_spread_rate: float = 0.006  # was 0.005
@@ -129,8 +129,8 @@ class Config:
     max_sides: int = 24  # sons stop gaining sides here (= Circle)
     birth_energy_cost: float = 20.0  # each parent pays (was 25)
     reproduction_cooldown: int = 200  # ticks both parents wait after a birth (was 300)
-    carrying_capacity: int = 80  # soft cap: fertility fades above it (was 60)
-    max_population: int = 140  # hard cap: no births beyond it (was 120)
+    carrying_capacity: int = -1  # soft cap: fertility fades above it; -1 => scale with map area (80 per 200x200)
+    max_population: int = -1  # hard cap: no births beyond it; -1 => scale with map area (140 per 200x200)
     euthanasia_threshold: float = 0.7  # irregularity at/below -> demotion, above -> consumed
 
     # Health & disease
@@ -208,6 +208,7 @@ class Config:
     house_min_size: float = 6.0
     house_max_size: float = 10.0
     door_clearance: float = 1.5  # door width = clearance * largest creature diameter
+    house_gap: float = 6.0  # min clear gap between house walls — keeps alleys passable so creatures never wedge between shelters
 
     # Chronicle
     history_max: int = 200  # death events kept in the chronicle
@@ -215,8 +216,8 @@ class Config:
     @classmethod
     def from_env(cls) -> "Config":
         return cls(
-            width=_env("FLATWORLD_WIDTH", float, 200.0),
-            height=_env("FLATWORLD_HEIGHT", float, 200.0),
+            width=_env("FLATWORLD_WIDTH", float, 400.0),
+            height=_env("FLATWORLD_HEIGHT", float, 300.0),
             boundary=_env("FLATWORLD_BOUNDARY", str, "wrap"),
             seed=_env("FLATWORLD_SEED", int, 42),
             tick_rate=_env("FLATWORLD_TICK_RATE", float, 10.0),
@@ -225,3 +226,21 @@ class Config:
     @property
     def tick_interval(self) -> float:
         return 1.0 / self.tick_rate if self.tick_rate > 0 else 0.1
+
+    # -1 sentinels resolve against map area so caps keep pace with density-scaled
+    # population (80 carrying / 140 hard cap on the classic 200x200 baseline).
+    @property
+    def area_scale(self) -> float:
+        return (self.width * self.height) / (200.0 * 200.0)
+
+    @property
+    def effective_carrying_capacity(self) -> int:
+        if self.carrying_capacity >= 0:
+            return self.carrying_capacity
+        return max(2, round(80 * self.area_scale))
+
+    @property
+    def effective_max_population(self) -> int:
+        if self.max_population >= 0:
+            return self.max_population
+        return max(2, round(140 * self.area_scale))

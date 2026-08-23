@@ -21,14 +21,14 @@ The world self-balances for 1000+ days at 400–500 head when tuned gentle.
 
 ## Defaults vs Presets
 
-- **Defaults** (what you get on fresh boot): `food_count=70`, `season_length=14400` (12 days), `house_capacity=12`, `winter_food_mult=0.5` (harsh). Survives ~48 days deterministic seed 42.
-- **Sustainable preset** (`POST /api/presets/sustainable?reset=true`): `food 70`, `winter 0.7` (soft lean), `carrying 450`/`max 550` (plateau not churn), `predation`/`war`/`disease` ON but gentle (bite/attack 40 wound not kill, pred ratio 0.03, outbreak 0.0001, recovery 0.025, poison 0), `drift 2.5`/`rivalry -80`/`trespass 0` (calm society). Apply via God panel → Presets.
+- **Defaults** (what you get on fresh boot): 400×300 map, `food_count=210`, `season_length=14400` (12 days), `house_capacity=12`, `winter_food_mult=0.5` (harsh). Survives ~48 days deterministic seed 42.
+- **Sustainable preset** (`POST /api/presets/sustainable?reset=true`): `food 270`, `winter 0.7` (soft lean), `carrying 1350`/`max 1650` (plateau not churn), `predation`/`war`/`disease` ON but gentle (bite/attack 40 wound not kill, pred ratio 0.03, outbreak 0.0001, recovery 0.025, poison 0), `drift 2.8`/`rivalry -85`/`trespass 0` (calm society). Apply via God panel → Presets.
 
 ## Presets
 
 - **sustainable** 🌿 — 1000-day gentle, rare war, wound not kill. One click 1000-day.
 - **chaos** 🔥 — famine, predators, wars, plagues, fires, schism. Stress test.
-- **extinction** 💀 — 30 food, 0.3 winter, high decay. Extinction in days.
+- **extinction** 💀 — 90 food, 0.3 winter, high decay. Extinction in days.
 
 Use: `curl -X POST localhost:8000/api/presets/sustainable?reset=true` or God panel buttons.
 """
@@ -221,8 +221,8 @@ LAW_HINTS_MD = {
     "sex_ratio": "probability a child is a son (polygons ascend; daughters are lines)",
     "mutation_rate": "chance a son’s side count deviates ±1 from inheritance (0.05)",
     "euthanasia_threshold": "irregular children at/above this are consumed at adulthood, below it demoted (0.7)",
-    "carrying_capacity": "above this population, fertility fades gradually (80)",
-    "max_population": "hard cap — no births beyond (140)",
+    "carrying_capacity": "above this population, fertility fades gradually (−1 scales with map area; 80 per 200×200)",
+    "max_population": "hard cap — no births beyond (−1 scales with map area; 140 per 200×200)",
     "house_capacity": "beds per house (8) — overflow sleeps outside and suffers exposure",
     "exposure_drain": "energy lost per tick outdoors in rain/storm/night (0.03)",
     "rest_recovery_mult": "health regen multiplier when sleeping indoors (2.0)",

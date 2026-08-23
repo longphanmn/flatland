@@ -625,11 +625,12 @@ class Simulation:
         cfg = self.config
         area = cfg.width * cfg.height
         base = area * cfg.house_density
+        carrying = cfg.effective_carrying_capacity
         # scale with carrying_capacity; default 80 → factor 1.0
-        factor = cfg.carrying_capacity / 80.0 if 80 else 1.0
+        factor = carrying / 80.0 if 80 else 1.0
         target = round(base * factor)
         # also ensure at least enough beds for ~60% of the carrying capacity
-        cap_based = round(cfg.carrying_capacity / max(1, cfg.house_capacity) * 0.6)
+        cap_based = round(carrying / max(1, cfg.house_capacity) * 0.6)
         target = max(target, cap_based)
         return max(1, target)
 
@@ -960,13 +961,19 @@ class Simulation:
         return max(0, round(total * share))
 
     def _house_overlaps(self, x: float, y: float, size: float) -> bool:
-        """Check if a house at x,y,size would overlap any existing house or rock."""
+        """Check if a house at x,y,size would overlap any existing house or rock.
+
+        Houses keep at least `house_gap` clear space between walls so the alley
+        between two shelters stays passable — creatures wedged in a tighter gap
+        block on a wall whichever way they turn.
+        """
+        cfg = self.config
         # check houses
         for e in self.world.entities.values():
             if isinstance(e, House) and not e.is_ruin:
                 # use world distance for wrap
                 dist = self.world.distance(x, y, e.x, e.y)
-                min_dist = (size + e.size) / 2 + 1.5  # 1.5 padding so doors have space
+                min_dist = size / 2 + e.size / 2 + max(cfg.house_gap, 1.5)
                 if dist < min_dist:
                     return True
         # check rocks
@@ -1915,12 +1922,14 @@ class Simulation:
         # live count
         live = [c for c in creatures if c.id in self.world.entities]
         pop = len(live)
-        if pop >= cfg.max_population:
+        max_pop = cfg.effective_max_population
+        carrying = cfg.effective_carrying_capacity
+        if pop >= max_pop:
             return
         room = 1.0  # fertility fades as the world crowds past carrying capacity
-        if pop > cfg.carrying_capacity:
-            gap = max(1.0, cfg.max_population - cfg.carrying_capacity)
-            room = max(0.0, 1.0 - (pop - cfg.carrying_capacity) / gap)
+        if pop > carrying:
+            gap = max(1.0, max_pop - carrying)
+            room = max(0.0, 1.0 - (pop - carrying) / gap)
 
         def eligible(c: Creature) -> bool:
             return (
@@ -1961,7 +1970,7 @@ class Simulation:
             if self.rng.random() >= min(rate * fert, 1.0):
                 continue
             self._birth(mother, father)
-            if len(self.world.creatures()) >= cfg.max_population:
+            if len(self.world.creatures()) >= max_pop:
                 break
 
     def _birth(self, mother: Creature, father: Creature) -> None:
@@ -2673,6 +2682,7 @@ class Simulation:
         # 4. House walls block movement except through the doorway.
         # The doorway is too small for the Carnivore caste (§L refuge) — predators see a closed wall.
         mdx, mdy = w.delta(c.x, c.y, px, py)
+        was_blocked = False
         if math.hypot(mdx, mdy) <= step_len * 1.5:  # skip wrap teleports
             for h in houses:
                 assert isinstance(h, House)
@@ -2682,11 +2692,20 @@ class Simulation:
                     else _path_crosses_wall(px, py, px + mdx, py + mdy, h)
                 )
                 if crosses:
+                    was_blocked = True
                     c.x, c.y = w.normalize(px, py)
-                    c.angle += math.pi + self.rng.uniform(-0.4, 0.4)
+                    c.blocked_ticks += 1
+                    if c.blocked_ticks >= 3:
+                        # wedged (narrow alley/door shadow): a plain about-face just
+                        # bounces back — try a fresh random heading to break out
+                        c.angle = self.rng.uniform(0, 2 * math.pi)
+                    else:
+                        c.angle += math.pi + self.rng.uniform(-0.4, 0.4)
                     if target is not None and cfg.food_giveup_ticks > 0:
                         self._give_up_on(c, target)  # meal sits behind a wall
                     break
+        if not was_blocked:
+            c.blocked_ticks = 0
         # Predator refuge safety net: even if a predator spawns inside a house, push it out
         if c.is_predator and houses:
             for h in houses:

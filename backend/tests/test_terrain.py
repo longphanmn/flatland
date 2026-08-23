@@ -23,7 +23,7 @@ def test_terrain_generated_with_explicit_counts():
     assert len(s.fertile) == 3
     assert len(s.rocks) == 2
     for p in s.fertile + s.rocks:
-        assert 0 <= p["x"] <= 200 and 0 <= p["y"] <= 200
+        assert 0 <= p["x"] <= s.config.width and 0 <= p["y"] <= s.config.height
 
 
 def test_auto_terrain_scales_with_area():
