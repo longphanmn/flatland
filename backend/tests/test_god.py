@@ -31,9 +31,9 @@ def client():
 
 def test_get_laws_returns_current(client):
     laws = client.get("/api/laws").json()
-    assert laws["food_count"] == Config().food_count
+    assert laws["food_count"] == Config.from_env().food_count
     assert laws["boundary"] == "wrap"
-    assert laws["energy_decay_per_tick"] == pytest.approx(Config().energy_decay_per_tick)
+    assert laws["energy_decay_per_tick"] == pytest.approx(Config.from_env().energy_decay_per_tick)
 
 
 def test_god_declares_famine_and_world_follows(client):

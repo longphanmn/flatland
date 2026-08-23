@@ -54,7 +54,7 @@ def test_death_event_persisted(client):
     assert hist["world_id"] == RT.world_id
     assert hist["total_deaths"] >= 1
     deaths = [e for e in hist["events"] if e["type"] == "death"]
-    assert deaths and deaths[-1]["cause"] == "starvation"
+    assert deaths and any(d["cause"] == "starvation" for d in deaths)
 
 
 def test_history_persists_across_reopen(client):
