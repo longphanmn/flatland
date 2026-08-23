@@ -125,21 +125,24 @@ export default function App() {
       hideTimer = window.setTimeout(() => setTooltip(null), 120) as unknown as number
     }
     const onEnter = (e: Event) => {
-      const t = e.target as HTMLElement
-      const chip = t.closest('[title], [data-hint]') as HTMLElement | null
+      const raw = e.target as HTMLElement | null
+      if (!raw || !(raw instanceof Element)) return
+      const chip = raw.closest('[title], [data-hint]') as HTMLElement | null
       if (!chip) return
       const rect = chip.getBoundingClientRect()
       show(chip, rect.left + rect.width / 2, rect.top)
     }
     const onLeave = (e: Event) => {
-      const t = e.target as HTMLElement
-      const chip = t.closest('[title], [data-hint]') as HTMLElement | null
+      const raw = e.target as HTMLElement | null
+      if (!raw || !(raw instanceof Element)) return
+      const chip = raw.closest('[title], [data-hint]') as HTMLElement | null
       if (chip) hide(chip)
       else setTooltip(null)
     }
     const onClick = (e: Event) => {
-      const t = e.target as HTMLElement
-      const chip = t.closest('[title], [data-hint]') as HTMLElement | null
+      const raw = e.target as HTMLElement | null
+      if (!raw || !(raw instanceof Element)) return
+      const chip = raw.closest('[title], [data-hint]') as HTMLElement | null
       if (chip) {
         const txt = chip.getAttribute('title') || chip.getAttribute('data-hint') || chip.getAttribute('data-title')
         if (txt) {
@@ -155,7 +158,9 @@ export default function App() {
     document.addEventListener('mouseleave', onLeave, true)
     document.addEventListener('mousemove', (e: MouseEvent) => {
       if (tooltip) {
-        const t = (e.target as HTMLElement).closest('[title], [data-hint]') as HTMLElement | null
+        const raw = e.target as HTMLElement | null
+        if (!raw || !(raw instanceof Element)) return
+        const t = raw.closest('[title], [data-hint]') as HTMLElement | null
         if (t) {
           const rect = t.getBoundingClientRect()
           setTooltip((prev) => prev ? { ...prev, x: rect.left + rect.width / 2, y: rect.top } : prev)

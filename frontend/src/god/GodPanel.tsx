@@ -226,6 +226,9 @@ export default function GodPanel({ open, onClose }: Props) {
       .finally(() => setLoading(false))
   }, [open])
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
+  const [openHint, setOpenHint] = useState<string | null>(null)
+
   if (!open) return null
 
   const set = (key: NumberLawKey, raw: string) =>
@@ -258,8 +261,6 @@ export default function GodPanel({ open, onClose }: Props) {
   }
   const apply = () => postLaws(false)
   const save = () => postLaws(true)
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
-  const [openHint, setOpenHint] = useState<string | null>(null)
   const applyPreset = async (name: string, reset: boolean) => {
     setError(null)
     setSaved(false)
