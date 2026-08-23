@@ -165,10 +165,18 @@ class Database:
         self, world_id: int, since_id: int = 0, limit: int = 500
     ) -> list[dict[str, Any]]:
         with self._lock:
-            rows = self._require().execute(
-                "SELECT * FROM events WHERE world_id=? AND id>? ORDER BY id LIMIT ?",
-                (world_id, since_id, limit),
-            ).fetchall()
+            if since_id:
+                # load older: ids < since_id, newest of the older first
+                rows = self._require().execute(
+                    "SELECT * FROM events WHERE world_id=? AND id<? ORDER BY id DESC LIMIT ?",
+                    (world_id, since_id, limit),
+                ).fetchall()
+            else:
+                # initial: newest first
+                rows = self._require().execute(
+                    "SELECT * FROM events WHERE world_id=? ORDER BY id DESC LIMIT ?",
+                    (world_id, limit),
+                ).fetchall()
         return [
             {
                 "id": r["id"],

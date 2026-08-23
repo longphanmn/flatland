@@ -105,31 +105,41 @@ WIKI_TEMPLATE = """<!doctype html>
 <title>Flatland — Wiki</title>
 <style>
 :root{{color-scheme:dark}}
-body{{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;color:#c9d1d9;background:#0d1117}}
-nav{{position:fixed;top:0;left:0;width:260px;height:100vh;overflow:auto;background:#010409;border-right:1px solid #21262d;padding:16px}}
-main{{margin-left:260px;padding:24px;max-width:960px}}
+*{{box-sizing:border-box}}
+body{{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;color:#c9d1d9;background:#0d1117;line-height:1.6}}
 a{{color:#58a6ff;text-decoration:none}} a:hover{{text-decoration:underline}}
-pre{{background:#161b22;padding:12px;overflow:auto;border-radius:6px;border:1px solid #30363d}}
-code{{background:#161b22;padding:1px 4px;border-radius:3px;font-size:0.9em;border:1px solid #21262d}}
-table{{border-collapse:collapse;width:100%;margin:12px 0}} th,td{{border:1px solid #30363d;padding:6px 8px;text-align:left;font-size:0.9em}} th{{background:#161b22;color:#e6edf3}}
-h1{{border-bottom:1px solid #21262d;padding-bottom:6px;color:#e6edf3}} h2{{margin-top:28px;color:#e6edf3}} h3{{color:#e6edf3}}
-.search{{width:100%;padding:8px;border-radius:6px;border:1px solid #30363d;background:#0d1117;color:#c9d1d9;margin:8px 0}}
-.badge{{display:inline-block;padding:2px 6px;border-radius:10px;font-size:11px;border:1px solid #30363d;background:#161b22;color:#8b949e;margin-left:6px}}
-@media(max-width:800px){{nav{{position:relative;width:auto;height:auto}} main{{margin-left:0}} table{{display:block;overflow-x:auto; -webkit-overflow-scrolling:touch}}}}
+pre{{background:#161b22;padding:12px;overflow:auto;border-radius:6px;border:1px solid #30363d;font-size:13px}}
+code{{background:#161b22;padding:1px 4px;border-radius:3px;font-size:0.9em;border:1px solid #21262d;color:#e6edf3}}
+table{{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}} th,td{{border:1px solid #30363d;padding:8px 10px;text-align:left;white-space:nowrap}} th{{background:#161b22;color:#e6edf3;position:sticky;top:0}} td{{background:#0d1117}}
+h1{{border-bottom:1px solid #21262d;padding-bottom:8px;color:#e6edf3;font-size:22px}} h2{{margin-top:32px;color:#e6edf3;font-size:18px;border-left:3px solid #e3b341;padding-left:8px}} h3{{color:#e6edf3;font-size:15px}}
+.search{{width:100%;padding:8px 10px;border-radius:6px;border:1px solid #30363d;background:#0d1117;color:#e6edf3;margin:8px 0;font-size:14px}}
+.badge{{display:inline-block;padding:3px 8px;border-radius:10px;font-size:11px;border:1px solid #30363d;background:#161b22;color:#8b949e;margin:2px}}
+.layout{{display:grid;grid-template-columns:260px 1fr;min-height:100vh}}
+nav{{background:#010409;border-right:1px solid #21262d;padding:16px;overflow:auto;position:sticky;top:0;height:100vh}}
+main{{padding:24px;max-width:960px;overflow:auto}}
+.card{{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:12px;margin:8px 0}}
+@media(max-width:800px){{
+  .layout{{grid-template-columns:1fr}}
+  nav{{position:relative;height:auto;border-right:none;border-bottom:1px solid #21262d;}}
+  main{{padding:16px}}
+  table{{font-size:12px}}
+}}
 </style></head><body>
+<div class="layout">
 <nav>
-<h3>Flatland Wiki</h3>
+<h3 style="margin:0 0 12px;color:#e6edf3">📖 Flatland Wiki</h3>
 <input id="q" class="search" placeholder="Search laws, routes, docs… ( / )" oninput="filterWiki(this.value)">
 <ul style="list-style:none;padding:0;margin:8px 0">{nav}</ul>
-<p><a href="/docs">Swagger /docs</a> · <a href="/openapi.json">OpenAPI</a> · <a href="/guide">Guide</a></p>
-<p><a href="/api/wiki">JSON</a> · <a href="/">← Live world</a></p>
-<div style="margin-top:12px;font-size:12px;color:#8b949e">Presets: <a href="#" onclick="applyPreset('sustainable');return false">sustainable</a> · <a href="#" onclick="applyPreset('chaos');return false">chaos</a> · <a href="#" onclick="applyPreset('extinction');return false">extinction</a></div>
+<p style="font-size:13px"><a href="/docs">Swagger /docs</a> · <a href="/openapi.json">OpenAPI</a> · <a href="/guide">Guide</a></p>
+<p style="font-size:13px"><a href="/api/wiki">JSON</a> · <a href="/">← Live world</a></p>
+<div class="card" style="margin-top:12px;font-size:12px;color:#8b949e">Presets: <a href="#" onclick="applyPreset('sustainable');return false">🌿 sustainable</a> · <a href="#" onclick="applyPreset('chaos');return false">🔥 chaos</a> · <a href="#" onclick="applyPreset('extinction');return false">💀 extinction</a></div>
 </nav>
 <main>
-<div style="position:sticky;top:0;background:#0d1117;padding:8px 0;z-index:2;border-bottom:1px solid #21262d;margin:-24px -24px 16px -24px;padding-left:24px;display:flex;gap:12px;align-items:center"><span class="badge">{laws} laws</span><span class="badge">{routes} routes</span><span class="badge">{presets} presets</span><span style="margin-left:auto;font-size:12px;color:#8b949e">God sets laws, never a life · <a href="/guide">Guide</a></span></div>
+<div class="card" style="position:sticky;top:0;z-index:2;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:-24px -24px 16px -24px;padding:12px 16px;border-radius:0;border-left:none;border-right:none;border-top:none"><span class="badge">{laws} laws</span><span class="badge">{routes} routes</span><span class="badge">{presets} presets</span><span style="margin-left:auto;font-size:12px;color:#8b949e">God sets laws, never a life · <a href="/guide">Guide</a></span></div>
 {content}
 <hr/><p style="font-size:12px;color:#8b949e">Generated from live code — <code>Config</code> defaults + <code>GodLaws</code> + <code>app.routes</code>. See <a href="/guide">/guide</a> for minimal guide.</p>
 </main>
+</div>
 <script>
 function filterWiki(q){{
   q=q.toLowerCase();
