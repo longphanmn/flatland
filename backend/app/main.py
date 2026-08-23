@@ -297,12 +297,13 @@ LAW_FIELDS = (
 
 
 # --- T: presets ----------------------------------------------------------------
-# Sustainable = 1000-day gentle world — 70 is sweet spot (tested 48d, 90 crashes), keep 70
+# Recalculated with new defaults (pop 52, schism/comm/war enabled, war rare)
+# Sustainable is gentle 1000-day: a bit more food for 52+ (90), same rare war as default but even gentler
 PRESETS: dict[str, dict] = {
     "sustainable": dict(
-        food_count=70,
+        food_count=90,  # was 70 for 20 pop, now 90 for 52 pop
         plant_growth_rate=0.05,
-        plant_spread_rate=0.006,
+        plant_spread_rate=0.007,
         winter_food_mult=0.7,
         poison_rate=0.0,
         perceive_radius=18,
@@ -316,16 +317,20 @@ PRESETS: dict[str, dict] = {
         recovery_rate=0.025,
         disease_lethality=0.25,
         war_enabled=True,
-        attack_damage=40,
+        attack_damage=40,  # wound, rare (default 45)
         predation_enabled=True,
         predator_ratio=0.03,
         bite_damage=40,
         bite_cooldown=12,
-        relation_drift_rate=2.5,
-        rivalry_threshold=-80,
+        relation_drift_rate=2.8,  # even calmer than default 2.2
+        rivalry_threshold=-85,  # rarer than default -75
         trespass_decay=0.0,
         house_capacity=12,
         season_length=14400,
+        schism_enabled=True,
+        schism_threshold=0.55,
+        schism_min_pop=7,
+        communication_enabled=True,
     ),
     "chaos": dict(
         food_count=80,

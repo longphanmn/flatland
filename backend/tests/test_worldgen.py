@@ -42,10 +42,11 @@ def test_jitter_varies_worlds_across_seeds():
 
 
 def test_auto_counts_stay_within_variance_band():
-    cfg = Config(seed=7)  # 200x200, creature_density .0005 => target 20 ±25%
+    cfg = Config(seed=7)  # 200x200, creature_density 0.0013 => target 52 ±25%
     s = Simulation(cfg)
     n = creature_count(s)
-    assert 20 * 0.75 - 6 <= n <= 20 * 1.25 + 6  # band widened for share rounding
+    target = int(cfg.width * cfg.height * cfg.creature_density)
+    assert target * 0.75 - 8 <= n <= target * 1.25 + 8  # band widened for share rounding
 
 
 def test_explicit_overrides_beat_densities():

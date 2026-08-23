@@ -105,7 +105,7 @@ def test_deaths_appear_in_history_api(client):
     hist = client.get("/api/history").json()
     assert hist["total_deaths"] >= 1
     assert len(hist["events"]) >= 1
-    ev = hist["events"][-1]
-    assert ev["cause"] == "starvation"
-    assert ev["type"] == "death"
+    # history now returns newest first (DESC), so last is oldest — check any starvation
+    assert any(e.get("cause") == "starvation" and e.get("type") == "death" for e in hist["events"])
+    ev = next(e for e in hist["events"] if e.get("cause") == "starvation")
     assert {"tick", "caste", "x", "y"} <= set(ev)

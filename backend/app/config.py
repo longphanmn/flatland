@@ -32,8 +32,8 @@ class Config:
     num_houses: int = -1
 
     # World generation densities (per grid unit²) and spawn jitter.
-    creature_density: float = 0.0005  # ~20 creatures on a 200×200 map
-    house_density: float = 0.00015  # ~6 houses
+    creature_density: float = 0.0013  # ~52 creatures on 200×200 map — at least 50 as requested
+    house_density: float = 0.0002  # ~8 houses for 50+ pop
     spawn_variance: float = 0.25  # ±25% around the density target
 
     food_count: int = 70  # was 48 — 70 sustains 30d with §O variants + territory/totems (tested 30d alive 20)
@@ -50,16 +50,16 @@ class Config:
     # Territory & clan depth (§P)
     territory_enabled: bool = True  # §P: clans claim zone around house, trespass sours relations
     territory_radius: float = 14.0  # radius of clan territory circle
-    trespass_decay: float = 1.0  # relation points lost per tick per trespasser inside rival territory (probabilistic if <1)
+    trespass_decay: float = 0.25  # was 1.0 — rare war: low trespass decay
 
     # Totem & clan depth (§P)
     totems_enabled: bool = True  # §P: each clan bears a totem (Wolf/Tree/Shield/Eye) with subtle buff
     succession_enabled: bool = True  # §P: leader succession on death emits succession event
 
-    # Schism — WorldBox rebellion (§S P1)
-    schism_enabled: bool = False  # unhappy members split to found new clan, then war parent
-    schism_threshold: float = 0.4  # fraction unhappy (starving/homeless) to trigger split
-    schism_min_pop: int = 4  # minimum clan population to consider schism
+    # Schism — WorldBox rebellion (§S P1) — enabled but rare
+    schism_enabled: bool = True  # rebellion enabled by default
+    schism_threshold: float = 0.5  # fraction unhappy to trigger — 0.5 rarer than 0.4
+    schism_min_pop: int = 6  # minimum clan pop — 6 rarer than 4
 
     # Ages — super-seasons (§S)
     age_enabled: bool = False  # long era bending world: Ice/Chaos/Plague/Golden
@@ -77,8 +77,8 @@ class Config:
     disaster_enabled: bool = False  # meteor/flood stochastic
     disaster_rate: float = 0.0003  # chance/tick for disaster
 
-    # Communication & Care (§Q)
-    communication_enabled: bool = False  # food + alarm calls, clan recruitment
+    # Communication & Care (§Q) — enabled by default
+    communication_enabled: bool = True  # food + alarm calls, clan recruitment — enabled
     signal_radius: float = 12.0  # heard within this range
     food_call_rate: float = 0.08  # well-fed finds food → calls with this chance/tick
     alarm_call_rate: float = 0.12  # sees predator → alarm call chance/tick
@@ -170,17 +170,17 @@ class Config:
     rock_count: int = -1  # solid stone circles that block movement
     fertile_food_bias: float = 0.7  # fraction of food spawned on fertile ground
 
-    # Society — interaction & clan relations
+    # Society — interaction & clan relations — war rare tuning
     cohesion_weight: float = 0.0  # pull toward same-clan flock centre
     alignment_weight: float = 0.0  # match neighbours' heading
     separation_weight: float = 0.0  # personal-space push from any neighbour
     flock_radius: float = 6.0  # interaction perception range
-    relation_drift_rate: float = 1.0  # points/tick clan scores relax toward 0
+    relation_drift_rate: float = 2.2  # was 1.0 — relax faster, war rarer
     alliance_threshold: int = 50  # score at/above which two clans are allies
-    rivalry_threshold: int = -50  # score at/below which two clans are rivals
+    rivalry_threshold: int = -75  # was -50 — more negative, feuds rarer
 
     # Predation (§I) — Carnivore caste
-    predation_enabled: bool = False  # predators hunt prey
+    predation_enabled: bool = False  # predators hunt prey — keep off by default (war is focus)
     predator_ratio: float = 0.08  # fraction of spawn that are predators
     hunt_radius: float = 8.0  # predator sight for prey
     bite_damage: float = 100.0  # damage on bite (100 = instant kill)
@@ -188,10 +188,10 @@ class Config:
     energy_from_prey: float = 40.0  # energy predator gains per kill
     fear_radius: float = 10.0  # prey flee when predator within this range
 
-    # Clan war (§I) — rival clans fight on contact
-    war_enabled: bool = False  # rival-clan combat enabled
+    # Clan war (§I) — rival clans fight on contact — enabled but rare
+    war_enabled: bool = True  # enabled by default, but rare
     attack_radius: float = 1.8  # distance for clan war engagement
-    attack_damage: float = 100.0  # damage per attack (100 = lethal)
+    attack_damage: float = 45.0  # was 100 — wound (45) not lethal, so war rarely fatal
 
     # Houses
     house_min_size: float = 6.0
