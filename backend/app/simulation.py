@@ -683,23 +683,16 @@ class Simulation:
 
     # ------------------------------------------------------- settlement economy
     def _target_house_count(self) -> int:
-        """Houses scale with map area and with carrying capacity (§L settlement economy).
+        """Houses scale with map area (§L settlement economy).
 
-        Base is area × house_density (W worldgen); then scaled by carrying_capacity
-        relative to the default 80 so that raising the soft cap raises the bed supply.
-        Keeps the historic housing shortage (≈60% beds vs cap) while letting god tune it.
+        Base is area × house_density (~24 houses on 400×300 map).
         """
         cfg = self.config
+        if cfg.num_houses >= 0:
+            return cfg.num_houses
         area = cfg.width * cfg.height
-        base = area * cfg.house_density
-        carrying = cfg.effective_carrying_capacity
-        # scale with carrying_capacity; default 80 → factor 1.0
-        factor = carrying / 80.0 if 80 else 1.0
-        target = round(base * factor)
-        # also ensure at least enough beds for ~60% of the carrying capacity
-        cap_based = round(carrying / max(1, cfg.house_capacity) * 0.6)
-        target = max(target, cap_based)
-        return max(1, target)
+        base = round(area * cfg.house_density)
+        return max(1, base)
 
     def _spawn_settlement_house(self, clan_id: int | None = None, near: Creature | None = None) -> House:
         """Spawn a new house — near a clan founder if given, else random; claim it if clan_id."""
@@ -735,12 +728,10 @@ class Simulation:
         # Respect explicit overrides: pinned scenarios (tests) keep exact housing
         if cfg.num_houses >= 0:
             return
-        # — growth: houses scale with carrying_capacity / density —
+        # — growth: replenish houses when ruined/shortage, paced every 100 ticks —
         functional = [h for h in self.world.entities.values() if isinstance(h, House) and not h.is_ruin]
         target = self._target_house_count()
-        # Spawn at most one per tick to keep determinism smooth (jitter already in target)
-        if len(functional) < target:
-            # avoid spawning every tick when far below target — one per tick is enough
+        if len(functional) < target and (self.tick % 100 == 0):
             self._spawn_settlement_house()
 
         # — decay: abandoned houses crumble to ruins —
