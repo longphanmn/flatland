@@ -839,9 +839,14 @@ select {
     padding-bottom: max(14px, env(safe-area-inset-bottom)); z-index: 14;
   }
   .god-panel {
-    left: 0; right: 0; width: auto; max-width: none; top: auto; bottom: 0;
-    height: 84vh; max-height: 86vh; border-left: none; border-top: 1px solid #30363d;
-    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.55); padding-bottom: max(14px, env(safe-area-inset-bottom)); z-index: 16;
+    left: 50%; right: auto; width: min(420px,92vw); max-width: 92vw; top: 50%; bottom: auto;
+    height: 80vh; max-height: 80vh; transform: translate(-50%,-50%);
+    border: 1px solid #30363d; border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+    padding-bottom: max(14px, env(safe-area-inset-bottom)); z-index: 16;
+  }
+  .god-backdrop{
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 15;
+    display: flex; align-items: center; justify-content: center; padding: 16px;
   }
   .god-panel .god-foot{ position: sticky; bottom: 0; background: #0d1117; padding-top: 10px; margin-top: 12px; }
   .god-accordion{ border: 1px solid #21262d; border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
@@ -858,7 +863,8 @@ select {
   .album { left: 8px; right: 8px; width: auto; max-width: none; top: auto; bottom: 56px; }
   .snap-banner { left: 8px; right: 8px; width: auto; transform: none; max-width: none; font-size: 12px; text-align: center; }
   .run-switcher { left: 8px; right: auto; bottom: 62px; max-width: calc(100vw - 16px); }
-  .top-right-panel { top: calc(56px + env(safe-area-inset-top)); right: 8px; gap: 6px; margin-top: 4px; background: rgba(13,17,23,0.9); padding: 4px; border-radius: 8px; border: 1px solid #21262d; }
+  .top-right-panel { top: calc(56px + env(safe-area-inset-top)); right: 8px; gap: 6px; margin-top: 4px; background: rgba(13,17,23,0.9); padding: 4px; border-radius: 8px; border: 1px solid #21262d; flex-direction: column; }
+  .god-panel, .wiki-panel, .help-panel { padding-top: 3%; }
   .top-right-panel .god-btn{ min-height: 32px; padding: 4px 8px; font-size: 12px; }
   .version-bar { bottom: 52px; left: 8px; right: auto; transform: none; font-size: 9px; padding: 1px 6px; }
   /* larger touch targets */
