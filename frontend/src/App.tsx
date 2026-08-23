@@ -876,14 +876,14 @@ export default function App() {
       )}
       {/* God + Help + Wiki — top right panel */}
       <div className="top-right-panel">
-        <button className="god-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )">
-          📖 Wiki
+        <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )">
+          📖<span className="hide-mobile"> Wiki</span>
         </button>
         <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls">
           ?
         </button>
-        <button className="god-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life">
-          ⚖ God
+        <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life">
+          ⚖<span className="hide-mobile"> God</span>
         </button>
       </div>
       {/* version + revision at bottom */}

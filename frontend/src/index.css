@@ -737,7 +737,7 @@ select {
   .hud {
     gap: 8px;
     padding: 8px 10px;
-    padding-right: 96px;
+    padding-right: 120px;
     min-height: 36px;
     flex-wrap: nowrap;
     overflow: hidden;
@@ -846,6 +846,9 @@ select {
   button, a, select{ min-height: 44px; }
   button{ min-height: 44px; }
   .mobile-sheet-tabs button, .top-right-panel .god-btn{ min-height: 32px; }
+  .hide-mobile{ display:none !important; }
+  .top-right-panel{ gap:4px; }
+  .top-right-panel .god-btn{ padding:4px 6px; }
 }
 
 /* top-right God button */
