@@ -327,6 +327,12 @@ def test_war_over_scarce_food():
             rivalry_threshold=-20, alliance_threshold=50, flock_radius=6,
             territory_enabled=False, shelter_enabled=False,
             num_houses=0,
+            # §AB/§AC pinned off: this test asserts raw §I war-vs-famine dynamics,
+            # but larders feed the starving, peace sues soften feuds, defection
+            # drains clans and cannibalism kills without a war event.
+            coalitions_enabled=False, leader_decisions_enabled=False,
+            resource_sharing_enabled=False, defection_enabled=False,
+            cannibalism_enabled=False,
         )
         s = Simulation(cfg)
         for eid in list(s.world.entities.keys()):

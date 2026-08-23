@@ -55,6 +55,23 @@ YIELD_RADIUS = 2.5  # lower castes step aside within this range
 # §L shelter: reference floor area for the house_capacity law (8×8 hall)
 HOUSE_REF_AREA = 64.0
 
+# §AB politics pacing (per-tick chances; determinism via fixed iteration order)
+COALITION_FORM_CHANCE = 0.003  # a leader founds a bloc this often
+COALITION_JOIN_CHANCE = 0.01  # an unaligned clan petitions an existing bloc
+LEADER_DECISION_CHANCE = 0.01  # a leader acts (war/peace/betrayal/tribute)
+TRIBUTE_INTERVAL = 240  # ticks between vassal payments
+DEFECT_CHANCE = 0.03  # unhappy member defects per tick
+TREASON_RADIUS = 14.0  # false-knowledge seeding reach during betrayal
+
+# §AC desperation cannibalism pacing
+CANNIBAL_COOLDOWN = 120  # ticks between desperate kills
+CANNIBAL_CORPSE_MULT = 0.5  # the body left after a cannibal feeds
+
+# §AE food decay — nothing lasts forever: variant lifespan multipliers
+FOOD_LIFESPAN_MULT = {"grass": 1.0, "berry": 1.5, "mushroom": 0.4, "poisonous": 3.0}
+WILT_FRACTION = 0.8  # wilting (render fade) begins at this fraction of lifespan
+WITHER_NUTRIENT_MULT = 0.5  # a withered plant fertilises at half a corpse's worth
+
 # §H Plants & the nutrient cycle
 SPREAD_RADIUS = 6.0  # mature plants seed new ground within this range
 NUTRIENT_RADIUS = 10.0  # a fully decayed corpse fertilises plants within this range
@@ -206,6 +223,9 @@ class Simulation:
         self._next_clan_id = 1
         self.relations: dict[tuple[int, int], int] = {}  # clan pair -> -100..100
         self._relation_zones: dict[tuple[int, int], int] = {}  # last seen zone
+        self.coalitions: dict[int, dict] = {}  # §AB: id -> {name, leader_clan, members}
+        self._next_coalition_id = 1
+        self._clan_coalition: dict[int, int] = {}  # clan id -> coalition id
         self._eaters_this_tick: list[int] = []
         self.fertile: list[dict] = []  # {x,y,r} — food prefers these grounds
         self.rocks: list[dict] = []  # {x,y,r} — solid circles that block movement
@@ -445,8 +465,10 @@ class Simulation:
         totem = None
         if self.config.totems_enabled:
             totem = TOTEMS[(cid * 17 + self.config.seed) % len(TOTEMS)]
-        # specialization drift start — totem biases initial role
-        spec = TOTEM_SPEC.get(totem, {"warrior": 0.33, "farmer": 0.33, "scavenger": 0.34})
+        # specialization drift start — totem biases initial role.
+        # COPY: TOTEM_SPEC entries are mutated in place by drift; sharing them
+        # across clans (or worlds!) would couple their specializations.
+        spec = dict(TOTEM_SPEC.get(totem, {"warrior": 0.33, "farmer": 0.33, "scavenger": 0.34}))
         culture = f"{CULTURE_ADJECTIVES[(cid * 11 + self.config.seed) % len(CULTURE_ADJECTIVES)]} {CULTURE_NOUNS[(cid * 19 + self.config.seed) % len(CULTURE_NOUNS)]}"
         self.clans[cid] = {
             "name": name,
@@ -458,6 +480,9 @@ class Simulation:
             "specialization": spec,
             "culture": culture,
             "culture_id": cid,
+            "coalition_id": None,
+            "larder": 0.0,
+            "tribute_to": None,
         }
         return cid
 
@@ -788,6 +813,51 @@ class Simulation:
             return h.x - half, h.y + h.door_offset
         # east
         return h.x + half, h.y + h.door_offset
+
+    def _house_entry_target(self, c: Creature, h: House) -> tuple[float, float]:
+        """§L Door-seek waypoints — no more grinding at a blank wall.
+
+        Outside a house, the creature aims at a stand-off lane `margin` off
+        its NEAREST face: level with the doorway when the door is on this
+        face, the door-side corner when the door is around the corner, and
+        the short-way corner when the door sits on the far face. Rounding a
+        corner hands over to the next face, so the body follows the edges
+        until it sees the gap — then walks straight through it. Deterministic,
+        rng-free geometry."""
+        w = self.world
+        half = h.size / 2
+        dx, dy = w.delta(c.x, c.y, h.x, h.y)  # house centre -> creature
+        ax, ay = abs(dx), abs(dy)
+        if ax < half - 0.3 and ay < half - 0.3:
+            return h.x, h.y  # already under the roof: settle toward its heart
+        m = 0.9  # stand-off lane off the wall
+        lim = max(0.5, half - 0.8)  # slide clamp inside the face ends
+        dw = max(h.door_width * 0.45, 1.3)  # "I can see the door" alignment
+        sx = 1.0 if dx >= 0 else -1.0
+        sy = 1.0 if dy >= 0 else -1.0
+        if ax >= ay:  # nearest face: east / west
+            face = "east" if sx > 0 else "west"
+            out_x = h.x + sx * (half + m)
+            if h.door_side == face:
+                if abs(dy - h.door_offset) <= dw:
+                    # aligned with the gap: walk straight in
+                    return h.x + sx * max(1.0, half - 1.6), h.y + h.door_offset
+                return out_x, h.y + max(-lim, min(lim, h.door_offset))
+            if h.door_side in ("north", "south"):
+                # door around the corner: head for the door-side corner
+                return out_x, h.y + (half + m) * (1.0 if h.door_side == "south" else -1.0)
+            # door on the far face: take the short way round this one
+            return out_x, h.y + sy * (half + m)
+        # nearest face: north / south
+        face = "south" if sy > 0 else "north"
+        out_y = h.y + sy * (half + m)
+        if h.door_side == face:
+            if abs(dx - h.door_offset) <= dw:
+                return h.x + h.door_offset, h.y + sy * max(1.0, half - 1.6)
+            return h.x + max(-lim, min(lim, h.door_offset)), out_y
+        if h.door_side in ("east", "west"):
+            return h.x + (half + m) * (1.0 if h.door_side == "east" else -1.0), out_y
+        return h.x + sx * (half + m), out_y
 
     # --------------------------------------------------------------- terrain
     def _generate_terrain(self) -> None:
@@ -1123,6 +1193,7 @@ class Simulation:
         self._update_relations()
         self._update_territory()
         self._update_schism()
+        self._update_politics()
         self._update_clan_specialization()
         self._update_culture()
         self._enforce_food_law()
@@ -1277,6 +1348,8 @@ class Simulation:
                 )
             )
             self._bump_relation(loser.clan_id, winner.clan_id, -5)
+            # §AB mutual defence — the loser attacked a whole coalition
+            self._mobilise_coalition(winner.clan_id, loser.clan_id)
             # Territory conquest — winner absorbs loser's territory and house (§S)
             loser_house = None
             for h in self.world.entities.values():
@@ -1330,6 +1403,8 @@ class Simulation:
                 )
             )
             self._bump_relation(loser.clan_id, winner.clan_id, -3)
+            # §AB mutual defence on the wound path too
+            self._mobilise_coalition(winner.clan_id, loser.clan_id)
 
     def _update_relations(self) -> None:
         """Clan scores rise when strangers feast together and drift toward peace.
@@ -1579,6 +1654,9 @@ class Simulation:
                 "specialization": spec,
                 "culture": culture,
                 "culture_id": culture_id,
+                "coalition_id": None,
+                "larder": 0.0,
+                "tribute_to": None,
             }
             for c in movers:
                 c.clan_id = new_cid
@@ -1612,6 +1690,511 @@ class Simulation:
                 )
             )
             break  # only one schism per tick
+
+    # -------------------------------------------------------------- §AB politics
+    def _coalition_of(self, clan_id: int) -> int | None:
+        return self._clan_coalition.get(clan_id)
+
+    def _coalition_soured(self, members: list[int]) -> bool:
+        """True once any member pair falls out of friendship — the bloc dissolves."""
+        for i, a in enumerate(members):
+            for b in members[i + 1:]:
+                if self.relations.get(self._relation_pair(a, b), 0) < 10:
+                    return True
+        return False
+
+    def _dissolve_coalition(self, coal_id: int, reason: str) -> None:
+        info = self.coalitions.pop(coal_id, None)
+        if info is None:
+            return
+        for cid in list(info["members"]):
+            if self._clan_coalition.get(cid) == coal_id:
+                self._clan_coalition.pop(cid, None)
+            clan = self.clans.get(cid)
+            if clan is not None and clan.get("coalition_id") == coal_id:
+                clan["coalition_id"] = None
+        self._emit(
+            HistoryEvent(
+                type="coalition_dissolved",
+                tick=self.tick + 1,
+                entity_id=0,
+                payload={"coalition": coal_id, "name": info.get("name"), "reason": reason,
+                         "members": list(info["members"])},
+            )
+        )
+
+    def _update_coalitions(self) -> None:
+        """§AB Explicit coalitions — leaders propose blocs; allies join; soured ones dissolve."""
+        cfg = self.config
+        if not cfg.coalitions_enabled:
+            return
+        # Prune dead clans; a bloc below size or with sour relations dissolves.
+        for coal_id in sorted(list(self.coalitions.keys())):
+            info = self.coalitions[coal_id]
+            info["members"] = [m for m in info["members"] if m in self.clans]
+            if len(info["members"]) < max(1, cfg.coalition_min_size - 1) or not info["members"]:
+                self._dissolve_coalition(coal_id, reason="faded")
+            elif self._coalition_soured(info["members"]):
+                self._dissolve_coalition(coal_id, reason="soured")
+        # A clan petitions to join an existing bloc.
+        if self.rng.random() < COALITION_JOIN_CHANCE:
+            unaligned = [
+                cid for cid in sorted(self.clans.keys())
+                if cid not in self._clan_coalition and any(
+                    h.clan_id == cid and not h.is_ruin
+                    for h in self.world.entities.values() if isinstance(h, House)
+                )
+            ]
+            for cid in unaligned:
+                joined = False
+                for coal_id in sorted(self.coalitions.keys()):
+                    members = self.coalitions[coal_id]["members"]
+                    if len(members) >= 8:
+                        continue
+                    if all(
+                        self.relations.get(self._relation_pair(cid, m), 0)
+                        >= cfg.coalition_threshold
+                        for m in members
+                    ):
+                        self.coalitions[coal_id]["members"].append(cid)
+                        self._clan_coalition[cid] = coal_id
+                        self.clans[cid]["coalition_id"] = coal_id
+                        self._emit(
+                            HistoryEvent(
+                                type="coalition_joined",
+                                tick=self.tick + 1,
+                                entity_id=0,
+                                payload={"coalition": coal_id,
+                                         "name": self.coalitions[coal_id].get("name"),
+                                         "clan": cid},
+                            )
+                        )
+                        joined = True
+                        break
+                if joined:
+                    break
+        # A leader founds a new bloc among friendly unaligned clans.
+        if self.rng.random() < COALITION_FORM_CHANCE:
+            for cid in sorted(self.clans.keys()):
+                if cid in self._clan_coalition:
+                    continue
+                friends = [
+                    other
+                    for other in sorted(self.clans.keys())
+                    if other != cid
+                    and other not in self._clan_coalition
+                    and self.relations.get(self._relation_pair(cid, other), 0)
+                    >= cfg.coalition_threshold
+                ]
+                if len(friends) + 1 < cfg.coalition_min_size:
+                    continue
+                members = [cid] + friends[:4]
+                coal_id = self._next_coalition_id
+                self._next_coalition_id += 1
+                name_a = self.clans[cid].get("name", f"Clan {cid}")
+                name_b = self.clans[members[1]].get("name", "") if len(members) > 1 else ""
+                name = f"Pact of {name_a}" if not name_b else f"{name_a} – {name_b} Pact"
+                self.coalitions[coal_id] = {
+                    "name": name,
+                    "leader_clan": cid,
+                    "members": members,
+                    "born_tick": self.tick,
+                }
+                for m in members:
+                    self._clan_coalition[m] = coal_id
+                    self.clans[m]["coalition_id"] = coal_id
+                self._emit(
+                    HistoryEvent(
+                        type="coalition_formed",
+                        tick=self.tick + 1,
+                        entity_id=0,
+                        payload={"coalition": coal_id, "name": name,
+                                 "leader_clan": cid, "members": members},
+                    )
+                )
+                break
+
+    def _mobilise_coalition(self, attacker_clan: int | None, victim_clan: int | None) -> None:
+        """§AB Mutual defence — strike one member and every bloc-mate turns on you."""
+        if not attacker_clan or not victim_clan or not self.config.coalitions_enabled:
+            return
+        coal_id = self._clan_coalition.get(victim_clan)
+        if not coal_id:
+            return
+        for m in self.coalitions.get(coal_id, {}).get("members", []):
+            if m == victim_clan or m == attacker_clan:
+                continue
+            self._bump_relation(attacker_clan, m, -12)
+
+    def _remembered_enemy(self, clan_id: int) -> int | None:
+        """The freshest enemy the clan collectively remembers (§X union)."""
+        ttl = max(1, self.config.knowledge_ttl)
+        best: tuple[int, int] | None = None  # (tick, enemy)
+        for c in self._clan_members.get(clan_id, ()):
+            for enemy, meta in (c.facts.get("enemies") or {}).items():
+                t = int(meta.get("tick", 0))
+                if int(enemy) != clan_id and self.tick - t <= ttl and (best is None or t > best[0]):
+                    best = (t, int(enemy))
+        return best[1] if best is not None else None
+
+    def _update_leader_decisions(self) -> None:
+        """§AB Leader agency — war, peace, tribute demand and betrayal surface as plots.
+
+        God watches but never vetoes. The leader's heritable trait biases the
+        hand: bold → war, peaceful → peace, paranoid → betrayal (with treason).
+        """
+        cfg = self.config
+        if not cfg.leader_decisions_enabled:
+            return
+        pops = {cid: len(m) for cid, m in self._clan_members.items()}
+        for cid in sorted(self.clans.keys()):
+            info = self.clans[cid]
+            lid = info.get("leader_id")
+            leader = self.world.entities.get(lid) if lid is not None else None
+            if not isinstance(leader, Creature):
+                continue
+            if self.rng.random() >= LEADER_DECISION_CHANCE:
+                continue
+            trait = leader.trait
+            acted = False
+            # Betrayal: break an alliance and strike (paranoid hands first).
+            if cfg.betrayal_enabled and trait in ("paranoid", "bold"):
+                for pair, score in sorted(self.relations.items()):
+                    if self._zone_of(score) != 1 or cid not in pair:
+                        continue
+                    victim = pair[1] if pair[0] == cid else pair[0]
+                    self.relations[pair] = max(-100, score - 95)
+                    self.relations[pair] = min(100, self.relations[pair])
+                    self._emit(
+                        HistoryEvent(
+                            type="betrayal",
+                            tick=self.tick + 1,
+                            entity_id=lid,
+                            caste=leader.caste,
+                            x=round(leader.x, 2),
+                            y=round(leader.y, 2),
+                            payload={"a": cid, "b": victim,
+                                     "a_name": info.get("name"),
+                                     "b_name": self.clans.get(victim, {}).get("name")},
+                        )
+                    )
+                    # Treason: sow false knowledge so third clans distrust the victim too.
+                    for other in sorted(self.clans.keys()):
+                        if other in (cid, victim):
+                            continue
+                        mates = self._clan_members.get(other, ())
+                        if not mates:
+                            continue
+                        herald = mates[int(self.rng.random() * len(mates))]
+                        if self.world.distance(herald.x, herald.y, leader.x, leader.y) <= TREASON_RADIUS:
+                            self.signals.append({
+                                "x": round(herald.x, 2), "y": round(herald.y, 2),
+                                "kind": "knowledge", "sender": leader.id,
+                                "clan_id": other or None, "ttl": 12,
+                                "fact": {"kind": "enemy", "clan_id": victim,
+                                         "x": round(leader.x, 2), "y": round(leader.y, 2),
+                                         "conf": 1.0},
+                            })
+                    acted = True
+                    break
+            if acted:
+                continue
+            # Peace: a weakened leader sues a rival for peace.
+            if trait == "peaceful" or pops.get(cid, 0) < 3:
+                for pair, score in sorted(self.relations.items()):
+                    if self._zone_of(score) != -1 or cid not in pair:
+                        continue
+                    rival = pair[1] if pair[0] == cid else pair[0]
+                    my_pop = pops.get(cid, 0)
+                    if my_pop and my_pop <= pops.get(rival, 0):
+                        self.relations[pair] = min(100, score + 60)
+                        self._emit(
+                            HistoryEvent(
+                                type="peace",
+                                tick=self.tick + 1,
+                                entity_id=0,
+                                payload={"a": cid, "b": rival,
+                                         "a_name": info.get("name"),
+                                         "b_name": self.clans.get(rival, {}).get("name")},
+                            )
+                        )
+                        acted = True
+                        break
+            if acted:
+                continue
+            # War: declare on a remembered enemy (bold hands, then any).
+            if trait == "bold" or trait is None:
+                enemy = self._remembered_enemy(cid)
+                if enemy is not None and self._zone_of(
+                    self.relations.get(self._relation_pair(cid, enemy), 0)
+                ) != -1:
+                    self._bump_relation(cid, enemy, -50)
+                    acted = True
+            if acted:
+                continue
+            # Tribute: a strong clan demands protection money from a weak neighbour.
+            if cfg.tribute_enabled:
+                my_pop = pops.get(cid, 0)
+                if my_pop < 2:
+                    continue
+                for other in sorted(self.clans.keys()):
+                    if other == cid or self._clan_coalition.get(other) == self._clan_coalition.get(cid):
+                        continue
+                    oinfo = self.clans[other]
+                    if oinfo.get("tribute_to") is not None:
+                        continue
+                    if my_pop < pops.get(other, 0) * 1.6:
+                        continue
+                    pair = self._relation_pair(cid, other)
+                    if self._zone_of(self.relations.get(pair, 0)) == -1:
+                        continue  # protectors don't extort active enemies
+                    oinfo["tribute_to"] = cid
+                    break
+
+    def _update_larders(self) -> None:
+        """§AB Clan larder — surplus is stored at the settlement, famine draws it down."""
+        cfg = self.config
+        if not cfg.resource_sharing_enabled:
+            return
+        houses_by_clan: dict[int, House] = {}
+        for e in self.world.entities.values():
+            if isinstance(e, House) and e.clan_id and not e.is_ruin and e.clan_id not in houses_by_clan:
+                houses_by_clan[e.clan_id] = e
+        starving_by_clan: dict[int, int] = {}
+        for c in self._get_creatures():
+            if not c.clan_id or c.is_predator or c.is_herbivore:
+                continue
+            house = houses_by_clan.get(c.clan_id)
+            if house is None:
+                continue
+            clan = self.clans[c.clan_id]
+            ratio = c.energy / cfg.energy_max if cfg.energy_max else 1.0
+            if ratio > 0.75:
+                deposit = min(0.5, (ratio - 0.75) * 8.0)
+                stored = float(clan.get("larder", 0.0))
+                room = max(0.0, cfg.larder_capacity - stored)
+                put = min(deposit, room)
+                if put > 0:
+                    c.energy -= put
+                    clan["larder"] = stored + put
+            elif ratio <= cfg.starving_ratio:
+                stored = float(clan.get("larder", 0.0))
+                if stored > 0:
+                    take = min(3.0, stored)
+                    clan["larder"] = stored - take
+                    c.energy += take
+                starving_by_clan[c.clan_id] = starving_by_clan.get(c.clan_id, 0) + 1
+        # Tribute: vassals pay their protector on the interval.
+        if cfg.tribute_enabled and self.tick % TRIBUTE_INTERVAL == 0:
+            for cid in sorted(self.clans.keys()):
+                info = self.clans[cid]
+                protector = info.get("tribute_to")
+                if protector is None or protector not in self.clans:
+                    info["tribute_to"] = None
+                    continue
+                amount = min(float(info.get("larder", 0.0)), 30.0)
+                if amount <= 0:
+                    continue
+                info["larder"] = float(info.get("larder", 0.0)) - amount
+                pinfo = self.clans[protector]
+                room = max(0.0, cfg.larder_capacity - float(pinfo.get("larder", 0.0)))
+                pinfo["larder"] = float(pinfo.get("larder", 0.0)) + min(amount, room)
+                self._emit(
+                    HistoryEvent(
+                        type="tribute",
+                        tick=self.tick + 1,
+                        entity_id=0,
+                        payload={"from": cid, "to": protector,
+                                 "amount": round(amount, 1),
+                                 "from_name": info.get("name"),
+                                 "to_name": pinfo.get("name")},
+                    )
+                )
+        # Allied aid: a full-bellied ally feeds a starving one during famine.
+        if cfg.aid_rate > 0 and self.rng.random() < cfg.aid_rate:
+            for (a, b), score in sorted(self.relations.items()):
+                if self._zone_of(score) != 1:
+                    continue
+                la, lb = (
+                    float(self.clans[x].get("larder", 0.0)) for x in (a, b)
+                )
+                donor, recv = (a, b) if la > lb else (b, a)
+                ld, lr = max(la, lb), min(la, lb)
+                if ld < cfg.larder_capacity * 0.5 or lr > cfg.larder_capacity * 0.25:
+                    continue
+                if starving_by_clan.get(recv, 0) <= 0:
+                    continue
+                aid = min(ld * 0.4, cfg.larder_capacity - lr)
+                if aid <= 1:
+                    continue
+                self.clans[donor]["larder"] = ld - aid
+                self.clans[recv]["larder"] = lr + aid
+
+    def _update_defection(self) -> None:
+        """§AB Defection — the unhappy walk to a healthier banner, even a rival's."""
+        cfg = self.config
+        if not cfg.defection_enabled:
+            return
+        houses_by_clan: set[int] = {
+            e.clan_id
+            for e in self.world.entities.values()
+            if isinstance(e, House) and e.clan_id and not e.is_ruin
+        }
+        for c in self._get_creatures():
+            if not c.clan_id or c.is_predator or c.is_herbivore:
+                continue
+            ratio = c.energy / cfg.energy_max if cfg.energy_max else 1.0
+            unhappy = ratio <= cfg.starving_ratio or c.clan_id not in houses_by_clan
+            if not unhappy or self.rng.random() >= DEFECT_CHANCE:
+                continue
+            reach = cfg.flock_radius * 3.0
+            candidates: dict[int, float] = {}
+            for o in self.world.query_radius(c.x, c.y, reach):
+                if not isinstance(o, Creature) or o.id == c.id:
+                    continue
+                if not o.clan_id or o.clan_id == c.clan_id or o.is_predator or o.is_herbivore:
+                    continue
+                d = self.world.distance(c.x, c.y, o.x, o.y)
+                if o.clan_id not in candidates or d < candidates[o.clan_id]:
+                    candidates[o.clan_id] = d
+            if not candidates:
+                continue
+            # The healthiest nearby clan wins the defector.
+            def vitality(cid: int) -> tuple[float, float]:
+                mates = self._clan_members.get(cid, [])
+                if not mates:
+                    return (0.0, -float(cid))
+                avg = sum(m.energy for m in mates) / len(mates)
+                roofed = 1.0 if cid in houses_by_clan else 0.0
+                return (roofed, avg)
+            target = max(candidates, key=vitality)
+            old = c.clan_id
+            c.clan_id = target
+            self._emit(
+                HistoryEvent(
+                    type="defection",
+                    tick=self.tick + 1,
+                    entity_id=c.id,
+                    caste=c.caste,
+                    x=round(c.x, 2),
+                    y=round(c.y, 2),
+                    payload={"from": old, "to": target,
+                             "from_name": self.clans.get(old, {}).get("name"),
+                             "to_name": self.clans.get(target, {}).get("name")},
+                )
+            )
+            break  # one defection per tick keeps the world calm
+
+    def _update_politics(self) -> None:
+        """§AB orchestrator — fixed order keeps the rng stream deterministic."""
+        self._update_coalitions()
+        self._update_leader_decisions()
+        self._update_larders()
+        self._update_defection()
+
+    # ------------------------------------------------- §AC desperation cannibalism
+    @staticmethod
+    def _is_weak_prey(o: Creature) -> bool:
+        """Starving, elder or wounded — the weak are legitimate prey (§AC)."""
+        return o.status == "starving" or o.stage == "elder" or o.health < 50.0
+
+    def _cannibal_prey(self, c: Creature, radius: float) -> Creature | None:
+        """Nearest eligible living prey for a starving creature (§AC).
+
+        Eligible: enemy-clan members (negative relation) and the weak of any
+        clan. Never predators, wild beasts, healthy same-clan adults, infants
+        or anyone safe indoors — roofs are sanctuary.
+        """
+        cfg = self.config
+        best: Creature | None = None
+        best_d = radius + 1e-9
+        for o in self.world.query_radius(c.x, c.y, radius):
+            if not isinstance(o, Creature) or o.id == c.id:
+                continue
+            if o.id not in self.world.entities:
+                continue
+            if o.is_predator or o.is_herbivore or o.indoors:
+                continue  # the Carnivore is never prey; roofs are sanctuary
+            if o.stage == "infant":
+                continue
+            kin = bool(c.clan_id) and o.clan_id == c.clan_id
+            weak = self._is_weak_prey(o)
+            if kin:
+                # only desperate need applies, and only when god allows it
+                if not cfg.eat_kin_enabled or not weak:
+                    continue
+            else:
+                if not cfg.eat_enemy_enabled:
+                    continue
+                if not weak:
+                    pair = self._relation_pair(c.clan_id, o.clan_id) if c.clan_id and o.clan_id else None
+                    rel = self.relations.get(pair, 0) if pair else 0
+                    if rel >= 0 or not c.clan_id or not o.clan_id:
+                        continue  # strangers must be rivals to be on the menu
+            d = self.world.distance(c.x, c.y, o.x, o.y)
+            if d < best_d:
+                best, best_d = o, d
+        return best
+
+    def _exile_kin_eater(self, eater: Creature) -> None:
+        """§AC The price of kin-eating — cast out, remembered, warred upon."""
+        cfg = self.config
+        former = eater.clan_id
+        if not former:
+            return
+        if cfg.exile_on_kin_eat:
+            band = self._new_clan(eater)  # a one-being outcast band
+            eater.clan_id = band
+            stigma = max(1, int(cfg.kin_stigma))
+            pair = self._relation_pair(former, band)
+            score = -stigma
+            self.relations[pair] = max(-100, min(100, score))
+            zone = self._zone_of(score)
+            if zone != 0:
+                self._relation_zones[pair] = zone
+            # witnesses remember the outcast band as an enemy (§X knowledge)
+            for m in self.world.query_radius(eater.x, eater.y, TREASON_RADIUS):
+                if isinstance(m, Creature) and m.clan_id == former:
+                    self._learn_enemy(m, band)
+            self._emit(
+                HistoryEvent(
+                    type="exile",
+                    tick=self.tick + 1,
+                    entity_id=eater.id,
+                    caste=eater.caste,
+                    x=round(eater.x, 2),
+                    y=round(eater.y, 2),
+                    payload={
+                        "former_clan": former,
+                        "band": band,
+                        "former_name": self.clans.get(former, {}).get("name"),
+                        "personal_name": personal_name_for(eater.id, self.config.seed, eater.generation),
+                        "glyph": glyph_for(eater.id, self.config.seed, eater.generation),
+                    },
+                )
+            )
+
+    def _do_cannibalism(self, eater: Creature, prey: Creature) -> None:
+        """§AC Kill & feed — contact kill, partial corpse, exile for kin-eaters."""
+        cfg = self.config
+        kin = bool(eater.clan_id) and prey.clan_id == eater.clan_id
+        eater.cannibal_cooldown = CANNIBAL_COOLDOWN
+        eater.energy = min(cfg.energy_max, eater.energy + cfg.cannibalism_energy)
+        eater.meals += 1
+        self._kill(prey, "cannibalism", corpse_energy_mult=CANNIBAL_CORPSE_MULT)
+        self._emit(
+            HistoryEvent(
+                type="cannibalism",
+                tick=self.tick + 1,
+                entity_id=eater.id,
+                caste=eater.caste,
+                x=round(prey.x, 2),
+                y=round(prey.y, 2),
+                payload={"prey": prey.id, "prey_caste": prey.caste, "kin": kin},
+            )
+        )
+        if kin:
+            self._exile_kin_eater(eater)
 
     def _update_fires(self) -> None:
         """§S Wildfire — ignites via storm lightning / fire_rate, spreads, kills."""
@@ -1882,7 +2465,7 @@ class Simulation:
 
     # ------------------------------------------------------------------ flora
     def _update_plants(self) -> None:
-        """§H: every plant grows toward maturity; the mature ones spread. §O variant rhythms. §R weather waters/damages."""
+        """§H: every plant grows toward maturity; the mature ones spread. §O variant rhythms. §R weather waters/damages. §AE mature plants wither."""
         cfg = self.config
         if cfg.plant_growth_rate > 0:
             for e in self.world.entities.values():
@@ -1900,6 +2483,28 @@ class Simulation:
                     e.growth = min(1.0, e.growth + cfg.plant_growth_rate * vm * sm * wm)
                     if e.growth >= 1.0:
                         self._emit_bloom(e)
+        # §AE Food decay — a mature plant lives food_lifespan_ticks × its
+        # variant's pace, wilts near the end, fertilises, then vanishes.
+        # Sprouts and growing plants don't rot; only the harvest does.
+        if cfg.food_decay_enabled and cfg.food_lifespan_ticks > 0:
+            for e in list(self.world.entities.values()):
+                if not isinstance(e, Food) or e.growth < 1.0:
+                    continue
+                life = max(1, round(cfg.food_lifespan_ticks * FOOD_LIFESPAN_MULT.get(e.variant, 1.0)))
+                e.mature_ticks += 1
+                if e.mature_ticks >= life:
+                    self._release_nutrients(e, mult=WITHER_NUTRIENT_MULT)  # death feeds life
+                    self.world.remove(e.id)
+                    self._emit(
+                        HistoryEvent(
+                            type="wither",
+                            tick=self.tick + 1,
+                            entity_id=e.id,
+                            x=round(e.x, 2),
+                            y=round(e.y, 2),
+                            payload={"variant": e.variant, "age": e.mature_ticks},
+                        )
+                    )
         # Storm damage: exposed plants stripped, occasionally uprooted (§R)
         if self.weather == "storm" and cfg.storm_plant_damage > 0:
             for e in list(self.world.entities.values()):
@@ -1952,9 +2557,9 @@ class Simulation:
                     self._release_nutrients(e)
                     self.world.remove(e.id)
 
-    def _release_nutrients(self, corpse: Corpse) -> None:
-        """A fully decayed corpse boosts nearby plant growth instantly."""
-        boost = NUTRIENT_BOOST * self.config.nutrient_cycle_rate
+    def _release_nutrients(self, corpse: Entity, mult: float = 1.0) -> None:
+        """A fully decayed corpse (or withered plant, §AE) boosts nearby plant growth."""
+        boost = NUTRIENT_BOOST * self.config.nutrient_cycle_rate * mult
         if boost <= 0:
             return
         for e in self.world.entities.values():
@@ -2318,13 +2923,13 @@ class Simulation:
             if self.on_event is not None:
                 self.on_event(pevent)
 
-    def _kill(self, c: Creature, cause: str) -> None:
+    def _kill(self, c: Creature, cause: str, corpse_energy_mult: float = 1.0) -> None:
         """Remove a creature from the world and record it in the chronicle."""
         self.world.remove(c.id)
         if self.config.corpses_enabled:
             self.world.add(
                 Corpse(x=c.x, y=c.y, ttl=self.config.corpse_ttl,
-                       energy=self.config.corpse_energy)
+                       energy=self.config.corpse_energy * corpse_energy_mult)
             )
         self.deaths += 1
         self._death_counts[cause] = self._death_counts.get(cause, 0) + 1
@@ -2372,6 +2977,8 @@ class Simulation:
             c.repro_cooldown -= 1
         if c.bite_cooldown > 0:
             c.bite_cooldown -= 1
+        if c.cannibal_cooldown > 0:
+            c.cannibal_cooldown -= 1
 
         # 0. Night rest: after dark, creatures make for the nearest house and
         # those who win a bed sleep — half the hunger, multiplied healing.
@@ -2580,6 +3187,18 @@ class Simulation:
             if d < best:
                 best, target = d, e  # type: ignore[assignment]
 
+        # §AC Desperation: the starving may hunt the living. Sated/hungry
+        # creatures never do; a cooldown separates desperate kills.
+        prey_target: Creature | None = None
+        if (
+            cfg.cannibalism_enabled
+            and c.status == "starving"
+            and c.cannibal_cooldown <= 0
+            and not c.is_predator
+            and not c.is_herbivore
+        ):
+            prey_target = self._cannibal_prey(c, perceive)
+
         # §X Knowledge — firsthand experience: seen meal, seen predator.
         if cfg.knowledge_enabled:
             if target is not None and isinstance(target, Food):
@@ -2728,6 +3347,12 @@ class Simulation:
             desired = math.atan2(dy, dx)
             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
             c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
+        elif prey_target is not None:
+            # §AC: desperation outranks plants and calls — close on living prey
+            dx, dy = w.delta(prey_target.x, prey_target.y, c.x, c.y)
+            desired = math.atan2(dy, dx)
+            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+            c.angle += max(-cfg.steer_turn * 1.1, min(cfg.steer_turn * 1.1, diff))
         elif signal_food_target is not None and target is None:
             # Hungry follows clan-mate food call toward remembered food
             fx, fy = signal_food_target
@@ -2739,11 +3364,13 @@ class Simulation:
             home = self._house_for(c, houses)
             if home is None:
                 home = min(houses, key=lambda h: w.distance(c.x, c.y, h.x, h.y))
-            # Target door only when near the house (within 12 units), otherwise center
-            if not self._inside_house(c, home) and w.distance(c.x, c.y, home.x, home.y) < 12:
-                dx, dy = w.delta(*self._door_pos(home), c.x, c.y)
+            # Edge-follow door seek: slide along the near wall to the gap
+            # instead of bumping the centre and grinding at the wall face.
+            if self._inside_house(c, home):
+                tx, ty = home.x, home.y
             else:
-                dx, dy = w.delta(home.x, home.y, c.x, c.y)
+                tx, ty = self._house_entry_target(c, home)
+            dx, dy = w.delta(tx, ty, c.x, c.y)
             desired = math.atan2(dy, dx)
             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
             c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
@@ -2880,6 +3507,17 @@ class Simulation:
             if hit_rock is not None and target is not None and cfg.food_giveup_ticks > 0:
                 if self._segment_hits_circle(c.x, c.y, target.x, target.y, hit_rock, pad=c.radius):
                     self._give_up_on(c, target)
+
+        # 4c. §AC Desperation fulfilled: prey within reach is killed and eaten.
+        if (
+            prey_target is not None
+            and prey_target.id in w.entities
+            and c.id in w.entities
+            and w.distance(c.x, c.y, prey_target.x, prey_target.y) <= cfg.eat_radius
+        ):
+            self._do_cannibalism(c, prey_target)
+            if c.id not in w.entities:  # a kin-eater may have been exiled (still alive)
+                return
 
         # 5. Eat. §O variant yields: grass low, berry high (autumn), mushroom decomposer, poisonous sickens.
         if target is not None and best <= cfg.eat_radius:
@@ -3134,6 +3772,14 @@ class Simulation:
             return base
         if isinstance(e, Food):
             base.update(growth=round(e.growth, 3), variant=e.variant)
+            if (
+                self.config.food_decay_enabled
+                and e.growth >= 1.0
+                and e.mature_ticks
+                >= WILT_FRACTION
+                * max(1, round(self.config.food_lifespan_ticks * FOOD_LIFESPAN_MULT.get(e.variant, 1.0)))
+            ):
+                base["withering"] = True
             return base
         return base
 

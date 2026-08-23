@@ -3,6 +3,9 @@ import { godFetch } from './auth'
 import type { GodLaws } from '../types'
 
 type NumberLawKey = Exclude<keyof GodLaws, 'boundary'>
+type BoolLawKey = {
+  [K in NumberLawKey]: GodLaws[K] extends boolean | undefined ? K : never
+}[NumberLawKey]
 
 interface LawSpec {
   key: NumberLawKey
@@ -11,6 +14,8 @@ interface LawSpec {
   max: number
   step: number
   group: string
+  /** master law(s) that must be enabled for this row to show */
+  gate?: BoolLawKey | BoolLawKey[]
 }
 
 const NUMBER_LAWS: LawSpec[] = [
@@ -23,7 +28,7 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'plant_growth_rate', label: 'Plant growth / tick', min: 0, max: 1, step: 0.01, group: 'Ecosystem' },
   { key: 'plant_spread_rate', label: 'Plant spread chance', min: 0, max: 1, step: 0.005, group: 'Ecosystem' },
   { key: 'nutrient_cycle_rate', label: 'Nutrient cycle ×', min: 0, max: 10, step: 0.1, group: 'Ecosystem' },
-  { key: 'poison_rate', label: 'Poison sprout chance', min: 0, max: 1, step: 0.01, group: 'Ecosystem' },
+  { key: 'poison_rate', label: 'Poison sprout chance', min: 0, max: 1, step: 0.01, group: 'Ecosystem', gate: 'plant_variants_enabled' },
   { key: 'beast_ratio', label: 'Herbivore ratio', min: 0, max: 1, step: 0.01, group: 'Ecosystem' },
   { key: 'diet_strictness', label: 'Diet strictness', min: 0, max: 1, step: 0.05, group: 'Ecosystem' },
   // Hunger & Sight — perception of the world
@@ -41,53 +46,53 @@ const NUMBER_LAWS: LawSpec[] = [
   // Life & Death — the span of beings
   { key: 'lifespan_mult', label: 'Lifespan ×', min: 0.05, max: 5, step: 0.05, group: 'Life & Death' },
   // Reproduction — Nature's Law of lineage
-  { key: 'adult_age', label: 'Adult age', min: 0, max: 5000, step: 50, group: 'Reproduction' },
-  { key: 'mate_radius', label: 'Mate radius', min: 0.5, max: 30, step: 0.5, group: 'Reproduction' },
-  { key: 'mate_energy_min', label: 'Mate energy ≥', min: 0, max: 200, step: 5, group: 'Reproduction' },
-  { key: 'birth_rate', label: 'Birth rate', min: 0, max: 1, step: 0.05, group: 'Reproduction' },
-  { key: 'sex_ratio', label: 'Son probability', min: 0, max: 1, step: 0.05, group: 'Reproduction' },
-  { key: 'mutation_rate', label: 'Mutation rate', min: 0, max: 1, step: 0.01, group: 'Reproduction' },
-  { key: 'euthanasia_threshold', label: 'Euthanasia ≥', min: 0.3, max: 1, step: 0.05, group: 'Reproduction' },
+  { key: 'adult_age', label: 'Adult age', min: 0, max: 5000, step: 50, group: 'Reproduction', gate: 'birth_enabled' },
+  { key: 'mate_radius', label: 'Mate radius', min: 0.5, max: 30, step: 0.5, group: 'Reproduction', gate: 'birth_enabled' },
+  { key: 'mate_energy_min', label: 'Mate energy ≥', min: 0, max: 200, step: 5, group: 'Reproduction', gate: 'birth_enabled' },
+  { key: 'birth_rate', label: 'Birth rate', min: 0, max: 1, step: 0.05, group: 'Reproduction', gate: 'birth_enabled' },
+  { key: 'sex_ratio', label: 'Son probability', min: 0, max: 1, step: 0.05, group: 'Reproduction', gate: 'birth_enabled' },
+  { key: 'mutation_rate', label: 'Mutation rate', min: 0, max: 1, step: 0.01, group: 'Reproduction', gate: 'birth_enabled' },
+  { key: 'euthanasia_threshold', label: 'Euthanasia ≥', min: 0.3, max: 1, step: 0.05, group: 'Reproduction', gate: 'birth_enabled' },
   // Disease — plague and mercy
-  { key: 'disease_outbreak_rate', label: 'Outbreak rate / tick', min: 0, max: 0.05, step: 0.0005, group: 'Disease' },
-  { key: 'disease_rate', label: 'Contagion chance', min: 0, max: 1, step: 0.01, group: 'Disease' },
-  { key: 'disease_radius', label: 'Contagion radius', min: 0.5, max: 20, step: 0.5, group: 'Disease' },
-  { key: 'disease_energy_drain', label: 'Energy drain / tick', min: 0, max: 2, step: 0.05, group: 'Disease' },
-  { key: 'recovery_rate', label: 'Recovery chance / tick', min: 0, max: 1, step: 0.005, group: 'Disease' },
-  { key: 'disease_lethality', label: 'Lethality', min: 0, max: 1, step: 0.05, group: 'Disease' },
+  { key: 'disease_outbreak_rate', label: 'Outbreak rate / tick', min: 0, max: 0.05, step: 0.0005, group: 'Disease', gate: 'disease_enabled' },
+  { key: 'disease_rate', label: 'Contagion chance', min: 0, max: 1, step: 0.01, group: 'Disease', gate: 'disease_enabled' },
+  { key: 'disease_radius', label: 'Contagion radius', min: 0.5, max: 20, step: 0.5, group: 'Disease', gate: 'disease_enabled' },
+  { key: 'disease_energy_drain', label: 'Energy drain / tick', min: 0, max: 2, step: 0.05, group: 'Disease', gate: 'disease_enabled' },
+  { key: 'recovery_rate', label: 'Recovery chance / tick', min: 0, max: 1, step: 0.005, group: 'Disease', gate: 'disease_enabled' },
+  { key: 'disease_lethality', label: 'Lethality', min: 0, max: 1, step: 0.05, group: 'Disease', gate: 'disease_enabled' },
   // Sky & Seasons — the turning of the world
   { key: 'day_length', label: 'Day length (ticks)', min: 4, max: 20000, step: 4, group: 'Sky & Seasons' },
   { key: 'season_length', label: 'Season length (ticks)', min: 4, max: 100000, step: 10, group: 'Sky & Seasons' },
   { key: 'winter_food_mult', label: 'Winter food ×', min: 0.1, max: 1.5, step: 0.05, group: 'Sky & Seasons' },
   { key: 'night_sight_mult', label: 'Night sight ×', min: 0.05, max: 2, step: 0.05, group: 'Sky & Seasons' },
-  { key: 'weather_change_rate', label: 'Weather turn chance', min: 0, max: 1, step: 0.001, group: 'Sky & Seasons' },
-  { key: 'fog_sight_mult', label: 'Fog sight ×', min: 0.05, max: 2, step: 0.05, group: 'Sky & Seasons' },
-  { key: 'rain_speed_mult', label: 'Rain speed ×', min: 0.1, max: 2, step: 0.05, group: 'Sky & Seasons' },
-  { key: 'storm_wander_bonus', label: 'Storm wander +', min: 0, max: 3.2, step: 0.05, group: 'Sky & Seasons' },
+  { key: 'weather_change_rate', label: 'Weather turn chance', min: 0, max: 1, step: 0.001, group: 'Sky & Seasons', gate: 'weather_enabled' },
+  { key: 'fog_sight_mult', label: 'Fog sight ×', min: 0.05, max: 2, step: 0.05, group: 'Sky & Seasons', gate: 'weather_enabled' },
+  { key: 'rain_speed_mult', label: 'Rain speed ×', min: 0.1, max: 2, step: 0.05, group: 'Sky & Seasons', gate: 'weather_enabled' },
+  { key: 'storm_wander_bonus', label: 'Storm wander +', min: 0, max: 3.2, step: 0.05, group: 'Sky & Seasons', gate: 'weather_enabled' },
   // Weather & Crops — rain waters, fog favours mushrooms, storms damage (§R)
-  { key: 'rain_growth_mult', label: 'Rain growth ×', min: 0.5, max: 3, step: 0.05, group: 'Weather & Crops' },
-  { key: 'fog_mushroom_mult', label: 'Fog mushroom ×', min: 0.5, max: 3, step: 0.05, group: 'Weather & Crops' },
-  { key: 'storm_plant_damage', label: 'Storm plant damage', min: 0, max: 1, step: 0.005, group: 'Weather & Crops' },
+  { key: 'rain_growth_mult', label: 'Rain growth ×', min: 0.5, max: 3, step: 0.05, group: 'Weather & Crops', gate: 'weather_enabled' },
+  { key: 'fog_mushroom_mult', label: 'Fog mushroom ×', min: 0.5, max: 3, step: 0.05, group: 'Weather & Crops', gate: 'weather_enabled' },
+  { key: 'storm_plant_damage', label: 'Storm plant damage', min: 0, max: 1, step: 0.005, group: 'Weather & Crops', gate: 'weather_enabled' },
   // Weather Sickness — chill and wet contagion (§R)
-  { key: 'chill_rate', label: 'Chill rate / tick', min: 0, max: 1, step: 0.005, group: 'Weather Sickness' },
-  { key: 'chill_threshold', label: 'Chill threshold', min: 1, max: 100, step: 1, group: 'Weather Sickness' },
-  { key: 'chill_drain', label: 'Chill drain / tick', min: 0, max: 5, step: 0.05, group: 'Weather Sickness' },
-  { key: 'wet_disease_mult', label: 'Wet disease ×', min: 1, max: 5, step: 0.1, group: 'Weather Sickness' },
+  { key: 'chill_rate', label: 'Chill rate / tick', min: 0, max: 1, step: 0.005, group: 'Weather Sickness', gate: 'weather_sickness_enabled' },
+  { key: 'chill_threshold', label: 'Chill threshold', min: 1, max: 100, step: 1, group: 'Weather Sickness', gate: 'weather_sickness_enabled' },
+  { key: 'chill_drain', label: 'Chill drain / tick', min: 0, max: 5, step: 0.05, group: 'Weather Sickness', gate: 'weather_sickness_enabled' },
+  { key: 'wet_disease_mult', label: 'Wet disease ×', min: 1, max: 5, step: 0.1, group: 'Weather Sickness', gate: 'weather_sickness_enabled' },
   // Shelter — roofs against the sky
-  { key: 'exposure_drain', label: 'Exposure drain / tick', min: 0, max: 2, step: 0.05, group: 'Shelter' },
-  { key: 'house_capacity', label: 'House capacity', min: 1, max: 20, step: 1, group: 'Shelter' },
-  { key: 'rest_recovery_mult', label: 'Rest healing ×', min: 0.5, max: 5, step: 0.25, group: 'Shelter' },
-  { key: 'house_decay_ticks', label: 'House decay ticks', min: 100, max: 100000, step: 100, group: 'Shelter' },
+  { key: 'exposure_drain', label: 'Exposure drain / tick', min: 0, max: 2, step: 0.05, group: 'Shelter', gate: 'shelter_enabled' },
+  { key: 'house_capacity', label: 'House capacity', min: 1, max: 20, step: 1, group: 'Shelter', gate: 'shelter_enabled' },
+  { key: 'rest_recovery_mult', label: 'Rest healing ×', min: 0.5, max: 5, step: 0.25, group: 'Shelter', gate: 'shelter_enabled' },
+  { key: 'house_decay_ticks', label: 'House decay ticks', min: 100, max: 100000, step: 100, group: 'Shelter', gate: 'shelter_enabled' },
   // Territory — clan land and trespass
-  { key: 'territory_radius', label: 'Territory radius', min: 1, max: 50, step: 1, group: 'Territory' },
-  { key: 'trespass_decay', label: 'Trespass decay / tick', min: 0, max: 5, step: 0.05, group: 'Territory' },
+  { key: 'territory_radius', label: 'Territory radius', min: 1, max: 50, step: 1, group: 'Territory', gate: 'territory_enabled' },
+  { key: 'trespass_decay', label: 'Trespass decay / tick', min: 0, max: 5, step: 0.05, group: 'Territory', gate: 'territory_enabled' },
   // Clan founding (§V) — settlements define clans
   { key: 'max_clans', label: 'Max clans', min: -1, max: 24, step: 1, group: 'Clan' },
-  { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction' },
-  { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction' },
-  { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction' },
-  { key: 'carrying_capacity', label: 'Carrying capacity', min: -1, max: 2000, step: 10, group: 'Reproduction' },
-  { key: 'max_population', label: 'Hard pop cap', min: -1, max: 5000, step: 10, group: 'Reproduction' },
+  { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction', gate: 'birth_enabled' },
+  { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction', gate: 'birth_enabled' },
+  { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction', gate: 'birth_enabled' },
+  { key: 'carrying_capacity', label: 'Carrying capacity', min: -1, max: 2000, step: 10, group: 'Reproduction', gate: 'birth_enabled' },
+  { key: 'max_population', label: 'Hard pop cap', min: -1, max: 5000, step: 10, group: 'Reproduction', gate: 'birth_enabled' },
   // Society — interaction & clan relations
   { key: 'cohesion_weight', label: 'Cohesion weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
   { key: 'alignment_weight', label: 'Alignment weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
@@ -97,37 +102,48 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'alliance_threshold', label: 'Alliance threshold', min: -100, max: 100, step: 5, group: 'Interaction' },
   { key: 'rivalry_threshold', label: 'Rivalry threshold', min: -100, max: 100, step: 5, group: 'Interaction' },
   // Predation — hunters and prey
-  { key: 'predator_ratio', label: 'Predator ratio', min: 0, max: 1, step: 0.01, group: 'Predation' },
-  { key: 'hunt_radius', label: 'Hunt radius', min: 1, max: 40, step: 1, group: 'Predation' },
-  { key: 'bite_damage', label: 'Bite damage', min: 0, max: 200, step: 10, group: 'Predation' },
-  { key: 'bite_cooldown', label: 'Bite cooldown', min: 0, max: 100, step: 1, group: 'Predation' },
-  { key: 'energy_from_prey', label: 'Energy from prey', min: 0, max: 200, step: 5, group: 'Predation' },
-  { key: 'fear_radius', label: 'Fear radius', min: 1, max: 40, step: 1, group: 'Predation' },
+  { key: 'predator_ratio', label: 'Predator ratio', min: 0, max: 1, step: 0.01, group: 'Predation', gate: 'predation_enabled' },
+  { key: 'hunt_radius', label: 'Hunt radius', min: 1, max: 40, step: 1, group: 'Predation', gate: 'predation_enabled' },
+  { key: 'bite_damage', label: 'Bite damage', min: 0, max: 200, step: 10, group: 'Predation', gate: 'predation_enabled' },
+  { key: 'bite_cooldown', label: 'Bite cooldown', min: 0, max: 100, step: 1, group: 'Predation', gate: 'predation_enabled' },
+  { key: 'energy_from_prey', label: 'Energy from prey', min: 0, max: 200, step: 5, group: 'Predation', gate: 'predation_enabled' },
+  { key: 'fear_radius', label: 'Fear radius', min: 1, max: 40, step: 1, group: 'Predation', gate: 'predation_enabled' },
   // Communication — clan calls (§Q)
-  { key: 'signal_radius', label: 'Signal radius', min: 3, max: 40, step: 1, group: 'Communication' },
-  { key: 'food_call_rate', label: 'Food call rate', min: 0, max: 1, step: 0.01, group: 'Communication' },
-  { key: 'alarm_call_rate', label: 'Alarm call rate', min: 0, max: 1, step: 0.01, group: 'Communication' },
+  { key: 'signal_radius', label: 'Signal radius', min: 3, max: 40, step: 1, group: 'Communication', gate: 'communication_enabled' },
+  { key: 'food_call_rate', label: 'Food call rate', min: 0, max: 1, step: 0.01, group: 'Communication', gate: 'communication_enabled' },
+  { key: 'alarm_call_rate', label: 'Alarm call rate', min: 0, max: 1, step: 0.01, group: 'Communication', gate: 'communication_enabled' },
   // Communication II — knowledge, teaching & mobbing (§X)
-  { key: 'knowledge_ttl', label: 'Knowledge TTL', min: 20, max: 100000, step: 10, group: 'Communication II' },
-  { key: 'knowledge_share_rate', label: 'Share rate / tick', min: 0, max: 1, step: 0.01, group: 'Communication II' },
-  { key: 'help_radius', label: 'Help radius', min: 2, max: 60, step: 1, group: 'Communication II' },
-  { key: 'defense_weight', label: 'Defense weight', min: 0, max: 5, step: 0.05, group: 'Communication II' },
+  { key: 'knowledge_ttl', label: 'Knowledge TTL', min: 20, max: 100000, step: 10, group: 'Communication II', gate: 'knowledge_enabled' },
+  { key: 'knowledge_share_rate', label: 'Share rate / tick', min: 0, max: 1, step: 0.01, group: 'Communication II', gate: 'knowledge_enabled' },
+  { key: 'help_radius', label: 'Help radius', min: 2, max: 60, step: 1, group: 'Communication II', gate: ['knowledge_enabled', 'help_call_enabled'] },
+  { key: 'defense_weight', label: 'Defense weight', min: 0, max: 5, step: 0.05, group: 'Communication II', gate: ['knowledge_enabled', 'help_call_enabled'] },
   // Rebellion — clan schism (§S)
-  { key: 'schism_threshold', label: 'Schism threshold', min: 0, max: 1, step: 0.05, group: 'Rebellion' },
-  { key: 'schism_min_pop', label: 'Schism min pop', min: 2, max: 100, step: 1, group: 'Rebellion' },
+  { key: 'schism_threshold', label: 'Schism threshold', min: 0, max: 1, step: 0.05, group: 'Rebellion', gate: 'schism_enabled' },
+  { key: 'schism_min_pop', label: 'Schism min pop', min: 2, max: 100, step: 1, group: 'Rebellion', gate: 'schism_enabled' },
   // Ages — super-seasons (§S)
-  { key: 'age_length', label: 'Age length (ticks)', min: 100, max: 1000000, step: 100, group: 'Ages' },
+  { key: 'age_length', label: 'Age length (ticks)', min: 100, max: 1000000, step: 100, group: 'Ages', gate: 'age_enabled' },
   // Culture (§S)
-  { key: 'culture_spread_rate', label: 'Culture spread / tick', min: 0, max: 1, step: 0.0005, group: 'Culture' },
+  { key: 'culture_spread_rate', label: 'Culture spread / tick', min: 0, max: 1, step: 0.0005, group: 'Culture', gate: 'culture_enabled' },
   // Genetics — heritable traits (§S)
   { key: 'trait_mutation_rate', label: 'Trait mutation rate', min: 0, max: 1, step: 0.005, group: 'Genetics' },
   // Wildfire & Disasters (§S)
-  { key: 'fire_rate', label: 'Fire ignite / tick', min: 0, max: 0.05, step: 0.0001, group: 'Wildfire & Disasters' },
-  { key: 'fire_spread_rate', label: 'Fire spread / tick', min: 0, max: 1, step: 0.01, group: 'Wildfire & Disasters' },
-  { key: 'disaster_rate', label: 'Disaster / tick', min: 0, max: 0.05, step: 0.0001, group: 'Wildfire & Disasters' },
+  { key: 'fire_rate', label: 'Fire ignite / tick', min: 0, max: 0.05, step: 0.0001, group: 'Wildfire & Disasters', gate: 'wildfire_enabled' },
+  { key: 'fire_spread_rate', label: 'Fire spread / tick', min: 0, max: 1, step: 0.01, group: 'Wildfire & Disasters', gate: 'wildfire_enabled' },
+  { key: 'disaster_rate', label: 'Disaster / tick', min: 0, max: 0.05, step: 0.0001, group: 'Wildfire & Disasters', gate: 'disaster_enabled' },
   // Clan war — rival blood
-  { key: 'attack_radius', label: 'Attack radius', min: 0.5, max: 10, step: 0.1, group: 'Clan War' },
-  { key: 'attack_damage', label: 'Attack damage', min: 0, max: 200, step: 10, group: 'Clan War' },
+  { key: 'attack_radius', label: 'Attack radius', min: 0.5, max: 10, step: 0.1, group: 'Clan War', gate: 'war_enabled' },
+  { key: 'attack_damage', label: 'Attack damage', min: 0, max: 200, step: 10, group: 'Clan War', gate: 'war_enabled' },
+  // Politics — coalitions, leaders, resources, betrayal (§AB)
+  { key: 'coalition_threshold', label: 'Coalition threshold', min: -100, max: 100, step: 5, group: 'Politics', gate: 'coalitions_enabled' },
+  { key: 'coalition_min_size', label: 'Coalition min size', min: 2, max: 16, step: 1, group: 'Politics', gate: 'coalitions_enabled' },
+  { key: 'larder_capacity', label: 'Larder capacity', min: 0, max: 2000, step: 25, group: 'Politics', gate: ['resource_sharing_enabled', 'tribute_enabled', 'aid_rate' as unknown as BoolLawKey] },
+  { key: 'aid_rate', label: 'Allied aid chance', min: 0, max: 1, step: 0.01, group: 'Politics', gate: 'resource_sharing_enabled' },
+  // Desperation — cannibalism (§AC)
+  { key: 'cannibalism_hunger_ratio', label: 'Hunger threshold', min: 0.01, max: 0.6, step: 0.01, group: 'Desperation', gate: 'cannibalism_enabled' },
+  { key: 'cannibalism_energy', label: 'Energy per kill', min: 0, max: 200, step: 5, group: 'Desperation', gate: 'cannibalism_enabled' },
+  { key: 'kin_stigma', label: 'Kin stigma', min: 0, max: 100, step: 5, group: 'Desperation', gate: ['cannibalism_enabled', 'exile_on_kin_eat'] },
+  // Food decay — nothing lasts forever (§AE)
+  { key: 'food_lifespan_ticks', label: 'Food lifespan (ticks)', min: 100, max: 100000, step: 100, group: 'Food Decay', gate: 'food_decay_enabled' },
   // Bodies & Houses — geometry of the flat world
   { key: 'door_clearance', label: 'Door clearance ×', min: 1, max: 4, step: 0.1, group: 'Bodies & Houses' },
   { key: 'house_min_size', label: 'House min size', min: 4, max: 30, step: 1, group: 'Bodies & Houses' },
@@ -158,8 +174,47 @@ const GROUP_ORDER = [
   'Interaction',
   'Predation',
   'Clan War',
+  'Politics',
+  'Desperation',
+  'Food Decay',
   'Bodies & Houses',
 ]
+
+// Backend Config defaults — switches render these until laws load.
+const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
+  birth_enabled: true,
+  disease_enabled: false,
+  weather_enabled: true,
+  sleep_enabled: true,
+  shelter_enabled: true,
+  house_claim_enabled: true,
+  territory_enabled: true,
+  weather_sickness_enabled: false,
+  communication_enabled: true,
+  knowledge_enabled: true,
+  help_call_enabled: true,
+  wildfire_enabled: false,
+  disaster_enabled: false,
+  culture_enabled: false,
+  age_enabled: true,
+  schism_enabled: true,
+  totems_enabled: true,
+  succession_enabled: true,
+  plant_variants_enabled: true,
+  predation_enabled: false,
+  war_enabled: true,
+  coalitions_enabled: true,
+  leader_decisions_enabled: true,
+  resource_sharing_enabled: true,
+  tribute_enabled: true,
+  betrayal_enabled: true,
+  defection_enabled: true,
+  cannibalism_enabled: true,
+  eat_enemy_enabled: true,
+  eat_kin_enabled: true,
+  exile_on_kin_eat: true,
+  food_decay_enabled: true,
+}
 
 const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   food_count: 'the world keeps this much food alive — bounty or famine (winter ×0.5, summer ×1.2)',
@@ -216,6 +271,53 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   winter_food_mult: 'winter bounty × winter_food_mult (0.7 gentle, 0.5 harsh, 0.3 extinction) — lean season target = food_count × winter_food_mult',
   schism_threshold: 'fraction unhappy (starving/homeless) to split (0.4)',
   schism_min_pop: 'minimum clan population to consider schism (4)',
+  coalition_threshold: 'relation score at which a leader may fold another clan into a coalition (40)',
+  coalition_min_size: 'smallest viable coalition; smaller blocs dissolve (2)',
+  larder_capacity: 'energy a clan store at the settlement can hold (300) — surplus deposited, famine withdraws',
+  aid_rate: 'chance/tick a full-bellied ally tops up a starving ally\'s larder (0.05)',
+  food_lifespan_ticks: 'ticks a mature plant lives before it withers (9000) — mushroom 0.4×, grass ×1, berry 1.5×, poisonous 3×; withered plants fertilise the soil',
+  cannibalism_hunger_ratio: 'only creatures below this energy fraction may eat the living (0.15)',
+  cannibalism_energy: 'energy gained per desperate kill (45) — the victim leaves a partial corpse',
+  kin_stigma: 'relation hit between a kin-eater\'s outcast band and their former clan (40) — they become rivals',
+}
+
+function Switch({ checked, onChange, title }: { checked: boolean; onChange: (v: boolean) => void; title?: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      title={title}
+      onClick={() => onChange(!checked)}
+      style={{
+        width: 38,
+        height: 21,
+        borderRadius: 11,
+        border: '1px solid #444c56',
+        background: checked ? '#238636' : '#30363d',
+        position: 'relative',
+        padding: 0,
+        cursor: 'pointer',
+        flex: 'none',
+        transition: 'background .15s',
+      }}
+    >
+      <span
+        style={{
+          position: 'absolute',
+          top: 1,
+          left: checked ? 18 : 2,
+          width: 15,
+          height: 15,
+          borderRadius: '50%',
+          background: '#e6edf3',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.4)',
+          transition: 'left .15s',
+          display: 'block',
+        }}
+      />
+    </button>
+  )
 }
 
 interface Props {
@@ -247,6 +349,21 @@ export default function GodPanel({ open, onClose }: Props) {
 
   const set = (key: NumberLawKey, raw: string) =>
     setLaws((l) => ({ ...l, [key]: raw === '' ? undefined : Number(raw) }))
+
+  const boolVal = (k: BoolLawKey) => laws[k] ?? BOOL_DEFAULTS[k] ?? false
+  const setBool = (k: BoolLawKey, v: boolean) => setLaws((l) => ({ ...l, [k]: v }))
+  const gateOpen = (gate?: BoolLawKey | BoolLawKey[]) =>
+    !gate || (Array.isArray(gate) ? gate : [gate]).every((g) => boolVal(g))
+
+  const ToggleRow = ({ k, label, title, hideIfOff }: { k: BoolLawKey; label: string; title?: string; hideIfOff?: BoolLawKey | BoolLawKey[] }) => {
+    if (hideIfOff && !gateOpen(hideIfOff)) return null
+    return (
+      <div className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <span title={title}>{label}</span>
+        <Switch checked={boolVal(k)} onChange={(v) => setBool(k, v)} title={title ?? label} />
+      </div>
+    )
+  }
 
   const postLaws = async (persist: boolean) => {
     setError(null)
@@ -292,15 +409,28 @@ export default function GodPanel({ open, onClose }: Props) {
     }
   }
 
-  const panel = (
-    <aside className="god-panel" onClick={e => e.stopPropagation()}>
-      <header className="god-head">
-        <h2>⚖ Laws of Nature</h2>
-        <button className="god-close" onClick={onClose} aria-label="close">
-          ×
-        </button>
-      </header>
+  const foot = (
+    <footer className="god-foot">
+      {error && <span className="god-error">{error}</span>}
+      {!error && saved && <span className="god-saved">laws applied</span>}
+      <button onClick={apply} title="apply to current world only (Reset reverts)">Apply</button>
+      <button onClick={save} title="save to current and future worlds (Reset keeps it)" className="god-save">
+        Save
+      </button>
+    </footer>
+  )
 
+  const head = (
+    <header className="god-head">
+      <h2>⚖ Laws of Nature</h2>
+      <button className="god-close" onClick={onClose} aria-label="close">
+        ×
+      </button>
+    </header>
+  )
+
+  const body = (
+    <>
       <p className="god-note">
         You are god: set the rules, never the fates. Creatures and the world obey
         the law; no single life may be touched.
@@ -331,171 +461,95 @@ export default function GodPanel({ open, onClose }: Props) {
           </label>
 
           {GROUP_ORDER.map((group) => {
-            const lawsInGroup = NUMBER_LAWS.filter((l) => l.group === group)
+            const lawsInGroup = NUMBER_LAWS.filter((l) => l.group === group && gateOpen(l.gate))
             const special = (
               <>
                 {group === 'Reproduction' && (
-                  <label className="god-row">
-                    <span title="whether new life may begin at all">Births allowed</span>
-                    <select value={String(laws.birth_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, birth_enabled: e.target.value === 'true' }))}>
-                      <option value="true">yes</option><option value="false">no</option>
-                    </select>
-                  </label>
+                  <ToggleRow k="birth_enabled" label="Births allowed" title="whether new life may begin at all — off hides the lineage dials" />
                 )}
                 {group === 'Disease' && (
-                  <label className="god-row">
-                    <span title="plagues walk the world; disabling freezes all sickness">Plagues allowed</span>
-                    <select value={String(laws.disease_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, disease_enabled: e.target.value === 'true' }))}>
-                      <option value="true">yes</option><option value="false">no</option>
-                    </select>
-                  </label>
+                  <ToggleRow k="disease_enabled" label="Plagues allowed" title="plagues walk the world; disabling freezes all sickness" />
                 )}
                 {group === 'Sky & Seasons' && (
                   <>
-                    <label className="god-row">
-                      <span title="whether the weather ever turns">Weather allowed</span>
-                      <select value={String(laws.weather_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, weather_enabled: e.target.value === 'true' }))}>
-                        <option value="true">yes</option><option value="false">no</option>
-                      </select>
-                    </label>
-                    <label className="god-row">
-                      <span title="creatures shelter in houses after dark">Night rest</span>
-                      <select value={String(laws.sleep_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, sleep_enabled: e.target.value === 'true' }))}>
-                        <option value="true">yes</option><option value="false">no</option>
-                      </select>
-                    </label>
+                    <ToggleRow k="weather_enabled" label="Weather allowed" title="whether the weather ever turns — off hides rain/fog/storm dials everywhere" />
+                    <ToggleRow k="sleep_enabled" label="Night rest" title="creatures shelter in houses after dark" />
                   </>
                 )}
                 {group === 'Shelter' && (
-                  <label className="god-row">
-                    <span title="creatures may claim roofs; disabling leaves all exposed">Shelter allowed</span>
-                    <select value={String(laws.shelter_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, shelter_enabled: e.target.value === 'true' }))}>
-                      <option value="true">yes</option><option value="false">no</option>
-                    </select>
-                  </label>
+                  <>
+                    <ToggleRow k="shelter_enabled" label="Shelter allowed" title="creatures may claim roofs; disabling leaves all exposed and hides the shelter dials" />
+                    <ToggleRow k="house_claim_enabled" label="Clan house claims" title="clans claim houses as settlements" hideIfOff="shelter_enabled" />
+                  </>
                 )}
                 {group === 'Territory' && (
-                  <label className="god-row">
-                    <span title="clans claim a circle around their house; disabling removes borders">Territory claimed</span>
-                    <select value={String(laws.territory_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, territory_enabled: e.target.value === 'true' }))}>
-                      <option value="true">yes</option><option value="false">no</option>
-                    </select>
-                  </label>
+                  <ToggleRow k="territory_enabled" label="Territory claimed" title="clans claim a circle around their house; disabling removes borders" />
                 )}
                 {group === 'Weather Sickness' && (
-                  <label className="god-row">
-                    <span title="chill and wet contagion — rain/storm/winter nights build chill, past threshold drains health; wet catches disease faster">Weather sickness</span>
-                    <select value={String(laws.weather_sickness_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, weather_sickness_enabled: e.target.value === 'true' }))}>
-                      <option value="true">yes</option><option value="false">no</option>
-                    </select>
-                  </label>
+                  <ToggleRow k="weather_sickness_enabled" label="Weather sickness" title="chill and wet contagion — rain/storm/winter nights build chill, past threshold drains health; wet catches disease faster" />
                 )}
                 {group === 'Communication' && (
-                  <label className="god-row">
-                    <span title="food + alarm calls — clan-mates respond strongly, strangers weakly; rendered as ripples">Communication</span>
-                    <select value={String(laws.communication_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, communication_enabled: e.target.value === 'true' }))}>
-                      <option value="true">yes</option><option value="false">no</option>
-                    </select>
-                  </label>
+                  <ToggleRow k="communication_enabled" label="Communication" title="food + alarm calls — clan-mates respond strongly, strangers weakly; rendered as ripples" />
                 )}
                 {group === 'Communication II' && (
                   <>
-                    <label className="god-row">
-                      <span title="creatures learn facts from experience (food/danger/enemies/safe homes), share them as rumors at half confidence; the clan remembers">Knowledge</span>
-                      <select value={String(laws.knowledge_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, knowledge_enabled: e.target.value === 'true' }))}>
-                        <option value="true">yes</option><option value="false">no</option>
-                      </select>
-                    </label>
-                    <label className="god-row">
-                      <span title="an attacked creature calls its clan; warriors rally first and mob the attacker, defenders soften its blows">Help calls</span>
-                      <select value={String(laws.help_call_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, help_call_enabled: e.target.value === 'true' }))}>
-                        <option value="true">yes</option><option value="false">no</option>
-                      </select>
-                    </label>
+                    <ToggleRow k="knowledge_enabled" label="Knowledge" title="creatures learn facts from experience (food/danger/enemies/safe homes), share them as rumors at half confidence; the clan remembers" />
+                    <ToggleRow k="help_call_enabled" label="Help calls" title="an attacked creature calls its clan; warriors rally first and mob the attacker, defenders soften its blows" hideIfOff="knowledge_enabled" />
                   </>
                 )}
                 {group === 'Wildfire & Disasters' && (
                   <>
-                    <label className="god-row">
-                      <span title="fire ignites via storm lightning / fire_rate and spreads grass→plant→house; ash fertilizes">Wildfire</span>
-                      <select value={String(laws.wildfire_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, wildfire_enabled: e.target.value === 'true' }))}>
-                        <option value="true">yes</option><option value="false">no</option>
-                      </select>
-                    </label>
-                    <label className="god-row">
-                      <span title="meteor/flood stochastic — god sets frequency, never a specific strike">Disasters</span>
-                      <select value={String(laws.disaster_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, disaster_enabled: e.target.value === 'true' }))}>
-                        <option value="true">yes</option><option value="false">no</option>
-                      </select>
-                    </label>
+                    <ToggleRow k="wildfire_enabled" label="Wildfire" title="fire ignites via storm lightning / fire_rate and spreads grass→plant→house; ash fertilizes" />
+                    <ToggleRow k="disaster_enabled" label="Disasters" title="meteor/flood stochastic — god sets frequency, never a specific strike" />
                   </>
                 )}
                 {group === 'Culture' && (
-                  <label className="god-row">
-                    <span title="culture spreads to allied neighbours, can split into rival traditions; grants small collective bonus">Culture</span>
-                    <select value={String(laws.culture_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, culture_enabled: e.target.value === 'true' }))}>
-                      <option value="true">yes</option><option value="false">no</option>
-                    </select>
-                  </label>
+                  <ToggleRow k="culture_enabled" label="Culture" title="culture spreads to allied neighbours, can split into rival traditions; grants small collective bonus" />
                 )}
                 {group === 'Genetics' && (
                   <div className="god-note" style={{ fontSize: 11, opacity: 0.7 }}>Heritable traits: greedy/peaceful/paranoid/bold — mutation {laws.trait_mutation_rate ?? 0.02}</div>
                 )}
                 {group === 'Ages' && (
-                  <label className="god-row">
-                    <span title="super-seasons: Golden/ Ice/ Chaos/ Plague — each bends food/mutation/disease/chill. God sets length, world cycles.">Ages</span>
-                    <select value={String(laws.age_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, age_enabled: e.target.value === 'true' }))}>
-                      <option value="true">yes</option><option value="false">no</option>
-                    </select>
-                  </label>
+                  <ToggleRow k="age_enabled" label="Ages" title="super-seasons: Golden/ Ice/ Chaos/ Plague — each bends food/mutation/disease/chill. God sets length, world cycles." />
                 )}
                 {group === 'Rebellion' && (
-                  <label className="god-row">
-                    <span title="unhappy members (starving/homeless) split off to found new clan then war parent — schism_threshold fraction to trigger">Schism allowed</span>
-                    <select value={String(laws.schism_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, schism_enabled: e.target.value === 'true' }))}>
-                      <option value="true">yes</option><option value="false">no</option>
-                    </select>
-                  </label>
+                  <ToggleRow k="schism_enabled" label="Schism allowed" title="unhappy members (starving/homeless) split off to found new clan then war parent — schism_threshold fraction to trigger" />
                 )}
                 {group === 'Clan' && (
                   <>
-                    <label className="god-row">
-                      <span title="each clan bears a totem (Wolf 🐺, Tree 🌳, Shield 🛡️, Eye 👁️, Bear 🐻, Stag 🦌, Owl 🦉, Rabbit 🐇, Boar 🐗, Fox 🦊, Raven 🐦‍⬛, Serpent 🐍) granting a subtle buff; disabling makes all clans plain">Totems</span>
-                      <select value={String(laws.totems_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, totems_enabled: e.target.value === 'true' }))}>
-                        <option value="true">yes</option><option value="false">no</option>
-                      </select>
-                    </label>
-                    <label className="god-row">
-                      <span title="leader succession on death emits succession event; disabling keeps founder as eternal leader">Succession</span>
-                      <select value={String(laws.succession_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, succession_enabled: e.target.value === 'true' }))}>
-                        <option value="true">yes</option><option value="false">no</option>
-                      </select>
-                    </label>
+                    <ToggleRow k="totems_enabled" label="Totems" title="each clan bears a totem (Wolf 🐺, Tree 🌳, Shield 🛡️, Eye 👁️, Bear 🐻, Stag 🦌, Owl 🦉, Rabbit 🐇, Boar 🐗, Fox 🦊, Raven 🐦‍⬛, Serpent 🐍) granting a subtle buff; disabling makes all clans plain" />
+                    <ToggleRow k="succession_enabled" label="Succession" title="leader succession on death emits succession event; disabling keeps founder as eternal leader" />
                   </>
                 )}
                 {group === 'Ecosystem' && (
-                  <label className="god-row">
-                    <span title="grass/berry/mushroom/poisonous diversity; disabling makes all plants grass">Plant variants</span>
-                    <select value={String(laws.plant_variants_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, plant_variants_enabled: e.target.value === 'true' }))}>
-                      <option value="true">yes</option><option value="false">no</option>
-                    </select>
-                  </label>
+                  <ToggleRow k="plant_variants_enabled" label="Plant variants" title="grass/berry/mushroom/poisonous diversity; disabling makes all plants grass" />
                 )}
                 {group === 'Predation' && (
-                  <label className="god-row">
-                    <span title="predators hunt prey; disabling makes them docile">Predation allowed</span>
-                    <select value={String(laws.predation_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, predation_enabled: e.target.value === 'true' }))}>
-                      <option value="true">yes</option><option value="false">no</option>
-                    </select>
-                  </label>
+                  <ToggleRow k="predation_enabled" label="Predation allowed" title="predators hunt prey; disabling makes them docile" />
                 )}
                 {group === 'Clan War' && (
-                  <label className="god-row">
-                    <span title="rival clans fight on contact; disabling enforces peace">War allowed</span>
-                    <select value={String(laws.war_enabled ?? false)} onChange={(e) => setLaws((l) => ({ ...l, war_enabled: e.target.value === 'true' }))}>
-                      <option value="true">yes</option><option value="false">no</option>
-                    </select>
-                  </label>
+                  <ToggleRow k="war_enabled" label="War allowed" title="rival clans fight on contact; disabling enforces peace" />
+                )}
+                {group === 'Politics' && (
+                  <>
+                    <ToggleRow k="coalitions_enabled" label="Coalitions" title="allied clans form defensive blocs — strike one member and every mate turns on you; soured relations dissolve the pact" />
+                    <ToggleRow k="leader_decisions_enabled" label="Leader decisions" title="leaders declare war on remembered enemies, sue for peace when weakened, demand tribute, betray allies (bold→war, peaceful→peace, paranoid→betrayal)" />
+                    <ToggleRow k="resource_sharing_enabled" label="Resource sharing" title="a food store at the settlement: well-fed members deposit surplus, starving members withdraw; allies aid each other in famine" />
+                    <ToggleRow k="tribute_enabled" label="Tribute" title="weak clans pay periodic tribute from their larder to a stronger protector" hideIfOff={['leader_decisions_enabled']} />
+                    <ToggleRow k="betrayal_enabled" label="Betrayal" title="a leader breaks an alliance and strikes — the betrayed clan's rivals are told the same tale (treason)" hideIfOff="leader_decisions_enabled" />
+                    <ToggleRow k="defection_enabled" label="Defection" title="unhappy members (starving/homeless) walk to a healthier nearby banner, even a rival's" />
+                  </>
+                )}
+                {group === 'Desperation' && (
+                  <>
+                    <ToggleRow k="cannibalism_enabled" label="Cannibalism" title="the starving may hunt and eat living creatures — sated/hungry never do; cooldown between kills" />
+                    <ToggleRow k="eat_enemy_enabled" label="Eat enemies" title="enemy-clan members (negative relation) and the weak (starving/elder/wounded) of any clan are legitimate prey; never predators, infants or indoor refugees" hideIfOff="cannibalism_enabled" />
+                    <ToggleRow k="eat_kin_enabled" label="Eat kin" title="weak kin may be eaten too — at a terrible price: exile, stigma, and a clan that now counts you an enemy" hideIfOff="cannibalism_enabled" />
+                    <ToggleRow k="exile_on_kin_eat" label="Exile on kin-eat" title="the kin-eater is cast out and founds a one-being outcast band; disabling keeps them in the clan but shunned" hideIfOff={['cannibalism_enabled', 'eat_kin_enabled']} />
+                  </>
+                )}
+                {group === 'Food Decay' && (
+                  <ToggleRow k="food_decay_enabled" label="Food decay" title="mature plants wither after their lifespan (× variant pace), fertilise nearby soil, then vanish — nothing lasts forever" />
                 )}
               </>
             )
@@ -558,24 +612,27 @@ export default function GodPanel({ open, onClose }: Props) {
             )
           })}
 
-          <footer className="god-foot">
-            {error && <span className="god-error">{error}</span>}
-            {!error && saved && <span className="god-saved">laws applied</span>}
-            <button onClick={apply} title="apply to current world only (Reset reverts)">Apply</button>
-            <button onClick={save} title="save to current and future worlds (Reset keeps it)" className="god-save">
-              Save
-            </button>
-          </footer>
         </>
       )}
-    </aside>
+    </>
   )
+
   if (isMobile) {
+    // Phone: the laws are their own full-screen page — big text, scrollable
+    // body, sticky Apply/Save. No cramped sidebar, no backdrop squeeze.
     return (
-      <div className="god-backdrop" onClick={onClose}>
-        {panel}
+      <div className="god-screen" role="dialog" aria-label="Laws of Nature">
+        {head}
+        <div className="god-screen-body">{body}</div>
+        {foot}
       </div>
     )
   }
-  return panel
+  return (
+    <aside className="god-panel" onClick={e => e.stopPropagation()}>
+      {head}
+      {body}
+      {foot}
+    </aside>
+  )
 }

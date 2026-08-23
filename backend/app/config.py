@@ -99,6 +99,10 @@ class Config:
     corpse_ttl: int = 600  # ticks before a corpse decays away
     corpse_energy: float = 25.0  # energy a fresh corpse holds
 
+    # Food decay (§AE) — nothing lasts forever
+    food_decay_enabled: bool = True  # mature plants wither, fertilise, vanish
+    food_lifespan_ticks: int = 9000  # ticks a mature plant lives (× variant mult)
+
     # Behaviour tuning
     perceive_radius: float = 20.0  # was 18 — fog/night + variants (tested 20)
     eat_radius: float = 1.4
@@ -203,6 +207,27 @@ class Config:
     war_enabled: bool = True  # enabled by default, but rare
     attack_radius: float = 1.8  # distance for clan war engagement
     attack_damage: float = 45.0  # was 100 — wound (45) not lethal, so war rarely fatal
+
+    # Politics (§AB) — coalitions, leader agency, resources, betrayal
+    coalitions_enabled: bool = True  # allied clans form defensive blocs
+    coalition_threshold: int = 40  # relation score at which a clan may join
+    coalition_min_size: int = 2  # smallest viable bloc (incl. founder)
+    leader_decisions_enabled: bool = True  # leaders declare war/peace/tribute as plots
+    resource_sharing_enabled: bool = True  # clan larder at the settlement
+    larder_capacity: float = 300.0  # energy a clan store holds
+    aid_rate: float = 0.05  # chance/tick a surplus ally feeds a starving ally
+    tribute_enabled: bool = True  # weak clans pay a protector for peace
+    betrayal_enabled: bool = True  # leaders may break alliances and strike
+    defection_enabled: bool = True  # unhappy members defect to other clans
+
+    # Desperation cannibalism (§AC) — eat the enemy & the weak
+    cannibalism_enabled: bool = True  # the starving may hunt the living
+    cannibalism_hunger_ratio: float = 0.15  # only below this energy fraction
+    cannibalism_energy: float = 45.0  # gained per desperate kill
+    eat_enemy_enabled: bool = True  # enemy-clan members are legitimate prey
+    eat_kin_enabled: bool = True  # weak kin too — at a terrible price
+    kin_stigma: int = 40  # relation hit between exiled band and former clan
+    exile_on_kin_eat: bool = True  # kin-eater cast out, founding an outcast band
 
     # Houses
     house_min_size: float = 6.0

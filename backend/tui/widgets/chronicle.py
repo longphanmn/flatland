@@ -11,6 +11,10 @@ from .. import theme
 
 MAX_LOG = 400
 
+# High-frequency / low-value events never enter the terminal feed —
+# blooms and withers churn by the tick, ruins are just old age for houses.
+HIDDEN_EVENTS = {"bloom", "wither", "ruin"}
+
 
 class Chronicle(RichLog):
     DEFAULT_CSS = """
@@ -29,7 +33,10 @@ class Chronicle(RichLog):
         self.clear()
 
     def add_from_state(self, st: StateMessage) -> None:
-        fresh = [ev for ev in st.events if ev.key not in self._seen]
+        fresh = [
+            ev for ev in st.events
+            if ev.key not in self._seen and ev.type not in HIDDEN_EVENTS
+        ]
         for ev in fresh:
             self._seen.add(ev.key)
         for ev in reversed(fresh):  # newest at the bottom; log scrolls
@@ -38,6 +45,8 @@ class Chronicle(RichLog):
     def add_fetched(self, events: list[dict], clans: dict | None = None) -> None:
         """Older events from GET /api/history (already oldest-first)."""
         for d in events:
+            if d.get("type") in HIDDEN_EVENTS:
+                continue
             ev = HistoryEvent.from_dict(d)
             if ev.key in self._seen:
                 continue
@@ -109,10 +118,54 @@ def format_event(ev: HistoryEvent, clans: dict | None = None) -> Text:
         line.append("settlement founded", style=color)
         if p.get("clan_id"):
             line.append(f" by {_clan_label(clans, p.get('clan_id'))}", style="dim")
+    elif t == "culture":
+        line.append("clan ", style=color)
+        line.append(_clan_label(clans, p.get("clan_id")))
+        line.append(f" embraces a new tradition: {p.get('culture', '')}", style="bold " + color)
     elif t == "fire":
         line.append(f"fire {p.get('kind') or ''} at ({round(ev.x)}, {round(ev.y)})", style=color)
     elif t == "disaster":
         line.append(f"disaster {p.get('kind')} r{p.get('r', '')} at ({round(ev.x)}, {round(ev.y)})", style=color)
+    elif t in ("coalition_formed", "coalition_joined", "coalition_dissolved"):
+        label = {"coalition_formed": "coalition formed: ", "coalition_joined": "", "coalition_dissolved": ""}.get(t, t)
+        if t == "coalition_joined":
+            line.append(f"clan {_clan_label(clans, p.get('clan'))} joined ", style=color)
+        elif t == "coalition_dissolved":
+            line.append(f"coalition dissolved ({p.get('reason')}): ", style="dim")
+        else:
+            line.append(label, style=color)
+        line.append(str(p.get("name") or f"coalition #{p.get('coalition')}"), style="bold " + color)
+        members = p.get("members") or []
+        if members:
+            line.append(f" ({len(members)} clans)", style="dim")
+    elif t == "peace":
+        line.append("peace: ", style=color)
+        line.append(_clan_label(clans, p.get("a")))
+        line.append(" & ")
+        line.append(_clan_label(clans, p.get("b")))
+        line.append(" lay down arms")
+    elif t == "tribute":
+        line.append("tribute: ", style=color)
+        line.append(_clan_label(clans, p.get("from")))
+        line.append(f" pays {p.get('amount', '?')} to ")
+        line.append(_clan_label(clans, p.get("to")))
+    elif t == "betrayal":
+        line.append("betrayal: ", style=color)
+        line.append(_clan_label(clans, p.get("a")))
+        line.append(" turns on ally ")
+        line.append(_clan_label(clans, p.get("b")))
+    elif t == "defection":
+        line.append("defection: ", style=color)
+        line.append(f"#{ev.entity_id} leaves ")
+        line.append(_clan_label(clans, p.get("from")))
+        line.append(" for ")
+        line.append(_clan_label(clans, p.get("to")))
+    elif t == "cannibalism":
+        line.append(f"{mark} ate ", style=color)
+        line.append(("kin " if p.get("kin") else "enemy ") + str(p.get("prey_caste")) + f" #{p.get('prey')}")
+    elif t == "exile":
+        line.append(f"{mark} exiled from ", style=color)
+        line.append(str(p.get("former_name") or _clan_label(clans, p.get("former_clan"))))
     elif t == "outbreak":
         line.append(f"{mark} outbreak", style=color)
     elif t == "recovery":

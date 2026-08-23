@@ -47,6 +47,7 @@ export interface EntityState {
   abandoned_ticks?: number
   growth?: number
   variant?: 'grass' | 'berry' | 'mushroom' | 'poisonous'
+  withering?: boolean
   sex?: 'male' | 'female'
   mother_id?: number
   father_id?: number
@@ -84,6 +85,7 @@ export interface HistoryEvent {
   /** Present only on events fetched from GET /api/history; absent on live-streamed ones. */
   id?: number
   type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war' | 'ruin' | 'settlement' | 'succession' | 'schism' | 'fire' | 'disaster' | 'conquest' | 'culture'
+    | 'coalition_formed' | 'coalition_joined' | 'coalition_dissolved' | 'peace' | 'tribute' | 'betrayal' | 'defection' | 'cannibalism' | 'exile' | 'wither'
   tick: number
   entity_id: number
   caste?: string | null
@@ -286,6 +288,31 @@ export interface GodLaws {
   schism_enabled?: boolean
   schism_threshold?: number
   schism_min_pop?: number
+
+  // Politics (§AB) — coalitions, leaders, resources, betrayal
+  coalitions_enabled?: boolean
+  coalition_threshold?: number
+  coalition_min_size?: number
+  leader_decisions_enabled?: boolean
+  resource_sharing_enabled?: boolean
+  larder_capacity?: number
+  aid_rate?: number
+  tribute_enabled?: boolean
+  betrayal_enabled?: boolean
+  defection_enabled?: boolean
+
+  // Desperation cannibalism (§AC)
+  cannibalism_enabled?: boolean
+  cannibalism_hunger_ratio?: number
+  cannibalism_energy?: number
+  eat_enemy_enabled?: boolean
+  eat_kin_enabled?: boolean
+  kin_stigma?: number
+  exile_on_kin_eat?: boolean
+
+  // Food decay (§AE)
+  food_decay_enabled?: boolean
+  food_lifespan_ticks?: number
 
   door_clearance?: number
   house_min_size?: number

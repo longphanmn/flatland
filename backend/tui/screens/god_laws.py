@@ -140,6 +140,20 @@ NUMBER_LAWS: dict[str, list[tuple[str, str]]] = {
         ("attack_radius", "Attack radius"),
         ("attack_damage", "Attack damage"),
     ],
+    "Politics": [
+        ("coalition_threshold", "Coalition threshold"),
+        ("coalition_min_size", "Coalition min size"),
+        ("larder_capacity", "Larder capacity"),
+        ("aid_rate", "Allied aid chance"),
+    ],
+    "Desperation": [
+        ("cannibalism_hunger_ratio", "Hunger threshold"),
+        ("cannibalism_energy", "Energy per kill"),
+        ("kin_stigma", "Kin stigma"),
+    ],
+    "Food Decay": [
+        ("food_lifespan_ticks", "Food lifespan (ticks)"),
+    ],
     "Ages": [
         ("age_length", "Age length (ticks)"),
     ],
@@ -195,6 +209,21 @@ BOOL_LAWS: dict[str, list[tuple[str, str]]] = {
     "Weather Sickness": [("weather_sickness_enabled", "Weather sickness")],
     "Predation": [("predation_enabled", "Predation")],
     "Clan War": [("war_enabled", "Clan war")],
+    "Politics": [
+        ("coalitions_enabled", "Coalitions"),
+        ("leader_decisions_enabled", "Leader decisions"),
+        ("resource_sharing_enabled", "Resource sharing"),
+        ("tribute_enabled", "Tribute"),
+        ("betrayal_enabled", "Betrayal"),
+        ("defection_enabled", "Defection"),
+    ],
+    "Desperation": [
+        ("cannibalism_enabled", "Cannibalism"),
+        ("eat_enemy_enabled", "Eat enemies"),
+        ("eat_kin_enabled", "Eat kin"),
+        ("exile_on_kin_eat", "Exile on kin-eat"),
+    ],
+    "Food Decay": [("food_decay_enabled", "Food decay")],
 }
 
 GROUP_ORDER = list(NUMBER_LAWS.keys())

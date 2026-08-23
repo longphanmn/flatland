@@ -377,11 +377,12 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
           mushroom: '#a67c52',
           poisonous: '#8957e5',
         }
-        ctx.fillStyle = variantColors[e.variant ?? 'grass'] ?? '#d29922'
-        // size ∝ growth (sprout 0.15 small, mature 1.0 full)
+        // §AE wilting: mature plants fade brown before they vanish
+        ctx.fillStyle = e.withering ? 'rgba(154,125,80,0.55)' : (variantColors[e.variant ?? 'grass'] ?? '#d29922')
+        // size ∝ growth (sprout 0.15 small, mature 1.0 full); wilt shrivels slightly
         const r = 0.35 + 0.55 * (e.growth ?? 0.15)
         ctx.beginPath()
-        ctx.arc(e.x, e.y, r, 0, TAU)
+        ctx.arc(e.x, e.y, e.withering ? r * 0.8 : r, 0, TAU)
         ctx.fill()
         // poisonous: faint purple halo
         if (e.variant === 'poisonous') {

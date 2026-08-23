@@ -36,6 +36,7 @@ class EntityState(BaseModel):
     energy: Optional[float] = None
     growth: Optional[float] = None  # plants: 0..1 maturity (renderer scales size)
     variant: Optional[Literal["grass", "berry", "mushroom", "poisonous"]] = None
+    withering: Optional[bool] = None  # §AE: mature plant past its wilt threshold
     size: Optional[float] = None
     status: Optional[Literal["", "hungry", "starving"]] = None
     radius: Optional[float] = None
@@ -105,6 +106,9 @@ class HistoryEvent(BaseModel):
         "death", "birth", "promotion", "demotion", "outbreak", "recovery",
         "bloom", "alliance", "rivalry", "predation", "war", "ruin", "settlement", "succession", "schism",
         "fire", "disaster", "conquest", "culture",
+        "coalition_formed", "coalition_joined", "coalition_dissolved",
+        "peace", "tribute", "betrayal", "defection", "cannibalism", "exile",
+        "wither",
     ] = ("death")
     tick: int
     entity_id: int
@@ -270,6 +274,31 @@ class GodLaws(BaseModel):
     war_enabled: Optional[bool] = None
     attack_radius: Optional[float] = Field(None, ge=0.5, le=10)
     attack_damage: Optional[float] = Field(None, ge=0, le=1000)
+
+    # Politics (§AB) — coalitions, leaders, resources, betrayal
+    coalitions_enabled: Optional[bool] = None
+    coalition_threshold: Optional[int] = Field(None, ge=-100, le=100)
+    coalition_min_size: Optional[int] = Field(None, ge=2, le=16)
+    leader_decisions_enabled: Optional[bool] = None
+    resource_sharing_enabled: Optional[bool] = None
+    larder_capacity: Optional[float] = Field(None, ge=0, le=5000)
+    aid_rate: Optional[float] = Field(None, ge=0, le=1)
+    tribute_enabled: Optional[bool] = None
+    betrayal_enabled: Optional[bool] = None
+    defection_enabled: Optional[bool] = None
+
+    # Desperation cannibalism (§AC)
+    cannibalism_enabled: Optional[bool] = None
+    cannibalism_hunger_ratio: Optional[float] = Field(None, ge=0, le=1)
+    cannibalism_energy: Optional[float] = Field(None, ge=0, le=1000)
+    eat_enemy_enabled: Optional[bool] = None
+    eat_kin_enabled: Optional[bool] = None
+    kin_stigma: Optional[int] = Field(None, ge=0, le=100)
+    exile_on_kin_eat: Optional[bool] = None
+
+    # Food decay (§AE)
+    food_decay_enabled: Optional[bool] = None
+    food_lifespan_ticks: Optional[int] = Field(None, ge=100, le=1000000)
 
     # T: soften winter
     winter_food_mult: Optional[float] = Field(None, ge=0.1, le=2)

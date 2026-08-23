@@ -766,6 +766,49 @@ select {
   font-size: 12px;
 }
 
+/* §U phone: god laws as their own full-screen page — readable text,
+   44px touch rows, scrollable body, sticky Apply/Save footer. */
+.god-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: #0d1117;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+}
+.god-screen-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.god-screen .god-row {
+  font-size: 14px;
+  color: #e6edf3;
+  min-height: 44px;
+  gap: 12px;
+}
+.god-screen .god-note { font-size: 13px; }
+.god-screen .god-group h3 { font-size: 12px; }
+.god-screen .god-accordion summary { font-size: 13px; padding: 12px; }
+.god-screen .god-accordion .god-row { padding: 4px 12px; }
+.god-screen .god-accordion input[type="range"] { width: 150px; height: 28px; accent-color: #e3b341; }
+.god-screen .god-row input[type="number"],
+.god-screen .god-row select { font-size: 15px; padding: 8px 10px; width: 116px; }
+.god-screen .god-foot {
+  margin: 0;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid #21262d;
+  background: #0d1117;
+}
+.god-screen .god-foot button { min-height: 44px; flex: 1; font-size: 15px; }
+.god-screen .god-head { padding: 10px 14px; margin: 0; }
+
 .god-saved {
   color: #3fb950;
   font-size: 12px;

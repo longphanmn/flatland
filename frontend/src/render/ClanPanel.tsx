@@ -25,6 +25,9 @@ interface ClanInfo {
   culture?: string | null
   culture_id?: number | null
   knowledge?: ClanKnowledge | null
+  coalition_id?: number | null
+  larder?: number
+  tribute_to?: number | null
 }
 
 export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelectClan?: (id: number) => void; onSelectCreature?: (id: number) => void }) {
@@ -89,6 +92,17 @@ export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelect
             {c.culture && (
               <div className="chip" title="Culture — spreads to allies, can diverge into rival traditions; grants small collective bonus">
                 🎭 {c.culture}
+              </div>
+            )}
+            {(c.coalition_id != null || (c.tribute_to != null)) && (
+              <div className="chip" title="§AB politics — coalition bloc membership; tribute_to marks a protector this clan pays">
+                {c.coalition_id != null && <span title="member of a defensive coalition">🤝 pact #{c.coalition_id}{' · '}</span>}
+                {c.tribute_to != null && <span title="pays tribute to a stronger protector">🛡️ vassal of #{c.tribute_to}{' · '}</span>}
+              </div>
+            )}
+            {typeof c.larder === 'number' && c.larder > 0 && (
+              <div className="chip" title="Clan larder — surplus stored at the settlement, famine draws it down; allies aid each other">
+                🏺 larder {Math.round(c.larder)}
               </div>
             )}
           </div>

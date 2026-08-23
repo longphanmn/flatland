@@ -871,3 +871,150 @@ that now counts the kin-slayer an enemy.
       eat_enemy_enabled, eat_kin_enabled, kin_stigma, exile_on_kin_eat (new
       "Desperation" group).
 - [ ] Events: `cannibalism`, `exile`; death cause `cannibalism`.
+
+## AB. Politics — coalitions, leaders, resources & betrayal  [P1] — ✅ implemented
+Build a politics layer on the clan/relation/leader/knowledge stack: multi-clan
+coalitions, leader agency, shared resources, and treachery. God sets laws; politics
+emerge.
+
+### Coalitions
+- [x] [P1] Explicit coalitions — a leader proposes a coalition (rng-gated, rare);
+      clans with relation ≥ `coalition_threshold` join; the bloc holds name,
+      leader clan, members. Mutual defence in `_mobilise_coalition`: strike one
+      member → every mate's relations with the attacker sour −12 (war drags them in).
+      (`simulation.py` `_update_coalitions`/`_mobilise_coalition`, called from
+      both war kill & wound paths)
+- [x] [P2] Coalition effects — members hear each other's signals like kin;
+      soured (<10) or shrunken blocs dissolve; events on every transition.
+- [x] Events: `coalition_formed` / `coalition_joined` / `coalition_dissolved`
+      (`protocol.py` HistoryEvent, App.tsx + TUI chronicle branches).
+
+### Leader agency
+- [x] [P1] Decisions as plots — leaders act on their heritable trait:
+      bold declares war on a remembered enemy (§X knowledge), peaceful sues for
+      peace when weakened (`peace` event), paranoid betrays an ally (`betrayal`
+      event + treason: false enemy-knowledge seeded into nearby third clans);
+      strong clans demand tribute. Surfaced through chronicle/relations — god
+      sees, can't veto. (`simulation.py` `_update_leader_decisions`,
+      `_remembered_enemy`; LEADER_DECISION_CHANCE 0.01)
+
+### Resource sharing
+- [x] [P1] Clan larder — a food store at the settlement capped by
+      `larder_capacity`: well-fed members (>75% energy) deposit surplus,
+      starving members withdraw 3/tick (formalises §Q recruitment into an economy).
+      (`simulation.py` `_update_larders`)
+- [x] [P2] Allied aid — a surplus ally tops up a starving ally's larder at
+      `aid_rate` during famine.
+- [x] [P2] Tribute — weak clans pay 30 energy every TRIBUTE_INTERVAL (240) to a
+      stronger protector (`tribute` events); `/api/clans` exposes `tribute_to`.
+
+### Betrayal & treason
+- [x] [P1] Ally backstab — paranoid/bold leader breaks an alliance (−95) and
+      strikes; gated by `betrayal_enabled`; third clans near the herald receive
+      false "enemy" knowledge naming the victim (treason via §X signals).
+- [x] [P2] Defection — unhappy members (starving/homeless) walk to the healthiest
+      nearby banner, even a rival's (`defection` event; DEFECT_CHANCE 0.03).
+      (`simulation.py` `_update_defection`)
+- [x] [P2] Treason — folded into betrayal: the betrayer sows false enemy rumors
+      so allies of the victim turn wary.
+
+### Laws
+- [x] GodLaws: coalitions_enabled, coalition_threshold, coalition_min_size,
+      leader_decisions_enabled, resource_sharing_enabled, larder_capacity,
+      aid_rate, tribute_enabled, betrayal_enabled, defection_enabled (new
+      "Politics" group; all enabled by default). (`config.py`, `protocol.py`,
+      `main.py` LAW_FIELDS, GodPanel/TUI law groups + switches, wiki hints,
+      docs/god-laws.md)
+- [x] Events: peace, tribute, betrayal, defection (+ coalition events above).
+      ClanPanel shows 🤝 pact / 🛡️ vassal / 🏺 larder chips; tests
+      `tests/test_politics.py` (form/dissolve, mobilise, betrayal, peace, war
+      declaration, larder deposit/withdraw, tribute payment, defection,
+      laws roundtrip).
+
+## AC. Desperation cannibalism — eat the enemy & the weak  [P2] — ✅ implemented
+When starving, a creature may hunt and eat another living creature; sated/hungry
+creatures never do. Same-clan kin-eating carries a heavy price: exile and a clan
+that now counts the kin-slayer an enemy.
+
+### The hunger-driven hunt
+- [x] [P2] Gate — only when `starving` (energy ≤ `cannibalism_hunger_ratio`);
+      sated/hungry creatures never eat the living; CANNIBAL_COOLDOWN (120)
+      separates kills.
+- [x] [P2] Targets — starving creature perceives eligible living prey via
+      `_cannibal_prey`: enemy-clan members (negative relation) and weak members
+      (starving/elder/wounded <50 health) of any clan; never predators, wild
+      beasts, infants or indoor refugees — roofs are sanctuary.
+- [x] [P2] Kill & feed — on contact (eat_radius): death cause `cannibalism`,
+      gain `cannibalism_energy`, partial corpse (×0.5), steering outranks plants
+      but yields to fleeing. (`simulation.py` `_do_cannibalism`)
+
+### The price of kin-eating
+- [x] [P1] Kin stigma — same-clan cannibalism sinks relations by `kin_stigma`;
+      witnesses remember the outcast band as an enemy via §X knowledge.
+- [x] [P1] Exile — the kin-eater is kicked out (`_exile_kin_eat`) and founds a
+      one-being outcast band (`_new_clan(eater)`), like a schism of one;
+      `exile` event records it.
+- [x] [P1] Rebel & enemy — former clan ↔ band sink toward rivalry, eligible for
+      war/plots; outcast may seek refuge among rivals via §AB defection.
+
+### Laws
+- [x] GodLaws: cannibalism_enabled, cannibalism_hunger_ratio, cannibalism_energy,
+      eat_enemy_enabled, eat_kin_enabled, kin_stigma, exile_on_kin_eat (new
+      "Desperation" group; all enabled by default).
+- [x] Events: `cannibalism`, `exile`; death cause `cannibalism`. Tests:
+      `tests/test_cannibalism.py` (weak-enemy kill, sated restraint, healthy-kin
+      protection, rival-relation gate, exile+stigma+witness memory, exile-off
+      variant, cooldown pacing, laws roundtrip).
+
+## AD. OS-log persistence — RAM buffer + writer thread  [P1] — ✅ implemented
+Move durable writes off the sim thread: buffer events/genealogy in RAM and let a
+writer thread sync to SQLite periodically, like an OS log daemon. A crash loses at
+most the un-flushed tail.
+
+### RAM buffer
+- [x] [P1] Buffer — Database keeps an in-memory deque of pending ops (`log_event`,
+      `log_birth`, `log_death`); `_on_event` appends instead of writing SQL.
+      Dropped the per-tick `DB.batch()` wrapper from advance_world and STEP.
+      (`main.py:_on_event`, `db.py` §AD section)
+
+### Writer thread
+- [x] [P1] Daemon — dedicated `db-writer` thread drains the buffer into SQLite in
+      ONE transaction (`flush()` rides `batch()` BEGIN…COMMIT), triggered by the
+      5s heartbeat OR 5000 pending ops; forced flush on world end/reset,
+      snapshot save, shutdown and before fresh reads. Failed drains re-queue at
+      the front — nothing is lost. Single writer; sim thread never blocks on SQLite.
+
+### Durability & reads
+- [x] [P2] OS-log semantics — PRAGMA synchronous=NORMAL (WAL kept); crash loses at
+      most the un-flushed tail; window documented here and in guide.py ops map.
+- [x] [P2] Stale reads accepted — `/api/history`, `/api/worlds` and
+      `/api/creature/{id}` drain the buffer on the HTTP thread before reading
+      (≤5s lag elsewhere); live Chronicle uses WS events, unaffected; no
+      read-through buffer. `/healthz` exposes `db_pending`. Tests:
+      `tests/test_db.py` §AD (buffer→flush semantics, birth/death flow,
+      unprompted daemon drain, close-flushes-tail via tmp Database).
+
+## AE. Food decay — nothing lasts forever  [P2] — ✅ implemented
+Plants are immortal today (only eaten / winter die-back / storm / fire removes
+them). Give food a lifespan: mature plants wither, fertilize the soil, and vanish.
+
+### Aging & withering
+- [x] [P2] Food lifespan — a mature plant (growth 1.0) withers after
+      `food_lifespan_ticks` × variant multiplier (grass 1.0, mushroom 0.4, berry
+      1.5, poisonous 3.0 — `FOOD_LIFESPAN_MULT`); sprouts/growing plants don't rot
+      (`Food.mature_ticks` clock starts only at maturity). (`entities.py`,
+      `simulation.py:_update_plants`)
+- [x] [P2] Wither → fertilize → vanish — a withered plant releases half a corpse's
+      nutrient boost to nearby plants (`_release_nutrients(mult=0.5)` ties §H),
+      then is removed; nothing lasts forever, but death feeds life.
+- [x] [P2] Render — mature-then-wilting plants fade brown and shrivel before
+      vanishing (`withering` flag on EntityState when past WILT_FRACTION 0.8 of
+      lifespan; CanvasRenderer tints rgba-brown ×0.8 radius).
+
+### Laws
+- [x] GodLaws: food_decay_enabled, food_lifespan_ticks (new "Food Decay" group,
+      enabled by default; per-variant pace stays Nature's constant table);
+      `wither` events throttled like blooms (in-memory only, no DB; hidden from
+      web + TUI feeds alongside ruins). Tests: `tests/test_food_decay.py`
+      (lifespan death, sprout immunity, variant pace, law-off freeze, soil
+      fertilisation, wilting flag surfacing, DB throttle, laws roundtrip).

@@ -120,14 +120,18 @@ def _on_event(e) -> None:
     """Durable sinks for chronicle events: events feed the genealogy table.
 
     AA: blooms stay in the in-memory chronicle only — high-frequency,
-    low-value, so they never cost a DB write.
+    low-value, so they never cost a DB write. §AE withers are throttled
+    the same way.
+    AD: writes append to the Database RAM buffer (OS-log); the writer daemon
+    drains it every 5s — the sim thread never blocks on SQLite.
     """
-    if RT.world_id is None or e.type == "bloom":
+    if RT.world_id is None or e.type in ("bloom", "wither"):
         return
-    DB.add_events(RT.world_id, [e])
+    wid = RT.world_id
+    DB.log_event(wid, e)
     if e.type == "birth":
-        DB.add_creature(
-            RT.world_id,
+        DB.log_birth(
+            wid,
             entity_id=e.entity_id,
             caste=e.caste or "",
             clan_id=int(e.payload.get("clan_id") or 0),
@@ -137,7 +141,7 @@ def _on_event(e) -> None:
             born_tick=e.tick,
         )
     elif e.type == "death":
-        DB.mark_death(RT.world_id, e.entity_id, e.tick)
+        DB.log_death(wid, e.entity_id, e.tick)
 
 
 # --------------------------------------------------------------------- loop
@@ -150,9 +154,9 @@ def advance_world(rt: RuntimeState) -> dict | None:
     if rt.paused:
         return None
     try:
-        # AA: all chronicle/genealogy writes of one tick commit together.
-        with DB.batch():
-            rt.sim.step()
+        # AD: chronicle/genealogy writes land in the RAM buffer; the writer
+        # daemon commits them off-thread — step() never waits on SQLite.
+        rt.sim.step()
     except Exception as exc:
         # The world must never die silently: one failed tick is logged
         # loudly and skipped — the loop keeps turning (a frozen tick
@@ -256,8 +260,7 @@ async def apply_control(msg: ControlMessage) -> dict:
         elif msg.action is ControlAction.RESUME:
             RT.paused = False
         elif msg.action is ControlAction.STEP:
-            with DB.batch():
-                RT.sim.step()
+            RT.sim.step()
             payload = RT.sim.snapshot_payload()
         elif msg.action is ControlAction.RESET:
             # A new world is born with fresh laws of chance: a new random seed.
@@ -409,6 +412,25 @@ LAW_FIELDS = (
     "attack_radius",
     "attack_damage",
     "winter_food_mult",
+    "coalitions_enabled",
+    "coalition_threshold",
+    "coalition_min_size",
+    "leader_decisions_enabled",
+    "resource_sharing_enabled",
+    "larder_capacity",
+    "aid_rate",
+    "tribute_enabled",
+    "betrayal_enabled",
+    "defection_enabled",
+    "cannibalism_enabled",
+    "cannibalism_hunger_ratio",
+    "cannibalism_energy",
+    "eat_enemy_enabled",
+    "eat_kin_enabled",
+    "kin_stigma",
+    "exile_on_kin_eat",
+    "food_decay_enabled",
+    "food_lifespan_ticks",
 )
 
 
@@ -610,6 +632,7 @@ async def healthz() -> dict:
         "tick": RT.sim.tick,
         "paused": RT.paused,
         "clients": len(HUB.clients),
+        "db_pending": DB.pending,  # §AD ops still in the RAM log
     }
     if RT.last_tick_error:
         out["ok"] = False
@@ -721,6 +744,9 @@ async def apply_preset(name: str, persist: bool = True, reset: bool = False) -> 
 @app.get("/api/history")
 async def get_history(since: int = 0, limit: int = 500) -> dict:
     """The durable chronicle for the current world (paginated by event id)."""
+    # AD: drain the RAM log so a fresh reader sees the full tail
+    # (the flush runs here, on the HTTP thread — never on the sim thread).
+    DB.flush()
     limit = max(1, min(limit, 2000))
     return {
         "world_id": RT.world_id,
@@ -732,6 +758,7 @@ async def get_history(since: int = 0, limit: int = 500) -> dict:
 @app.get("/api/worlds")
 async def get_worlds() -> dict:
     """All world runs recorded in the database (newest first)."""
+    DB.flush()  # AD: fresh reads of the world ledger
     return {"worlds": DB.worlds()}
 
 
@@ -791,6 +818,9 @@ def _clan_details(clan_id: int) -> dict:
         "culture": info.get("culture"),
         "members": members,
         "events": [e.model_dump(mode="json") for e in clan_events],
+        "coalition_id": info.get("coalition_id"),  # §AB
+        "larder": round(float(info.get("larder", 0.0)), 1),  # §AB clan store
+        "tribute_to": info.get("tribute_to"),  # §AB subjugation
     }
 
 
@@ -848,6 +878,9 @@ def _clans_payload() -> dict:
         "culture": info.get("culture"),
         "culture_id": info.get("culture_id"),
         "knowledge": knowledge_by_clan.get(cid),
+        "coalition_id": info.get("coalition_id"),  # §AB
+        "larder": round(float(info.get("larder", 0.0)), 1),  # §AB clan store
+        "tribute_to": info.get("tribute_to"),  # §AB subjugation
     })
     # sort by population desc
     clans.sort(key=lambda c: (-c["population"], c["id"]))
@@ -962,6 +995,7 @@ def _family_of(creature_id: int) -> dict:
 @app.get("/api/creature/{creature_id}")
 async def get_creature(creature_id: int) -> dict:
     """Live status + personal chronicle + family tree for one creature."""
+    DB.flush()  # AD: genealogy + chronicle must include the RAM tail
     with RT.lock:
         return _creature_dossier(creature_id)
 

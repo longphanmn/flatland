@@ -191,6 +191,40 @@ All laws are in `backend/app/config.py` and `protocol.py:GodLaws`. Presets: `sus
 | `attack_radius` | 0.5–10 | 1.8 | distance for clan war engagement |
 | `attack_damage` | 0–200 | 100 (40 preset wound) | damage per attack (100 = lethal) |
 
+## Politics (§AB)
+
+| Law | Range | Default | Hint |
+|-----|-------|---------|------|
+| `coalitions_enabled` | bool | true | allied clans form defensive blocs — strike one member and every mate turns on you |
+| `coalition_threshold` | -100–100 | 40 | relation score at which a leader may fold another clan into a coalition |
+| `coalition_min_size` | 2–16 | 2 | smallest viable coalition; smaller or soured blocs dissolve |
+| `leader_decisions_enabled` | bool | true | leaders declare war on remembered enemies, sue for peace when weakened, demand tribute, betray allies (bold→war, peaceful→peace, paranoid→betrayal) |
+| `resource_sharing_enabled` | bool | true | a food store at the settlement: well-fed members deposit surplus, starving members withdraw; allies aid each other in famine |
+| `larder_capacity` | 0–5000 | 300 | energy a clan store can hold |
+| `aid_rate` | 0–1 | 0.05 | chance/tick a full-bellied ally tops up a starving ally's larder |
+| `tribute_enabled` | bool | true | weak clans pay periodic tribute from their larder to a stronger protector |
+| `betrayal_enabled` | bool | true | a leader breaks an alliance and strikes; third clans are told the same tale (treason) |
+| `defection_enabled` | bool | true | unhappy members (starving/homeless) walk to a healthier nearby banner, even a rival's |
+
+## Desperation (§AC)
+
+| Law | Range | Default | Hint |
+|-----|-------|---------|------|
+| `cannibalism_enabled` | bool | true | the starving may hunt and eat living creatures; sated/hungry never do; cooldown between kills |
+| `cannibalism_hunger_ratio` | 0–1 | 0.15 | only creatures below this energy fraction may eat the living |
+| `cannibalism_energy` | 0–1000 | 45 | energy gained per desperate kill — the victim leaves a partial corpse |
+| `eat_enemy_enabled` | bool | true | enemy-clan members and the weak (starving/elder/wounded) of any clan are legitimate prey; never predators, infants or indoor refugees |
+| `eat_kin_enabled` | bool | true | weak kin may be eaten too — at a terrible price |
+| `kin_stigma` | 0–100 | 40 | relation hit between a kin-eater's outcast band and their former clan — they become rivals |
+| `exile_on_kin_eat` | bool | true | the kin-eater is cast out and founds a one-being outcast band |
+
+## Food Decay (§AE)
+
+| Law | Range | Default | Hint |
+|-----|-------|---------|------|
+| `food_decay_enabled` | bool | true | mature plants wither after their lifespan, fertilise nearby soil, then vanish — nothing lasts forever |
+| `food_lifespan_ticks` | 100–1M | 9000 | ticks a mature plant lives before it withers — mushroom 0.4×, grass ×1, berry 1.5×, poisonous 3× |
+
 ## Bodies & Houses
 
 | Law | Range | Default | Hint |

@@ -4,12 +4,18 @@ Deliberately uses the stdlib `sqlite3` behind a thin repository interface:
 writes are tiny batches to a local file, so an ORM/async driver would add
 loop-affinity hazards without benefit. Swap to SQLAlchemy/Postgres here when
 the deployment needs it — callers only touch Database methods.
+
+§AD OS-log semantics: the hot path (chronicle + genealogy) appends to a RAM
+buffer; a dedicated writer daemon drains it into SQLite in ONE transaction,
+every 5s or when 5000 ops pile up. A crash loses at most the un-flushed tail.
+Reads (`history`, genealogy) go straight to SQLite and may lag ≤5s.
 """
 
 import json
 import os
 import sqlite3
 import threading
+from collections import deque
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -17,6 +23,11 @@ from typing import Any
 
 from .config import Config
 from .protocol import HistoryEvent
+
+# §AD: drain the buffer after this many pending ops even before the interval.
+FLUSH_MAX_OPS = 5000
+# §AD: writer heartbeat — durability window for a hard crash.
+FLUSH_INTERVAL = 5.0
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS worlds (
@@ -87,11 +98,17 @@ class Database:
         self.path = path
         self._conn: sqlite3.Connection | None = None
         # One connection shared across threads (event loop + test workers);
-        # a plain lock serializes the tiny local writes.
-        self._lock = threading.Lock()
+        # a reentrant lock serializes the tiny local writes (the §AD writer
+        # drains through batch(), whose statements take the same lock).
+        self._lock = threading.RLock()
         # AA: >0 while a batched write window is open — writers skip their
         # own commit so a whole tick costs ONE fsync instead of one per event.
         self._batch_depth = 0
+        # §AD OS-log: pending durable ops drained by the writer daemon.
+        self._pending: deque[tuple[str, tuple]] = deque()
+        self._writer: threading.Thread | None = None
+        self._wake = threading.Event()
+        self._stopping = False
 
     # ------------------------------------------------------------ lifecycle
     def connect(self) -> None:
@@ -109,7 +126,115 @@ class Database:
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=5000")
+        # §AD: NORMAL + WAL — consistent fsync only at checkpoints; the RAM
+        # buffer already bounds crash loss to the un-flushed tail.
+        self._conn.execute("PRAGMA synchronous=NORMAL")
         self._conn.executescript(_SCHEMA)
+        self._start_writer()
+
+    def _start_writer(self) -> None:
+        if self._writer is not None and self._writer.is_alive():
+            return
+        self._stopping = False
+        self._writer = threading.Thread(target=self._writer_loop, name="db-writer", daemon=True)
+        self._writer.start()
+
+    def _writer_loop(self) -> None:
+        """Drain the RAM buffer into SQLite: 5s heartbeat or 5000 ops."""
+        while not self._stopping:
+            self._wake.wait(timeout=FLUSH_INTERVAL)
+            self._wake.clear()
+            try:
+                self.flush()
+            except Exception:
+                # The writer must survive anything; ops stay queued for retry.
+                pass
+
+    @property
+    def pending(self) -> int:
+        """Ops waiting in the RAM buffer (observability / tests)."""
+        return len(self._pending)
+
+    # ------------------------------------------------------------- §AD queue
+    def log_event(self, world_id: int, event: HistoryEvent) -> None:
+        """Buffer one chronicle event (sim thread never touches SQLite)."""
+        self._pending.append(("event", (world_id, event)))
+        if len(self._pending) >= FLUSH_MAX_OPS:
+            self._wake.set()
+
+    def log_birth(
+        self,
+        world_id: int,
+        entity_id: int,
+        caste: str,
+        clan_id: int,
+        generation: int,
+        mother_id: int,
+        father_id: int,
+        born_tick: int,
+    ) -> None:
+        self._pending.append(
+            (
+                "birth",
+                (world_id, entity_id, caste, clan_id, generation, mother_id, father_id, born_tick),
+            )
+        )
+        if len(self._pending) >= FLUSH_MAX_OPS:
+            self._wake.set()
+
+    def log_death(self, world_id: int, entity_id: int, died_tick: int) -> None:
+        self._pending.append(("death", (world_id, entity_id, died_tick)))
+        if len(self._pending) >= FLUSH_MAX_OPS:
+            self._wake.set()
+
+    def flush(self) -> int:
+        """Drain every buffered op into SQLite in ONE transaction.
+
+        Returns the number of ops written. Forced on world end/reset,
+        snapshot save and shutdown; otherwise runs on the writer thread.
+        """
+        with self._lock:
+            if not self._pending:
+                return 0
+            ops = list(self._pending)
+            self._pending.clear()
+        conn = self._require()
+        try:
+            with self.batch():
+                for kind, args in ops:
+                    if kind == "event":
+                        self._write_event(*args)
+                    elif kind == "birth":
+                        self.add_creature(*args)
+                    elif kind == "death":
+                        self.mark_death(*args)
+            return len(ops)
+        except sqlite3.Error:
+            # Put the tail back at the front so nothing is lost; the writer
+            # retries after the next heartbeat.
+            with self._lock:
+                for item in reversed(ops):
+                    self._pending.appendleft(item)
+            return 0
+
+    def _write_event(self, world_id: int, e: HistoryEvent) -> None:
+        assert self._conn is not None
+        self._conn.execute(
+            "INSERT INTO events(world_id,tick,type,entity_id,caste,cause,x,y,payload,created_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (
+                world_id,
+                e.tick,
+                e.type,
+                e.entity_id,
+                e.caste,
+                e.cause,
+                e.x,
+                e.y,
+                json.dumps(e.payload),
+                _now(),
+            ),
+        )
 
     @contextmanager
     def batch(self) -> Iterator[None]:
@@ -146,6 +271,16 @@ class Database:
                         pass
 
     def close(self) -> None:
+        """Stop the writer, flush the RAM tail, close the connection."""
+        self._stopping = True
+        self._wake.set()
+        if self._writer is not None:
+            self._writer.join(timeout=5.0)
+            self._writer = None
+        try:
+            self.flush()
+        except Exception:
+            pass
         with self._lock:
             if self._conn is not None:
                 self._conn.close()
@@ -170,6 +305,8 @@ class Database:
             return int(cur.lastrowid)
 
     def end_world(self, world_id: int) -> None:
+        """Close a world row — the RAM tail flushes first so its chronicle is complete."""
+        self.flush()
         with self._lock:
             self._require().execute(
                 "UPDATE worlds SET ended_at=? WHERE id=? AND ended_at IS NULL",
@@ -357,6 +494,8 @@ class Database:
             self._require().execute("DELETE FROM settings WHERE key=?", (key,))
 
     def save_snapshot(self, world_id: int, tick: int, payload: str) -> int:
+        """Freeze the world — the RAM tail flushes first so album order holds."""
+        self.flush()
         with self._lock:
             cur = self._require().execute(
                 "INSERT INTO snapshots(world_id,tick,payload,created_at) VALUES (?,?,?,?)",

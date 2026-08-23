@@ -74,6 +74,17 @@ EVENT_COLORS: dict[str, str] = {
     "recovery": "#3fb950",
     "bloom": "#56d364",
     "ruin": "#8b949e",
+    # §AB politics / §AC desperation / §AE decay
+    "coalition_formed": "#7ee787",
+    "coalition_joined": "#7ee787",
+    "coalition_dissolved": "#8b949e",
+    "peace": "#3fb950",
+    "tribute": "#e3b341",
+    "betrayal": "#f85149",
+    "defection": "#d2a8ff",
+    "cannibalism": "#ff6b6b",
+    "exile": "#db6d28",
+    "wither": "#a67c52",
 }
 
 SIGNAL_COLORS = {"food": "#3fb950", "alarm": "#f85149", "help": "#f85149"}

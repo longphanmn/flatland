@@ -736,7 +736,7 @@ export default function App() {
             </button>
           )}
           <Collapsible id="chronicle-feed" title="Event feed" hint="Newest first — deaths, wars, alliances, births">
-          {(() => { const filtered = log.filter((ev) => ev.type !== 'bloom'); if (filtered.length === 0) return <p className="chip">no major events yet — blooms hidden</p>; return (<ul>{filtered.map((ev) => {
+          {(() => { const filtered = log.filter((ev) => ev.type !== 'bloom' && ev.type !== 'wither' && ev.type !== 'ruin'); if (filtered.length === 0) return <p className="chip">no major events yet — blooms hidden</p>; return (<ul>{filtered.map((ev) => {
                 const key = `${ev.tick}:${ev.entity_id}:${ev.type}`
                 if (ev.type === 'birth') {
                   const p = (ev.payload ?? {}) as { mother?: number; father?: number; generation?: number; personal_name?: string; glyph?: string }
@@ -826,6 +826,93 @@ export default function App() {
                   return (
                     <li key={key} className="ev-bloom" style={{ color: '#ff7b72' }}>
                       conquest: clan <button className="chronicle-name" onClick={() => p.winner_clan != null && setSelectedClanId(p.winner_clan)} title="show winner clan">{clanLabel(p.winner_clan)}</button> seized house {p.house_id} from clan <button className="chronicle-name" onClick={() => p.loser_clan != null && setSelectedClanId(p.loser_clan)} title="show loser clan">{clanLabel(p.loser_clan)}</button> at tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'coalition_formed' || ev.type === 'coalition_joined' || ev.type === 'coalition_dissolved') {
+                  const p = (ev.payload ?? {}) as { coalition?: number; name?: string; leader_clan?: number; members?: number[]; clan?: number; reason?: string }
+                  const who = ev.type === 'coalition_joined'
+                    ? <>clan <button className="chronicle-name" onClick={() => p.clan != null && setSelectedClanId(p.clan)} title="show clan">{clanLabel(p.clan)}</button> joined</>
+                    : ev.type === 'coalition_dissolved'
+                      ? <>{p.reason ?? 'dissolved'} —</>
+                      : <>founded by clan <button className="chronicle-name" onClick={() => p.leader_clan != null && setSelectedClanId(p.leader_clan)} title="show founder clan">{clanLabel(p.leader_clan)}</button></>
+                  return (
+                    <li key={key} className="ev-alliance" style={{ color: '#7ee787' }}>
+                      {ev.type === 'coalition_formed' ? 'coalition formed: ' : ev.type === 'coalition_joined' ? '' : ''}{who} <b>{String(p.name ?? `coalition #${p.coalition}`)}</b> ({(p.members as number[] | undefined)?.length ?? 0} members) at tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'peace') {
+                  const p = (ev.payload ?? {}) as { a?: number; b?: number }
+                  return (
+                    <li key={key} className="ev-alliance" style={{ color: '#3fb950' }}>
+                      peace: clans <button className="chronicle-name" onClick={() => p.a != null && setSelectedClanId(p.a)} title="show clan">{clanLabel(p.a)}</button> & <button className="chronicle-name" onClick={() => p.b != null && setSelectedClanId(p.b)} title="show clan">{clanLabel(p.b)}</button> lay down arms at tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'tribute') {
+                  const p = (ev.payload ?? {}) as { from?: number; to?: number; amount?: number }
+                  return (
+                    <li key={key} className="ev-rivalry" style={{ color: '#e3b341' }}>
+                      tribute: clan <button className="chronicle-name" onClick={() => p.from != null && setSelectedClanId(p.from)} title="show vassal clan">{clanLabel(p.from)}</button> pays {p.amount ?? '?'} to protector <button className="chronicle-name" onClick={() => p.to != null && setSelectedClanId(p.to)} title="show protector clan">{clanLabel(p.to)}</button> at tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'betrayal') {
+                  const p = (ev.payload ?? {}) as { a?: number; b?: number }
+                  return (
+                    <li key={key} className="ev-war" style={{ color: '#f85149' }}>
+                      betrayal: clan <button className="chronicle-name" onClick={() => p.a != null && setSelectedClanId(p.a)} title="show betrayer">{clanLabel(p.a)}</button> turns on ally <button className="chronicle-name" onClick={() => p.b != null && setSelectedClanId(p.b)} title="show betrayed">{clanLabel(p.b)}</button> at tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'defection') {
+                  const p = (ev.payload ?? {}) as { from?: number; to?: number }
+                  return (
+                    <li key={key} className="ev-schism" style={{ color: '#d2a8ff' }}>
+                      defection: <button className="chronicle-name" onClick={() => setSelectedId(ev.entity_id)} title="show creature">#{ev.entity_id}</button> leaves clan <button className="chronicle-name" onClick={() => p.from != null && setSelectedClanId(p.from)} title="show old clan">{clanLabel(p.from)}</button> for <button className="chronicle-name" onClick={() => p.to != null && setSelectedClanId(p.to)} title="show new clan">{clanLabel(p.to)}</button> at tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'cannibalism') {
+                  const p = (ev.payload ?? {}) as { prey?: number; prey_caste?: string; kin?: boolean }
+                  return (
+                    <li key={key} className="ev-predation" style={{ color: '#ff6b6b' }}>
+                      cannibalism: starving <button className="chronicle-name" onClick={() => setSelectedId(ev.entity_id)} title="show eater"><b>{ev.caste}</b> #{ev.entity_id}</button> ate {p.kin ? <b>kin</b> : 'enemy'} {p.prey_caste} <button className="chronicle-name" onClick={() => p.prey && setSelectedId(p.prey!)} title="show prey">#{p.prey}</button> at tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'exile') {
+                  const p = (ev.payload ?? {}) as { former_clan?: number; former_name?: string }
+                  return (
+                    <li key={key} className="ev-demote" style={{ color: '#db6d28' }}>
+                      exile: kin-eater <button className="chronicle-name" onClick={() => setSelectedId(ev.entity_id)} title="show outcast"><b>{String((ev.payload?.personal_name as string) ?? '')}{String(ev.payload?.glyph ?? '')}</b> #{ev.entity_id}</button> cast out of {p.former_name ?? clanLabel(p.former_clan)} at tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'settlement') {
+                  const p = (ev.payload ?? {}) as { clan_id?: number; size?: number }
+                  return (
+                    <li key={key} className="ev-bloom" style={{ color: '#79c0ff' }}>
+                      settlement founded{p.clan_id ? (<> by clan <button className="chronicle-name" onClick={() => setSelectedClanId(p.clan_id!)} title="show clan">{clanLabel(p.clan_id)}</button></>) : ''} at ({Math.round(ev.x)}, {Math.round(ev.y)}) tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'succession') {
+                  const p = (ev.payload ?? {}) as { clan_id?: number; prev_leader?: number; new_leader?: number; clan_name?: string }
+                  return (
+                    <li key={key} className="ev-promo" style={{ color: '#d2a8ff' }}>
+                      succession in <button className="chronicle-name" onClick={() => p.clan_id != null && setSelectedClanId(p.clan_id!)} title="show clan">{p.clan_name ?? clanLabel(p.clan_id)}</button>:{' '}
+                      <button className="chronicle-name" onClick={() => p.new_leader && setSelectedId(p.new_leader!)} title="show new leader">#{p.new_leader}</button> succeeds{' '}
+                      <button className="chronicle-name" onClick={() => p.prev_leader && setSelectedId(p.prev_leader!)} title="show previous leader">#{p.prev_leader}</button> at tick {ev.tick}
+                    </li>
+                  )
+                }
+                if (ev.type === 'culture') {
+                  const p = (ev.payload ?? {}) as { clan_id?: number; culture?: string }
+                  return (
+                    <li key={key} className="ev-bloom" style={{ color: '#bc8cff' }}>
+                      clan <button className="chronicle-name" onClick={() => p.clan_id != null && setSelectedClanId(p.clan_id!)} title="show clan">{clanLabel(p.clan_id)}</button> embraces a new tradition: <b>{p.culture}</b> at tick {ev.tick}
                     </li>
                   )
                 }

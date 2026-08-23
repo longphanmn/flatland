@@ -151,6 +151,7 @@ def test_genealogy_table_written(client):
         x=5.0, y=5.0,
         payload={"mother": 2, "father": 1, "generation": 4, "clan_id": 7},
     ))
+    DB.flush()  # AD: genealogy rides the RAM log until the writer drains
     conn = sqlite3.connect(DB.path)
     conn.row_factory = sqlite3.Row
     try:
@@ -164,6 +165,7 @@ def test_genealogy_table_written(client):
         assert row["died_tick"] is None
 
         RT.sim._kill(c, "starvation")  # records death via on_event too
+        DB.flush()  # AD: drain the RAM tail before re-reading
         row = conn.execute(
             "SELECT died_tick FROM creatures WHERE world_id=? AND entity_id=?",
             (RT.world_id, c.id),
@@ -225,3 +227,89 @@ def test_events_survive_world_reset_in_db(client):
     assert client.get("/api/history").json()["total_deaths"] == 0
     # ...but the old world's chronicle is still queryable in the database
     assert DB.death_count(wid_before) >= 1
+
+
+# --------------------------------------------------------------------- §AD OS-log
+def test_ram_buffer_flush_semantics(client):
+    """log_event queues in RAM; only flush() makes it durable."""
+    wid = RT.world_id
+    DB.log_event(wid, HistoryEvent(
+        type="war", tick=1, entity_id=4242, caste="Soldier", cause="",
+        x=1.0, y=2.0, payload={"a": 1, "b": 2},
+    ))
+    assert DB.pending >= 1
+
+    # direct SQLite read must NOT see it before the flush (writer owns commits)
+    conn = sqlite3.connect(DB.path)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM events WHERE world_id=? AND entity_id=4242",
+            (wid,),
+        ).fetchone()
+        assert row["n"] == 0
+    finally:
+        conn.close()
+
+    written = DB.flush()
+    assert written >= 1 and DB.pending == 0
+
+    conn = sqlite3.connect(DB.path)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT type, payload FROM events WHERE world_id=? AND entity_id=4242",
+            (wid,),
+        ).fetchone()
+        assert row is not None and row["type"] == "war"
+    finally:
+        conn.close()
+
+
+def test_log_birth_and_death_flow_through_the_buffer(client):
+    from app.entities import Creature
+
+    c = RT.sim.world.add(Creature(x=5.0, y=5.0, sides=4, energy=100.0))
+    DB.log_birth(RT.world_id, entity_id=c.id, caste="Gentleman", clan_id=7,
+                 generation=3, mother_id=2, father_id=1, born_tick=9)
+    DB.log_death(RT.world_id, c.id, 33)
+    assert DB.pending >= 2
+    DB.flush()
+
+    row = DB.genealogy_parents(RT.world_id, c.id)
+    assert row[0] and row[0]["id"] == 2 and row[1] and row[1]["id"] == 1
+    conn = sqlite3.connect(DB.path)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT died_tick FROM creatures WHERE world_id=? AND entity_id=?",
+            (RT.world_id, c.id),
+        ).fetchone()
+        assert row["died_tick"] == 33
+    finally:
+        conn.close()
+
+
+def test_writer_thread_drains_without_help(tmp_path):
+    """The daemon drains the buffer on its own heartbeat — no manual flush."""
+    import time as _time
+    from app.db import Database as _DB
+
+    db = _DB(str(tmp_path / "writer.db"))
+    db.connect()
+    try:
+        wid = db.new_world(RT.config)
+        for i in range(5):
+            db.log_event(wid, HistoryEvent(
+                type="birth", tick=i, entity_id=i + 1, caste="Woman",
+                x=0.0, y=0.0, payload={"generation": i},
+            ))
+        deadline = _time.monotonic() + 6.5  # one 5s heartbeat, generously
+        while db.pending > 0 and _time.monotonic() < deadline:
+            _time.sleep(0.05)
+        assert db.pending == 0  # the writer drained it unprompted
+        rows = db.history(wid, since_id=0, limit=10)
+        assert len(rows) == 5
+    finally:
+        db.close()
+    assert not db.connected

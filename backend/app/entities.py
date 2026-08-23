@@ -125,6 +125,7 @@ class Creature(Entity):
     is_predator: bool = False  # Carnivore caste (§I)
     is_herbivore: bool = False  # wild grazer (§O)
     bite_cooldown: int = 0  # ticks until next bite
+    cannibal_cooldown: int = 0  # §AC: ticks before another desperate kill
     sleeping: bool = False
     indoors: bool = False  # won a bed in a house this tick
     ticks_since_meal: int = 0
@@ -187,6 +188,7 @@ class Food(Entity):
     growth: float = 0.15  # 0..1 — 1.0 means mature
     variant: str = "grass"  # grass | berry | mushroom | poisonous
     # poisonous plants sicken; mushrooms are decomposers (spawn on corpses/rocks)
+    mature_ticks: int = 0  # §AE: ticks lived since reaching maturity (decay clock)
 
 
 @dataclass

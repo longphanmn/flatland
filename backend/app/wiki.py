@@ -249,6 +249,14 @@ LAW_HINTS_MD = {
     "winter_food_mult": "winter bounty × winter_food_mult (0.7 gentle, 0.5 harsh, 0.3 extinction) — lean season target = food_count × winter_food_mult",
     "schism_threshold": "fraction unhappy (starving/homeless) to split (0.4)",
     "schism_min_pop": "minimum clan population to consider schism (4)",
+    "coalition_threshold": "relation score at which a leader may fold another clan into a coalition (40) — strike one member and every mate turns on you",
+    "coalition_min_size": "smallest viable coalition; smaller or soured blocs dissolve (2)",
+    "larder_capacity": "energy a clan store at the settlement can hold (300) — surplus deposited, famine withdraws",
+    "aid_rate": "chance/tick a full-bellied ally tops up a starving ally's larder (0.05)",
+    "food_lifespan_ticks": "ticks a mature plant lives before it withers (9000) — mushroom 0.4×, grass ×1, berry 1.5×, poisonous 3×; withered plants fertilise the soil",
+    "cannibalism_hunger_ratio": "only creatures below this energy fraction may eat the living (0.15) — sated/hungry never do",
+    "cannibalism_energy": "energy gained per desperate kill (45) — the victim leaves a partial corpse",
+    "kin_stigma": "relation hit between a kin-eater's outcast band and their former clan (40) — they become rivals",
 }
 
 def get_wiki_json(app: Any) -> dict:
