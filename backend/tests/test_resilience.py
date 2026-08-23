@@ -1,19 +1,21 @@
 """Production hardening: a failed tick must never silently kill the world.
 
-The tick loop used to die on any exception raised inside `step()` (e.g. the
+The tick engine used to die on any exception raised inside `step()` (e.g. the
 DB event sink hitting `sqlite3.OperationalError: database is locked`). Because
-uvicorn's lifespan holds the task reference, asyncio never reported the
+uvicorn's lifespan held the task reference, asyncio never reported the
 exception — the world just froze at some tick while HTTP kept serving, and
 only a backend restart "fixed" it.
 """
 
 import asyncio
 import sqlite3
+import threading
+import time
 
 from fastapi.testclient import TestClient
 
 from app.config import Config
-from app.main import Hub, RuntimeState, app, tick_loop
+from app.main import Hub, RuntimeState, SimEngine, app
 
 
 def quiet_cfg(**kw) -> Config:
@@ -26,7 +28,22 @@ def quiet_cfg(**kw) -> Config:
     return Config(seed=7, **zeros)
 
 
-def test_tick_loop_survives_step_failure_and_keeps_ticking(capsys):
+def _run_engine(rt: RuntimeState, hub: Hub, seconds: float) -> None:
+    """Drive the real SimEngine on a background event loop for a while."""
+    engine = SimEngine(rt, hub)
+    loop = asyncio.new_event_loop()
+    th = threading.Thread(target=loop.run_forever, daemon=True)
+    th.start()
+    try:
+        engine.start(loop=loop)
+        time.sleep(seconds)
+    finally:
+        engine.stop()
+        loop.call_soon_threadsafe(loop.stop)
+        th.join(timeout=1)
+
+
+def test_engine_survives_step_failure_and_keeps_ticking(capsys):
     rt = RuntimeState(quiet_cfg())
     calls = {"n": 0}
     original_step = rt.sim.step
@@ -38,24 +55,14 @@ def test_tick_loop_survives_step_failure_and_keeps_ticking(capsys):
         original_step()
 
     rt.sim.step = flaky_step
-    hub = Hub()
 
-    async def drive() -> None:
-        task = asyncio.create_task(tick_loop(rt, hub))
-        # speed defaults to 10 tps → ~4 ticks in 0.45s; tick 2 fails loudly
-        await asyncio.sleep(0.45)
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
-
-    asyncio.run(drive())
+    # speed defaults to 10 tps → several ticks in 0.45s; an early one fails loudly
+    _run_engine(rt, Hub(), seconds=0.45)
 
     assert calls["n"] >= 3  # it kept ticking past the failure
     assert rt.last_tick_error is not None and "database is locked" in rt.last_tick_error
     out = capsys.readouterr().out
-    assert "[tick-loop] step() FAILED" in out  # loud, greppable marker
+    assert "[tick-engine] step() FAILED" in out  # loud, greppable marker
 
 
 def test_healthz_surfaces_last_error():
@@ -123,27 +130,18 @@ def test_broadcast_survives_wedged_client_and_keeps_others_alive():
     assert broken not in hub.clients      # erroring client was cut loose
 
 
-def test_tick_loop_keeps_ticking_with_a_wedged_client_connected(capsys):
+def test_engine_keeps_ticking_with_a_wedged_client_connected(capsys):
     rt = RuntimeState(quiet_cfg(num_triangles=2))
     hub = Hub()
     wedged = _FakeWS(delay=999)           # accepts frames but never drains
     hub.clients.add(wedged)
 
+    old_timeout = Hub.SEND_TIMEOUT
     Hub.SEND_TIMEOUT = 0.05
     try:
-        asyncio.run(_drive_ticks(rt, hub, seconds=0.6))
+        _run_engine(rt, hub, seconds=0.6)
     finally:
         Hub.SEND_TIMEOUT = 10.0
 
     assert rt.sim.tick >= 3               # world advanced despite the wedge
     assert wedged not in hub.clients      # and the wedge was evicted
-
-
-async def _drive_ticks(rt: RuntimeState, hub: Hub, seconds: float) -> None:
-    task = asyncio.create_task(tick_loop(rt, hub))
-    await asyncio.sleep(seconds)
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass

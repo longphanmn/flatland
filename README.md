@@ -213,6 +213,19 @@ backend/tui/        # terminal client (Textual) — pure /ws + REST consumer
 Protocol: server pushes `{type:"hello"}` then `{type:"state"}` snapshots every
 tick; clients send `{action:"pause"|"resume"|"step"|"reset"|"set_speed", value}`.
 
+## Concurrency & performance
+
+The world is one deterministic, in-process state machine, so it advances on a
+**dedicated engine thread** (`SimEngine` in `main.py`) instead of the asyncio
+loop — HTTP/WebSocket load, JSON snapshot serialization and SQLite writes no
+longer stall ticks, and vice versa. Every touch of the live simulation
+(tick, control actions, law changes, state reads) crosses `RT.lock`, so REST
+and WS clients never observe a half-advanced tick. The tick itself is kept
+lean by algorithmic wins (broad-phase wall tests with cached house segments,
+squared-distance threshold checks); multi-process workers are intentionally
+*not* used — they would mean several disconnected worlds, and CPython's GIL
+makes thread-level compute parallelism a wash for pure-Python simulation.
+
 ## Roadmap hooks already in place
 
 - Dimensionality is isolated to `config`/`world` (add a z-axis without redesign)

@@ -81,6 +81,11 @@ class World:
         dx, dy = self.delta(ax, ay, bx, by)
         return math.hypot(dx, dy)
 
+    def distance_sq(self, ax: float, ay: float, bx: float, by: float) -> float:
+        """Wrap-aware squared distance — for threshold tests without sqrt."""
+        dx, dy = self.delta(ax, ay, bx, by)
+        return dx * dx + dy * dy
+
     def query_radius(self, x: float, y: float, radius: float) -> Iterator[Entity]:
         """Yield entities within `radius` of (x, y); requires a fresh index.
 

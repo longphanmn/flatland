@@ -3,6 +3,7 @@
 import math
 import random
 from collections import deque
+from functools import lru_cache
 from typing import Any, Callable
 
 from .config import Config
@@ -1127,6 +1128,8 @@ class Simulation:
         creatures = sorted(self.world.creatures(), key=lambda c: c.id)
         to_kill: list[tuple[Creature, Creature]] = []
         to_wound: list[tuple[Creature, Creature]] = []
+        r2 = cfg.attack_radius * cfg.attack_radius
+        dist_sq = self.world.distance_sq
         for i, a in enumerate(creatures):
             if a.id not in self.world.entities:
                 continue
@@ -1140,7 +1143,7 @@ class Simulation:
                 pair = self._relation_pair(a.clan_id, b.clan_id)
                 if self._zone_of(self.relations.get(pair, 0)) != -1:
                     continue
-                if self.world.distance(a.x, a.y, b.x, b.y) > cfg.attack_radius:
+                if dist_sq(a.x, a.y, b.x, b.y) > r2:
                     continue
                 loser, winner = (a, b) if a.id < b.id else (b, a)
                 if any(loser.id == x[0].id for x in to_kill) or any(winner.id == x[0].id for x in to_kill):
@@ -1357,13 +1360,15 @@ class Simulation:
         if not houses:
             return
         # Trespass: each creature inside a rival's radius slightly sours the two clans
+        r2 = cfg.territory_radius * cfg.territory_radius
+        dist_sq = self.world.distance_sq
         for c in self.world.creatures():
             if not c.clan_id or c.is_predator or c.is_herbivore:
                 continue
             for h in houses:
                 if h.clan_id == c.clan_id:
                     continue
-                if self.world.distance(c.x, c.y, h.x, h.y) <= cfg.territory_radius:
+                if dist_sq(c.x, c.y, h.x, h.y) <= r2:
                     # probabilistic decay if <1, deterministic if >=1
                     if cfg.trespass_decay >= 1:
                         delta = -int(round(cfg.trespass_decay))
@@ -2946,43 +2951,60 @@ class Simulation:
 
 def _house_wall_segments(h: House) -> list[tuple[tuple[float, float], tuple[float, float]]]:
     """The house's wall segments; the door side is split around the doorway."""
-    half = h.size / 2
-    x0, y0 = h.x - half, h.y - half
-    x1, y1 = h.x + half, h.y + half
-    d = h.door_width / 2
-    c = h.door_offset
-    if h.door_side == "north":
-        return [
-            ((x0, y0), (h.x + c - d, y0)),
-            ((h.x + c + d, y0), (x1, y0)),
+    return list(
+        _wall_segments_cached(
+            (h.id, h.x, h.y, h.size, h.door_width, h.door_side or "south", h.door_offset or 0.0)
+        )
+    )
+
+
+@lru_cache(maxsize=1024)
+def _wall_segments_cached(
+    key: tuple,
+) -> tuple[tuple[tuple[float, float], tuple[float, float]], ...]:
+    """Wall segments are pure geometry — cache them per house.
+
+    Called ~10k times per tick across all creatures; rebuilding the segment
+    list each call used to be a top-3 hotspot in the tick profile.
+    """
+    hid, x, y, size, door_w, side, offset = key
+    half = size / 2
+    x0, y0 = x - half, y - half
+    x1, y1 = x + half, y + half
+    d = door_w / 2
+    c = offset
+    if side == "north":
+        return (
+            ((x0, y0), (x + c - d, y0)),
+            ((x + c + d, y0), (x1, y0)),
             ((x0, y0), (x0, y1)),
             ((x1, y0), (x1, y1)),
             ((x0, y1), (x1, y1)),
-        ]
-    if h.door_side == "south":
-        return [
-            ((x0, y0), (x1, y0)),
-            ((x0, y0), (x0, y1)),
-            ((x1, y0), (x1, y1)),
-            ((x0, y1), (h.x + c - d, y1)),
-            ((h.x + c + d, y1), (x1, y1)),
-        ]
-    if h.door_side == "west":
-        return [
+        )
+    if side == "west":
+        return (
             ((x0, y0), (x1, y0)),
             ((x0, y1), (x1, y1)),
             ((x1, y0), (x1, y1)),
-            ((x0, y0), (x0, h.y + c - d)),
-            ((x0, h.y + c + d), (x0, y1)),
-        ]
-    # east
-    return [
+            ((x0, y0), (x0, y + c - d)),
+            ((x0, y + c + d), (x0, y1)),
+        )
+    if side == "east":
+        return (
+            ((x0, y0), (x1, y0)),
+            ((x0, y0), (x0, y1)),
+            ((x0, y1), (x1, y1)),
+            ((x1, y0), (x1, y + c - d)),
+            ((x1, y + c + d), (x1, y1)),
+        )
+    # south (default)
+    return (
         ((x0, y0), (x1, y0)),
         ((x0, y0), (x0, y1)),
-        ((x0, y1), (x1, y1)),
-        ((x1, y0), (x1, h.y + c - d)),
-        ((x1, h.y + c + d), (x1, y1)),
-    ]
+        ((x1, y0), (x1, y1)),
+        ((x0, y1), (x + c - d, y1)),
+        ((x + c + d, y1), (x1, y1)),
+    )
 
 
 def _house_wall_segments_closed(h: House) -> list[tuple[tuple[float, float], tuple[float, float]]]:
@@ -3004,6 +3026,16 @@ def _path_crosses_wall(
     """True if the movement path p->q crosses a house wall (door is passable unless predator_blocked)."""
     if h.is_ruin:
         return False  # crumbled ruins don't block
+    # Broad phase — bounding-box reject. Most creature-house pairs are far
+    # apart; this cheap test skips the expensive per-segment math below.
+    half = h.size / 2
+    if (
+        max(px, qx) < h.x - half
+        or min(px, qx) > h.x + half
+        or max(py, qy) < h.y - half
+        or min(py, qy) > h.y + half
+    ):
+        return False
     path = ((px, py), (qx, qy))
     segments = _house_wall_segments_closed(h) if predator_blocked else _house_wall_segments(h)
     return any(

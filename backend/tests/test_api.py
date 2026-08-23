@@ -1,10 +1,14 @@
 """API tests: REST endpoints and WebSocket protocol (sim loop not running)."""
 
+import asyncio
+import threading
+import time
+
 import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Config
-from app.main import DB, RT, app, start_world
+from app.main import DB, RT, SimEngine, RuntimeState, app, start_world
 from app.simulation import Simulation
 
 
@@ -60,6 +64,38 @@ def test_state_and_control_flow(client):
 
     st = client.get("/api/state").json()
     assert st["tick"] == 0
+
+
+def test_sim_engine_ticks_on_its_own_thread_and_lock_guards_reads():
+    """The threaded engine advances the world while readers stay consistent."""
+    rt = RuntimeState(Config(seed=5, num_houses=2))
+    hub = __import__("app.main", fromlist=["Hub"]).Hub()
+    engine = SimEngine(rt, hub)
+    loop = asyncio.new_event_loop()
+    thread = threading.Thread(target=loop.run_forever, daemon=True)
+    thread.start()
+    try:
+        engine.start(loop=loop)
+        deadline = time.monotonic() + 5.0
+        while rt.sim.tick < 5 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert rt.sim.tick >= 5
+
+        # a reader holding the lock sees an integral snapshot
+        with rt.lock:
+            snap = rt.sim.snapshot()
+        assert snap.tick == rt.sim.tick
+
+        # pause is honoured by the engine thread
+        rt.paused = True
+        frozen = rt.sim.tick
+        time.sleep(0.2)
+        assert rt.sim.tick == frozen
+        rt.paused = False
+    finally:
+        engine.stop()
+        loop.call_soon_threadsafe(loop.stop)
+        thread.join(timeout=1)
 
 
 def test_websocket_hello_then_state_then_step(client):

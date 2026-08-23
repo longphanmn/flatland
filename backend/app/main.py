@@ -5,8 +5,10 @@ import json
 import os
 import random
 import sys
+import threading
+import time
 import traceback
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 from dataclasses import asdict, replace
 from pathlib import Path
 
@@ -66,7 +68,12 @@ class Hub:
 
 
 class RuntimeState:
-    """Shared mutable runtime: current simulation, pause flag, ticks/sec."""
+    """Shared mutable runtime: current simulation, pause flag, ticks/sec.
+
+    `lock` guards every touch of the live simulation. Since the tick engine
+    runs on its own thread, REST/WS handlers must hold it while reading or
+    mutating world state so nobody ever sees a half-advanced tick.
+    """
 
     def __init__(self, config: Config | None = None):
         self.config = config or Config.from_env()
@@ -80,6 +87,7 @@ class RuntimeState:
         self.tick_failures = 0
         # Baseline laws that survive Reset (Save). Apply mutates only self.config.
         self.saved_config = self.config
+        self.lock = threading.RLock()
 
 
 CONFIG = Config.from_env()
@@ -116,15 +124,92 @@ def _on_event(e) -> None:
         DB.mark_death(RT.world_id, e.entity_id, e.tick)
 
 
+# --------------------------------------------------------------------- loop
+def advance_world(rt: RuntimeState) -> dict | None:
+    """Advance the world one tick (caller holds rt.lock).
+
+    Returns the snapshot payload to broadcast, or None when throttled/failed.
+    A plain function so tests can drive ticks without the engine thread.
+    """
+    if rt.paused:
+        return None
+    try:
+        rt.sim.step()
+    except Exception as exc:
+        # The world must never die silently: one failed tick is logged
+        # loudly and skipped — the loop keeps turning (a frozen tick
+        # used to look like a crash and needed a restart to fix).
+        rt.tick_failures += 1
+        rt.last_tick_error = f"{type(exc).__name__}: {exc}"
+        print(
+            f"\n[tick-engine] step() FAILED at tick={rt.sim.tick}: {rt.last_tick_error} — skipping\n",
+            flush=True,
+        )
+        traceback.print_exc()
+        sys.stdout.flush()
+        return None
+    # T: throttle broadcast to ~30 Hz instead of every tick
+    every = max(1, int(round(rt.speed / 30))) if rt.speed > 30 else 1
+    if every > 1 and rt.sim.tick % every != 0:
+        return None
+    return rt.sim.snapshot().model_dump(mode="json")
+
+
+class SimEngine:
+    """Owns a dedicated OS thread that advances the world.
+
+    Ticks used to run on the asyncio loop: a slow HTTP client or a big JSON
+    broadcast stalled the simulation and vice versa. Now the sim paces itself
+    on its own thread, DB writes ride along off-loop, and snapshots serialize
+    here — the event loop only ships finished payloads. Shared state crosses
+    threads strictly under `rt.lock`.
+    """
+
+    def __init__(self, rt: RuntimeState, hub: "Hub") -> None:
+        self.rt = rt
+        self.hub = hub
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def start(self, loop: asyncio.AbstractEventLoop | None = None) -> None:
+        self._loop = loop or asyncio.get_running_loop()
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._run, name="tick-engine", daemon=True)
+        self._thread.start()
+
+    def stop(self, timeout: float = 5.0) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=timeout)
+            self._thread = None
+
+    def _run(self) -> None:
+        assert self._loop is not None
+        stop = self._stop
+        while not stop.is_set():
+            interval = 1.0 / max(self.rt.speed, MIN_SPEED)
+            started = time.monotonic()
+            payload = None
+            with self.rt.lock:
+                if not self.rt.paused:
+                    payload = advance_world(self.rt)
+            if payload is not None:
+                asyncio.run_coroutine_threadsafe(
+                    self.hub.broadcast(payload), self._loop
+                )
+            elapsed = time.monotonic() - started
+            stop.wait(max(0.0, interval - elapsed))
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     DB.connect()
     start_world()
-    task = asyncio.create_task(tick_loop(RT, HUB))
+    engine = SimEngine(RT, HUB)
+    engine.start()
     yield
-    task.cancel()
-    with suppress(asyncio.CancelledError):
-        await task
+    engine.stop()
     if RT.world_id is not None:
         DB.end_world(RT.world_id)
     DB.close()
@@ -144,64 +229,32 @@ app.add_middleware(
 )
 
 
-# --------------------------------------------------------------------- loop
-async def tick_loop(rt: RuntimeState, hub: Hub) -> None:
-    loop = asyncio.get_running_loop()
-    tick_counter = 0
-    while True:
-        interval = 1.0 / max(rt.speed, MIN_SPEED)
-        started = loop.time()
-        if not rt.paused:
-            try:
-                rt.sim.step()
-            except Exception as exc:
-                # The world must never die silently: one failed tick is logged
-                # loudly and skipped — the loop keeps turning (a frozen tick
-                # used to look like a crash and needed a restart to fix).
-                rt.tick_failures += 1
-                rt.last_tick_error = f"{type(exc).__name__}: {exc}"
-                print(
-                    f"\n[tick-loop] step() FAILED at tick={rt.sim.tick}: {rt.last_tick_error} — skipping\n",
-                    flush=True,
-                )
-                traceback.print_exc()
-                sys.stdout.flush()
-            else:
-                # T: throttle broadcast to ~30 Hz instead of every tick
-                tick_counter += 1
-                every = max(1, int(round(rt.speed / 30))) if rt.speed > 30 else 1
-                if tick_counter % every == 0 or rt.sim.tick % every == 0:
-                    try:
-                        await hub.broadcast(rt.sim.snapshot().model_dump(mode="json"))
-                    except Exception:
-                        traceback.print_exc()
-                        sys.stdout.flush()
-        elapsed = loop.time() - started
-        await asyncio.sleep(max(0.0, interval - elapsed))
-
-
 # ------------------------------------------------------------------ control
 async def apply_control(msg: ControlMessage) -> dict:
-    if msg.action is ControlAction.PAUSE:
-        RT.paused = True
-    elif msg.action is ControlAction.RESUME:
-        RT.paused = False
-    elif msg.action is ControlAction.STEP:
-        RT.sim.step()
-        await HUB.broadcast(RT.sim.snapshot().model_dump(mode="json"))
-    elif msg.action is ControlAction.RESET:
-        # A new world is born with fresh laws of chance: a new random seed.
-        # Save persists across worlds, Apply does not — use saved baseline.
-        # The chronicle endures in the database.
-        base = getattr(RT, "saved_config", RT.config)
-        new_cfg = replace(base, seed=random.SystemRandom().randint(0, 2**31 - 1))
-        RT.config = new_cfg
-        RT.sim = Simulation(new_cfg, history=RT.sim.history)
-        start_world()
-        await HUB.broadcast(RT.sim.snapshot().model_dump(mode="json"))
-    elif msg.action is ControlAction.SET_SPEED:
-        if msg.value is not None:
-            RT.speed = min(MAX_SPEED, max(MIN_SPEED, float(msg.value)))
+    payload = None  # snapshots broadcast after the lock is released
+    with RT.lock:
+        if msg.action is ControlAction.PAUSE:
+            RT.paused = True
+        elif msg.action is ControlAction.RESUME:
+            RT.paused = False
+        elif msg.action is ControlAction.STEP:
+            RT.sim.step()
+            payload = RT.sim.snapshot().model_dump(mode="json")
+        elif msg.action is ControlAction.RESET:
+            # A new world is born with fresh laws of chance: a new random seed.
+            # Save persists across worlds, Apply does not — use saved baseline.
+            # The chronicle endures in the database.
+            base = getattr(RT, "saved_config", RT.config)
+            new_cfg = replace(base, seed=random.SystemRandom().randint(0, 2**31 - 1))
+            RT.config = new_cfg
+            RT.sim = Simulation(new_cfg, history=RT.sim.history)
+            start_world()
+            payload = RT.sim.snapshot().model_dump(mode="json")
+        elif msg.action is ControlAction.SET_SPEED:
+            if msg.value is not None:
+                RT.speed = min(MAX_SPEED, max(MIN_SPEED, float(msg.value)))
+    if payload is not None:
+        await HUB.broadcast(payload)
     return {
         "ok": True,
         "paused": RT.paused,
@@ -465,21 +518,22 @@ def apply_laws(laws: GodLaws, persist: bool = True) -> dict:
         hmax = updates.get("house_max_size", RT.config.house_max_size)
         if hmax < hmin:
             raise HTTPException(422, "house_max_size must be >= house_min_size")
-    cfg = replace(RT.config, **updates)
-    RT.config = cfg
-    RT.sim.config = cfg  # the living world follows the new law immediately
-    RT.sim.world.config = cfg
-    if persist:
-        # also advance the saved baseline so next Reset inherits it
-        if not hasattr(RT, "saved_config"):
-            RT.saved_config = RT.config
-        else:
-            RT.saved_config = replace(RT.saved_config, **updates)
-    if "house_claim_enabled" in updates:
-        RT.sim._refresh_house_claims()
-    if updates and RT.world_id is not None:
-        for name, value in updates.items():
-            DB.add_law_change(RT.world_id, RT.sim.tick, name, value)
+    with RT.lock:
+        cfg = replace(RT.config, **updates)
+        RT.config = cfg
+        RT.sim.config = cfg  # the living world follows the new law immediately
+        RT.sim.world.config = cfg
+        if persist:
+            # also advance the saved baseline so next Reset inherits it
+            if not hasattr(RT, "saved_config"):
+                RT.saved_config = RT.config
+            else:
+                RT.saved_config = replace(RT.saved_config, **updates)
+        if "house_claim_enabled" in updates:
+            RT.sim._refresh_house_claims()
+        if updates and RT.world_id is not None:
+            for name, value in updates.items():
+                DB.add_law_change(RT.world_id, RT.sim.tick, name, value)
     return get_laws()
 
 
@@ -491,8 +545,10 @@ async def ws_endpoint(ws: WebSocket) -> None:
         # A client that accepts the socket but never reads must not leak a
         # hung handler task — bound the handshake sends like broadcasts.
         await asyncio.wait_for(ws.send_json(hello_payload()), timeout=HUB.SEND_TIMEOUT)
+        with RT.lock:
+            snap = RT.sim.snapshot().model_dump(mode="json")
         await asyncio.wait_for(
-            ws.send_json(RT.sim.snapshot().model_dump(mode="json")),
+            ws.send_json(snap),
             timeout=HUB.SEND_TIMEOUT,
         )
         while True:
@@ -663,6 +719,11 @@ async def get_worlds() -> dict:
 @app.get("/api/clans/{clan_id}")
 async def get_clan(clan_id: int) -> dict:
     """Single clan details with members and history."""
+    with RT.lock:
+        return _clan_details(clan_id)
+
+
+def _clan_details(clan_id: int) -> dict:
     if clan_id not in RT.sim.clans:
         raise HTTPException(404, "clan not found")
     info = RT.sim.clans[clan_id]
@@ -717,6 +778,11 @@ async def get_clan(clan_id: int) -> dict:
 @app.get("/api/clans")
 async def get_clans() -> dict:
     """Clan roster with lineage, territory and war record."""
+    with RT.lock:
+        return _clans_payload()
+
+
+def _clans_payload() -> dict:
     # live clan dict + live population + house territory + war history
     clans = []
     # war record from history (both live and DB)
@@ -772,15 +838,17 @@ async def get_clans() -> dict:
 @app.get("/api/plots")
 async def get_plots() -> dict:
     """Upcoming war/schism as progress — god's foreshadowing."""
-    return {"plots": RT.sim.get_plots(), "tick": RT.sim.tick}
+    with RT.lock:
+        return {"plots": RT.sim.get_plots(), "tick": RT.sim.tick}
 
 
-@app.post("/api/snapshot")
+@app.post("/api/snapshot", dependencies=[Depends(require_god)])
 async def take_snapshot() -> dict:
     """Freeze the current world state into the album (god's photo, not a hand)."""
-    if RT.world_id is None:
-        raise HTTPException(409, "no active world")
-    payload = json.dumps(RT.sim.snapshot().model_dump(mode="json"), separators=(",", ":"))
+    with RT.lock:
+        if RT.world_id is None:
+            raise HTTPException(409, "no active world")
+        payload = json.dumps(RT.sim.snapshot().model_dump(mode="json"), separators=(",", ":"))
     sid = DB.save_snapshot(RT.world_id, RT.sim.tick, payload)
     return {"id": sid, "tick": RT.sim.tick}
 
@@ -875,6 +943,11 @@ def _family_of(creature_id: int) -> dict:
 @app.get("/api/creature/{creature_id}")
 async def get_creature(creature_id: int) -> dict:
     """Live status + personal chronicle + family tree for one creature."""
+    with RT.lock:
+        return _creature_dossier(creature_id)
+
+
+def _creature_dossier(creature_id: int) -> dict:
     ent = RT.sim.world.entities.get(creature_id)
     if ent is not None:
         entity = RT.sim._entity_state(ent).model_dump(mode="json")
@@ -928,7 +1001,8 @@ async def get_creature(creature_id: int) -> dict:
 
 @app.get("/api/state", response_model=StateMessage)
 async def get_state() -> StateMessage:
-    return RT.sim.snapshot()
+    with RT.lock:
+        return RT.sim.snapshot()
 
 
 @app.get("/guide", response_class=HTMLResponse)
