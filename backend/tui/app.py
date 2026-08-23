@@ -31,6 +31,7 @@ class FlatlandApp(App):
         ("s", "step", "Step"),
         ("r", "reset", "Reset"),
         ("f", "fit_view", "Fit"),
+        ("a", "toggle_ascii", "ASCII/blocks"),
         ("plus", "zoom_in", "Zoom in"),
         ("equals_sign", "zoom_in", "Zoom in"),
         ("minus", "zoom_out", "Zoom out"),
@@ -256,6 +257,11 @@ class FlatlandApp(App):
 
     def action_fit_view(self) -> None:
         self.query_one("#world", WorldView).fit()
+
+    def action_toggle_ascii(self) -> None:
+        view = self.query_one("#world", WorldView)
+        view.ascii_mode = not view.ascii_mode
+        view.fit()  # vertical scale differs between the two renderers
 
     def action_zoom_in(self) -> None:
         self.query_one("#world", WorldView).zoom_by(1 / 1.4)

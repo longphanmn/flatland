@@ -55,6 +55,13 @@ class WorldView(Widget, can_focus=True):
         self.cam_cy = 100.0
         self.zoom = 2.0
         self._fitted = False
+        # ascii mode: one glyph per terminal cell (roguelike map). Off = the
+        # half-block pixel renderer that stacks two world rows per cell.
+        self.ascii_mode: bool = True
+
+    def _row_factor(self) -> int:
+        """Terminal rows per... rather, world sub-rows shown per terminal row."""
+        return 1 if self.ascii_mode else 2
 
     # ------------------------------------------------------------- updates
     def set_state(self, st: StateMessage) -> None:
@@ -80,10 +87,11 @@ class WorldView(Widget, can_focus=True):
         st = self._state
         if not st:
             return
+        f = self._row_factor()
         w = max(self.size.width, 20)
         h = max(self.size.height, 8)
         zw = st.width / w
-        zh = st.height / (2 * h)
+        zh = st.height / (f * h)
         self.zoom = max(zw, zh)
         self.cam_cx = st.width / 2
         self.cam_cy = st.height / 2
@@ -93,7 +101,8 @@ class WorldView(Widget, can_focus=True):
         st = self._state
         if not st:
             return
-        min_zoom = min(st.width / max(self.size.width, 1), st.height / (2 * max(self.size.height, 1))) * 0.25
+        f = self._row_factor()
+        min_zoom = min(st.width / max(self.size.width, 1), st.height / (f * max(self.size.height, 1))) * 0.25
         new_z = min(40.0, max(min_zoom, self.zoom * factor))
         if new_z != self.zoom:
             self.zoom = new_z
@@ -121,8 +130,9 @@ class WorldView(Widget, can_focus=True):
 
     # ------------------------------------------------------------ painting
     def _origin(self) -> tuple[int, int]:
+        f = self._row_factor()
         left = self.cam_cx - self.size.width * self.zoom / 2
-        top = self.cam_cy - self.size.height * self.zoom  # rows are 2*zoom tall
+        top = self.cam_cy - self.size.height * self.zoom * f / 2
         return math.floor(left / self.zoom), math.floor(top / self.zoom)
 
     def world_to_cell(self, wx: float, wy: float) -> tuple[int, int]:
@@ -309,11 +319,12 @@ class WorldView(Widget, can_focus=True):
         st = self._state
         if not st:
             return None
+        f = self._row_factor()
         col0, row0 = self._origin()
-        col, subrow = col0 + sx, row0 + sy * 2
+        col, row = col0 + sx, row0 + sy * f
         z = self.zoom
         wx = (col + 0.5) * z
-        wy = (subrow + 1.0) * z
+        wy = (row + f / 2.0) * z
         radius = max(4.0, z * 2.5)
         best: EntityState | None = None
         best_d2 = radius * radius
@@ -336,6 +347,8 @@ class WorldView(Widget, can_focus=True):
             return Strip.blank(width, self.rich_style)
         col0, row0 = self._origin()
         sel = self._sel_cell
+        if self.ascii_mode:
+            return self._render_line_ascii(y, col0, row0, width, sel)
         segments: list[Segment] = []
         buf: list[str] = []
         cur_style: str | None = None
@@ -358,6 +371,39 @@ class WorldView(Widget, can_focus=True):
                 flush()
                 cur_style = style
             buf.append(_cell_char(top, bot))
+        flush()
+        if not segments:
+            segments.append(Segment(" " * width))
+        return Strip(segments, cell_length=width)
+
+    def _render_line_ascii(
+        self, y: int, col0: int, row0: int, width: int, sel: tuple[int, int] | None
+    ) -> Strip:
+        """One glyph per cell — the classic ASCII map."""
+        row = row0 + y
+        segments: list[Segment] = []
+        buf: list[str] = []
+        cur_style: str | None = None
+
+        def flush() -> None:
+            nonlocal buf, cur_style
+            if buf:
+                segments.append(
+                    Segment("".join(buf), style=Style.parse(cur_style) if cur_style else None)
+                )
+                buf = []
+                cur_style = None
+
+        for x in range(width):
+            col = col0 + x
+            cell = self._grid.get((col, row))
+            selected = sel is not None and (col, row) == sel
+            char = cell.char if cell is not None and cell.char else " "
+            style = f"#0d1117 on #e6edf3" if selected else _ascii_cell_style(cell)
+            if style != cur_style:
+                flush()
+                cur_style = style
+            buf.append(char)
         flush()
         if not segments:
             segments.append(Segment(" " * width))
@@ -389,6 +435,18 @@ def _cell_char(top: Cell | None, bot: Cell | None) -> str:
     if has_bot:
         return "▄"
     return " "
+
+
+def _ascii_cell_style(cell: Cell | None) -> str:
+    """fg = glyph color, bg = terrain tint (ASCII mode: one glyph per cell)."""
+    if cell is None:
+        return ""
+    parts: list[str] = []
+    if cell.fg:
+        parts.append(cell.fg)
+    if cell.bg:
+        parts.append(f"on {cell.bg}")
+    return " ".join(parts)
 
 
 def _cell_style(top: Cell | None, bot: Cell | None, *, selected: bool) -> str:

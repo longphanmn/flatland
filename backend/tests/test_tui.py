@@ -155,6 +155,13 @@ def run_app_with(server: FakeWorldServer):
     return FlatlandApp(ws_url=server.ws_url).run_test(size=(120, 40))
 
 
+async def _wait_world(pilot) -> WorldView:
+    await _wait_until(
+        lambda: pilot.app.query_one("#world", WorldView)._state is not None
+    )
+    return pilot.app.query_one("#world", WorldView)
+
+
 # ------------------------------------------------------------------- tests
 def test_ws_connects_hud_shows_tick_and_world_renders():
     async def scenario() -> None:
@@ -201,6 +208,32 @@ def test_pause_step_and_speed_actions_sent_over_ws():
     asyncio.run(scenario())
 
 
+def test_ascii_map_is_the_default_and_toggle_swaps_renderers():
+    async def scenario() -> None:
+        async with FakeWorldServer() as server:
+            async with run_app_with(server) as pilot:
+                view = await _wait_world(pilot)
+                assert view.ascii_mode is True
+
+                # the soul-code glyph is painted as a real character on screen
+                line_texts = [str(view.render_line(y)) for y in range(view.size.height)]
+                assert any("λ" in t for t in line_texts)
+
+                # toggle → half-block pixel renderer, geometry still consistent
+                await pilot.press("a")
+                assert view.ascii_mode is False
+                await pilot.pause()
+                block_lines = [view.render_line(y) for y in range(view.size.height)]
+                assert all(s.cell_length == view.size.width for s in block_lines)
+                # and back to ascii
+                await pilot.press("a")
+                assert view.ascii_mode is True
+                line_texts = [str(view.render_line(y)) for y in range(view.size.height)]
+                assert any("λ" in t for t in line_texts)
+
+    asyncio.run(scenario())
+
+
 def test_click_selects_and_enter_opens_inspector():
     async def scenario() -> None:
         async with FakeWorldServer() as server:
@@ -212,7 +245,7 @@ def test_click_selects_and_enter_opens_inspector():
                 # simulate a pick at the creature's screen cell
                 col, row = view.world_to_cell(100.0, 100.0)
                 col0, row0 = view._origin()
-                picked = view.pick(col - col0, (row - row0) // 2)
+                picked = view.pick(col - col0, (row - row0) // view._row_factor())
                 assert picked is not None and picked.id == 12
                 pilot.app.on_world_view_creature_picked(view.CreaturePicked(picked))
                 assert pilot.app.selected_id == 12

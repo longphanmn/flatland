@@ -16,6 +16,7 @@ KEYS = [
     ("s", "step one tick"),
     ("r", "reset — new seed, new world"),
     ("f", "fit world in view"),
+    ("a", "toggle ASCII map / half-block pixel map"),
     ("+ / -", "zoom in / out (mouse wheel works too)"),
     ("h j k l / arrows", "pan camera"),
     ("click", "select a creature"),

@@ -39,7 +39,7 @@ if [ "$MODE" = "tui" ]; then
     echo "      or point at another host: ./run.sh tui ws://host:8000/ws" >&2
     echo "      (the TUI keeps retrying in the meantime)" >&2
   fi
-  echo "[tui] keys: space pause · s step · r reset · f fit · +/- zoom · hjkl pan · enter inspect · g laws · ? help · q quit"
+  echo "[tui] keys: space pause · s step · r reset · f fit · a ascii/blocks · +/- zoom · hjkl pan · enter inspect · g laws · ? help · q quit"
   echo "[tui] auth: pass FLATWORLD_GOD_KEY (or 3rd arg) to control the world; without it, viewing works"
   exec uv run -m tui
 fi
