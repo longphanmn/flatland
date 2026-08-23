@@ -10,6 +10,8 @@ import json
 import os
 import sqlite3
 import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
 
@@ -87,6 +89,9 @@ class Database:
         # One connection shared across threads (event loop + test workers);
         # a plain lock serializes the tiny local writes.
         self._lock = threading.Lock()
+        # AA: >0 while a batched write window is open — writers skip their
+        # own commit so a whole tick costs ONE fsync instead of one per event.
+        self._batch_depth = 0
 
     # ------------------------------------------------------------ lifecycle
     def connect(self) -> None:
@@ -96,12 +101,49 @@ class Database:
         os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
         # timeout: wait up to 5s on lock contention instead of failing instantly
         # (a concurrent reader/writer must never crash the tick loop)
-        self._conn = sqlite3.connect(self.path, check_same_thread=False, timeout=5.0)
+        # isolation_level=None → autocommit; transactions are managed
+        # explicitly by batch() below.
+        self._conn = sqlite3.connect(
+            self.path, check_same_thread=False, timeout=5.0, isolation_level=None
+        )
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=5000")
         self._conn.executescript(_SCHEMA)
-        self._conn.commit()
+
+    @contextmanager
+    def batch(self) -> Iterator[None]:
+        """Group the writes made inside the block into ONE commit.
+
+        AA: the tick loop wraps each step, so a burst of chronicle/genealogy
+        writes commits once per tick. A failure rolls the whole tick's writes
+        back instead of half-committing them. Writes outside a batch behave
+        exactly as before (each statement auto-commits).
+        """
+        with self._lock:
+            if self._batch_depth == 0:
+                self._require().execute("BEGIN")
+            self._batch_depth += 1
+        try:
+            yield
+        except Exception:
+            with self._lock:
+                self._batch_depth = 0
+                try:
+                    assert self._conn is not None
+                    self._conn.rollback()
+                except sqlite3.Error:
+                    pass
+            raise
+        else:
+            with self._lock:
+                self._batch_depth -= 1
+                if self._batch_depth == 0:
+                    try:
+                        assert self._conn is not None
+                        self._conn.commit()
+                    except sqlite3.Error:
+                        pass
 
     def close(self) -> None:
         with self._lock:
@@ -125,7 +167,6 @@ class Database:
                 "INSERT INTO worlds(seed,width,height,boundary,started_at) VALUES (?,?,?,?,?)",
                 (cfg.seed, cfg.width, cfg.height, cfg.boundary, _now()),
             )
-            self._conn.commit()  # type: ignore[union-attr]
             return int(cur.lastrowid)
 
     def end_world(self, world_id: int) -> None:
@@ -134,7 +175,6 @@ class Database:
                 "UPDATE worlds SET ended_at=? WHERE id=? AND ended_at IS NULL",
                 (_now(), world_id),
             )
-            self._conn.commit()  # type: ignore[union-attr]
 
     def worlds(self, limit: int = 100) -> list[dict]:
         with self._lock:
@@ -167,7 +207,6 @@ class Database:
                     for e in events
                 ],
             )
-            self._conn.commit()  # type: ignore[union-attr]
 
     def history(
         self, world_id: int, since_id: int = 0, limit: int = 500
@@ -217,7 +256,6 @@ class Database:
                 "INSERT INTO law_changes(world_id,tick,name,value,created_at) VALUES (?,?,?,?,?)",
                 (world_id, tick, name, json.dumps(value), _now()),
             )
-            self._conn.commit()  # type: ignore[union-attr]
 
     # ------------------------------------------------------------- genealogy
     def genealogy_parents(
@@ -283,7 +321,6 @@ class Database:
                 (world_id, entity_id, caste, clan_id, generation,
                  mother_id or None, father_id or None, born_tick),
             )
-            self._conn.commit()  # type: ignore[union-attr]
 
     def mark_death(self, world_id: int, entity_id: int, died_tick: int) -> None:
         with self._lock:
@@ -298,7 +335,6 @@ class Database:
                     " VALUES (?,?,NULL,?)",
                     (world_id, entity_id, died_tick),
                 )
-            self._conn.commit()  # type: ignore[union-attr]
 
     # -------------------------------------------------------------- snapshots
     def get_setting(self, key: str) -> str | None:
@@ -315,12 +351,10 @@ class Database:
                 " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 (key, value, _now()),
             )
-            self._conn.commit()  # type: ignore[union-attr]
 
     def delete_setting(self, key: str) -> None:
         with self._lock:
             self._require().execute("DELETE FROM settings WHERE key=?", (key,))
-            self._conn.commit()  # type: ignore[union-attr]
 
     def save_snapshot(self, world_id: int, tick: int, payload: str) -> int:
         with self._lock:
@@ -328,7 +362,6 @@ class Database:
                 "INSERT INTO snapshots(world_id,tick,payload,created_at) VALUES (?,?,?,?)",
                 (world_id, tick, payload, _now()),
             )
-            self._conn.commit()  # type: ignore[union-attr]
             return int(cur.lastrowid)
 
     def list_snapshots(self, world_id: int, limit: int = 50) -> list[dict]:

@@ -225,6 +225,12 @@ lean by algorithmic wins (broad-phase wall tests with cached house segments,
 squared-distance threshold checks); multi-process workers are intentionally
 *not* used — they would mean several disconnected worlds, and CPython's GIL
 makes thread-level compute parallelism a wash for pure-Python simulation.
+Performance round 2 keeps 400–500 creatures smooth: spatial-hash neighbour
+queries for war pair discovery and mob counts, incremental clan relations
+(eater pairs via the hash, one dominant-caste pass, neutral pairs pruned),
+plain-dict snapshots with cached personal identity instead of pydantic
+validation per frame, `orjson` broadcast encoding, and all of a tick's DB
+writes committed together (`Database.batch()`).
 
 ## Roadmap hooks already in place
 

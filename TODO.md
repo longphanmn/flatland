@@ -752,34 +752,45 @@ REST API — no browser. Separate client, never touches backend logic.
       world incl. remote hosts, keeps retrying while the backend is down),
       README blurb.
 
-## AA. Performance round 2 — tick-10000 slowdown  [P1]
+## AA. Performance round 2 — tick-10000 slowdown  [P1] — ✅ implemented
 All conflict systems on; the deterministic sim pegs one core (GIL) and the hot
 paths are O(n²)/O(n³) + per-event DB commits. Fix the algorithm + move I/O off the
 sim thread (no multi-core sim — determinism + GIL make it low-value).
+Measured @465 creatures: step 70→53 ms (−24%), snapshot 6.2→1.6 ms (3.9×),
+broadcast encode 2.2→0.3 ms (orjson). 1500-tick event streams byte-identical
+to the old implementation (same seed ⇒ same world).
 
 ### Algorithmic (single-threaded)
-- [ ] [P1] Spatialize _update_war — query neighbours within attack_radius via the
-      spatial hash (deterministic id-sorted) instead of O(n²) all-pairs
-      (simulation.py:1162).
-- [ ] [P1] Cache mob counts — precompute per-creature clan-mate counts once/tick
-      instead of _mob_defenders scanning the roster inside the pair loop (kills the
-      O(n³) at simulation.py:1197/1257).
-- [ ] [P1] Incremental _update_relations — only process interacted pairs + one bulk
-      drift pass; dominant-caste computed once/tick from the cached creatures list
-      (not per-clan scans); border adjacency via spatial hash (kills O(c²+c·n)/tick
-      at simulation.py:1345-1380).
-- [ ] [P1] Cheap snapshot — emit plain dicts instead of pydantic EntityState;
-      cache deterministic name/glyph/variation/color; drop model_dump(mode="json")
-      (simulation.py:2887-2958).
+- [x] [P1] Spatialize _update_war — neighbours within attack_radius via the
+      spatial hash (fresh index rebuilt after movement, id-ascending pairs,
+      exact dist_sq re-check) instead of O(n²) all-pairs; `fallen` set keeps
+      original semantics (only recorded losers are blocked; winners stay
+      eligible for later duels) (`simulation.py` `_update_war`, `step()`).
+- [x] [P1] Cache mob counts — `_mob_defenders` answers via a spatial query
+      around the winner instead of scanning the whole roster inside the pair
+      loop (kills the O(n³) at war/wound time).
+- [x] [P1] Incremental _update_relations — eater pairs from the spatial hash
+      (+ dedupe), dominant-caste computed once/tick from the cached roster
+      (was a full scan PER CLAN), border adjacency via hash, and neutral
+      pairs pruned so relations/zones stay bounded forever
+      (`_update_relations`; schism/plots membership maps hoisted too).
+- [x] [P1] Cheap snapshot — `snapshot_payload()` emits plain dicts (no
+      pydantic validation/model_dump per frame); name/glyph/variation cached
+      per creature in `_identity_cache`; shared structures copied so payloads
+      survive while the world ticks (`simulation.py`, `main.py` call sites);
+      `snapshot()` still returns typed StateMessage for REST/tests.
 
 ### I/O off the hot thread
-- [ ] [P1] Batch DB writes — flush _events_this_tick in ONE commit/tick (or a
-      dedicated writer thread + queue) instead of a commit per event
-      (main.py:107, db.py:147/286/301).
-- [ ] [P1] orjson/msgspec for snapshot encoding (C-extension, GIL-releasing).
-- [ ] [P2] Throttle bloom events — keep in-memory chronicle, skip the DB write
-      (high-frequency, low-value).
+- [x] [P1] Batch DB writes — every write of one tick rides ONE transaction:
+      sqlite autocommit mode + `Database.batch()` (BEGIN…COMMIT, rollback on
+      tick failure) instead of a commit per event (`db.py`, `advance_world`,
+      STEP action).
+- [x] [P1] orjson for snapshot encoding (C-extension, GIL-releasing), stdlib
+      json fallback kept (`main.py` `_dumps`, pyproject dep).
+- [x] [P2] Throttle bloom events — blooms stay in the in-memory chronicle,
+      never touch the DB (`main.py` `_on_event`).
 
 ### Concurrency stance
-- [ ] [P2] Keep uvicorn at 1 worker for the sim; document that the sim is
-      single-threaded by design (determinism) and multi-core sim is a non-goal.
+- [x] [P2] Keep uvicorn at 1 worker for the sim; documented single-threaded-
+      by-design (determinism) + multi-core as non-goal (README "Concurrency &
+      performance", guide.py ops → "Concurrency stance").

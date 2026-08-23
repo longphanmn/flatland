@@ -27,6 +27,18 @@ from .simulation import Simulation, glyph_for, personal_name_for, variation_for
 MIN_SPEED = 0.5  # ticks per second
 MAX_SPEED = 120.0
 
+# AA: C-extension JSON for the ~30 Hz broadcast (GIL-releasing encode);
+# falls back to stdlib when orjson is not installed.
+try:
+    import orjson
+
+    def _dumps(payload: dict) -> str:
+        return orjson.dumps(payload).decode("utf-8")
+except ModuleNotFoundError:  # pragma: no cover - fallback envs
+
+    def _dumps(payload: dict) -> str:
+        return json.dumps(payload, separators=(",", ":"))
+
 
 class Hub:
     """Tracks connected WebSocket clients and broadcasts snapshots.
@@ -59,7 +71,7 @@ class Hub:
     async def broadcast(self, payload: dict) -> None:
         if not self.clients:
             return
-        text = json.dumps(payload, separators=(",", ":"))
+        text = _dumps(payload)
         # Concurrent fan-out: one slow client costs nobody else its timeout.
         await asyncio.gather(
             *(self._send(ws, text) for ws in list(self.clients)),
@@ -105,8 +117,12 @@ def start_world() -> None:
 
 
 def _on_event(e) -> None:
-    """Durable sinks for chronicle events: events feed the genealogy table."""
-    if RT.world_id is None:
+    """Durable sinks for chronicle events: events feed the genealogy table.
+
+    AA: blooms stay in the in-memory chronicle only — high-frequency,
+    low-value, so they never cost a DB write.
+    """
+    if RT.world_id is None or e.type == "bloom":
         return
     DB.add_events(RT.world_id, [e])
     if e.type == "birth":
@@ -134,7 +150,9 @@ def advance_world(rt: RuntimeState) -> dict | None:
     if rt.paused:
         return None
     try:
-        rt.sim.step()
+        # AA: all chronicle/genealogy writes of one tick commit together.
+        with DB.batch():
+            rt.sim.step()
     except Exception as exc:
         # The world must never die silently: one failed tick is logged
         # loudly and skipped — the loop keeps turning (a frozen tick
@@ -152,7 +170,7 @@ def advance_world(rt: RuntimeState) -> dict | None:
     every = max(1, int(round(rt.speed / 30))) if rt.speed > 30 else 1
     if every > 1 and rt.sim.tick % every != 0:
         return None
-    return rt.sim.snapshot().model_dump(mode="json")
+    return rt.sim.snapshot_payload()
 
 
 class SimEngine:
@@ -238,8 +256,9 @@ async def apply_control(msg: ControlMessage) -> dict:
         elif msg.action is ControlAction.RESUME:
             RT.paused = False
         elif msg.action is ControlAction.STEP:
-            RT.sim.step()
-            payload = RT.sim.snapshot().model_dump(mode="json")
+            with DB.batch():
+                RT.sim.step()
+            payload = RT.sim.snapshot_payload()
         elif msg.action is ControlAction.RESET:
             # A new world is born with fresh laws of chance: a new random seed.
             # Save persists across worlds, Apply does not — use saved baseline.
@@ -249,7 +268,7 @@ async def apply_control(msg: ControlMessage) -> dict:
             RT.config = new_cfg
             RT.sim = Simulation(new_cfg, history=RT.sim.history)
             start_world()
-            payload = RT.sim.snapshot().model_dump(mode="json")
+            payload = RT.sim.snapshot_payload()
         elif msg.action is ControlAction.SET_SPEED:
             if msg.value is not None:
                 RT.speed = min(MAX_SPEED, max(MIN_SPEED, float(msg.value)))
@@ -546,7 +565,7 @@ async def ws_endpoint(ws: WebSocket) -> None:
         # hung handler task — bound the handshake sends like broadcasts.
         await asyncio.wait_for(ws.send_json(hello_payload()), timeout=HUB.SEND_TIMEOUT)
         with RT.lock:
-            snap = RT.sim.snapshot().model_dump(mode="json")
+            snap = RT.sim.snapshot_payload()
         await asyncio.wait_for(
             ws.send_json(snap),
             timeout=HUB.SEND_TIMEOUT,
@@ -695,7 +714,7 @@ async def apply_preset(name: str, persist: bool = True, reset: bool = False) -> 
         RT.config = new_cfg
         RT.sim = Simulation(new_cfg, history=RT.sim.history)
         start_world()
-        await HUB.broadcast(RT.sim.snapshot().model_dump(mode="json"))
+        await HUB.broadcast(RT.sim.snapshot_payload())
     return {"preset": name, "laws": result, "reset": reset}
 
 
@@ -848,7 +867,7 @@ async def take_snapshot() -> dict:
     with RT.lock:
         if RT.world_id is None:
             raise HTTPException(409, "no active world")
-        payload = json.dumps(RT.sim.snapshot().model_dump(mode="json"), separators=(",", ":"))
+        payload = _dumps(RT.sim.snapshot_payload())
     sid = DB.save_snapshot(RT.world_id, RT.sim.tick, payload)
     return {"id": sid, "tick": RT.sim.tick}
 
@@ -950,7 +969,7 @@ async def get_creature(creature_id: int) -> dict:
 def _creature_dossier(creature_id: int) -> dict:
     ent = RT.sim.world.entities.get(creature_id)
     if ent is not None:
-        entity = RT.sim._entity_state(ent).model_dump(mode="json")
+        entity = RT.sim._entity_payload(ent)
     elif RT.world_id is not None:
         # deceased: synthesize minimal dossier from genealogy so name/glyph still show
         try:

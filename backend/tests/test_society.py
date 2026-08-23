@@ -34,10 +34,11 @@ def test_relations_drift_toward_neutrality():
     s.relations[pair] = -6
     for _ in range(4):
         s._update_relations()
-    assert s.relations[pair] == pytest.approx(0)  # drift clamps at 0, never overshoots
+    assert s.relations.get(pair, 0) == pytest.approx(0)  # drift clamps at 0, never overshoots
     for _ in range(5):
         s._update_relations()
-    assert s.relations[pair] == 0  # never overshoots into the opposite sign
+    assert s.relations.get(pair, 0) == 0  # never overshoots into the opposite sign
+    assert pair not in s.relations  # AA: neutral pairs are forgotten, not hoarded
 
 
 def test_shared_feasting_bonds_clans_and_forges_alliance():

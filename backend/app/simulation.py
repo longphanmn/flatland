@@ -4,7 +4,7 @@ import math
 import random
 from collections import deque
 from functools import lru_cache
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from .config import Config
 from .entities import (
@@ -194,6 +194,9 @@ class Simulation:
         self._cached_creatures: list[Creature] = []
         self._clan_members: dict[int, list[Creature]] = {}
         self._death_counts: dict[str, int] = {}
+        # AA: deterministic cosmetic identity (name/glyph/jitter) per creature,
+        # computed once — pure function of (id, seed, generation).
+        self._identity_cache: dict[tuple[int, int], tuple[str, str, float, float, float]] = {}
         self.disease_id = 0
         self.weather = "clear"
         self.clans: dict[int, dict] = {}  # id -> {name, founder_id, born_tick, color}
@@ -1077,6 +1080,9 @@ class Simulation:
             self._update_creature(creature, houses)
         self._refresh_cache()
         self._update_disease()
+        # AA: positions moved this tick; re-bucket so the spatial war/mob
+        # queries below see where everyone actually stands now.
+        self.world.rebuild_index()
         self._update_war()
         self._refresh_cache()
         self._reproduce()
@@ -1135,37 +1141,55 @@ class Simulation:
             "threat_clan": aggressor.clan_id or None,
         })
 
-    def _mob_defenders(self, loser: Creature, winner: Creature, roster: list[Creature]) -> int:
-        """Clan-mates of the victim within earshot of the fight (§X mobbing)."""
+    def _mob_defenders(self, loser: Creature, winner: Creature) -> int:
+        """Clan-mates of the victim within earshot of the fight (§X mobbing).
+
+        AA: spatial query around the winner instead of scanning the whole
+        roster inside the war pair loop (was O(n) per pair → O(n³)/tick).
+        """
         if not (self.config.help_call_enabled and self.config.knowledge_enabled):
             return 0
         return sum(
             1
-            for o in roster
-            if o.clan_id == loser.clan_id
+            for o in self.world.query_radius(winner.x, winner.y, self.config.help_radius)
+            if o.kind == "creature"
+            and o.clan_id == loser.clan_id  # type: ignore[union-attr]
             and o.id != loser.id
-            and not o.is_predator
-            and not o.is_herbivore
-            and self.world.distance(o.x, o.y, winner.x, winner.y) <= self.config.help_radius
+            and not o.is_predator  # type: ignore[union-attr]
+            and not o.is_herbivore  # type: ignore[union-attr]
         )
 
     def _update_war(self) -> None:
-        """Rival-clan creatures fight on contact (§I). Shield totem reduces damage (§P)."""
+        """Rival-clan creatures fight on contact (§I). Shield totem reduces damage (§P).
+
+        AA: pair discovery via the spatial hash — id-ascending outer loop, each
+        rival neighbour within attack_radius considered once, so the schedule
+        is identical to the old O(n²) all-pairs scan at a fraction of the cost.
+        """
         cfg = self.config
         if not cfg.war_enabled:
             return
         creatures = sorted(self.world.creatures(), key=lambda c: c.id)
         to_kill: list[tuple[Creature, Creature]] = []
         to_wound: list[tuple[Creature, Creature]] = []
+        fallen: set[int] = set()  # losers already scheduled this tick
         r2 = cfg.attack_radius * cfg.attack_radius
         dist_sq = self.world.distance_sq
-        for i, a in enumerate(creatures):
-            if a.id not in self.world.entities:
+        w = self.world
+        for a in creatures:
+            if a.id not in w.entities or a.id in fallen:
                 continue
             if a.is_predator or a.is_herbivore:
                 continue
-            for b in creatures[i + 1 :]:
-                if b.id not in self.world.entities or b.is_predator or b.is_herbivore:
+            neighbours = [
+                b
+                for b in w.query_radius(a.x, a.y, cfg.attack_radius)
+                if b.kind == "creature" and b.id > a.id and b.id not in fallen
+            ]
+            neighbours.sort(key=lambda c: c.id)
+            for b in neighbours:  # type: ignore[union-attr]
+                b = cast(Creature, b)
+                if b.id not in w.entities or b.is_predator or b.is_herbivore:
                     continue
                 if not a.clan_id or not b.clan_id or a.clan_id == b.clan_id:
                     continue
@@ -1175,9 +1199,9 @@ class Simulation:
                 if dist_sq(a.x, a.y, b.x, b.y) > r2:
                     continue
                 loser, winner = (a, b) if a.id < b.id else (b, a)
-                if any(loser.id == x[0].id for x in to_kill) or any(winner.id == x[0].id for x in to_kill):
-                    continue
-                if any(loser.id == x[0].id for x in to_wound) or any(winner.id == x[0].id for x in to_wound):
+                # AA: original semantics — only previously-recorded LOSERS are
+                # blocked; a fight's winner may still lose a later duel.
+                if loser.id in fallen or winner.id in fallen:
                     continue
                 # Shield totem: 30% damage reduction; warrior specialization adds bite (§P); traits bold/peaceful (§S)
                 dmg = cfg.attack_damage
@@ -1194,11 +1218,12 @@ class Simulation:
                 if self._totem_stat(loser, "defense"):
                     dmg *= 1.0 - self._totem_stat(loser, "defense")
                 # §X mobbing: a surrounded attacker hits softer
-                dmg /= 1.0 + cfg.defense_weight * min(self._mob_defenders(loser, winner, creatures), 4)
+                dmg /= 1.0 + cfg.defense_weight * min(self._mob_defenders(loser, winner), 4)
                 if dmg >= loser.health:
                     to_kill.append((loser, winner))
                 else:
                     to_wound.append((loser, winner))
+                fallen.add(loser.id)
         for loser, winner in to_kill:
             if loser.id not in self.world.entities:
                 continue
@@ -1254,7 +1279,7 @@ class Simulation:
                 trait_mult *= 0.9
             dmg = cfg.attack_damage * (0.85 + w_spec2 * 0.45) * trait_mult * (1.0 - self._totem_stat(loser, "defense"))
             # §X mobbing softens blows on the wound path too
-            dmg /= 1.0 + cfg.defense_weight * min(self._mob_defenders(loser, winner, creatures), 4)
+            dmg /= 1.0 + cfg.defense_weight * min(self._mob_defenders(loser, winner), 4)
             loser.health = max(0, loser.health - dmg)
             # wounded flees
             dx, dy = self.world.delta(loser.x, loser.y, winner.x, winner.y)
@@ -1273,22 +1298,36 @@ class Simulation:
             self._bump_relation(loser.clan_id, winner.clan_id, -3)
 
     def _update_relations(self) -> None:
-        """Clan scores rise when strangers feast together and drift toward peace."""
+        """Clan scores rise when strangers feast together and drift toward peace.
+
+        AA: incremental — eater pairs come from the spatial hash instead of an
+        O(eaters²) scan; dominant castes and border adjacency are computed once
+        per tick (the dominant-caste pass was O(clans×creatures)); pairs that
+        relax back to 0 are forgotten so the relation table stays bounded.
+        """
         cfg = self.config
+        w = self.world
 
         # Old zones are what the chronicle last saw (neutral for unseen pairs).
         old_zones: dict[tuple[int, int], int] = dict(self._relation_zones)
 
-        eaters = sorted(self._eaters_this_tick)
-        for i, aid in enumerate(eaters):
-            ea = self.world.entities.get(aid)
-            for bid in eaters[i + 1:]:
-                eb = self.world.entities.get(bid)
-                if ea is None or eb is None or not isinstance(ea, Creature) or not isinstance(eb, Creature):
+        # Shared feeding (+2): only actual eater pairs, found via the hash.
+        # (Duplicates in _eaters_this_tick collapse — a creature eats once.)
+        eaters = sorted(set(self._eaters_this_tick))
+        if eaters:
+            eater_ids = set(eaters)
+            for aid in eaters:
+                ea = w.entities.get(aid)
+                if not isinstance(ea, Creature):
                     continue
-                if not ea.clan_id or not eb.clan_id or ea.clan_id == eb.clan_id:
-                    continue
-                if self.world.distance(ea.x, ea.y, eb.x, eb.y) <= cfg.flock_radius:
+                for n in sorted(
+                    (x for x in w.query_radius(ea.x, ea.y, cfg.flock_radius)
+                     if x.kind == "creature" and x.id in eater_ids and x.id > ea.id),
+                    key=lambda x: x.id,
+                ):
+                    eb = cast(Creature, n)
+                    if not ea.clan_id or not eb.clan_id or ea.clan_id == eb.clan_id:
+                        continue
                     self._bump_relation(ea.clan_id, eb.clan_id, +2)
 
         # Emit events for bumps that crossed a threshold (including bumps done
@@ -1335,49 +1374,66 @@ class Simulation:
                         payload={"a": a, "b": b, "score": score},
                     )
                 )
-            self._relation_zones[pair] = new_zone
+            if score == 0:
+                # AA: neutral pairs are forgotten — bump re-creates on demand.
+                del self.relations[pair]
+                self._relation_zones.pop(pair, None)
+            else:
+                self._relation_zones[pair] = new_zone
+
         # Diplomacy depth — richer relation factors (§S)
         # Common enemy +, border-adjacency −, same-caste +
         # Applied as small per-tick bumps, still within -100..100
         # Common enemy: a and b share a rival c
-        rivals = {a for (a,b),score in self.relations.items() if self._zone_of(score)==-1 for a in [a,b] for b in [a,b]}
-        # More precise: build rival sets per clan
-        rival_sets = {}
-        for (a,b), score in self.relations.items():
-            if self._zone_of(score)==-1:
+        rival_sets: dict[int, set[int]] = {}
+        for (a, b), score in self.relations.items():
+            if self._zone_of(score) == -1:
                 rival_sets.setdefault(a, set()).add(b)
                 rival_sets.setdefault(b, set()).add(a)
-        for (a,b) in list(self.relations.keys()):
-            # common enemy
+        for (a, b) in list(self.relations.keys()):
             ra = rival_sets.get(a, set())
             rb = rival_sets.get(b, set())
             if ra & rb:
-                self._bump_relation(a,b, +1)
-            # same-caste bonus: if clans have same dominant caste
-            # compute dominant caste per clan
-            # border adjacency is handled via territory houses distance
-        # border adjacency: houses within 2*territory_radius
-        if self.config.territory_enabled:
-            houses_by_clan = {}
-            for e in self.world.entities.values():
+                self._bump_relation(a, b, +1)
+
+        # Border adjacency: claimed houses within 2*territory_radius — via the
+        # spatial hash instead of an O(houses²) scan.
+        if cfg.territory_enabled:
+            houses_by_clan: dict[int, House] = {}
+            for e in w.entities.values():
                 if isinstance(e, House) and e.clan_id and not e.is_ruin:
-                    houses_by_clan[e.clan_id]=e
-            clan_ids = list(houses_by_clan.keys())
-            for i, ca in enumerate(clan_ids):
-                for cb in clan_ids[i+1:]:
-                    ha = houses_by_clan[ca]; hb = houses_by_clan[cb]
-                    if self.world.distance(ha.x, ha.y, hb.x, hb.y) < 2 * self.config.territory_radius:
-                        self._bump_relation(ca, cb, -1)
-        # same-caste: if clans share same most common caste among members
-        from collections import Counter
-        dominant = {}
-        for cid in self.clans:
-            castes = [c.caste for c in self.world.creatures() if c.clan_id==cid]
-            if castes:
-                dominant[cid] = Counter(castes).most_common(1)[0][0]
-        for (a,b) in list(self.relations.keys()):
-            if dominant.get(a) and dominant.get(a)==dominant.get(b):
-                self._bump_relation(a,b, +1)
+                    houses_by_clan[e.clan_id] = e  # type: ignore[assignment]
+            done: set[tuple[int, int]] = set()
+            reach = 2 * cfg.territory_radius
+            for ca, ha in houses_by_clan.items():
+                for n in w.query_radius(ha.x, ha.y, reach):
+                    if not isinstance(n, House) or not n.clan_id or n.is_ruin or n.clan_id == ca:
+                        continue
+                    if w.distance(ha.x, ha.y, n.x, n.y) >= reach:
+                        continue
+                    pk = self._relation_pair(ca, n.clan_id)
+                    if pk in done:
+                        continue
+                    done.add(pk)
+                    self._bump_relation(pk[0], pk[1], -1)
+
+        # Same-caste bonus: clans sharing the most common caste among members —
+        # one pass over the cached roster (was one full roster scan PER CLAN).
+        caste_counts: dict[int, dict[str, int]] = {}
+        for c in self._get_creatures():
+            if not c.clan_id:
+                continue
+            counts = caste_counts.setdefault(c.clan_id, {})
+            counts[c.caste] = counts.get(c.caste, 0) + 1
+        dominant = {
+            cid: max(cnt.items(), key=lambda kv: kv[1])[0]
+            for cid, cnt in caste_counts.items()
+        }
+        for (a, b) in list(self.relations.keys()):
+            da = dominant.get(a)
+            db = dominant.get(b)
+            if da and da == db:
+                self._bump_relation(a, b, +1)
 
     def _update_territory(self) -> None:
         """§P: clan territory — members prefer own ground, trespass sours relations."""
@@ -1413,8 +1469,13 @@ class Simulation:
         if not cfg.schism_enabled:
             return
         # One schism per tick max to keep determinism smooth
+        # AA: one membership pass per tick (was a full roster scan PER CLAN).
+        members_by_clan: dict[int, list[Creature]] = {}
+        for c in self._get_creatures():
+            if c.clan_id:
+                members_by_clan.setdefault(c.clan_id, []).append(c)
         for cid, info in list(self.clans.items()):
-            members = [c for c in self.world.creatures() if c.clan_id == cid]
+            members = members_by_clan.get(cid, [])
             pop = len(members)
             if pop < cfg.schism_min_pop:
                 continue
@@ -1701,13 +1762,20 @@ class Simulation:
     def get_plots(self) -> list[dict]:
         """§S Plots — upcoming war/schism as progress 0..10 for god observability."""
         plots = []
+        # AA: shared lookups computed once per call (clan_knowledge was
+        # re-computed PER RIVAL PAIR; membership scanned per clan).
+        knowledge = self.clan_knowledge() if self.config.knowledge_enabled else {}
+        members_by_clan: dict[int, list[Creature]] = {}
+        for c in self._get_creatures():
+            if c.clan_id:
+                members_by_clan.setdefault(c.clan_id, []).append(c)
         # war plots: rival pairs with members near each other
         for (a,b), score in self.relations.items():
             if self._zone_of(score) != -1:
                 continue
             # need members of both clans
-            a_members = [c for c in self.world.creatures() if c.clan_id == a]
-            b_members = [c for c in self.world.creatures() if c.clan_id == b]
+            a_members = members_by_clan.get(a, [])
+            b_members = members_by_clan.get(b, [])
             if not a_members or not b_members:
                 continue
             # closest pair distance
@@ -1716,8 +1784,8 @@ class Simulation:
             # remember each other as enemies plot faster (§X clan memory)
             memory_bonus = 0
             if self.config.knowledge_enabled:
-                ka = self.clan_knowledge().get(a, {}).get("enemy_clans", [])
-                kb = self.clan_knowledge().get(b, {}).get("enemy_clans", [])
+                ka = knowledge.get(a, {}).get("enemy_clans", [])
+                kb = knowledge.get(b, {}).get("enemy_clans", [])
                 if b in ka or a in kb:
                     memory_bonus = 2
             base = max(0, (-score - self.config.rivalry_threshold) // 8) + memory_bonus  # 0..8
@@ -1732,7 +1800,7 @@ class Simulation:
         # schism plots: clans approaching schism threshold
         if self.config.schism_enabled:
             for cid, info in self.clans.items():
-                members = [c for c in self.world.creatures() if c.clan_id == cid]
+                members = members_by_clan.get(cid, [])
                 pop = len(members)
                 if pop < self.config.schism_min_pop:
                     continue
@@ -2888,64 +2956,106 @@ class Simulation:
                 self.world.remove(victim.id)
 
     # ------------------------------------------------------------------ output
-    def snapshot(self) -> StateMessage:
+    def _cached_identity(self, entity_id: int, generation: int) -> tuple[str, str, float, float, float]:
+        """AA: name/glyph/jitter computed once per creature — never per frame."""
+        key = (entity_id, generation)
+        hit = self._identity_cache.get(key)
+        if hit is None:
+            seed = self.config.seed
+            v = variation_for(entity_id, seed)
+            hit = (
+                personal_name_for(entity_id, seed, generation),
+                glyph_for(entity_id, seed, generation),
+                v["hue_shift"],
+                v["scale_jitter"],
+                v["angle_jitter"],
+            )
+            self._identity_cache[key] = hit
+        return hit
+
+    def snapshot_payload(self) -> dict:
+        """AA: the broadcast payload as plain dicts — no pydantic validation
+        and no model_dump on the hot path. Shared nested structures are copied,
+        so the payload stays valid while the world keeps ticking."""
         cfg = self.config
-        entities: list[EntityState] = []
+        entities: list[dict] = []
         population: dict[str, int] = {}
+        alive = 0
+        infected = 0
         for e in sorted(self.world.entities.values(), key=lambda e: e.id):
-            entities.append(self._entity_state(e))
-            label = e.caste if isinstance(e, Creature) else e.kind.capitalize()
+            entities.append(self._entity_payload(e))
+            if isinstance(e, Creature):
+                label = e.caste
+                alive += 1
+                if e.infected:
+                    infected += 1
+            else:
+                label = e.kind.capitalize()
             population[label] = population.get(label, 0) + 1
-        return StateMessage(
-            type="state",
-            tick=self.tick,
-            seed=cfg.seed,
-            width=cfg.width,
-            height=cfg.height,
-            boundary=cfg.boundary,
-            population=population,
-            entities=entities,
-            creatures_alive=len(self.world.creatures()),
-            creatures_dead=self.deaths,
-            dead_by_cause=dict(self._death_counts),
-            infected_count=sum(1 for c in self.world.creatures() if c.infected),
-            time_of_day=round(self._time_of_day(), 3),
-            day=self.day,
-            season=self._season(),
-            weather=self.weather,
-            terrain_fertile=self.fertile,
-            terrain_rocks=self.rocks,
-            relations=[
+        return {
+            "type": "state",
+            "tick": self.tick,
+            "seed": cfg.seed,
+            "width": cfg.width,
+            "height": cfg.height,
+            "boundary": cfg.boundary,
+            "population": population,
+            "entities": entities,
+            "creatures_alive": alive,
+            "creatures_dead": self.deaths,
+            "dead_by_cause": dict(self._death_counts),
+            "infected_count": infected,
+            "time_of_day": round(self._time_of_day(), 3),
+            "day": self.day,
+            "season": self._season(),
+            "weather": self.weather,
+            "terrain_fertile": [dict(p) for p in self.fertile],
+            "terrain_rocks": [dict(r) for r in self.rocks],
+            "relations": [
                 {"a": a, "b": b, "score": s}
                 for (a, b), s in sorted(self.relations.items())
             ],
-            clans={str(k): v for k, v in self.clans.items()},
-            events=list(self._events_this_tick),
-            signals=[dict(sg) for sg in self.signals],
-            fires=[dict(f) for f in self.fires],
-            age=self._age(),
-            age_tick=self._age_tick(),
-        )
+            "clans": {
+                str(k): {kk: (dict(vv) if isinstance(vv, dict) else vv) for kk, vv in v.items()}
+                for k, v in self.clans.items()
+            },
+            "events": [ev.model_dump(mode="json") for ev in self._events_this_tick],
+            "signals": [dict(sg) for sg in self.signals],
+            "fires": [dict(f) for f in self.fires],
+            "age": self._age(),
+            "age_tick": self._age_tick(),
+        }
 
-    def _entity_state(self, e: Entity) -> EntityState:
-        base = dict(id=e.id, kind=e.kind, x=round(e.x, 3), y=round(e.y, 3), angle=round(e.angle, 4))
+    def snapshot(self) -> StateMessage:
+        """Typed snapshot for cold paths (REST /api/state, tests)."""
+        return StateMessage.model_validate(self.snapshot_payload())
+
+    def _entity_payload(self, e: Entity) -> dict:
+        base: dict = {
+            "id": e.id,
+            "kind": e.kind,
+            "x": round(e.x, 3),
+            "y": round(e.y, 3),
+            "angle": round(e.angle, 4),
+        }
         if isinstance(e, Creature):
-            v = variation_for(e.id, self.config.seed)
-            return EntityState(
-                **base,
+            name, glyph, hue_shift, scale_jitter, angle_jitter = self._cached_identity(
+                e.id, e.generation
+            )
+            base.update(
                 shape=e.shape,
                 sides=e.sides,
                 caste=e.caste,
                 energy=round(e.energy, 2),
-                status=e.status,  # type: ignore[arg-type]
+                status=e.status,
                 radius=round(e.radius, 3),
                 age=e.age,
                 lifespan=round(e.lifespan, 1),
-                stage=e.stage,  # type: ignore[arg-type]
+                stage=e.stage,
                 irregularity=e.irregularity,
                 health=round(e.health, 1),
                 infected=e.infected,
-                sex=e.sex,  # type: ignore[arg-type]
+                sex=e.sex,
                 mother_id=e.mother_id or None,
                 father_id=e.father_id or None,
                 clan_id=e.clan_id or None,
@@ -2957,29 +3067,34 @@ class Simulation:
                 indoors=e.indoors,
                 generation=e.generation,
                 born_tick=e.born_tick,
-                personal_name=personal_name_for(e.id, self.config.seed, e.generation),
-                glyph=glyph_for(e.id, self.config.seed, e.generation),
-                hue_shift=v["hue_shift"],
-                scale_jitter=v["scale_jitter"],
-                angle_jitter=v["angle_jitter"],
+                personal_name=name,
+                glyph=glyph,
+                hue_shift=hue_shift,
+                scale_jitter=scale_jitter,
+                angle_jitter=angle_jitter,
                 chill=round(e.chill, 2),
                 trait=e.trait,
             )
+            return base
         if isinstance(e, House):
-            return EntityState(
-                **base,
+            base.update(
                 size=round(e.size, 2),
                 door_width=round(e.door_width, 2),
                 door_offset=round(e.door_offset, 2),
-                door_side=e.door_side,  # type: ignore[arg-type]
+                door_side=e.door_side,
                 clan_id=e.clan_id or None,
                 clan_color=e.clan_color,
                 is_ruin=e.is_ruin or None,
                 abandoned_ticks=e.abandoned_ticks or None,
             )
+            return base
         if isinstance(e, Food):
-            return EntityState(**base, growth=round(e.growth, 3), variant=e.variant)  # type: ignore[arg-type]
-        return EntityState(**base)  # type: ignore[arg-type]
+            base.update(growth=round(e.growth, 3), variant=e.variant)
+            return base
+        return base
+
+    def _entity_state(self, e: Entity) -> EntityState:
+        return EntityState.model_validate(self._entity_payload(e))
 
 
 def _house_wall_segments(h: House) -> list[tuple[tuple[float, float], tuple[float, float]]]:

@@ -285,6 +285,19 @@ SQLite `flatworld.db` (WAL, thread lock). Tables:
 
 History survives restarts; `reset` closes old world row and opens new.
 
+## Concurrency stance
+
+The simulation is **single-threaded by design** — determinism is the product:
+one seeded RNG stream, one fixed tick order. Run uvicorn with **1 worker**
+(more workers = several disconnected worlds, not a faster one). The engine
+thread advances ticks while the asyncio loop serves HTTP/WS; shared state
+crosses threads strictly under `RT.lock`. Multi-core simulation is a non-goal
+(CPython's GIL makes thread parallelism a wash for pure-Python compute);
+performance work is algorithmic instead: spatial-hash neighbour queries for
+war/mobbing/relations, per-tick clan caches, plain-dict snapshots with cached
+identity (no pydantic validation per frame), `orjson` broadcast encoding and
+one SQLite commit per tick (`Database.batch()`).
+
 ## Run & deploy
 ```bash
 ./run.sh
