@@ -36,21 +36,21 @@ class Config:
     house_density: float = 0.0002  # ~24 houses for 150+ pop
     spawn_variance: float = 0.25  # ±25% around the density target
 
-    food_count: int = 210  # was 70 on 200x200 — scales x3 with the 400x300 map (70 sustains ~52; tested 30d alive)
+    food_count: int = 450  # generous food for a thriving multi-generational civilization (sustainable default)
     # Plants & nutrient cycle (§H) + biodiversity (§O)
-    plant_growth_rate: float = 0.05  # was 0.04 — a bit faster for winter
-    plant_spread_rate: float = 0.006  # was 0.005
-    nutrient_cycle_rate: float = 0.65  # was 0.6
+    plant_growth_rate: float = 0.06
+    plant_spread_rate: float = 0.008
+    nutrient_cycle_rate: float = 0.65
     plant_variants_enabled: bool = True
-    poison_rate: float = 0.01  # was 0.03 — 1% keeps 30d alive
+    poison_rate: float = 0.0  # clean crops in sustainable baseline
     beast_ratio: float = 0.0
     diet_strictness: float = 0.0
-    winter_food_mult: float = 0.5  # T: winter bounty mult (law, 0.5 harsh → 0.7 gentle)
+    winter_food_mult: float = 0.75  # gentle winter bounty mult
 
     # Territory & clan depth (§P)
     territory_enabled: bool = True  # §P: clans claim zone around house, trespass sours relations
     territory_radius: float = 14.0  # radius of clan territory circle
-    trespass_decay: float = 0.25  # was 1.0 — rare war: low trespass decay
+    trespass_decay: float = 0.0  # calm relations by default
 
     # Clan founding (§V) — settlements define clans, castes mix inside them
     max_clans: int = -1  # -1 = one clan per house; N ≥ 1 clusters founders into N spatial clans
@@ -61,8 +61,8 @@ class Config:
 
     # Schism — WorldBox rebellion (§S P1) — enabled but rare
     schism_enabled: bool = True  # rebellion enabled by default
-    schism_threshold: float = 0.5  # fraction unhappy to trigger — 0.5 rarer than 0.4
-    schism_min_pop: int = 6  # minimum clan pop — 6 rarer than 4
+    schism_threshold: float = 0.55  # fraction unhappy to trigger
+    schism_min_pop: int = 7  # minimum clan pop
 
     # Ages — super-seasons (§S)
     age_enabled: bool = True  # long era bending world: Ice/Chaos/Plague/Golden
@@ -104,11 +104,11 @@ class Config:
     food_lifespan_ticks: int = 9000  # ticks a mature plant lives (× variant mult)
 
     # Behaviour tuning
-    perceive_radius: float = 20.0  # was 18 — fog/night + variants (tested 20)
+    perceive_radius: float = 18.0  # gentle 18.0 sustainable sight
     eat_radius: float = 1.4
     energy_max: float = 100.0
     energy_start: float = 85.0
-    energy_decay_per_tick: float = 0.025  # was 0.05 — 0.025 sustains 30d (tested)
+    energy_decay_per_tick: float = 0.025  # sustainable baseline
     energy_from_food: float = 32.0
     wander_turn: float = 0.35  # max heading change (rad) when wandering
     steer_turn: float = 0.45  # max heading change when steering to food
@@ -122,7 +122,7 @@ class Config:
     food_giveup_ticks: int = 240  # ticks a meal is abandoned when blocked by rock/wall; seek elsewhere
     lifespan_mult: float = 1.0  # god's law: scale every caste's natural lifespan
 
-    # Reproduction & inheritance (Nature's Law) — tuned for 30-day survival
+    # Reproduction & inheritance (Nature's Law) — tuned for 1000-day survival & high scale
     birth_enabled: bool = True
     adult_age: float = 200.0  # ticks before a creature may mate (was 600)
     mate_radius: float = 10.0  # max distance between parents (was 3.0)
@@ -133,22 +133,22 @@ class Config:
     max_sides: int = 24  # sons stop gaining sides here (= Circle)
     birth_energy_cost: float = 20.0  # each parent pays (was 25)
     reproduction_cooldown: int = 200  # ticks both parents wait after a birth (was 300)
-    carrying_capacity: int = -1  # soft cap: fertility fades above it; -1 => scale with map area (80 per 200x200)
-    max_population: int = -1  # hard cap: no births beyond it; -1 => scale with map area (140 per 200x200)
+    carrying_capacity: int = 2200  # soft cap: fertility fades above it (sustainable default)
+    max_population: int = 3000  # hard cap: no births beyond it (sustainable default)
     euthanasia_threshold: float = 0.7  # irregularity at/below -> demotion, above -> consumed
 
-    # Health & disease
-    disease_enabled: bool = False
-    disease_outbreak_rate: float = 0.0005  # chance/tick a new outbreak begins
-    disease_rate: float = 0.08  # spread chance per healthy neighbour per tick
+    # Health & disease — gentle background presence
+    disease_enabled: bool = True
+    disease_outbreak_rate: float = 0.0001  # very rare outbreak in sustainable baseline
+    disease_rate: float = 0.05  # gentle spread
     disease_radius: float = 3.0  # contagion range
-    disease_energy_drain: float = 0.15  # extra energy loss while infected
-    recovery_rate: float = 0.01  # chance/tick an infected creature recovers
-    disease_lethality: float = 0.5  # scales how fast infection drains health
+    disease_energy_drain: float = 0.08  # mild drain
+    recovery_rate: float = 0.025  # steady recovery
+    disease_lethality: float = 0.25  # non-fatal when fed
 
     # Environment: day/night, seasons, weather
     day_length: int = 1200  # ticks per day cycle
-    season_length: int = 14400  # ticks per season; 12 days per season (48-day year) — tuned for 1000-day longevity; winter ×0.5 famine lasts 12 days so food/shelter must buffer
+    season_length: int = 14400  # ticks per season; 12 days per season (48-day year)
     night_sight_mult: float = 0.6  # sight scale during the night
     weather_enabled: bool = True
     weather_change_rate: float = 0.002  # chance/tick the weather turns
@@ -172,10 +172,10 @@ class Config:
     sleep_enabled: bool = True  # creatures shelter in houses after dark
     sleep_energy_mult: float = 0.5  # energy decay while asleep
 
-    # Shelter — tuned for sustainability (exposure was 0.3, now 0.03)
+    # Shelter — tuned for sustainability
     shelter_enabled: bool = True  # houses are scarce, contested and life-saving
-    exposure_drain: float = 0.03  # extra energy/tick outdoors in rain/storm or at night (was 0.3)
-    house_capacity: int = 12  # beds in an 8×8 hall; scales with floor area (small hut < grand hall) — overflow spills to the nearest roof with space
+    exposure_drain: float = 0.03  # extra energy/tick outdoors in rain/storm or at night
+    house_capacity: int = 16  # beds in an 8×8 hall; scales with floor area (sustainable default)
     house_claim_enabled: bool = True  # clans claim houses as settlements
     rest_recovery_mult: float = 2.0  # indoor sleeping health regen multiplier
     house_decay_ticks: int = 2400  # abandoned house stands this many ticks before crumbling to ruin
@@ -185,28 +185,28 @@ class Config:
     rock_count: int = -1  # solid stone circles that block movement
     fertile_food_bias: float = 0.7  # fraction of food spawned on fertile ground
 
-    # Society — interaction & clan relations — war rare tuning
+    # Society — interaction & clan relations — calm society
     cohesion_weight: float = 0.0  # pull toward same-clan flock centre
     alignment_weight: float = 0.0  # match neighbours' heading
     separation_weight: float = 0.0  # personal-space push from any neighbour
     flock_radius: float = 6.0  # interaction perception range
-    relation_drift_rate: float = 2.2  # was 1.0 — relax faster, war rarer
+    relation_drift_rate: float = 2.8  # fast relation relaxation
     alliance_threshold: int = 50  # score at/above which two clans are allies
-    rivalry_threshold: int = -75  # was -50 — more negative, feuds rarer
+    rivalry_threshold: int = -85  # rare feuds
 
-    # Predation (§I) — Carnivore caste
-    predation_enabled: bool = False  # predators hunt prey — keep off by default (war is focus)
-    predator_ratio: float = 0.08  # fraction of spawn that are predators
+    # Predation (§I) — Carnivore caste (gentle, sustainable)
+    predation_enabled: bool = True
+    predator_ratio: float = 0.03  # low predator ratio
     hunt_radius: float = 8.0  # predator sight for prey
-    bite_damage: float = 100.0  # damage on bite (100 = instant kill)
-    bite_cooldown: int = 10  # ticks between bites
+    bite_damage: float = 40.0  # wound not instant kill
+    bite_cooldown: int = 12  # ticks between bites
     energy_from_prey: float = 40.0  # energy predator gains per kill
     fear_radius: float = 10.0  # prey flee when predator within this range
 
     # Clan war (§I) — rival clans fight on contact — enabled but rare
     war_enabled: bool = True  # enabled by default, but rare
     attack_radius: float = 1.8  # distance for clan war engagement
-    attack_damage: float = 45.0  # was 100 — wound (45) not lethal, so war rarely fatal
+    attack_damage: float = 40.0  # wound (40) not lethal, so war rarely fatal
 
     # Politics (§AB) — coalitions, leader agency, resources, betrayal
     coalitions_enabled: bool = True  # allied clans form defensive blocs
