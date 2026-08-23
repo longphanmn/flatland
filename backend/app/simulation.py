@@ -889,6 +889,9 @@ class Simulation:
                     "r": r,
                 }
             )
+        # AF: pre-cache static terrain payloads to avoid rebuilding dict lists on every snapshot frame
+        self._cached_terrain_fertile = [dict(p) for p in self.fertile]
+        self._cached_terrain_rocks = [dict(r) for r in self.rocks]
 
     def _food_pos(self) -> tuple[float, float]:
         """New food prefers fertile ground (god law sets the bias)."""
@@ -2679,16 +2682,18 @@ class Simulation:
                 and c.energy >= cfg.mate_energy_min
             )
 
-        males = [c for c in creatures if c.sex == "male" and eligible(c)]
         females = [c for c in creatures if c.sex == "female" and eligible(c)]
-        if not males or not females:
+        if not females:
             return
 
         for mother in females:
             father = None
             best = math.inf
-            for m in males:
-                if m.repro_cooldown > 0 or m.energy < cfg.mate_energy_min:
+            # AF: query candidate males via spatial index instead of scanning all males
+            for m in self.world.query_radius(mother.x, mother.y, cfg.mate_radius):
+                if not isinstance(m, Creature) or m.sex != "male":
+                    continue
+                if m.repro_cooldown > 0 or m.energy < cfg.mate_energy_min or not eligible(m):
                     continue
                 d = self.world.distance(mother.x, mother.y, m.x, m.y)
                 if d <= cfg.mate_radius and d < best:
@@ -3691,8 +3696,8 @@ class Simulation:
             "day": self.day,
             "season": self._season(),
             "weather": self.weather,
-            "terrain_fertile": [dict(p) for p in self.fertile],
-            "terrain_rocks": [dict(r) for r in self.rocks],
+            "terrain_fertile": getattr(self, "_cached_terrain_fertile", self.fertile),
+            "terrain_rocks": getattr(self, "_cached_terrain_rocks", self.rocks),
             "relations": [
                 {"a": a, "b": b, "score": s}
                 for (a, b), s in sorted(self.relations.items())

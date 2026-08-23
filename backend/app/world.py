@@ -38,7 +38,9 @@ class World:
         self.cell_size = 8.0
         self.cols = max(1, math.ceil(config.width / self.cell_size))
         self.rows = max(1, math.ceil(config.height / self.cell_size))
-        self._cells: dict[tuple[int, int], list[Entity]] = {}
+        self._num_cells = self.cols * self.rows
+        # AF: pre-allocated cell buckets avoid creating/clearing dict keys and lists per tick
+        self._buckets: list[list[Entity]] = [[] for _ in range(self._num_cells)]
 
     # ---------------------------------------------------------------- registry
     def add(self, entity: Entity) -> Entity:
@@ -56,11 +58,16 @@ class World:
     # ------------------------------------------------------------ spatial index
     def rebuild_index(self) -> None:
         """Re-bucket all entities; called once per tick."""
-        self._cells.clear()
+        cols = self.cols
+        rows = self.rows
         cs = self.cell_size
+        buckets = self._buckets
+        for b in buckets:
+            b.clear()
         for e in self.entities.values():
-            key = (int(e.x // cs) % self.cols, int(e.y // cs) % self.rows)
-            self._cells.setdefault(key, []).append(e)
+            cx = int(e.x // cs) % cols
+            cy = int(e.y // cs) % rows
+            buckets[cy * cols + cx].append(e)
 
     def delta(self, ax: float, ay: float, bx: float, by: float) -> tuple[float, float]:
         """Shortest displacement from b to a, honouring wrap-around edges."""
@@ -90,56 +97,55 @@ class World:
         """Yield entities within `radius` of (x, y); requires a fresh index.
 
         T: toroidal dx iteration for fixed 8; correct wrap handling.
+        AF: squared distance check eliminates math.hypot / math.sqrt overhead.
         """
         cs = self.cell_size
+        r2 = radius * radius
+        cols = self.cols
+        rows = self.rows
+        buckets = self._buckets
+        dist_sq = self.distance_sq
+
         if self.config.boundary == "wrap":
-            cx_center = int(math.floor(x / cs)) % self.cols if self.cols else 0
-            cy_center = int(math.floor(y / cs)) % self.rows if self.rows else 0
+            cx_center = int(math.floor(x / cs)) % cols if cols else 0
+            cy_center = int(math.floor(y / cs)) % rows if rows else 0
             rx = int(math.ceil(radius / cs)) + 1
             ry = int(math.ceil(radius / cs)) + 1
-            need_seen = (rx * 2 + 1 >= self.cols) or (ry * 2 + 1 >= self.rows)
+            need_seen = (rx * 2 + 1 >= cols) or (ry * 2 + 1 >= rows)
             if need_seen:
                 seen: set[int] = set()
                 for dx in range(-rx, rx + 1):
-                    cx = (cx_center + dx) % self.cols
+                    cx = (cx_center + dx) % cols
                     for dy in range(-ry, ry + 1):
-                        cy = (cy_center + dy) % self.rows
-                        bucket = self._cells.get((cx, cy))
-                        if not bucket:
-                            continue
+                        cy = (cy_center + dy) % rows
+                        bucket = buckets[cy * cols + cx]
                         for e in bucket:
                             if e.id in seen:
                                 continue
                             seen.add(e.id)
-                            if self.distance(x, y, e.x, e.y) <= radius:
+                            if dist_sq(x, y, e.x, e.y) <= r2:
                                 yield e
                 return
             for dx in range(-rx, rx + 1):
-                cx = (cx_center + dx) % self.cols
+                cx = (cx_center + dx) % cols
                 for dy in range(-ry, ry + 1):
-                    cy = (cy_center + dy) % self.rows
-                    bucket = self._cells.get((cx, cy))
-                    if not bucket:
-                        continue
+                    cy = (cy_center + dy) % rows
+                    bucket = buckets[cy * cols + cx]
                     for e in bucket:
-                        if self.distance(x, y, e.x, e.y) <= radius:
+                        if dist_sq(x, y, e.x, e.y) <= r2:
                             yield e
             return
         # clamp: no wrap
-        cs = self.cell_size
-        x0, x1 = int(math.floor((x - radius) / cs)), int(math.floor((x + radius) / cs))
-        y0, y1 = int(math.floor((y - radius) / cs)), int(math.floor((y + radius) / cs))
-        for cx in range(x0, x1 + 1):
-            if cx < 0 or cx >= self.cols:
-                continue
-            for cy in range(y0, y1 + 1):
-                if cy < 0 or cy >= self.rows:
-                    continue
-                bucket = self._cells.get((cx, cy))
-                if not bucket:
-                    continue
+        x0 = max(0, int(math.floor((x - radius) / cs)))
+        x1 = min(cols - 1, int(math.floor((x + radius) / cs)))
+        y0 = max(0, int(math.floor((y - radius) / cs)))
+        y1 = min(rows - 1, int(math.floor((y + radius) / cs)))
+        for cy in range(y0, y1 + 1):
+            row_offset = cy * cols
+            for cx in range(x0, x1 + 1):
+                bucket = buckets[row_offset + cx]
                 for e in bucket:
-                    if self.distance(x, y, e.x, e.y) <= radius:
+                    if dist_sq(x, y, e.x, e.y) <= r2:
                         yield e
 
     # -------------------------------------------------------------- boundaries

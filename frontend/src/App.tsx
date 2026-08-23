@@ -84,6 +84,7 @@ export default function App() {
   const loadingOlderRef = useRef(false)
   const prevTickRef = useRef<number | null>(null)
   const prevSeedRef = useRef<number | null>(null)
+  const lastUiUpdateRef = useRef<number>(0)
   useEffect(() => {
     selectedRef.current = selectedId
   }, [selectedId])
@@ -230,9 +231,33 @@ export default function App() {
         prevTickRef.current = msg.tick
         prevSeedRef.current = msg.seed
         stateRef.current = msg
-        setState(msg)
-        setAliveHist((prev) => (isNewWorld && !archiveModeRef.current ? [msg.creatures_alive] : [...prev.slice(-119), msg.creatures_alive]))
-        setPopHist((prev) => (isNewWorld && !archiveModeRef.current ? [msg.population] : [...prev.slice(-239), msg.population]))
+
+        // AF: Throttle React virtual DOM re-renders to ~6 Hz to keep browser main thread light,
+        // while CanvasRenderer continues to read stateRef.current at full 60 FPS.
+        const now = performance.now()
+        const isEventTriggered = !archiveModeRef.current && msg.events && msg.events.length > 0
+        const isExtinct = msg.creatures_alive === 0
+        const shouldUpdateReactState =
+          isNewWorld ||
+          isEventTriggered ||
+          isExtinct ||
+          now - (lastUiUpdateRef.current || 0) >= 150
+
+        if (shouldUpdateReactState) {
+          lastUiUpdateRef.current = now
+          setState(msg)
+          setAliveHist((prev) =>
+            isNewWorld && !archiveModeRef.current
+              ? [msg.creatures_alive]
+              : [...prev.slice(-119), msg.creatures_alive],
+          )
+          setPopHist((prev) =>
+            isNewWorld && !archiveModeRef.current
+              ? [msg.population]
+              : [...prev.slice(-239), msg.population],
+          )
+        }
+
         if (!archiveModeRef.current) {
           const fresh = msg.events.filter((ev) => {
             const key = eventKey(ev)

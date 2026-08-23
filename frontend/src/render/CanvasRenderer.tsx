@@ -23,35 +23,6 @@ export const CASTE_COLORS: Record<string, string> = {
   Herbivore: '#90be6d',
 }
 
-function creatureColor(e: EntityState): string {
-  const base = (e.caste && CASTE_COLORS[e.caste]) || '#8b949e'
-  if (e.hue_shift == null || e.hue_shift === 0) return base
-  // subtle hue shift via HSL rotation — preserves caste read
-  const h = parseInt(base.slice(1,3),16)/255, hh2 = parseInt(base.slice(3,5),16)/255, b = parseInt(base.slice(5,7),16)/255
-  // fast approx: convert to HSL, shift hue
-  const max = Math.max(h,hh2,b), min = Math.min(h,hh2,b)
-  let hh=0, ss=0, ll=(max+min)/2
-  if (max!==min){
-    const d = max-min
-    ss = ll>0.5 ? d/(2-max-min) : d/(max+min)
-    if (max===h) hh=(hh2-b)/d + (hh2<b?6:0)
-    else if (max===hh2) hh=(b-h)/d + 2
-    else hh=(h-hh2)/d + 4
-    hh/=6
-  }
-  hh = (hh + (e.hue_shift as number)/360) % 1
-  if (hh<0) hh+=1
-  const hue2rgb=(p:number,q:number,t:number)=>{ if(t<0) t+=1; if(t>1) t-=1; if(t<1/6) return p+(q-p)*6*t; if(t<1/2) return q; if(t<2/3) return p+(q-p)*(2/3-t)*6; return p }
-  let r2,g2,b2
-  if (ss===0){ r2=g2=b2=ll }
-  else {
-    const q = ll<0.5 ? ll*(1+ss) : ll+ss-ll*ss
-    const pp = 2*ll-q
-    r2=hue2rgb(pp,q,hh+1/3); g2=hue2rgb(pp,q,hh); b2=hue2rgb(pp,q,hh-1/3)
-  }
-  return `rgb(${Math.round(r2*255)},${Math.round(g2*255)},${Math.round(b2*255)})`
-}
-
 /** Rain streaks and fog veil, drawn in screen space. */
 function drawWeather(
   ctx: CanvasRenderingContext2D,
@@ -77,18 +48,6 @@ function drawWeather(
     ctx.lineTo(x - cw * 0.004, y + ch * 0.02)
   }
   ctx.stroke()
-}
-
-function tracePolygon(ctx: CanvasRenderingContext2D, sides: number, radius: number): void {
-  ctx.beginPath()
-  for (let i = 0; i < sides; i++) {
-    const a = (i / sides) * TAU - Math.PI / 2
-    const px = Math.cos(a) * radius
-    const py = Math.sin(a) * radius
-    if (i === 0) ctx.moveTo(px, py)
-    else ctx.lineTo(px, py)
-  }
-  ctx.closePath()
 }
 
 interface Camera {
@@ -368,200 +327,357 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
     canvas.addEventListener('wheel', onWheel, { passive: false })
     canvas.addEventListener('dblclick', onDblClick)
 
-    // ---- drawing ----
-    const drawEntity = (ctx: CanvasRenderingContext2D, e: EntityState) => {
-      if (e.kind === 'food') {
-        const variantColors: Record<string, string> = {
-          grass: '#3fb950',
-          berry: '#f85149',
-          mushroom: '#a67c52',
-          poisonous: '#8957e5',
+    // ---- AF: High-performance batched drawing & LOD rendering ----
+    const drawBatchedEntities = (
+      ctx: CanvasRenderingContext2D,
+      entities: EntityState[],
+      visible: (x: number, y: number, r?: number) => boolean,
+      camScale: number,
+      selectedId: number | null,
+    ) => {
+      const isZoomedOut = camScale < 3.5
+      const isVeryZoomedOut = camScale < 1.8
+
+      // 1. Group visible entities into batch categories in a single pass
+      const grassPlants: EntityState[] = []
+      const berryPlants: EntityState[] = []
+      const mushroomPlants: EntityState[] = []
+      const poisonPlants: EntityState[] = []
+      const corpses: EntityState[] = []
+      const houses: EntityState[] = []
+      const women: EntityState[] = []
+      const polygonsByCaste: Map<string, EntityState[]> = new Map()
+      const crestsByColor: Map<string, EntityState[]> = new Map()
+      const sleepingCreatures: EntityState[] = []
+      const hungryCreatures: EntityState[] = []
+      const starvingCreatures: EntityState[] = []
+      const infectedCreatures: EntityState[] = []
+      const chilledCreatures: EntityState[] = []
+      const glyphCreatures: EntityState[] = []
+
+      for (const e of entities) {
+        const rad = (e as any).radius ?? (e as any).size ?? 1.5
+        if (!visible(e.x, e.y, rad)) continue
+
+        if (e.kind === 'food') {
+          const v = e.variant ?? 'grass'
+          if (v === 'berry') berryPlants.push(e)
+          else if (v === 'mushroom') mushroomPlants.push(e)
+          else if (v === 'poisonous') poisonPlants.push(e)
+          else grassPlants.push(e)
+          continue
         }
-        // §AE wilting: mature plants fade brown before they vanish
-        ctx.fillStyle = e.withering ? 'rgba(154,125,80,0.55)' : (variantColors[e.variant ?? 'grass'] ?? '#d29922')
-        // size ∝ growth (sprout 0.15 small, mature 1.0 full); wilt shrivels slightly
-        const r = 0.35 + 0.55 * (e.growth ?? 0.15)
-        ctx.beginPath()
-        ctx.arc(e.x, e.y, e.withering ? r * 0.8 : r, 0, TAU)
-        ctx.fill()
-        // poisonous: faint purple halo
-        if (e.variant === 'poisonous') {
-          ctx.globalAlpha = 0.25
-          ctx.strokeStyle = '#8957e5'
-          ctx.lineWidth = 0.3
-          ctx.stroke()
-          ctx.globalAlpha = 1
+
+        if (e.kind === 'corpse') {
+          corpses.push(e)
+          continue
         }
-        return
+
+        if (e.kind === 'house') {
+          houses.push(e)
+          continue
+        }
+
+        // Creature
+        if (e.shape === 'line') {
+          women.push(e)
+        } else {
+          const caste = e.caste || 'Soldier'
+          let list = polygonsByCaste.get(caste)
+          if (!list) {
+            list = []
+            polygonsByCaste.set(caste, list)
+          }
+          list.push(e)
+        }
+
+        if (e.clan_color) {
+          let list = crestsByColor.get(e.clan_color)
+          if (!list) {
+            list = []
+            crestsByColor.set(e.clan_color, list)
+          }
+          list.push(e)
+        }
+
+        if (e.sleeping && !isZoomedOut) sleepingCreatures.push(e)
+        if (e.infected) infectedCreatures.push(e)
+        if (e.status === 'starving') starvingCreatures.push(e)
+        else if (e.status === 'hungry') hungryCreatures.push(e)
+        if ((e.chill ?? 0) >= 12) chilledCreatures.push(e)
+        if (e.glyph && (!isZoomedOut || selectedId === e.id)) glyphCreatures.push(e)
       }
-      if (e.kind === 'corpse') {
-        // small remains: a dim cross that fades with its remaining life
+
+      // 2. Draw Batched Houses
+      for (const h of houses) {
+        if (h.is_ruin) {
+          const size = (h.size ?? 8) * 0.7
+          ctx.strokeStyle = 'rgba(110,118,129,0.25)'
+          ctx.lineWidth = 0.2
+          ctx.setLineDash([0.8, 0.6])
+          ctx.strokeRect(h.x - size / 2, h.y - size / 2, size, size)
+          ctx.setLineDash([])
+          ctx.fillStyle = 'rgba(110,118,129,0.08)'
+          ctx.fillRect(h.x - size / 2, h.y - size / 2, size, size)
+        } else {
+          const size = h.size ?? 8
+          const segs = houseWallSegments(
+            h.x,
+            h.y,
+            size,
+            h.door_side ?? 'south',
+            h.door_width ?? 3,
+            h.door_offset ?? 0,
+          )
+          ctx.strokeStyle = h.clan_color ?? '#8b949e'
+          ctx.lineWidth = 0.35
+          ctx.beginPath()
+          for (const [ax, ay, bx, by] of segs) {
+            ctx.moveTo(ax, ay)
+            ctx.lineTo(bx, by)
+          }
+          ctx.stroke()
+          if (h.clan_color) {
+            ctx.fillStyle = h.clan_color
+            ctx.globalAlpha = 0.18
+            ctx.fillRect(h.x - size / 2, h.y - size / 2, size, 1.2)
+            ctx.globalAlpha = 1
+          }
+        }
+      }
+
+      // 3. Draw Batched Plants by Variant
+      const drawPlantBatch = (plants: EntityState[], fillStyle: string) => {
+        if (plants.length === 0) return
+        ctx.fillStyle = fillStyle
+        ctx.beginPath()
+        for (const f of plants) {
+          const r = f.withering
+            ? (0.35 + 0.55 * (f.growth ?? 0.15)) * 0.8
+            : 0.35 + 0.55 * (f.growth ?? 0.15)
+          ctx.moveTo(f.x + r, f.y)
+          ctx.arc(f.x, f.y, r, 0, TAU)
+        }
+        ctx.fill()
+      }
+
+      drawPlantBatch(grassPlants, '#3fb950')
+      drawPlantBatch(berryPlants, '#f85149')
+      drawPlantBatch(mushroomPlants, '#a67c52')
+      drawPlantBatch(poisonPlants, '#8957e5')
+
+      // Poison halo
+      if (poisonPlants.length > 0) {
+        ctx.globalAlpha = 0.25
+        ctx.strokeStyle = '#8957e5'
+        ctx.lineWidth = 0.3
+        ctx.beginPath()
+        for (const f of poisonPlants) {
+          const r = (0.35 + 0.55 * (f.growth ?? 0.15)) * 1.4
+          ctx.moveTo(f.x + r, f.y)
+          ctx.arc(f.x, f.y, r, 0, TAU)
+        }
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
+
+      // 4. Draw Batched Corpses
+      if (corpses.length > 0) {
         ctx.strokeStyle = '#6e7681'
         ctx.globalAlpha = 0.8
         ctx.lineWidth = 0.3
         ctx.beginPath()
-        ctx.moveTo(e.x - 1.1, e.y - 1.1)
-        ctx.lineTo(e.x + 1.1, e.y + 1.1)
-        ctx.moveTo(e.x - 1.1, e.y + 1.1)
-        ctx.lineTo(e.x + 1.1, e.y - 1.1)
-        ctx.stroke()
-        ctx.beginPath()
-        ctx.arc(e.x, e.y, 0.5, 0, TAU)
+        for (const c of corpses) {
+          ctx.moveTo(c.x - 1.1, c.y - 1.1)
+          ctx.lineTo(c.x + 1.1, c.y + 1.1)
+          ctx.moveTo(c.x - 1.1, c.y + 1.1)
+          ctx.lineTo(c.x + 1.1, c.y - 1.1)
+          ctx.moveTo(c.x + 0.5, c.y)
+          ctx.arc(c.x, c.y, 0.5, 0, TAU)
+        }
         ctx.stroke()
         ctx.globalAlpha = 1
-        return
       }
-      if (e.kind === 'house') {
-        if (e.is_ruin) {
-          // ruins: faint collapsed square, no walls/door
-          const size = (e.size ?? 8) * 0.7
-          ctx.strokeStyle = 'rgba(110,118,129,0.25)'
-          ctx.lineWidth = 0.2
-          ctx.setLineDash([0.8, 0.6])
-          ctx.strokeRect(e.x - size / 2, e.y - size / 2, size, size)
-          ctx.setLineDash([])
-          ctx.fillStyle = 'rgba(110,118,129,0.08)'
-          ctx.fillRect(e.x - size / 2, e.y - size / 2, size, size)
-          return
-        }
-        const size = e.size ?? 8
-        const segs = houseWallSegments(
-          e.x,
-          e.y,
-          size,
-          e.door_side ?? 'south',
-          e.door_width ?? 3,
-          e.door_offset ?? 0,
-        )
-        ctx.strokeStyle = e.clan_color ?? '#8b949e'
-        ctx.lineWidth = 0.35
+
+      // 5. Draw Batched Lines (Women)
+      if (women.length > 0) {
+        const color = CASTE_COLORS.Woman || '#ff9bce'
+        ctx.strokeStyle = color
+        ctx.lineWidth = 0.7
         ctx.beginPath()
-        for (const [ax, ay, bx, by] of segs) {
-          ctx.moveTo(ax, ay)
-          ctx.lineTo(bx, by)
+        for (const w of women) {
+          const stage = w.stage ?? 'adult'
+          const sizeF = stage === 'infant' ? 0.55 : stage === 'juvenile' ? 0.8 : 1.0
+          const r = (w.radius ?? 0.9) * sizeF * (w.scale_jitter ?? 1)
+          const len = Math.max(1.8, r * 2.4)
+          const ang = w.angle + (w.angle_jitter ?? 0)
+          const cosA = Math.cos(ang)
+          const sinA = Math.sin(ang)
+          ctx.moveTo(w.x - len * cosA, w.y - len * sinA)
+          ctx.lineTo(w.x + len * cosA, w.y + len * sinA)
         }
         ctx.stroke()
-        // clan crest on wall (settlement)
-        if (e.clan_color) {
-          ctx.fillStyle = e.clan_color
-          ctx.globalAlpha = 0.18
-          ctx.fillRect(e.x - size / 2, e.y - size / 2, size, 1.2)
+
+        // Peace-cry ripples for visible women when zoomed in
+        if (!isVeryZoomedOut) {
+          const nowTime = performance.now() / 900
+          for (const w of women) {
+            const stage = w.stage ?? 'adult'
+            const sizeF = stage === 'infant' ? 0.55 : stage === 'juvenile' ? 0.8 : 1.0
+            const r = (w.radius ?? 0.9) * sizeF * (w.scale_jitter ?? 1)
+            const alphaF = stage === 'elder' ? 0.6 : 1.0
+            const phase = (nowTime + w.id * 0.37) % 1
+            ctx.globalAlpha = alphaF * 0.35 * (1 - phase)
+            ctx.lineWidth = 0.25
+            ctx.beginPath()
+            ctx.arc(w.x, w.y, r * 1.6 + phase * 3.5, 0, TAU)
+            ctx.stroke()
+          }
           ctx.globalAlpha = 1
         }
-        return
       }
-      const color = creatureColor(e)
-      const stage = e.stage ?? 'adult'
-      const sizeF = stage === 'infant' ? 0.55 : stage === 'juvenile' ? 0.8 : 1.0
-      const alphaF = stage === 'elder' ? 0.6 : 1.0
-      const r = (e.radius ?? 1.2) * sizeF * (e.scale_jitter ?? 1)
-      ctx.save()
-      ctx.globalAlpha = alphaF
-      ctx.translate(e.x, e.y)
-      ctx.rotate(e.angle + (e.angle_jitter ?? 0))
-      if (e.shape === 'line') {
-        ctx.strokeStyle = color
-        ctx.lineWidth = 0.7 * Math.max(0.75, r / 1.2)
+
+      // 6. Draw Batched Polygons by Caste
+      for (const [caste, list] of polygonsByCaste.entries()) {
+        const color = CASTE_COLORS[caste] || '#8b949e'
+
+        // Single path for all fills and strokes of this caste
         ctx.beginPath()
-        const len = Math.max(1.8, r * 2.4)
-        ctx.moveTo(-len, 0)
-        ctx.lineTo(len, 0)
-        ctx.stroke()
-        // peace-cry: women announce themselves as they move (Flatland law)
-        const phase = ((performance.now() / 900 + e.id * 0.37) % 1)
-        ctx.globalAlpha = alphaF * 0.35 * (1 - phase)
-        ctx.lineWidth = 0.25
-        ctx.beginPath()
-        ctx.arc(0, 0, r * 1.6 + phase * 3.5, 0, TAU)
-        ctx.stroke()
-        ctx.globalAlpha = alphaF
-      } else {
-        const sides = e.sides ?? 4
-        ctx.beginPath()
-        if (sides >= PRIEST_SIDES) ctx.arc(0, 0, r, 0, TAU)
-        else tracePolygon(ctx, sides, r)
-        ctx.globalAlpha = alphaF * 0.22
+        for (const c of list) {
+          const stage = c.stage ?? 'adult'
+          const sizeF = stage === 'infant' ? 0.55 : stage === 'juvenile' ? 0.8 : 1.0
+          const r = (c.radius ?? 1.2) * sizeF * (c.scale_jitter ?? 1)
+          const sides = c.sides ?? 4
+          const ang = c.angle + (c.angle_jitter ?? 0)
+
+          if (sides >= PRIEST_SIDES) {
+            ctx.moveTo(c.x + r, c.y)
+            ctx.arc(c.x, c.y, r, 0, TAU)
+          } else {
+            const startAng = ang - Math.PI / 2
+            for (let i = 0; i < sides; i++) {
+              const a = startAng + (i / sides) * TAU
+              const px = c.x + Math.cos(a) * r
+              const py = c.y + Math.sin(a) * r
+              if (i === 0) ctx.moveTo(px, py)
+              else ctx.lineTo(px, py)
+            }
+            ctx.closePath()
+          }
+        }
+        ctx.globalAlpha = 0.22
         ctx.fillStyle = color
         ctx.fill()
-        ctx.globalAlpha = alphaF
+        ctx.globalAlpha = 1.0
         ctx.strokeStyle = color
         ctx.lineWidth = 0.3
         ctx.stroke()
       }
-      ctx.restore()
-      // sleeping: little z's drift above the sleeper
-      if (e.sleeping) {
-        ctx.globalAlpha = 0.8
-        ctx.fillStyle = '#c9d1d9'
-        ctx.font = `${1.6}px ui-monospace, monospace`
-        ctx.fillText('z', r + 0.4, -r - 0.2)
-        ctx.font = `${1.1}px ui-monospace, monospace`
-        ctx.fillText('z', r + 1.5, -r - 1.3)
-        ctx.globalAlpha = 1
-      }
-      // clan crest: a thin tinted ring for those who belong to a line
-      if (e.clan_color) {
+
+      // 7. Draw Batched Clan Crests
+      for (const [clanColor, list] of crestsByColor.entries()) {
         ctx.globalAlpha = 0.85
-        ctx.strokeStyle = e.clan_color
+        ctx.strokeStyle = clanColor
         ctx.lineWidth = 0.18
         ctx.beginPath()
-        ctx.arc(e.x, e.y, (e.radius ?? 1.2) * sizeF + 0.45, 0, TAU)
+        for (const c of list) {
+          const stage = c.stage ?? 'adult'
+          const sizeF = stage === 'infant' ? 0.55 : stage === 'juvenile' ? 0.8 : 1.0
+          const r = (c.radius ?? 1.2) * sizeF + 0.45
+          ctx.moveTo(c.x + r, c.y)
+          ctx.arc(c.x, c.y, r, 0, TAU)
+        }
         ctx.stroke()
         ctx.globalAlpha = 1
       }
-      if (e.infected) {
-        const pulse = 0.4 + 0.3 * Math.sin(performance.now() / 180)
-        ctx.globalAlpha = pulse
-        ctx.strokeStyle = '#3fb950'
-        ctx.lineWidth = 0.45
-        ctx.beginPath()
-        ctx.arc(e.x, e.y, r + 1.2, 0, TAU)
-        ctx.stroke()
-        ctx.globalAlpha = 1
-      }
-      if (e.status === 'hungry') {
-        ctx.globalAlpha = 0.65
-        ctx.strokeStyle = '#d29922'
-        ctx.lineWidth = 0.22
-        ctx.beginPath()
-        ctx.arc(e.x, e.y, r + 0.7, 0, TAU)
-        ctx.stroke()
-        ctx.globalAlpha = 1
-      } else if (e.status === 'starving') {
+
+      // 8. Draw Status Rings (Starving, Hungry, Infected, Chill)
+      if (starvingCreatures.length > 0) {
         const pulse = 0.35 + 0.45 * Math.sin(performance.now() / 120)
         ctx.globalAlpha = pulse
         ctx.strokeStyle = '#f85149'
         ctx.lineWidth = 0.4
         ctx.beginPath()
-        ctx.arc(e.x, e.y, r + 0.9, 0, TAU)
+        for (const c of starvingCreatures) {
+          const r = (c.radius ?? 1.2) + 0.9
+          ctx.moveTo(c.x + r, c.y)
+          ctx.arc(c.x, c.y, r, 0, TAU)
+        }
         ctx.stroke()
         ctx.globalAlpha = 1
       }
-      // chilled — pale blue ring when cold (§R)
-      if ((e.chill ?? 0) >= 12) {
+
+      if (hungryCreatures.length > 0) {
+        ctx.globalAlpha = 0.65
+        ctx.strokeStyle = '#d29922'
+        ctx.lineWidth = 0.22
+        ctx.beginPath()
+        for (const c of hungryCreatures) {
+          const r = (c.radius ?? 1.2) + 0.7
+          ctx.moveTo(c.x + r, c.y)
+          ctx.arc(c.x, c.y, r, 0, TAU)
+        }
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
+
+      if (infectedCreatures.length > 0) {
+        const pulse = 0.4 + 0.3 * Math.sin(performance.now() / 180)
+        ctx.globalAlpha = pulse
+        ctx.strokeStyle = '#3fb950'
+        ctx.lineWidth = 0.45
+        ctx.beginPath()
+        for (const c of infectedCreatures) {
+          const r = (c.radius ?? 1.2) + 1.2
+          ctx.moveTo(c.x + r, c.y)
+          ctx.arc(c.x, c.y, r, 0, TAU)
+        }
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
+
+      if (chilledCreatures.length > 0) {
         ctx.globalAlpha = 0.55
         ctx.strokeStyle = '#79c0ff'
         ctx.lineWidth = 0.35
         ctx.beginPath()
-        ctx.arc(e.x, e.y, r + 0.5, 0, TAU)
+        for (const c of chilledCreatures) {
+          const r = (c.radius ?? 1.2) + 0.5
+          ctx.moveTo(c.x + r, c.y)
+          ctx.arc(c.x, c.y, r, 0, TAU)
+        }
         ctx.stroke()
         ctx.globalAlpha = 1
       }
-      // soul-code glyph — tiny rune inside body, always visible but brighter when selected (§Q)
-      if (e.glyph) {
-        const isSel = selectedRef?.current === e.id
-        ctx.globalAlpha = isSel ? 1 : 0.75
-        ctx.fillStyle = isSel ? '#e6edf3' : 'rgba(230,237,243,0.85)'
-        // scale font with radius but keep legible when zoomed
-        const fontSize = Math.max(0.9, Math.min(1.6, r * 0.9))
-        ctx.font = `${fontSize}px ui-monospace, monospace`
+
+      // 9. Sleeping Markers (when zoomed in)
+      if (sleepingCreatures.length > 0) {
+        ctx.globalAlpha = 0.8
+        ctx.fillStyle = '#c9d1d9'
+        ctx.font = '1.6px ui-monospace, monospace'
+        for (const c of sleepingCreatures) {
+          const r = c.radius ?? 1.2
+          ctx.fillText('z', c.x + r + 0.4, c.y - r - 0.2)
+        }
+        ctx.globalAlpha = 1
+      }
+
+      // 10. Soul-Code Glyphs (LOD-managed)
+      if (glyphCreatures.length > 0) {
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        // slight shadow for contrast
-        ctx.strokeStyle = 'rgba(11,15,20,0.9)'
-        ctx.lineWidth = 0.25
-        ctx.strokeText(e.glyph, e.x, e.y + 0.15)
-        ctx.fillText(e.glyph, e.x, e.y + 0.15)
+        for (const c of glyphCreatures) {
+          const isSel = selectedId === c.id
+          ctx.globalAlpha = isSel ? 1 : 0.75
+          ctx.fillStyle = isSel ? '#e6edf3' : 'rgba(230,237,243,0.85)'
+          const r = c.radius ?? 1.2
+          const fontSize = Math.max(0.9, Math.min(1.6, r * 0.9))
+          ctx.font = `${fontSize}px ui-monospace, monospace`
+          ctx.strokeStyle = 'rgba(11,15,20,0.9)'
+          ctx.lineWidth = 0.25
+          ctx.strokeText(c.glyph!, c.x, c.y + 0.15)
+          ctx.fillText(c.glyph!, c.x, c.y + 0.15)
+        }
         ctx.globalAlpha = 1
       }
     }
@@ -738,12 +854,10 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
           ctx.globalAlpha = 1
         }
       }
-      // T: single merged pass — batch by kind to reduce branching, culled
-      // Draw food/houses/creatures in one loop (4 passes → 1)
-      for (const e of state.entities) {
-        if (!visible(e.x, e.y, (e as any).radius ?? (e as any).size ?? 1.5)) continue
-        drawEntity(ctx, e)
-      }
+
+      // AF: execute high-performance batched draws for all visible entities
+      const selId = selectedRef?.current ?? null
+      drawBatchedEntities(ctx, state.entities, visible, cam.scale, selId)
       // totem poles — small marker beside each claimed house (§P) (culled)
       for (const e of state.entities) {
         if (e.kind !== 'house' || !e.clan_id || e.is_ruin) continue

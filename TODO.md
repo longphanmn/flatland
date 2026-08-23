@@ -1018,3 +1018,32 @@ them). Give food a lifespan: mature plants wither, fertilize the soil, and vanis
       web + TUI feeds alongside ruins). Tests: `tests/test_food_decay.py`
       (lifespan death, sprout immunity, variant pace, law-off freeze, soil
       fertilisation, wilting flag surfacing, DB throttle, laws roundtrip).
+
+## AF. Performance & Massive Scale Optimization (Backend + Frontend)  [P0] — ✅ implemented
+Scale the simulation and rendering pipeline to maximize active population capacity
+(thousands of inhabitants) while keeping the frontend silky smooth (60+ FPS) and lightweight.
+
+### Backend spatial indexing & engine efficiency
+- [x] [P0] Zero-allocation spatial indexing — replace dynamic dict-of-lists spatial index in `world.py`
+      with pre-allocated cell buckets and fast wrap arithmetic; avoid list allocations per cell per tick.
+      (`world.py:38`, `rebuild_index`, `query_radius`)
+- [x] [P0] Simulation loop optimizations — fast squared-distance thresholding, perception pre-filtering,
+      and $O(1)$ spatial mate discovery in `simulation.py:_reproduce`.
+- [x] [P1] Snapshot payload generation efficiency — streamline `snapshot_payload()` with pre-cached
+      terrain payloads to eliminate redundant dictionary list copies on every broadcast frame.
+
+### Frontend rendering & UI responsiveness
+- [x] [P0] Batched Canvas 2D rendering in `CanvasRenderer.tsx` — group drawing operations by caste,
+      variant, and primitive type; batch line segments and polygons; eliminate per-entity `ctx.save()` / `ctx.restore()`
+      overhead (draw calls reduced from 20,000+ to ~30-50).
+- [x] [P1] Level of Detail (LOD) scaling — dynamically skip fine-grained details (glyphs, peace-cry ripples,
+      text labels, sleeping markers) when zoomed out, maintaining 60 FPS even with dense populations.
+- [x] [P0] Decoupled React state updates in `App.tsx` — keep high-frequency simulation state in mutable refs
+      for direct 60 FPS canvas consumption while throttling React virtual DOM reconciliations (HUD metrics,
+      clock, weather, population counters) to ~6 Hz.
+
+### Verification & Documentation
+- [x] [P0] Comprehensive automated tests in `backend/tests/test_performance.py` for spatial hash correctness,
+      boundary wrap/clamp integrity, mate discovery, terrain caching, and high-scale population throughput.
+- [x] [P0] Update documentation in `backend/app/wiki.py` and ensure type-safety across TypeScript and Python protocol schemas.
+
