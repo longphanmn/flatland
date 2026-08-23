@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { EntityState, StateMessage } from '../types'
 import { houseWallSegments } from '../types'
+import { TOTEMS } from '../totems'
 
 const TAU = Math.PI * 2
 
@@ -757,14 +758,13 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         // pole
         ctx.fillStyle = '#8b949e'
         ctx.fillRect(-0.18, -1.2, 0.36, 2.4)
-        // totem icon
-        const iconMap: Record<string, string> = { Wolf: '▲', Tree: '♣', Shield: '⬢', Eye: '◉' }
-        const colorMap: Record<string, string> = { Wolf: '#ff7b72', Tree: '#3fb950', Shield: '#79c0ff', Eye: '#d2a8ff' }
-        ctx.fillStyle = colorMap[totem] ?? '#e6edf3'
-        ctx.font = '1.6px ui-monospace, monospace'
+        // totem icon (emoji, from the shared registry)
+        const info = TOTEMS[totem]
+        ctx.fillStyle = info?.color ?? '#e6edf3'
+        ctx.font = '1.7px ui-monospace, monospace'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText(iconMap[totem] ?? '•', 0, -1.6)
+        ctx.fillText(info?.emoji ?? '•', 0, -1.6)
         ctx.restore()
       }
       // selection halo

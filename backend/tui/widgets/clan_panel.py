@@ -27,6 +27,8 @@ class ClanPanel(DataTable):
         self.clear()
         self._rows.clear()
         for c in clans:
+            if not c.get("population", 0):
+                continue  # extinct clans stay in the chronicle, not on the board
             name = Text(f"{c.get('name') or 'Clan ?'}", style=c.get("color") or "#8b949e")
             totem = str(c.get("totem") or "-")
             wars = f"{c.get('war_wins', 0)}W/{c.get('war_losses', 0)}L"

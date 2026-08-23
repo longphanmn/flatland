@@ -90,12 +90,46 @@ CLAN_NOUNS = (
     "Wings", "Fangs", "Roots", "Branches", "Stars", "Sands", "Waters", "Fires",
 )
 
-TOTEMS = ("Wolf", "Tree", "Shield", "Eye")
+TOTEMS = (
+    "Wolf", "Tree", "Shield", "Eye",
+    "Bear", "Stag", "Owl", "Rabbit", "Boar", "Fox", "Raven", "Serpent",
+)
+# Buff vocabulary (all optional keys, consumed generically via _totem_stat):
+#   speed        additive speed multiplier when hunting/fleeing (Wolf-style)
+#   hunt_radius  flat bonus to predator sight (Wolf-style)
+#   harvest      fractional harvest bonus on plants (×1+h) and corpses (×1+0.4h)
+#   sight        fractional perceive-radius bonus (×1+s)
+#   defense      fractional damage reduction; sheltered healing scales ×(1+d)
+#   health       flat health gift at birth
+#   birth        fractional fertility bonus for the mother's clan
 TOTEM_BUFF = {
-    "Wolf": {"hunt_radius": 2.0, "speed": 0.10},  # hunters see farther, move faster when hunting
-    "Tree": {"harvest": 1.25, "growth": 1.15},  # richer harvest, faster plant growth nearby
-    "Shield": {"defense": 0.30, "health": 15.0},  # 30% damage reduction +15 health
-    "Eye": {"sight": 0.25, "perceive": 1.2},  # +25% sight
+    "Wolf": {"speed": 0.10, "hunt_radius": 2.0},
+    "Tree": {"harvest": 0.25},
+    "Shield": {"defense": 0.30, "health": 15.0},
+    "Eye": {"sight": 0.25},
+    "Bear": {"defense": 0.20, "health": 10.0},
+    "Stag": {"speed": 0.08, "birth": 0.15},
+    "Owl": {"sight": 0.35},
+    "Rabbit": {"birth": 0.25},
+    "Boar": {"harvest": 0.15, "defense": 0.10},
+    "Fox": {"hunt_radius": 3.0, "speed": 0.06},
+    "Raven": {"sight": 0.15, "harvest": 0.10},
+    "Serpent": {"defense": 0.15, "speed": 0.05},
+}
+# Totem biases the clan's starting specialization drift (§P specialization)
+TOTEM_SPEC = {
+    "Wolf": {"warrior": 0.50, "farmer": 0.25, "scavenger": 0.25},
+    "Tree": {"warrior": 0.20, "farmer": 0.60, "scavenger": 0.20},
+    "Shield": {"warrior": 0.45, "farmer": 0.25, "scavenger": 0.30},
+    "Eye": {"warrior": 0.25, "farmer": 0.25, "scavenger": 0.50},
+    "Bear": {"warrior": 0.45, "farmer": 0.30, "scavenger": 0.25},
+    "Stag": {"warrior": 0.25, "farmer": 0.45, "scavenger": 0.30},
+    "Owl": {"warrior": 0.25, "farmer": 0.35, "scavenger": 0.40},
+    "Rabbit": {"warrior": 0.20, "farmer": 0.50, "scavenger": 0.30},
+    "Boar": {"warrior": 0.35, "farmer": 0.40, "scavenger": 0.25},
+    "Fox": {"warrior": 0.30, "farmer": 0.25, "scavenger": 0.45},
+    "Raven": {"warrior": 0.20, "farmer": 0.25, "scavenger": 0.55},
+    "Serpent": {"warrior": 0.40, "farmer": 0.25, "scavenger": 0.35},
 }
 
 # Personal identity — seeded adjective+noun table (§Q), deterministic id+seed
@@ -400,16 +434,7 @@ class Simulation:
         if self.config.totems_enabled:
             totem = TOTEMS[(cid * 17 + self.config.seed) % len(TOTEMS)]
         # specialization drift start — totem biases initial role
-        if totem == "Wolf":
-            spec = {"warrior": 0.5, "farmer": 0.25, "scavenger": 0.25}
-        elif totem == "Tree":
-            spec = {"warrior": 0.2, "farmer": 0.6, "scavenger": 0.2}
-        elif totem == "Shield":
-            spec = {"warrior": 0.45, "farmer": 0.25, "scavenger": 0.3}
-        elif totem == "Eye":
-            spec = {"warrior": 0.25, "farmer": 0.25, "scavenger": 0.5}
-        else:
-            spec = {"warrior": 0.33, "farmer": 0.33, "scavenger": 0.34}
+        spec = TOTEM_SPEC.get(totem, {"warrior": 0.33, "farmer": 0.33, "scavenger": 0.34})
         culture = f"{CULTURE_ADJECTIVES[(cid * 11 + self.config.seed) % len(CULTURE_ADJECTIVES)]} {CULTURE_NOUNS[(cid * 19 + self.config.seed) % len(CULTURE_NOUNS)]}"
         self.clans[cid] = {
             "name": name,
@@ -445,6 +470,10 @@ class Simulation:
         if not self.config.totems_enabled or not c.clan_id:
             return None
         return self.clans.get(c.clan_id, {}).get("totem")
+
+    def _totem_stat(self, c: Creature, key: str) -> float:
+        """Generic totem-buff lookup (see TOTEM_BUFF vocabulary)."""
+        return float(TOTEM_BUFF.get(self._totem_of(c), {}).get(key, 0.0))
 
     def _found_founding_clans(self) -> None:
         """§V Settlement seeding — every functional house anchors one clan and each
@@ -1162,8 +1191,8 @@ class Simulation:
                 if loser.trait == "paranoid":
                     # paranoid dodges? slight reduction
                     dmg *= 0.9
-                if self._totem_of(loser) == "Shield":
-                    dmg *= 0.70
+                if self._totem_stat(loser, "defense"):
+                    dmg *= 1.0 - self._totem_stat(loser, "defense")
                 # §X mobbing: a surrounded attacker hits softer
                 dmg /= 1.0 + cfg.defense_weight * min(self._mob_defenders(loser, winner, creatures), 4)
                 if dmg >= loser.health:
@@ -1223,7 +1252,7 @@ class Simulation:
                 trait_mult *= 0.65
             if loser.trait == "paranoid":
                 trait_mult *= 0.9
-            dmg = cfg.attack_damage * (0.85 + w_spec2 * 0.45) * trait_mult * (0.70 if self._totem_of(loser) == "Shield" else 1.0)
+            dmg = cfg.attack_damage * (0.85 + w_spec2 * 0.45) * trait_mult * (1.0 - self._totem_stat(loser, "defense"))
             # §X mobbing softens blows on the wound path too
             dmg /= 1.0 + cfg.defense_weight * min(self._mob_defenders(loser, winner, creatures), 4)
             loser.health = max(0, loser.health - dmg)
@@ -1972,6 +2001,7 @@ class Simulation:
                 rate = min(1.0, rate * AGE_BIRTH_MULT.get(age2, 1.0))
             if self._season() == "spring":
                 rate = min(1.0, rate * SPRING_BIRTH_MULT)  # spring quickens the blood
+            rate *= 1.0 + self._totem_stat(mother, "birth")  # Stag/Rabbit fecundity
             if self.rng.random() >= min(rate * fert, 1.0):
                 continue
             self._birth(mother, father)
@@ -2138,6 +2168,9 @@ class Simulation:
             )
 
         self.world.add(child)
+        gift = self._totem_stat(child, "health")  # totem vitality: Bear/Shield cubs
+        if gift:
+            child.health = min(100.0, child.health + gift)
         if child.clan_id == 0:
             # Children belong to their mother's clan; orphans found new ones
             # (clan set before the claim so the founder counts as a member, §V).
@@ -2273,8 +2306,7 @@ class Simulation:
                     c.health -= 2.0 * cfg.disease_lethality
                 else:
                     regen = 0.15 * cfg.rest_recovery_mult
-                    if self._totem_of(c) == "Shield":
-                        regen *= 1.30  # Shield totem: 30% faster healing when sheltered
+                    regen *= 1.0 + self._totem_stat(c, "defense")  # totem vitality heals faster
                     c.health = min(100.0, c.health + regen)
                 if c.energy <= 0:
                     self._kill(c, "starvation")
@@ -2323,18 +2355,17 @@ class Simulation:
 
         stage_speed, stage_sight = STAGE_MULT[c.stage]
         perceive = cfg.perceive_radius * c.sight_mult * stage_sight * self.env_sight_mult()
-        # Totem Eye: +25% sight (§P)
-        if self._totem_of(c) == "Eye":
-            perceive *= 1.25
+        # Totem sight (§P): Eye +25%, Owl +35%, Raven +15% …
+        perceive *= 1.0 + self._totem_stat(c, "sight")
         speed_mult = 1.0
         if c.status == "hungry":
             perceive *= cfg.hungry_perceive_mult
         elif c.status == "starving":
             perceive *= cfg.desperate_perceive_mult
             speed_mult = cfg.desperate_speed_mult
-        # Totem Wolf: +10% speed when hunting/fleeing
-        if self._totem_of(c) == "Wolf" and (c.is_predator or perceive > cfg.perceive_radius):
-            speed_mult *= 1.10
+        # Totem speed: hunting/fleeing burst (Wolf, Stag, Fox, Serpent …)
+        if self._totem_of(c) and (c.is_predator or perceive > cfg.perceive_radius):
+            speed_mult *= 1.0 + self._totem_stat(c, "speed")
 
         # trait paranoid/bold nudges flee threshold (§S)
         # paranoid sees predator farther, bold tolerates closer
@@ -2349,7 +2380,7 @@ class Simulation:
         if cfg.predation_enabled:
             if c.is_predator and c.bite_cooldown <= 0:
                 # Find nearest non-predator prey within hunt_radius (+2 Wolf totem)
-                hunt_r = cfg.hunt_radius + (2.0 if self._totem_of(c) == "Wolf" else 0.0)
+                hunt_r = cfg.hunt_radius + self._totem_stat(c, "hunt_radius")
                 best_prey: Creature | None = None
                 best_prey_d = hunt_r + 1e-9
                 for o in w.query_radius(c.x, c.y, hunt_r):
@@ -2755,18 +2786,20 @@ class Simulation:
                     health_delta = VARIANT_HEALTH.get(target.variant, 0.0)
                 else:
                     gain = cfg.energy_from_food * target.growth
-                # Totem Tree: +25% harvest (§P); farmer specialization adds harvest (§P specialization)
+                # Totem harvest (§P); farmer specialization adds harvest (§P specialization)
                 farmer = self.clans.get(c.clan_id, {}).get("specialization", {}).get("farmer", 0.33) if c.clan_id else 0.0
-                if self._totem_of(c) == "Tree":
-                    gain *= 1.25
-                    health_delta += 0.5
+                h = self._totem_stat(c, "harvest")
+                if h:
+                    gain *= 1.0 + h
+                    health_delta += 2.0 * h  # Tree 0.25 → +0.5, as ever
                 if farmer:
                     gain *= (1.0 + farmer * 0.25)
             elif isinstance(target, Corpse):
                 gain = cfg.corpse_energy  # scavenged remains
                 scav = self.clans.get(c.clan_id, {}).get("specialization", {}).get("scavenger", 0.33) if c.clan_id else 0.0
-                if self._totem_of(c) == "Tree":
-                    gain *= 1.10
+                h = self._totem_stat(c, "harvest")
+                if h:
+                    gain *= 1.0 + 0.4 * h
                 if scav:
                     gain *= (1.0 + scav * 0.35)
             c.energy = min(cfg.energy_max, c.energy + gain)
@@ -2826,7 +2859,7 @@ class Simulation:
                 self._kill(c, "disease")
                 return
         elif c.health < 100.0:
-            regen = 0.1 * (1.30 if self._totem_of(c) == "Shield" else 1.0)
+            regen = 0.1 * (1.0 + self._totem_stat(c, "defense"))
             c.health = min(100.0, c.health + regen)
         if c.energy <= 0:
             self._kill(c, "starvation")

@@ -86,8 +86,8 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction' },
   { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction' },
   { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction' },
-  { key: 'carrying_capacity', label: 'Carrying capacity', min: 2, max: 2000, step: 10, group: 'Reproduction' },
-  { key: 'max_population', label: 'Hard pop cap', min: 2, max: 5000, step: 10, group: 'Reproduction' },
+  { key: 'carrying_capacity', label: 'Carrying capacity', min: -1, max: 2000, step: 10, group: 'Reproduction' },
+  { key: 'max_population', label: 'Hard pop cap', min: -1, max: 5000, step: 10, group: 'Reproduction' },
   // Society — interaction & clan relations
   { key: 'cohesion_weight', label: 'Cohesion weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
   { key: 'alignment_weight', label: 'Alignment weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
@@ -185,12 +185,12 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   sex_ratio: 'probability a child is a son (polygons ascend; daughters are lines)',
   mutation_rate: 'chance a son’s side count deviates ±1 from inheritance (0.05)',
   euthanasia_threshold: 'irregular children at/above this are consumed at adulthood, below it demoted (0.7)',
-  carrying_capacity: 'above this population, fertility fades gradually (80)',
-  max_population: 'hard cap — no births beyond (140)',
+  carrying_capacity: 'above this population, fertility fades gradually (-1 = scale with map area, 80 per 200×200)',
+  max_population: 'hard cap — no births beyond (-1 = scale with map area, 140 per 200×200)',
   house_capacity: 'beds per house (8) — overflow sleeps outside and suffers exposure',
   exposure_drain: 'energy lost per tick outdoors in rain/storm/night (0.03)',
   rest_recovery_mult: 'health regen multiplier when sleeping indoors (2.0)',
-  totems_enabled: 'each clan bears Wolf/Tree/Shield/Eye with buffs',
+  totems_enabled: 'each clan bears a totem with a subtle buff — Wolf 🐺 Tree 🌳 Shield 🛡️ Eye 👁️ Bear 🐻 Stag 🦌 Owl 🦉 Rabbit 🐇 Boar 🐗 Fox 🦊 Raven 🐦‍⬛ Serpent 🐍',
   succession_enabled: 'leader succession on death emits succession event',
   max_clans: 'society granularity: -1 = one clan per house; N ≥ 1 clusters founders into N spatial clans (applies at reset)',
   rain_growth_mult: 'rain/storm boost to plant growth (1.25) — soaked ground regrows faster',
@@ -460,7 +460,7 @@ export default function GodPanel({ open, onClose }: Props) {
                 {group === 'Clan' && (
                   <>
                     <label className="god-row">
-                      <span title="each clan bears a totem (Wolf/Tree/Shield/Eye) granting a subtle buff; disabling makes all clans plain">Totems</span>
+                      <span title="each clan bears a totem (Wolf 🐺, Tree 🌳, Shield 🛡️, Eye 👁️, Bear 🐻, Stag 🦌, Owl 🦉, Rabbit 🐇, Boar 🐗, Fox 🦊, Raven 🐦‍⬛, Serpent 🐍) granting a subtle buff; disabling makes all clans plain">Totems</span>
                       <select value={String(laws.totems_enabled ?? true)} onChange={(e) => setLaws((l) => ({ ...l, totems_enabled: e.target.value === 'true' }))}>
                         <option value="true">yes</option><option value="false">no</option>
                       </select>

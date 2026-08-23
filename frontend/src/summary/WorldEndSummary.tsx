@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { StateMessage } from '../types'
+import { totemEmoji } from '../totems'
 
 export default function WorldEndSummary({ state, onReset, onClose }: { state: StateMessage | null; onReset: () => void; onClose: () => void }) {
   const [clans, setClans] = useState<any[]>([])
@@ -47,7 +48,7 @@ export default function WorldEndSummary({ state, onReset, onClose }: { state: St
           <div style={{ display: 'grid', gap: 6, maxHeight: 180, overflow: 'auto' }}>
             {clans.map((c: any) => (
               <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(110,118,129,0.08)', borderRadius: 4, borderLeft: `4px solid ${c.color}` }}>
-                <span><b style={{ color: c.color }}>{c.name}</b> #{c.id} · pop {c.population} {c.totem ? `· ${c.totem}` : ''}</span>
+                <span><b style={{ color: c.color }}>{c.name}</b> #{c.id} · pop {c.population} {c.totem ? `· ${totemEmoji(c.totem)} ${c.totem}` : ''}</span>
                 <span className="chip">{c.war_wins}W/{c.war_losses}L</span>
               </div>
             ))}

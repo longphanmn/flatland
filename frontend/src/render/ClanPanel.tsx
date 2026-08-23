@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { totemEmoji } from '../totems'
 
 interface ClanKnowledge {
   enemy_clans?: number[]
@@ -50,16 +51,17 @@ export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelect
   }, [])
 
   if (clans.length === 0) return <p className="chip">no clans yet</p>
+  const alive = clans.filter((c) => c.population > 0)
 
   return (
     <div className="clan-panel">
       <h4 style={{ margin: '8px 0 6px', fontSize: '0.9em' }}>Clans — {tick} ticks</h4>
       <div style={{ display: 'grid', gap: 6 }}>
-        {clans.map((c) => (
+        {alive.map((c) => (
           <div key={c.id} className="clan-card" onClick={() => onSelectClan?.(c.id)} style={{ borderLeft: `4px solid ${c.color}`, padding: '6px 8px', background: 'rgba(110,118,129,0.08)', borderRadius: 4, cursor: onSelectClan ? 'pointer' : 'default' }} title={onSelectClan ? 'Click for clan details' : undefined}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <b style={{ color: c.color }}>{c.name}</b>
-              <span className="chip" style={{ background: c.color, color: '#0b0f14' }}>{c.totem ?? '—'}</span>
+              <span className="chip" style={{ background: c.color, color: '#0b0f14' }}>{totemEmoji(c.totem)} {c.totem ?? '—'}</span>
             </div>
             <div className="chip" style={{ marginTop: 4 }}>
               #{c.id} · pop <b>{c.population}</b> · {c.house ? (c.house.is_ruin ? 'ruins' : `house ${Math.round(c.house.x)},${Math.round(c.house.y)}`) : 'homeless'} · war {c.war_wins}W/{c.war_losses}L

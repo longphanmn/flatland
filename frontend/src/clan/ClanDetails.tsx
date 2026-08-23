@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { totemEmoji } from '../totems'
 
 interface ClanMember {
   id: number
@@ -73,7 +74,7 @@ export default function ClanDetails({ clanId, onClose, onSelectCreature }: { cla
           <h2 style={{ color: data.color, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ width: 12, height: 12, borderRadius: '50%', background: data.color, display: 'inline-block' }} />
             {data.name} <span style={{ fontSize: 12, color: '#8b949e' }}>#{data.id}</span>
-            {data.totem && <span style={{ background: data.color, color: '#0b0f14', padding: '2px 6px', borderRadius: 4, fontSize: 11 }}>{data.totem}</span>}
+            {data.totem && <span style={{ background: data.color, color: '#0b0f14', padding: '2px 6px', borderRadius: 4, fontSize: 11 }}>{totemEmoji(data.totem)} {data.totem}</span>}
           </h2>
           <button className="god-close" onClick={onClose}>×</button>
         </header>
