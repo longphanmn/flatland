@@ -1297,26 +1297,20 @@ class Simulation:
         dist_sq = self.world.distance_sq
         w = self.world
         for a in creatures:
-            if a.id not in w.entities or a.id in fallen:
-                continue
-            if a.is_predator or a.is_herbivore:
+            if a.id not in w.entities or a.id in fallen or a.is_predator or a.is_herbivore or not a.clan_id:
                 continue
             neighbours = [
                 b
-                for b in w.query_radius(a.x, a.y, cfg.attack_radius)
+                for b, _ in w.query_radius_with_dist_sq(a.x, a.y, cfg.attack_radius)
                 if b.kind == "creature" and b.id > a.id and b.id not in fallen
             ]
             neighbours.sort(key=lambda c: c.id)
             for b in neighbours:  # type: ignore[union-attr]
                 b = cast(Creature, b)
-                if b.id not in w.entities or b.is_predator or b.is_herbivore:
-                    continue
-                if not a.clan_id or not b.clan_id or a.clan_id == b.clan_id:
+                if b.id not in w.entities or b.is_predator or b.is_herbivore or not b.clan_id or a.clan_id == b.clan_id:
                     continue
                 pair = self._relation_pair(a.clan_id, b.clan_id)
                 if self._zone_of(self.relations.get(pair, 0)) != -1:
-                    continue
-                if dist_sq(a.x, a.y, b.x, b.y) > r2:
                     continue
                 loser, winner = (a, b) if a.id < b.id else (b, a)
                 # AA: original semantics — only previously-recorded LOSERS are
@@ -3420,7 +3414,7 @@ class Simulation:
         # 2b. Social yielding: the lowly give way to their betters.
         my_rank = YIELD_RANK.get(c.caste, 0)
         if my_rank < 6:
-            for o in w.query_radius(c.x, c.y, YIELD_RADIUS):
+            for o, _ in w.query_radius_with_dist_sq(c.x, c.y, YIELD_RADIUS):
                 if o is c or o.kind != "creature":
                     continue
                 if YIELD_RANK.get(o.caste, 0) > my_rank:  # type: ignore[union-attr]

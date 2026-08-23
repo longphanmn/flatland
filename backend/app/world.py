@@ -71,26 +71,52 @@ class World:
 
     def delta(self, ax: float, ay: float, bx: float, by: float) -> tuple[float, float]:
         """Shortest displacement from b to a, honouring wrap-around edges."""
-        dx, dy = ax - bx, ay - by
+        dx = ax - bx
+        dy = ay - by
         if self.config.boundary == "wrap":
-            w, h = self.config.width, self.config.height
-            if dx > w / 2:
+            w = self.config.width
+            h = self.config.height
+            half_w = w * 0.5
+            half_h = h * 0.5
+            if dx > half_w:
                 dx -= w
-            elif dx < -w / 2:
+            elif dx < -half_w:
                 dx += w
-            if dy > h / 2:
+            if dy > half_h:
                 dy -= h
-            elif dy < -h / 2:
+            elif dy < -half_h:
                 dy += h
         return dx, dy
 
     def distance(self, ax: float, ay: float, bx: float, by: float) -> float:
-        dx, dy = self.delta(ax, ay, bx, by)
+        dx = ax - bx
+        dy = ay - by
+        if self.config.boundary == "wrap":
+            w = self.config.width
+            h = self.config.height
+            half_w = w * 0.5
+            half_h = h * 0.5
+            if dx > half_w:
+                dx -= w
+            elif dx < -half_w:
+                dx += w
+            if dy > half_h:
+                dy -= h
+            elif dy < -half_h:
+                dy += h
         return math.hypot(dx, dy)
 
     def distance_sq(self, ax: float, ay: float, bx: float, by: float) -> float:
-        """Wrap-aware squared distance — for threshold tests without sqrt."""
-        dx, dy = self.delta(ax, ay, bx, by)
+        """Wrap-aware squared distance — for threshold tests without sqrt or tuple allocation."""
+        dx = abs(ax - bx)
+        dy = abs(ay - by)
+        if self.config.boundary == "wrap":
+            w = self.config.width
+            h = self.config.height
+            if dx > w * 0.5:
+                dx -= w
+            if dy > h * 0.5:
+                dy -= h
         return dx * dx + dy * dy
 
     def query_radius(self, x: float, y: float, radius: float) -> Iterator[Entity]:
