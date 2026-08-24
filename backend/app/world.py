@@ -212,6 +212,8 @@ class World:
             rx = int(math.ceil(radius / cs)) + 1
             ry = int(math.ceil(radius / cs)) + 1
             need_seen = (rx * 2 + 1 >= cols) or (ry * 2 + 1 >= rows)
+
+
             if need_seen:
                 seen: set[int] = set()
                 for dx_grid in range(-rx, rx + 1):

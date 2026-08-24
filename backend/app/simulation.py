@@ -370,7 +370,10 @@ class Simulation:
         if taken >= self._house_beds(house):
             return False
         self._beds[house.id] = taken + 1
+        if hasattr(self, "_house_occupants"):
+            self._house_occupants[house.id] = max(self._house_occupants.get(house.id, 0), self._beds[house.id])
         return True
+
 
     def _house_beds(self, house: House) -> int:
         """Beds scale with floor area: `house_capacity` is the law for an
@@ -1004,12 +1007,16 @@ class Simulation:
         if not houses:
             return None
 
-        def dist(h: House) -> float:
-            return self.world.distance(c.x, c.y, h.x, h.y)
+        def dist_sq(h: House) -> float:
+            return self.world.distance_sq(c.x, c.y, h.x, h.y)
 
         def has_room(h: House) -> bool:
-            occupants = sum(1 for o in self._cached_creatures if o.id != c.id and getattr(o, "sleeping", False) and self._inside_house(o, h))
-            return (occupants + self._beds.get(h.id, 0)) < self._house_beds(h)
+            occ = max(getattr(self, "_house_occupants", {}).get(h.id, 0), self._beds.get(h.id, 0))
+            if self._inside_house(c, h):
+                occ = max(0, occ - 1)
+            return occ < self._house_beds(h)
+
+
 
         if getattr(c, "waypoints", None) and "home" in c.waypoints:
             hx, hy = c.waypoints["home"]
@@ -1038,25 +1045,24 @@ class Simulation:
                 # Members (or leader if main house full) choose nearest own house with room
                 own_free = [h for h in own_houses if has_room(h)]
                 if own_free:
-                    return min(own_free, key=dist)
+                    return min(own_free, key=dist_sq)
 
             # If all own clan houses are full, seek any free house in the world
             free = [h for h in houses if isinstance(h, House) and not h.is_ruin and has_room(h)]
             if free:
-                return min(free, key=dist)
+                return min(free, key=dist_sq)
 
             # Every roof is full: queue at main house (if leader) or nearest own house
             if own_houses:
                 if c.id == leader_id:
                     return next((h for h in own_houses if h.id == main_hid or getattr(h, "is_main", False)), own_houses[0])
-                return min(own_houses, key=dist)
+                return min(own_houses, key=dist_sq)
 
         # Clanless creature: nearest house with room
         free = [h for h in houses if isinstance(h, House) and not h.is_ruin and has_room(h)]
-        if free:
-            return min(free, key=dist)
-        functional = [h for h in houses if isinstance(h, House) and not h.is_ruin]
-        return min(functional, key=dist) if functional else None
+        return min(free, key=dist_sq) if free else None
+
+
 
     def _door_pos(self, h: House) -> tuple[float, float]:
         """Center of the doorway gap (where creatures can pass)."""
@@ -1488,6 +1494,21 @@ class Simulation:
         self._cached_foods = foods
         self._cached_houses = sorted(houses, key=lambda h: h.id)
         self._cached_corpses = corpses
+
+        # Compute sleeping house occupancy cache in single pass O(N)
+        house_occ: dict[int, int] = {}
+        for c in creatures:
+            if getattr(c, "sleeping", False):
+                hid = getattr(c, "house_id", None)
+                if hid is not None:
+                    house_occ[hid] = house_occ.get(hid, 0) + 1
+                else:
+                    for h in houses:
+                        if self._inside_house(c, h):
+                            house_occ[h.id] = house_occ.get(h.id, 0) + 1
+                            break
+        self._house_occupants = house_occ
+
 
     def _get_creatures(self) -> list[Creature]:
         if self._cached_creatures:
@@ -2384,7 +2405,10 @@ class Simulation:
             house = houses_by_clan.get(c.clan_id)
             if house is None:
                 continue
-            clan = self.clans[c.clan_id]
+            clan = self.clans.get(c.clan_id)
+            if clan is None:
+                continue
+
             ratio = c.energy / cfg.energy_max if cfg.energy_max else 1.0
             if ratio > 0.75:
                 deposit = min(0.5, (ratio - 0.75) * 8.0)
