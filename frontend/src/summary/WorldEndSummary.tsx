@@ -9,7 +9,7 @@ export default function WorldEndSummary({ state, onReset, onClose }: { state: St
   useEffect(() => {
     fetch('/api/clans').then(r => r.json()).then(d => setClans(d.clans ?? [])).catch(() => {})
     fetch('/api/history?limit=100').then(r => r.json()).then(d => setHistory(d.events ?? [])).catch(() => {})
-  }, [state?.tick])
+  }, [])
 
   if (!state || state.creatures_alive !== 0) return null
 
