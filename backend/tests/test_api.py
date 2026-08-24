@@ -136,3 +136,30 @@ def test_presets_list_and_apply_all(client):
         assert data["reset"] is True
         assert RT.sim.tick == 0
 
+
+def test_history_filtering(client):
+    """Verify /api/history accepts type and entity_id filters."""
+    # Step simulation to generate events
+    for _ in range(5):
+        RT.sim.step()
+    DB.flush()
+
+    res_all = client.get("/api/history")
+    assert res_all.status_code == 200
+    all_events = res_all.json()["events"]
+
+    # Filter by specific type
+    res_births = client.get("/api/history?type=birth")
+    assert res_births.status_code == 200
+    birth_events = res_births.json()["events"]
+    assert all(e["type"] == "birth" for e in birth_events)
+
+    # Filter by specific entity_id
+    if all_events:
+        eid = all_events[0]["entity_id"]
+        res_entity = client.get(f"/api/history?entity_id={eid}")
+        assert res_entity.status_code == 200
+        entity_events = res_entity.json()["events"]
+        assert all(e["entity_id"] == eid for e in entity_events)
+
+

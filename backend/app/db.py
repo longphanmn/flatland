@@ -346,21 +346,29 @@ class Database:
             )
 
     def history(
-        self, world_id: int, since_id: int = 0, limit: int = 500
+        self,
+        world_id: int,
+        since_id: int = 0,
+        limit: int = 500,
+        type_filter: str | None = None,
+        entity_id: int | None = None,
     ) -> list[dict[str, Any]]:
+        conditions = ["world_id=?"]
+        params: list[Any] = [world_id]
+        if since_id:
+            conditions.append("id<?")
+            params.append(since_id)
+        if type_filter:
+            conditions.append("type=?")
+            params.append(type_filter)
+        if entity_id is not None:
+            conditions.append("entity_id=?")
+            params.append(entity_id)
+        params.append(limit)
+
+        query = f"SELECT * FROM events WHERE {' AND '.join(conditions)} ORDER BY id DESC LIMIT ?"
         with self._lock:
-            if since_id:
-                # load older: ids < since_id, newest of the older first
-                rows = self._require().execute(
-                    "SELECT * FROM events WHERE world_id=? AND id<? ORDER BY id DESC LIMIT ?",
-                    (world_id, since_id, limit),
-                ).fetchall()
-            else:
-                # initial: newest first
-                rows = self._require().execute(
-                    "SELECT * FROM events WHERE world_id=? ORDER BY id DESC LIMIT ?",
-                    (world_id, limit),
-                ).fetchall()
+            rows = self._require().execute(query, tuple(params)).fetchall()
         return [
             {
                 "id": r["id"],

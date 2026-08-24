@@ -227,6 +227,38 @@ body {
   color: #f85149;
 }
 
+.chronicle li.ev-war b {
+  color: #f85149;
+}
+
+.chronicle li.ev-predation b {
+  color: #ff7b72;
+}
+
+.chronicle li.ev-alliance b {
+  color: #3fb950;
+}
+
+.chronicle li.ev-rivalry b {
+  color: #d29922;
+}
+
+.chronicle li.ev-schism b {
+  color: #e3b341;
+}
+
+.chronicle li.ev-bloom b {
+  color: #58a6ff;
+}
+
+.chronicle li.ev-outbreak b {
+  color: #d29922;
+}
+
+.chronicle li.ev-recovery b {
+  color: #3fb950;
+}
+
 .chronicle-name {
   background: none;
   border: none;

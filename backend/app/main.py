@@ -797,7 +797,12 @@ async def apply_preset(name: str, persist: bool = True, reset: bool = False) -> 
 
 
 @app.get("/api/history")
-async def get_history(since: int = 0, limit: int = 500) -> dict:
+async def get_history(
+    since: int = 0,
+    limit: int = 500,
+    type: str | None = None,
+    entity_id: int | None = None,
+) -> dict:
     """The durable chronicle for the current world (paginated by event id)."""
     # AD: drain the RAM log so a fresh reader sees the full tail
     # (the flush runs here, on the HTTP thread — never on the sim thread).
@@ -806,7 +811,15 @@ async def get_history(since: int = 0, limit: int = 500) -> dict:
     return {
         "world_id": RT.world_id,
         "total_deaths": DB.death_count(RT.world_id) if RT.world_id else 0,
-        "events": DB.history(RT.world_id, since_id=since, limit=limit) if RT.world_id else [],
+        "events": DB.history(
+            RT.world_id,
+            since_id=since,
+            limit=limit,
+            type_filter=type,
+            entity_id=entity_id,
+        )
+        if RT.world_id
+        else [],
     }
 
 
