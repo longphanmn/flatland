@@ -1142,6 +1142,17 @@ Accelerate simulation math (spatial hash, vector steering, boids, and collision 
   - [x] [P0] Deterministic validation tests comparing Python reference vs Native core outputs for exact identical math.
   - [x] [P0] Scale benchmark tests (`tests/test_scale_benchmarks.py`) verifying >160 FPS simulation ticks at scale.
 
+---
+
+## AK. Clan Lifecycle, Inventory Consumption & Profile UI Refinements  [P1]
+Fixes and ergonomic polish for clan architecture, inventory autonomy, historical logs, and profile layouts.
+
+- [ ] [P1] **Single Main House Invariant**: Ensure every clan has strictly one active main house (HQ / Leader Residence). Fix cases where multiple houses retain `is_main=True` or unassigned upon leader succession, house destruction, or expansion.
+- [ ] [P1] **Emergency Inventory Consumption**: Hungry or starving creatures carrying food (in foraging baskets or equipped inventory) should eat from their carried stock immediately when energy falls below threshold, preventing starvation while returning home or wandering.
+- [ ] [P1] **Clan History & Major Event Log**: Track and display major historical milestones per clan (Founded on Day $D$ by Founder $X$, Leader Succession changes, HQ relocation, war declarations, tribute treaties) in the Clan details view.
+- [ ] [P1] **Clan & Creature Profile UI Overhaul**: Clean up profile views — eliminate duplicate data fields, prevent text/metric overlapping, and apply dynamic viewport sizing so elements never expand outside the modal container on desktop or mobile.
+
+
 
 
 
