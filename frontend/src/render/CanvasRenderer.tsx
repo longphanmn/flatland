@@ -91,12 +91,17 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
     const ro = new ResizeObserver(resize)
     ro.observe(canvas)
 
+    let lastTrackedId: number | null = null
+    let targetZoomScale: number | null = null
+
     const fitCamera = (state: StateMessage) => {
       baseFit = Math.min(canvas.width / state.width, canvas.height / state.height)
       cam.scale = baseFit
       cam.ox = (canvas.width - state.width * cam.scale) / 2
       cam.oy = (canvas.height - state.height * cam.scale) / 2
       cam.initialized = true
+      targetZoomScale = null
+      lastTrackedId = null
     }
 
     const clampCamera = (state: StateMessage) => {
@@ -119,6 +124,9 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       cam.oy = ay - wy * next
       cam.scale = next
       clampCamera(state)
+      if (selectedRef?.current != null) {
+        targetZoomScale = next
+      }
     }
 
     const onFit = () => {
@@ -704,6 +712,41 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
 
       if (!cam.initialized || cam.scale <= 0) fitCamera(state)
 
+      // Auto-zoom and follow selected creature movement
+      const sel = selectedRef?.current ?? null
+      if (sel !== null) {
+        const selEnt = state.entities.find((e) => e.id === sel && e.kind === 'creature')
+        if (selEnt) {
+          if (sel !== lastTrackedId) {
+            lastTrackedId = sel
+            // Zoom in on selection: at least 3.5x base fit, min 8.0 device px per world unit
+            const minFollowScale = Math.min(MAX_SCALE, Math.max(baseFit * 3.5, 8.0))
+            targetZoomScale = Math.max(cam.scale, minFollowScale)
+          }
+
+          // Smoothly glide camera to track creature when user is not actively panning/pinching
+          if (pointers.size === 0 && !tapStart) {
+            const desiredScale = targetZoomScale ?? cam.scale
+            cam.scale += (desiredScale - cam.scale) * 0.12
+            const targetOx = cw / 2 - selEnt.x * cam.scale
+            const targetOy = ch / 2 - selEnt.y * cam.scale
+
+            // Handle wrap jump vs smooth tracking
+            if (Math.abs(targetOx - cam.ox) > cw * 0.75 || Math.abs(targetOy - cam.oy) > ch * 0.75) {
+              cam.ox = targetOx
+              cam.oy = targetOy
+            } else {
+              cam.ox += (targetOx - cam.ox) * 0.15
+              cam.oy += (targetOy - cam.oy) * 0.15
+            }
+            clampCamera(state)
+          }
+        }
+      } else {
+        lastTrackedId = null
+        targetZoomScale = null
+      }
+
       // ---- sky: night darkness + season tint + weather overlays ----
       const sun = Math.sin((state.time_of_day - 0.25) * TAU) // -1 midnight .. 1 noon
       const darkness = Math.max(0, Math.min(1, 0.55 - 0.55 * sun))
@@ -891,7 +934,6 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         ctx.restore()
       }
       // selection halo
-      const sel = selectedRef?.current ?? null
       if (sel !== null) {
         const selEnt = state.entities.find((e) => e.id === sel)
         if (selEnt) {
