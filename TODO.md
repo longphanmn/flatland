@@ -1470,3 +1470,57 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [ ] [P2] **Anomaly zones** — fixed-position tiles where physics differs (stronger gravity, faster plant growth, slower energy decay); discoverable only by exploration (high foraging skill); totems placed near anomalies gain bonus power.
 - [ ] [P3] **Shadow tiles** — tall structures cast shadows (tiles behind receive less light → slower plant growth, colder temperature); light is a 2D ray quantity visible to God from above.
 - [ ] [P3] **Sunlight edge** — day cycle simulated as illumination sweeping from one map edge; creatures at the illuminated edge get a warmth bonus; shadow behind large structures is a resource and strategic asset.
+
+---
+
+## AR. Creature Senses Improvement Roadmap  [P0–P2]
+> Builds on the existing vision / hearing / memory / contact system.
+> Guiding principle: senses should interact and suppress each other, not fire independently.
+
+### Phase S-0: High-Impact, Low-Complexity Fixes  [P0]
+- [ ] [P0] **Sleeping = fully deaf** — sleeping creatures (`c.sleeping == True`) skip all signal processing; predators can silently approach a sleeping village; shelter becomes genuinely life-saving, not just comfort.
+- [ ] [P0] **Food scent at night** — ripe food (`growth == 1.0`) emits a detectable scent within ~8 units regardless of `env_sight`; hungry/starving creatures are drawn to it without direct vision; directly solves the "starving creature at night cannot find food" failure mode.
+- [ ] [P0] **Starvation suppresses fear** — starving creatures have effective `fear_radius × 0.5`; a desperate enough creature walks toward a predator chasing scented food; creates tragic, realistic edge cases.
+
+### Phase S-1: Hearing Improvements  [P1]
+- [ ] [P1] **Signal confidence attenuation by distance** — `heard_conf = 1 - (dist / signal_radius)`; creatures far from the alarm source react weakly, close ones react fully; replaces the current binary inside/outside detection.
+- [ ] [P1] **Signal direction encoding** — alarm signals carry `dx, dy` from source; listener flees *away* from signal direction rather than steering randomly; fixes the current bug where alarms don't guide fleeing direction.
+- [ ] [P1] **Houses block sound** — creatures with `c.indoors == True` cannot hear `alarm` or `help` signals from outside; reinforces shelter as a genuine tactical refuge.
+- [ ] [P2] **Crowd-size scales alarm radius** — a group of ≥3 predators triggers a "war cry" signal at 2× normal `signal_radius`, capable of waking sleeping creatures nearby.
+- [ ] [P2] **Sense fatigue / alarm habituation** — if the same alarm fires for ≥10 consecutive ticks, creatures habituate: `u_alarm` drops to 0.3; prevents infinite alarm-paralysis near persistent threats.
+
+### Phase S-2: Vision Improvements  [P1–P2]
+- [ ] [P1] **Torch tradeoff** — creatures carrying a torch (`equipped_item == "torch"`) restore night sight to full (env_sight = 1.0) within 6 units, but become visible to predators at 2× normal `hunt_radius`; genuine risk/reward decision.
+- [ ] [P1] **Terrain camouflage** — creatures adjacent to mature food patches (berry, grass) gain cover: predator effective `hunt_radius` reduced by 20% toward them; "hiding in the bushes" is a real survival strategy.
+- [ ] [P2] **Facing cone bias** — creatures have an `angle`; vision is full `perceive_radius` within a ±90° forward cone, `perceive × 0.5` in the rear 180°; guards placed facing outward actually face outward.
+- [ ] [P2] **Angle recognition errors** (Flatland canon) — Triangles are misidentified as predators 30% of the time beyond half `perceive_radius`; generates emergent false alarms; higher-caste creatures (more sides ≈ more circular) are easier to identify correctly.
+- [ ] [P2] **Sight degradation with age** — elder creatures gain an additional `× 0.9` sight penalty and a small `recognition_conf` reduction; the young may misidentify elders, elders may misidentify fast-moving Triangles.
+
+### Phase S-3: Memory Improvements  [P1–P2]
+- [ ] [P1] **Trust-weighted rumours** — `_hear_fact()` multiplies incoming `conf` by `trust.get(sender_id, 50) / 100`; a trusted clan-mate's alarm is believed at full confidence; a stranger or known traitor is believed at ≤5%; connects the existing `c.trust` dict to perception.
+- [ ] [P1] **Inherited memory / oral lore** — when an elder sleeps near infants, it transmits `facts["safe"]` and `facts["food"]` with `conf = 0.3`; babies begin life with imprecise inherited knowledge of their clan's home territory and food grounds.
+- [ ] [P1] **Continuous confidence decay** — facts decay linearly per tick (`conf -= 1 / knowledge_ttl`) instead of expiring at a hard TTL cliff; facts fade gracefully rather than vanishing suddenly.
+- [ ] [P2] **Spatial position drift** — remembered fact coordinates drift randomly by `±(1 - conf) × noise` per tick; a faded rumour points to "roughly there", not the exact location; creatures navigating from stale memory spread out.
+- [ ] [P2] **Working memory capacity limit** — `c.facts` capped at 6 simultaneous entries; when full, lowest-confidence fact is evicted; under starvation or injury the cap drops to 4; elders may have cap of 8 via accumulated experience skill.
+- [ ] [P2] **Priest clan oracle** — once every N ticks, Priests broadcast the highest-confidence clan-level food/danger facts to all nearby clan-members simultaneously; Priest as living knowledge hub.
+
+### Phase S-4: Smell (New Sense)  [P1–P2]
+> In 2D, smell is more informative than 3D (no Z-axis dilution — see Dewdney's *Planiverse*).
+- [ ] [P1] **Territorial scent marking** — soldiers and leaders periodically emit `"territory"` scent signals at clan boundary positions; enemy clans detecting the marking receive an immediate `enemy` fact confidence boost; replaces the invisible territory system with a tangible physical signal.
+- [ ] [P2] **Scent trails** — creatures leave `(x, y, tick)` scent records persisting for `scent_ttl` ticks; predators within `scent_radius` (~5 units) follow prey trails; prey detect predator trails and flee; rain washes scent away.
+- [ ] [P2] **Clan scent recognition** — creatures identify clan-mates by scent at close range even in total darkness or deep fog; prevents friendly-fire and panic in low-visibility combat.
+
+### Phase S-5: Social Sensing  [P1–P2]
+- [ ] [P1] **Emotional contagion / crowd panic** — a fleeing creature lowers the effective `u_flee` threshold for clan-mates within `flock_radius` by 0.2; one panicking creature can cascade panic through a cluster; Priests within 4 units counter this by imposing a +0.2 calm bonus.
+- [ ] [P2] **Reputation as observable signal** — observable actions (healed a creature, fed an infant, committed cannibalism, fled combat) update `trust` of all witnesses within vision; high-reputation creatures attract followers; low-reputation ones are shunned even by clan-mates.
+- [ ] [P2] **Rally signal** — clan leaders emit a `"rally"` signal (range 20 units) during war or crisis; all clan-mates set it as a waypoint target with `u_waypoint = 1.0` overriding foraging; first time leaders can actually coordinate movement.
+
+### Phase S-6: Environmental Sensing  [P2]
+- [ ] [P2] **Thermal gradient sense** — creatures sense ambient temperature (when PH-1 temperature field is implemented); in winter they drift toward heat sources; in summer heat events they flee hot tiles; elders and infants are more temperature-sensitive.
+- [ ] [P2] **Weather anticipation by caste** — Pentagon+ creatures detect incoming storms 1–3 ticks before weather changes: emit a `"shelter"` internal drive (`u_shelter += 0.5`) before rain arrives; gives high-caste clans a survival edge in harsh weather.
+- [ ] [P2] **Disease scent signal** — infected creatures emit a `"disease"` signal within 4 units; healthy high-caste creatures set a weak `danger` fact at the infected's position and increase their own `u_shelter`; disease becomes partially visible through social sensing.
+
+### Phase S-7: New Signal Types  [P2]
+- [ ] [P2] **`"grief"` signal** — emitted by creatures witnessing a clan-mate die within vision range; nearby kin pause movement for 1–3 ticks (grief emote) and receive a small trust boost to all others present (shared loss bonds survivors).
+- [ ] [P2] **`"joy"` signal** — emitted at birth events; nearby kin receive a morale boost (energy +2.0, health +1.0); birth is literally good news.
+- [ ] [P2] **`"disease"` signal** — (see §S-6 above; unify the environmental and social detection into a single signal type).
