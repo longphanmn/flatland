@@ -1,195 +1,157 @@
-# God Laws — Flatland
+# God Laws — Flatland Simulation Reference
 
-> **Developer:** Long Phan — [long@minhnhan.in](mailto:long@minhnhan.in) · long@minhnhan.in · https://minhnhan.in
+> **Developed by [Long Phan](mailto:long@minhnhan.in)** ([long@minhnhan.in](mailto:long@minhnhan.in) · [minhnhan.in](https://minhnhan.in) · [world.minhnhan.in](https://world.minhnhan.in))  
+> Built and refined using **OpenCode** and **Antigravity** · Inspired by **Edwin A. Abbott's *Flatland***.
 
-God sets **laws**, never touches a life. Each law has a range, default, and hint. Edit via **⚖ God** panel or `POST /api/laws`.
-
-All laws are in `backend/app/config.py` and `protocol.py:GodLaws`. Presets: `sustainable` / `chaos` / `extinction` via `POST /api/presets/{name}`.
-
-## Food & Energy
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `food_count` | 0–300 | 70 | the world keeps this much food alive — bounty or famine (winter ×0.5, summer ×1.2) |
-| `energy_max` | 10–500 | 100 | max energy a creature can hold |
-| `energy_decay_per_tick` | 0–2 | 0.025 | how fast all life burns without eating (0.025) — winter/rain adds 0.03 exposure if roofless |
-| `energy_from_food` | 0–100 | 32 | base energy from a mature plant (32) — berry 48, mushroom 24, grass 32, poison 8 |
-
-## Ecosystem
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `plant_growth_rate` | 0–1 | 0.05 | how fast plants mature (0.05) — berry 0.65×, mushroom 0.85×, poison 0.6×, season multiplies |
-| `plant_spread_rate` | 0–1 | 0.006 | chance a mature plant seeds a nearby sprout each tick |
-| `nutrient_cycle_rate` | 0–10 | 0.65 | corpse decay boost to nearby plants (0.65) — death feeds life |
-| `poison_rate` | 0–1 | 0.01 | chance a new sprout is poisonous (0.01) — 1% sicken, berry heals +1, poison -30 health |
-| `beast_ratio` | 0–1 | 0.0 | wild herbivores as fraction of creature density — grazers that feed predators |
-| `diet_strictness` | 0–1 | 0.0 | 0 omnivore, 1 strict — herbivore ignores meat, predator ignores plants |
-
-## Hunger & Sight
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `hungry_ratio` | 0.05–1 | 0.35 | energy ≤35% → hungry, sees 1.3× farther |
-| `starving_ratio` | 0.01–1 | 0.15 | energy ≤15% → starving, sees 1.6× and moves 1.35×, pulsing red |
-| `perceive_radius` | 1–40 | 20 | base sight (20) — Woman 0.8×, Priest 1.35×, night 0.6×, fog 0.6×, Eye totem 1.25× |
-| `eat_radius` | 0.2–5 | 1.4 | distance to eat food/corpse |
-| `hungry_perceive_mult` | 1–3 | 1.3 | hungry sight multiplier |
-| `desperate_perceive_mult` | 1–3 | 1.6 | starving sight multiplier |
-| `desperate_speed_mult` | 1–3 | 1.35 | starving speed multiplier |
-
-## Movement
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `wander_turn` | 0–2 | 0.35 | max heading change when wandering (rad) |
-| `steer_turn` | 0–2 | 0.45 | max heading change when steering to food |
-
-## Life & Death
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `lifespan_mult` | 0.05–5 | 1.0 | scales every caste's natural lifespan (Woman 4800 → Priest 9000) |
-
-## Reproduction
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `adult_age` | 0–5000 | 200 | ticks before a creature may mate |
-| `mate_radius` | 0.5–30 | 10 | max distance between parents |
-| `mate_energy_min` | 0–200 | 30 | both parents must hold this much energy |
-| `birth_rate` | 0–1 | 0.35 | chance per eligible pair per tick (× fertility) |
-| `sex_ratio` | 0–1 | 0.5 | probability a child is a son (polygons ascend) |
-| `mutation_rate` | 0–1 | 0.05 | chance a son's side count deviates ±1 |
-| `max_sides` | 3–64 | 24 | sons stop gaining sides here (= Circle) |
-| `birth_energy_cost` | 0–100 | 20 | each parent pays |
-| `reproduction_cooldown` | 0–3000 | 200 | ticks parents wait after birth |
-| `carrying_capacity` | 2–2000 | 80 | soft cap: fertility fades above it |
-| `max_population` | 2–5000 | 140 | hard cap: no births beyond it |
-| `euthanasia_threshold` | 0.3–1 | 0.7 | irregular children ≥ this are consumed at adulthood, below demoted |
-
-## Disease
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `disease_enabled` | bool | false | plagues walk the world; disabling freezes all sickness |
-| `disease_outbreak_rate` | 0–0.05 | 0.0005 | chance/tick a new outbreak begins |
-| `disease_rate` | 0–1 | 0.08 | spread chance per healthy neighbour per tick |
-| `disease_radius` | 0.5–20 | 3.0 | contagion range |
-| `disease_energy_drain` | 0–2 | 0.15 | extra energy loss while infected |
-| `recovery_rate` | 0–1 | 0.01 | chance/tick an infected recovers |
-| `disease_lethality` | 0–1 | 0.5 | scales how fast infection drains health |
-
-## Sky & Seasons
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `day_length` | 4–20000 | 1200 | ticks per day cycle |
-| `season_length` | 4–100000 | 2400 (now 14400 =12 days) | ticks per season; four seasons per year |
-| `winter_food_mult` | 0.1–1.5 | 0.5 (0.7 gentle) | winter bounty × winter_food_mult — lean season target = food_count × winter_food_mult |
-| `night_sight_mult` | 0.05–2 | 0.6 | sight scale during the night |
-| `weather_change_rate` | 0–1 | 0.002 | chance/tick the weather turns |
-| `fog_sight_mult` | 0.05–2 | 0.6 | sight scale in fog |
-| `rain_speed_mult` | 0.1–2 | 0.85 | movement scale in rain/storm |
-| `storm_wander_bonus` | 0–3.2 | 0.35 | extra heading chaos in storms |
-
-## Weather & Crops
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `rain_growth_mult` | 0.5–3 | 1.25 | rain/storm boost to plant growth |
-| `fog_mushroom_mult` | 0.5–3 | 1.35 | fog boost to mushroom growth |
-| `storm_plant_damage` | 0–1 | 0.02 | chance storm strips growth from exposed plants |
-
-## Weather Sickness
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `chill_rate` | 0–1 | 0.04 | chill built per tick unsheltered in rain/storm/winter night |
-| `chill_threshold` | 1–100 | 12 | chill at which creature is sick |
-| `chill_drain` | 0–5 | 0.18 | health drain per tick when chilled |
-| `wet_disease_mult` | 1–5 | 1.5 | wet/cold catch disease faster, recover slower |
-
-## Shelter
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `exposure_drain` | 0–2 | 0.03 | extra energy/tick outdoors in rain/storm or at night |
-| `house_capacity` | 1–20 | 12 (was 8) | beds per house; overflow sleeps outside |
-| `rest_recovery_mult` | 0.5–5 | 2.0 | indoor sleeping health regen multiplier |
-| `house_decay_ticks` | 100–100000 | 2400 | abandoned house ticks before crumbling to ruin |
-
-## Territory
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `territory_radius` | 1–50 | 14 | radius of clan territory circle |
-| `trespass_decay` | 0–5 | 0 (was 1.0) | relation points lost per tick per trespasser inside rival territory |
-
-## Society & Clans
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `cohesion_weight` | 0–3 | 0 | pull toward same-clan flock centre |
-| `alignment_weight` | 0–3 | 0 | match neighbours' heading |
-| `separation_weight` | 0–3 | 0 | personal-space push from any neighbour |
-| `flock_radius` | 1–40 | 6 | interaction perception range |
-| `relation_drift_rate` | 0–10 | 1 (2.5 preset) | points/tick clan scores relax toward 0 |
-| `alliance_threshold` | -100–100 | 50 | score at/above which two clans are allies |
-| `rivalry_threshold` | -100–100 | -50 (-80 preset) | score at/below which two clans are rivals |
-| `totems_enabled` | bool | true | each clan bears Wolf/Tree/Shield/Eye with buffs |
-| `succession_enabled` | bool | true | leader succession on death emits succession event |
-
-## Communication
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `signal_radius` | 3–40 | 12 | heard within this range |
-| `food_call_rate` | 0–1 | 0.08 | well-fed finds food → calls with this chance/tick |
-| `alarm_call_rate` | 0–1 | 0.12 | sees predator → alarm call chance/tick |
-| `food_memory_ttl` | 20–5000 | 300 | ticks a creature remembers last food position |
-
-## Rebellion, Culture, Genetics, Wildfire
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `schism_enabled` | bool | false | unhappy members split to found new clan, then war parent |
-| `schism_threshold` | 0–1 | 0.4 | fraction unhappy to trigger split |
-| `schism_min_pop` | 2–100 | 4 | minimum clan population to consider schism |
-| `age_enabled` | bool | false | long era bending world: Ice/Chaos/Plague/Golden |
-| `age_length` | 100–1M | 12000 | ticks per age (5 seasons) |
-| `culture_enabled` | bool | false | clan culture spreads/splits, grants bonus |
-| `culture_spread_rate` | 0–1 | 0.005 | per tick ally culture spread |
-| `trait_mutation_rate` | 0–1 | 0.02 | chance mutation adds heritable behaviour trait |
-| `wildfire_enabled` | bool | false | fire ignites via storm lightning, spreads |
-| `fire_rate` | 0–0.05 | 0.0005 | chance/tick to ignite random plant |
-| `fire_spread_rate` | 0–1 | 0.08 | spread to neighboring plants |
-| `disaster_enabled` | bool | false | meteor/flood stochastic |
-| `disaster_rate` | 0–0.05 | 0.0003 | chance/tick for disaster |
-
-## Predation & Clan War
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `predation_enabled` | bool | false | predators hunt prey |
-| `predator_ratio` | 0–1 | 0.08 | fraction of spawn that are predators |
-| `hunt_radius` | 1–40 | 8 | predator sight for prey |
-| `bite_damage` | 0–200 | 100 (40 preset wound) | damage on bite (100 = instant kill) |
-| `bite_cooldown` | 0–100 | 10 | ticks between bites |
-| `energy_from_prey` | 0–200 | 40 | energy predator gains per kill |
-| `fear_radius` | 1–40 | 10 | prey flee when predator within this range |
-| `war_enabled` | bool | false | rival-clan combat enabled |
-| `attack_radius` | 0.5–10 | 1.8 | distance for clan war engagement |
-| `attack_damage` | 0–200 | 100 (40 preset wound) | damage per attack (100 = lethal) |
-
-## Bodies & Houses
-
-| Law | Range | Default | Hint |
-|-----|-------|---------|------|
-| `door_clearance` | 1–4 | 1.5 | door width = clearance × largest creature diameter |
-| `house_min_size` | 4–30 | 6 | applies to houses built after next reset |
-| `house_max_size` | 6–60 | 10 | applies to houses built after next reset |
+In Flatland, God sets **laws**, never touches individual lives. Every law has a specified range, default value, and ecological effect. Laws can be adjusted live via the in-app **⚖ God** drawer or programmatically via `POST /api/laws`.
 
 ---
 
-*Maintained by **Long Phan** — long@minhnhan.in · https://minhnhan.in · World https://world.minhnhan.in*
+## 1. Food & Energy
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `food_count` | 0–1000 | **220** | Target living food abundance across the world (winter reduces, summer boosts). |
+| `energy_max` | 10–500 | **100** | Maximum energy capacity an organism can store. |
+| `energy_decay_per_tick` | 0–2.0 | **0.025** | Baseline metabolic burn rate per tick without food intake. |
+| `energy_from_food` | 0–100 | **32** | Energy yield from harvesting a mature plant (Berry: 48, Grass: 32, Mushroom: 24). |
+
+---
+
+## 2. Ecosystem & Biodiversity
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `plant_growth_rate` | 0–1.0 | **0.045** | Maturation speed of newly sprouted plants. |
+| `plant_spread_rate` | 0–1.0 | **0.006** | Probability that a mature plant drops seed into adjacent fertile soil per tick. |
+| `nutrient_cycle_rate` | 0–10.0 | **0.65** | Acceleration of plant growth near decomposing corpses (death nourishes life). |
+| `poison_rate` | 0–1.0 | **0.008** | Probability that a new sprout is poisonous (-30 HP on consumption). |
+| `beast_ratio` | 0–1.0 | **0.0** | Proportion of wild herbivores in the creature population. |
+| `diet_strictness` | 0–1.0 | **0.0** | Dietary preference filter (0 = omnivorous, 1 = strict herbivore/carnivore). |
+
+---
+
+## 3. Perception, Hunger & Movement
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `hungry_ratio` | 0.05–1.0 | **0.35** | Energy threshold ($\le 35\%$) triggering heightened search sight ($1.3\times$). |
+| `starving_ratio` | 0.01–1.0 | **0.15** | Energy threshold ($\le 15\%$) triggering desperate sprint ($1.35\times$) and pulsing halo. |
+| `perceive_radius` | 1–40 | **16.0** | Base perception distance (Woman $0.8\times$, Priest $1.35\times$, Night $0.6\times$, Fog $0.6\times$). |
+| `eat_radius` | 0.2–5.0 | **1.4** | Contact distance required to consume a plant or corpse. |
+| `hungry_perceive_mult` | 1.0–3.0 | **1.3** | Perception multiplier when hungry. |
+| `desperate_perceive_mult` | 1.0–3.0 | **1.6** | Perception multiplier when starving. |
+| `desperate_speed_mult` | 1.0–3.0 | **1.35** | Speed boost multiplier when starving. |
+| `food_giveup_ticks` | 0–100000 | **240** | Ticks after which an obstructed meal behind walls is abandoned. |
+| `wander_turn` | 0–2.0 | **0.35** | Maximum heading turn angle per step while wandering (radians). |
+| `steer_turn` | 0–2.0 | **0.45** | Maximum heading turn angle per step when homing toward food. |
+
+---
+
+## 4. Life Span, Inheritance & Reproduction
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `lifespan_mult` | 0.05–5.0 | **1.0** | Multiplier scaling all caste lifespans (Woman: 4,800 ticks $\rightarrow$ Priest: 9,000 ticks). |
+| `adult_age` | 0–5000 | **220** | Ticks required for a juvenile to mature into a fertile adult. |
+| `mate_radius` | 0.5–30 | **10.0** | Maximum distance between prospective parents for mating. |
+| `mate_energy_min` | 0–200 | **30.0** | Minimum energy reserve required by both parents to initiate reproduction. |
+| `birth_rate` | 0–1.0 | **0.28** | Reproduction probability per tick per eligible adult pair. |
+| `sex_ratio` | 0–1.0 | **0.50** | Probability that a newborn is a son (polygons gain sides; daughters are lines). |
+| `mutation_rate` | 0–1.0 | **0.05** | Probability that a son's side count deviates $\pm 1$ side. |
+| `max_sides` | 3–64 | **24** | Maximum side count cap (= Circle / Priest caste). |
+| `birth_energy_cost` | 0–100 | **20.0** | Energy invested by each parent upon successful birth. |
+| `reproduction_cooldown`| 0–3000 | **200** | Ticks parents must wait before becoming eligible to mate again. |
+| `carrying_capacity` | 2–10000 | **600** | Soft population cap: reproduction fertility gradually fades above this threshold. |
+| `max_population` | 2–15000 | **800** | Hard population cap: births halt completely beyond this number. |
+| `euthanasia_threshold` | 0.3–1.0 | **0.70** | Irregularity threshold where mutated adults are judged and absorbed. |
+
+---
+
+## 5. Epidemics & Health
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `disease_enabled` | Boolean | **true** | Master switch for infectious pathogen outbreaks and transmission. |
+| `disease_outbreak_rate` | 0–0.05 | **0.00006** | Probability per tick of a spontaneous new outbreak starting. |
+| `disease_rate` | 0–1.0 | **0.035** | Contagion transmission probability per tick within contact range. |
+| `disease_radius` | 0.5–20 | **3.0** | Contagion transmission radius around an infected host. |
+| `disease_energy_drain` | 0–2.0 | **0.05** | Additional metabolic energy loss per tick while sick. |
+| `recovery_rate` | 0–1.0 | **0.03** | Natural recovery probability per tick for infected creatures. |
+| `disease_lethality` | 0–1.0 | **0.18** | Direct health drain rate scaling infection severity. |
+
+---
+
+## 6. Climate, Seasons & Sky
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `day_length` | 4–20000 | **1200** | Ticks per complete day/night cycle. |
+| `season_length` | 4–100000 | **12000** | Ticks per season (10 days/season; 4-season annual cycle). |
+| `winter_food_mult` | 0.1–1.5 | **0.70** | Seasonal food abundance factor during winter. |
+| `night_sight_mult` | 0.05–2.0 | **0.60** | Perception radius multiplier during night hours. |
+| `weather_change_rate` | 0–1.0 | **0.002** | Probability per tick of atmospheric weather shifting. |
+| `fog_sight_mult` | 0.05–2.0 | **0.60** | Perception multiplier during dense fog. |
+| `rain_speed_mult` | 0.1–2.0 | **0.85** | Movement speed multiplier in rain and storms. |
+| `storm_wander_bonus` | 0–3.2 | **0.35** | Heading turbulence during severe thunderstorms. |
+| `rain_growth_mult` | 0.5–3.0 | **1.25** | Plant growth acceleration during rainfall. |
+| `fog_mushroom_mult` | 0.5–3.0 | **1.35** | Mushroom growth boost during fog. |
+| `storm_plant_damage` | 0–1.0 | **0.02** | Probability of crop stripping by gale winds. |
+| `chill_rate` | 0–1.0 | **0.04** | Rate of exposure chill accumulation when unsheltered in rain or winter. |
+| `chill_threshold` | 1–100 | **12** | Chill level causing hypothermia sickness. |
+| `chill_drain` | 0–5.0 | **0.18** | Health drain per tick while experiencing hypothermia. |
+
+---
+
+## 7. Settlements, Houses & Shelter
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `exposure_drain` | 0–2.0 | **0.025** | Energy loss per tick when outdoors during inclement weather. |
+| `house_capacity` | 1–20 | **10** | Maximum bed capacity per average settlement house. |
+| `rest_recovery_mult` | 0.5–5.0 | **2.0** | Health regeneration speed multiplier while sleeping indoors. |
+| `door_clearance` | 1.0–4.0 | **1.5** | Doorway width relative to creature size (blocks oversized predators). |
+
+---
+
+## 8. Diplomacy, Clans & Warfare
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `war_enabled` | Boolean | **true** | Enables territorial disputes and clan conflicts. |
+| `attack_damage` | 0–200 | **32.0** | Combat damage dealt per weapon strike in war. |
+| `predation_enabled` | Boolean | **true** | Enables carnivore hunting of herbivores and weaker polygons. |
+| `predator_ratio` | 0–1.0 | **0.02** | Ratio of apex predators in the overall population. |
+| `bite_damage` | 0–200 | **28.0** | Damage dealt per predator bite. |
+| `bite_cooldown` | 0–100 | **15** | Ticks between consecutive predator attacks. |
+| `fear_radius` | 1–40 | **12.0** | Distance at which prey flee from approaching predators. |
+| `relation_drift_rate` | 0–10.0 | **2.2** | Rate at which clan diplomatic relations drift toward neutral peace. |
+| `rivalry_threshold` | -100–100 | **-80** | Diplomatic score below which clans consider each other enemies. |
+| `alliance_threshold` | -100–100 | **60** | Diplomatic score above which clans form mutual alliances. |
+| `trespass_decay` | 0–5.0 | **0.15** | Relationship point penalty per tick when entering rival territory. |
+| `schism_enabled` | Boolean | **true** | Enables discontented clan members to break away and form new clans. |
+| `schism_threshold` | 0–1.0 | **0.60** | Dissatisfaction threshold triggering a clan schism. |
+| `schism_min_pop` | 2–100 | **8** | Minimum clan population required before a schism can occur. |
+
+---
+
+## 9. Desperation, Cannibalism & Decay
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `cannibalism_enabled` | Boolean | **true** | Allows starving creatures to consume living prey under extreme famine. |
+| `cannibalism_hunger_ratio` | 0–1.0 | **0.12** | Energy threshold ($\le 12\%$) below which creatures may resort to cannibalism. |
+| `cannibalism_energy` | 0–1000 | **35.0** | Energy restored per desperate cannibalistic kill. |
+| `eat_enemy_enabled` | Boolean | **true** | Permits consuming fallen enemies during desperate conditions. |
+| `eat_kin_enabled` | Boolean | **true** | Permits consuming fallen kin (triggers social exile and outcast status). |
+| `kin_stigma` | 0–100 | **35** | Diplomatic penalty incurred upon committing kin-cannibalism. |
+| `exile_on_kin_eat` | Boolean | **true** | Casts out kin-eaters into solitary rogue bands. |
+| `food_decay_enabled` | Boolean | **true** | Enables mature plants to naturally wither and recycle nutrients into the soil. |
+| `food_lifespan_ticks` | 100–1M | **8000** | Lifespan of a mature plant before withering. |
+| `wildfire_enabled` | Boolean | **true** | Enables thunderstorm lightning strikes to ignite spreading brushfires. |
+| `fire_rate` | 0–0.05 | **0.00008** | Lightning ignition probability per tick. |
+| `fire_spread_rate` | 0–1.0 | **0.035** | Spread speed of flames to adjacent vegetation. |
+
+---
+
+*Maintained and developed by **Long Phan** ([long@minhnhan.in](mailto:long@minhnhan.in)) · [https://minhnhan.in](https://minhnhan.in) · World [https://world.minhnhan.in](https://world.minhnhan.in)*

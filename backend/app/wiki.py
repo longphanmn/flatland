@@ -44,22 +44,25 @@ See `world.py:38`, `simulation.py:2680`, `CanvasRenderer.tsx:370`, `App.tsx:230`
 """
 
 WIKI_OVERVIEW_MD = """
-# Flatland Wiki
+# Flatland Wiki & Encyclopedia
 
-> **Developer:** Long Phan — long@minhnhan.in · https://minhnhan.in — Flatland is designed, built and maintained by Long Phan.
+> **Developed by [Long Phan](mailto:long@minhnhan.in)** ([long@minhnhan.in](mailto:long@minhnhan.in) · [minhnhan.in](https://minhnhan.in) · [world.minhnhan.in](https://world.minhnhan.in))  
+> Built and refined using **OpenCode** and **Antigravity** · Inspired by **Edwin A. Abbott's *Flatland: A Romance of Many Dimensions*** (1884).
 
-A 2D world of geometric castes (Soldier, Artisan, Gentleman, Professional, Noble, Priest, Woman) plus predators/herbivores. Creatures wander, eat, shelter, age, mate, and die. God sets **laws**, never touches a life — everything else emerges.
+Flatland is an autonomous 2D artificial life and world simulation of geometric castes (Soldier, Artisan, Gentleman, Professional, Noble, Priest, and Woman) plus apex predators and wild herbivores. Creatures explore, forage, farm, master skills, establish multi-generational clan settlements, and evolve across generations under immutable natural laws.
 
-- **Autonomous Evolution**: 6 personality archetypes (brave, cautious, altruistic, greedy, explorer, builder), tools (spears, baskets, herb poultices, crowns), skill progression matrix (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿), dynamic titles, oral lore, and live emote balloons.
-- **Realistic Energy & Metabolism**: Infant low metabolism (45% decay), combat stamina drain, and field food reserve hauling/eating.
-- **Multi-House Clan Settlements**: Clans expand across houses with primary Chieftain residences.
-- **Live world**: `GET /api/state` + WebSocket `/ws` (`hello` → `state` every tick, throttled ~30 Hz)
+### Core Architecture & Systems
+- **The God Model**: God sets global **laws of nature** (carrying capacity, food growth, metabolism, disease, climate) but never intervenes in individual lives. All behavior is emergent.
+- **Autonomous Evolution & Culture**: 6 heritable personality archetypes (`brave`, `cautious`, `altruistic`, `greedy`, `explorer`, `builder`), craftable tools (spears, baskets, herb poultices, chieftain crowns), 4 mastery skills (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿), earned dynamic titles, oral lore passed from elders to youth in houses, and live thought bubbles.
+- **Realistic Energy & Metabolism**: Infant low metabolism ($0.45\times$ energy decay), combat stamina expenditure, and autonomous field food reserve management via baskets.
+- **Settlements & Diplomacy**: Walled houses with creature-sized doors, multi-house clan territories, settlement food larders, mutual coalitions, tributary pacts, and schisms.
+- **Real-Time Synchronization**: Deterministic fixed-rate engine loop streaming state over WebSocket (`/ws`) at ~30–60 FPS with durable SQLite historical chronicle storage.
+
+### Endpoints & Interfaces
+- **Live World UI**: `http://localhost:5173` (interactive 60 FPS HTML5 canvas with real-time HUD and controls).
 - **Terminal UI**: Textual TUI (`cd backend && uv run python -m tui`) with camera tracking and filterable chronicle.
-- **God laws**: `GET /api/laws` / `POST /api/laws?persist` — see God laws table
-- **Presets**: `GET /api/presets` / `POST /api/presets/{sustainable|chaos|extinction}?reset`
-- **History**: `GET /api/history?since&limit`, `GET /api/worlds`, `GET /api/clans`, `GET /api/plots`
-- **Guide**: `/guide` (backend HTML) and `/wiki` (this page)
-- **Interactive docs**: `/docs` (Swagger) + `/openapi.json`
+- **REST API & Swagger**: `GET /api/state`, `POST /api/laws`, `GET /api/presets`, `GET /api/history` at `/docs`.
+- **Living Guide & Wiki**: `/guide` (backend HTML) and `/wiki` (interactive documentation).
 """
 
 
@@ -148,12 +151,12 @@ main{{padding:24px;max-width:960px;overflow:auto}}
 <p style="font-size:13px"><a href="/docs">Swagger /docs</a> · <a href="/openapi.json">OpenAPI</a> · <a href="/guide">Guide</a></p>
 <p style="font-size:13px"><a href="/api/wiki">JSON</a> · <a href="/">← Live world</a></p>
 <div class="card" style="margin-top:12px;font-size:12px;color:#8b949e">Presets: <a href="#" onclick="applyPreset('sustainable');return false">🌿 sustainable</a> · <a href="#" onclick="applyPreset('chaos');return false">🔥 chaos</a> · <a href="#" onclick="applyPreset('extinction');return false">💀 extinction</a></div>
-<div class="card" style="margin-top:12px;font-size:12px;color:#8b949e;border-color:#1f6feb">Developer<br/><strong>Long Phan</strong><br/><a href="mailto:long@minhnhan.in">long@minhnhan.in</a><br/><a href="https://minhnhan.in">minhnhan.in</a> · <a href="https://world.minhnhan.in">world.minhnhan.in</a></div>
+<div class="card" style="margin-top:12px;font-size:12px;color:#8b949e;border-color:#1f6feb">Developed by<br/><strong>Long Phan</strong><br/><a href="mailto:long@minhnhan.in">long@minhnhan.in</a><br/><a href="https://minhnhan.in">minhnhan.in</a> · <a href="https://world.minhnhan.in">world.minhnhan.in</a><br/><small style="color:#8b949e;display:block;margin-top:4px">Built with OpenCode & Antigravity<br/>Inspired by Edwin A. Abbott</small></div>
 </nav>
 <main>
 <div class="card" style="position:sticky;top:0;z-index:2;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:-24px -24px 16px -24px;padding:12px 16px;border-radius:0;border-left:none;border-right:none;border-top:none"><span class="badge">{laws} laws</span><span class="badge">{routes} routes</span><span class="badge">{presets} presets</span><span style="margin-left:auto;font-size:12px;color:#8b949e">God sets laws, never a life · <a href="/guide">Guide</a></span></div>
 {content}
-<hr/><p style="font-size:12px;color:#8b949e">Generated from live code — <code>Config</code> defaults + <code>GodLaws</code> + <code>app.routes</code>. See <a href="/guide">/guide</a> for minimal guide. · Developer <strong>Long Phan</strong> — <a href="mailto:long@minhnhan.in">long@minhnhan.in</a> · <a href="https://minhnhan.in">minhnhan.in</a></p>
+<hr/><p style="font-size:12px;color:#8b949e">Generated from live code — <code>Config</code> defaults + <code>GodLaws</code> + <code>app.routes</code>. See <a href="/guide">/guide</a> for minimal guide. · Developed by <strong>Long Phan</strong> — <a href="mailto:long@minhnhan.in">long@minhnhan.in</a> · <a href="https://minhnhan.in">minhnhan.in</a> · Built with OpenCode & Antigravity</p>
 </main>
 </div>
 <script>

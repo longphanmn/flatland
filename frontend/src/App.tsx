@@ -989,8 +989,8 @@ export default function App() {
         </div>
       )}
       {!isMobile && (
-        <div className="version-bar" title={versionInfo ? `v${versionInfo.version} · ${versionInfo.revision} · Long Phan <long@minhnhan.in>` : 'Flatland · Long Phan <long@minhnhan.in>'}>
-          {versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'v0.1.2'} · <span style={{ opacity: 0.85 }}>Long Phan · <a href="mailto:long@minhnhan.in" style={{ color: 'inherit', textDecoration: 'underline' }}>long@minhnhan.in</a></span>
+        <div className="version-bar" title={versionInfo ? `v${versionInfo.version} · ${versionInfo.revision} · Developed by Long Phan <long@minhnhan.in> · Built with OpenCode & Antigravity` : 'Flatland · Developed by Long Phan <long@minhnhan.in>'}>
+          {versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'v0.1.2'} · <span style={{ opacity: 0.85 }}>Developed by Long Phan · <a href="mailto:long@minhnhan.in" style={{ color: 'inherit', textDecoration: 'underline' }}>long@minhnhan.in</a></span>
         </div>
       )}
       <AuthModal />

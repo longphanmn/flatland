@@ -1,263 +1,192 @@
-# Flatland — World Simulation
+# Flatland — 2D Autonomous World Simulation
 
-A 2D world simulation inspired by Edwin A. Abbott's *Flatland*: geometric beings
-(soldiers, gentlemen, professionals, nobles, priests, women) wander a bounded
-plane, seek food, shelter in houses through creature-sized doorways, and die of
-starvation when deprived of food too long.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python: 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com/)
+[![React: 18](https://img.shields.io/badge/React-18-61DAFB.svg)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6.svg)](https://www.typescriptlang.org/)
 
-- **Life logic:** energy decays every tick; eating restores it. Low energy makes
-  a creature `hungry` (notices food farther away), very low makes it `starving`
-  (farther perception + faster movement, pulsing red marker). Energy at zero =
-  death.
-- **Aging:** creatures age each tick; each caste has a natural lifespan
-  (women shortest → priests longest). Life stages — infant, juvenile, adult,
-  elder — scale speed, sight and fertility (the young are small, dim-sighted
-  and infertile; elders slow and half-fertile). Old age is a distinct death
-  cause; the god law `Lifespan ×` scales all lifespans.
-- **Sight Recognition:** higher castes perceive farther (priests 1.35×, women
-  0.8× the base sight radius) — Flatland's class hierarchy as natural law.
-- **Clans & genealogy:** every non-ruin house founds a clan and the founding
-  generation joins the clan of its nearest house — castes mix inside
-  settlements (the `Max clans` law pins how many spatial clans arise).
-  Children inherit their mother's clan and wear its crest as a thin colored
-  ring. Every birth/death is recorded in a `creatures` lineage table per world.
-- **Irregularity:** mutation may deform a child (scored 0.3–1.0). At adulthood
-  the world judges it: far from regular → painlessly consumed (`euthanasia`
-  death); slightly irregular → demoted to the lowest regular order (Soldier).
-- **Reproduction (Nature's Law):** adult polygons and women that meet (within
-  `mate_radius`, well-fed) may beget children. Sons inherit one more side than
-  their father (Square→Pentagon→…→Circle); isosceles sons instead creep +0.5°
-  per generation, becoming Regular Artisans at 60°. Daughters are lines.
-  Mutation may deviate a son's sides; higher castes are less fertile
-  (Nature's Law), fertility fades as the world crowds past carrying capacity,
-  and births stop at the hard population cap. Parents pay energy and cooldown.
-  Every birth/promotion lands in the Chronicle and the database.
-- **Autonomous Evolution:** 100% emergent, zero god intervention.
-  - **Personality archetypes:** `brave`, `cautious`, `altruistic`, `greedy`, `explorer`, `builder` with 65% genetic heritability. Altruistic beings feed starving kin with basket food.
-  - **Dynamic Tools & Equipment:** Spears (+20% war damage & reach for Soldiers/Predators), Baskets (carry up to 3 food units for field meals or clan larder deposits), Herb Poultices (+25 HP healing & infection cure for Priests), and Chieftain Crowns for clan leaders.
-  - **Skill Mastery & Titles:** 4 tracked skills (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿) unlock dynamic titles (*the Slayer*, *the Fearless Champion*, *the Grand Harvester*, *the Wise Shaman*, *the Pathfinder*).
-  - **Oral Lore in Houses:** Resting elders transmit mastery XP to sleeping infants and juveniles.
-  - **Animated Thought Bubbles:** Real-time floating mood balloons (`🍖`, `❤️`, `⚔️`, `🌿`, `🏆`, `💤`, `🧺`, `😱`) above creature heads.
-- **Energy & Stage Metabolism:**
-  - **Stage-aware metabolism:** Born infants burn 55% less energy per tick (`0.45x`), juveniles burn 25% less (`0.75x`), adults standard (`1.0x`), elders `0.85x`.
-  - **Combat stamina:** Clashing in battle drains stamina (winner -6, loser -10); creatures with <20% energy strike with 30% reduced damage.
-  - **Field food reserves:** Hungry creatures (<45 energy) carry food in baskets and eat autonomously while roaming. Full creatures (>85% energy) never eat or destroy food plants.
-- **Houses & Settlements:** Square outlines with creature-sized doorways; walls block movement. Clans expand across multiple houses, with the leader residing in the primary **Main House** marked by a golden crown.
+**Flatland** is an autonomous 2D artificial life and ecosystem simulation inspired by **Edwin A. Abbott's 1884 novella *Flatland: A Romance of Many Dimensions***. Geometric creatures (Soldiers, Artisans, Gentlemen, Professionals, Nobles, Priests, and Women) explore a bounded plane, harvest plants, shelter in settlements, master crafts, pass down oral lore, and evolve across generations under immutable natural laws.
 
-- **Backend:** Python 3.12 · FastAPI · deterministic fixed-tick loop over WebSocket
-- **Frontend:** React 18 + Vite + TypeScript · HTML5 Canvas renderer
-- **Terminal client:** Textual TUI (`backend/tui/`) — watch/control the live world from the shell
+> **Developed by [Long Phan](mailto:long@minhnhan.in)** ([long@minhnhan.in](mailto:long@minhnhan.in) · [minhnhan.in](https://minhnhan.in) · [world.minhnhan.in](https://world.minhnhan.in))  
+> Built and refined using **OpenCode** and **Antigravity**.  
+> Inspired by the social satire and mathematical world of **Edwin A. Abbott** (1884).
+
+---
+
+## Key Features & Simulation Mechanics
+
+### 1. The God Model: Laws over Fates
+In Flatland, God sets the **laws of nature** but never touches an individual life. God cannot kill, heal, or move a single creature; the simulation advances deterministically under physical and biological rules.
+- **God Panel (`⚖ God`)**: Adjust carrying capacity, food growth, energy metabolism, weather volatility, disease virulence, or clan aggression in real-time.
+- **Curated World Presets**:
+  - **⚖️ Balance (Default)**: Goldilocks harmony tuned for **500–800 inhabitants** with 220 food, carrying capacity 600 (max 800), gentle wars, rare predation, and flourishing multi-generational clans.
+  - **🌿 Sustainable**: Abundant food (450), carrying capacity 2200 (max 3000), low conflict, 1000-day peace.
+  - **🔥 Chaos**: High predator ratio, lethal wars, wildfires, frequent plagues, and fast seasonal turnover.
+  - **💀 Extinction**: Famine (100 food), harsh winter (0.3×), high decay, testing societal resilience under collapse.
+  - **🚀 Boom**: High reproduction, 650 food, carrying capacity 3500 (max 5000) for high-scale performance testing.
+
+### 2. Biology, Castes & Nature's Law
+- **Geometric Hierarchy**: Higher side counts perceive farther and live longer (Women shortest → Isosceles Soldiers → Equilateral Artisans → Squares/Pentagons → Polygons → Priests/Circles longest).
+- **Heritability & Ascendance**:
+  - Sons inherit one more side than their father ($n+1$), ascending the societal ladder across generations.
+  - Isosceles triangles creep $+0.5^\circ$ per generation, promoting to regular Equilateral Artisans at $60^\circ$.
+  - Daughters inherit the line form of their mother.
+  - Mutations may deviate a child's side count, producing irregularity judged at adulthood.
+- **Energy Metabolism & Life Stages**:
+  - Four distinct life stages: **Infant**, **Juvenile**, **Adult**, and **Elder**.
+  - Infants burn 55% less energy per tick (`0.45×`); elders move and see with reduced vigor.
+  - Hunger activates enhanced foraging sight; extreme starvation triggers desperate speed and pulsing indicators.
+
+### 3. Autonomous Evolution, Skills & Oral Lore
+Evolution emerges 100% autonomously without artificial intervention:
+- **Personality Archetypes**: Genetic heritability (65%) for traits including `brave`, `cautious`, `altruistic`, `greedy`, `explorer`, and `builder`. Altruistic creatures feed starving kin using basket reserves.
+- **Dynamic Equipment & Tools**:
+  - **Spears**: $+20\%$ combat damage and strike reach for Soldiers and Apex Predators.
+  - **Baskets**: Carry up to 3 food units for field meals while roaming or depositing into settlement larders.
+  - **Herb Poultices**: $+25\text{ HP}$ healing and infection remedies for Priests.
+  - **Chieftain Crown**: Adorns the leader of each settlement house.
+- **Skill Mastery Matrix**: Four masterable disciplines (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿) unlocking earned titles (*the Slayer*, *the Fearless Champion*, *the Grand Harvester*, *the Wise Shaman*, *the Pathfinder*).
+- **Oral Lore in Houses**: Resting elders teach their highest skill mastery to sleeping youth indoors.
+- **Thought Bubbles**: Real-time floating emote indicators (`🍖`, `❤️`, `⚔️`, `🌿`, `🏆`, `💤`, `🧺`, `😱`).
+
+### 4. Settlements, Clans & Diplomacy
+- **Settlement Houses**: Square walled halls with creature-sized doorways; houses block outside elements and wild carnivores.
+- **Territory & Clan Banners**: Foundational houses establish spatial clans with distinct banner colors, procedurally generated clan names, and totems (Wolf, Bear, Tree, Shield, Eye, Stag, Owl, etc.).
+- **Resource Sharing & Larders**: Settlements maintain food larders where sated members deposit surplus and hungry kin withdraw.
+- **Diplomacy & Politics**: Emergent alliances, defensive coalitions, tributary pacts, schisms, and territorial rivalries.
+
+### 5. Environment & Ecosystem
+- **Dynamic Seasons & Day/Night**: Spring blossoms, summer abundance, autumn harvests, and winter lean periods.
+- **Weather & Disasters**: Rain, fog, thunderstorms with lightning wildfires, and exposure sickness for unsheltered creatures.
+- **Biodiversity**: Distinct plant varieties (Grass, Berry Bushes, Mushrooms, and Poisonous Sprouts) and nutrient recycling from fallen corpses.
+
+---
 
 ## Quickstart
 
+### Prerequisites
+- **Python 3.12+** (with [`uv`](https://docs.astral.sh/uv/) recommended)
+- **Node.js 18+** & **npm**
+
+### One-Line Launch
 ```bash
-./run.sh          # web UI (backend :8000 + frontend :5173)
-./run.sh tui      # terminal client only — attaches to a running world
+./run.sh          # Starts FastAPI backend (:8000) and Vite frontend (:5173)
+./run.sh tui      # Launches terminal client attached to local backend
 ```
 
-- Frontend: http://localhost:5173 (open this)
-- Backend API: http://localhost:8000/docs
-- Living Guide: http://localhost:8000/guide
-- Living Wiki: http://localhost:8000/wiki
+- **Web UI**: [http://localhost:5173](http://localhost:5173)
+- **API Docs (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Living Wiki**: [http://localhost:8000/wiki](http://localhost:8000/wiki)
+- **Living Guide**: [http://localhost:8000/guide](http://localhost:8000/guide)
 
-The script installs dependencies on first run, starts both servers with live
-reload, and shuts them down cleanly on Ctrl-C.
+---
 
-## Manual commands
+## Manual Installation & Commands
 
-Backend:
-
+### Backend Setup
 ```bash
 cd backend
-uv sync                                  # create venv, install deps
-uv run pytest -q                         # run tests
+uv sync                                        # Create venv and install dependencies
+uv run pytest -v                               # Run comprehensive test suite
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-Frontend (second terminal):
-
+### Frontend Setup
 ```bash
 cd frontend
-npm install
-npm run dev                              # dev server with /ws + /api proxy
-npm run build                            # type-check + production build
+npm install                                    # Install frontend dependencies
+npm run dev                                    # Start Vite development server
+npm run build                                  # TypeScript compile & production bundle
 ```
 
-## Terminal TUI
+---
 
-A Textual client that watches/controls a running world over the same `/ws` +
-REST API — no browser, and **no server of its own**: it never starts a
-backend, it attaches to one that is already up (local machine, LAN box or
-production). Several TUIs can watch the same world at once.
+## Terminal TUI Client
+
+Flatland includes a complete terminal client powered by **Textual** (`backend/tui/`) that connects to any running world over WebSocket:
 
 ```bash
-./run.sh tui                                        # attach to localhost:8000
-./run.sh tui ws://<remote-host>:8000/ws              # attach to another host
-cd backend && FLATWORLD_WS=ws://host:8000/ws uv run -m tui
-uv run textual serve -m tui.serve                   # optional: TUI in the browser
+./run.sh tui                                   # Connect to localhost:8000
+./run.sh tui ws://<remote-host>:8000/ws        # Connect to a remote server
 ```
 
-If the world is down the TUI keeps reconnecting until it's back.
+### TUI Keybindings:
+| Key | Action |
+|:---:|---|
+| `Space` | Pause / Resume simulation |
+| `S` | Single step forward (1 tick) |
+| `R` | Reset world with new procedural seed |
+| `F` | Fit camera to entire world |
+| `W` | Follow/track currently selected creature |
+| `T` | Filter Chronicle log categories |
+| `+/-` | Zoom in / Zoom out |
+| `H / J / K / L` or Arrows | Pan camera view |
+| `Enter` or `I` | Open detailed Creature Inspector dossier |
+| `C` | Open Clan Details modal |
+| `G` | Open God Laws configuration screen |
+| `1` – `9` | Adjust simulation tick speed |
+| `?` | Show interactive help |
+| `Q` | Quit terminal client |
 
-Half-block char-grid world renderer (creatures wear their soul-code glyph in
-caste colors with floating emote thoughts and tool marks, houses are clan-colored boxes with doors, plants/corpses/fires/
-signals all drawn), HUD with selection dossier, color-coded Chronicle with category filtering, Clans table, Plots progress,
-population sparkline — plus god-laws form (`g`) posting to `/api/laws`.
+---
 
-Keys: `space` pause · `s` step · `r` reset · `f` fit · `w` follow creature · `t` log filter · `+/-` zoom (wheel too) ·
-`hjkl`/arrows pan · click select · `enter`/`i` inspect · `c` clan · `g` god laws ·
-`o` older events · `1-9` speed · `?` help · `q` quit.
-
-## Controls
-
-Pause / Resume / Step (single tick) / Reset / ticks-per-second — available from
-the web UI, or programmatically:
-
-```bash
-curl -X POST localhost:8000/api/control -H 'content-type: application/json' \
-     -d '{"action": "pause"}'
-curl localhost:8000/api/state
-```
-
-**God screen** (`⚖ God` button): set the laws of nature and the world obeys —
-food abundance (bounty/famine), energy metabolism, hunger thresholds,
-perception, movement rules, door clearance, world edge. God never intervenes in
-an individual creature's life:
-
-```bash
-curl localhost:8000/api/laws
-curl -X POST localhost:8000/api/laws -H 'content-type: application/json' \
-     -H "X-God-Key: $KEY" \
-     -d '{"food_count": 5}'   # famine
-```
-
-## God passkey (auth)
-
-God-touching endpoints — `POST /api/laws`, `POST /api/presets/{name}`,
-`POST /api/control` and control messages over the WebSocket — require a
-passkey. Viewing (`/ws`, `/api/state`, history, clans…) stays open.
-
-- **First time** (no credential exists): any god call answers `409`, and the
-  web UI asks you to **create** a passkey. Enroll directly with
-  `POST /api/auth/setup {"passkey": …}` if you prefer.
-- **After that**: every god call needs the key. The web UI remembers it in
-  localStorage; REST callers send `X-God-Key: <passkey>`; WebSocket control
-  messages carry `"key": "<passkey>"`.
-- **Lost passkey?** Reset it from the server's command line — there is no web
-  route for this:
-
-  ```bash
-  cd backend
-  uv run python -m app.godkey reset <new-passkey>  # overwrite (or create)
-  uv run python -m app.godkey clear                # forget → UI asks again on next visit
-  ```
-
-- **TUI / scripts**: no interactive auth, no bypass — pass the same key from
-  the command line: `./run.sh tui ws://host:8000/ws <passkey>` or export
-  `FLATWORLD_GOD_KEY=<passkey>`. Viewing works without it.
-- `FLATWORLD_GOD_KEY` also seeds the server-side credential at boot (handy for
-  headless deploys); only a PBKDF2 hash is stored, so clearing the database
-  wipes the credential and the next visit enrolls again.
-
-## Configuration (env vars)
-
-| Variable | Default | Description |
-|---|---|---|
-| `FLATWORLD_WIDTH` | `400` | World width (grid units) |
-| `FLATWORLD_HEIGHT` | `300` | World height |
-| `FLATWORLD_BOUNDARY` | `wrap` | `wrap` or `clamp` edge behaviour |
-| `FLATWORLD_SEED` | `42` | RNG seed (same seed ⇒ identical simulation) |
-| `FLATWORLD_TICK_RATE` | `10` | Initial ticks per second |
-| `FLATWORLD_GOD_KEY` | — | Seed/override the god passkey at boot |
-
-**World generation:** population and houses scale with map area (densities ×
-area, ±25% jitter, Flatland social pyramid). **Reset** rolls a fresh random
-seed — every reset is a brand-new world; the seed is shown in the HUD and
-recorded with that world run in the database.
-
-## Viewport & Chronicle
-
-- **Zoom:** mouse wheel or pinch; **pan:** drag with mouse/finger; **Fit view**
-  button resets the camera. Touch screens fully supported.
-- **HUD** shows live counts: alive vs dead creatures.
-- **Chronicle** panel (`Chronicle — Soldier 6 · Gentleman 4 · … · Food 24 · House 6` header with caste colors + stacked chart) records every event ("*Gentleman #3 died of starvation at tick 41*", births, promotions, demotions, recoveries); the full log also lives at `GET /api/history` and survives world resets. New world (Reset) clears the live feed; archive selector + `load older` paginates history.
-- **Creature inspector:** tap any creature to open its dossier — live vitals
-  (energy/health bars, stage, lineage) plus its personal history; a gold halo
-  marks the selection.
-
-## Persistence
-
-The backend stores its chronicle in SQLite at `backend/flatland.db`
-(override with `FLATWORLD_DB=/path/to.db`). Every world run gets a row in
-`worlds`; deaths are written to `events` as they happen; every god-law change
-is recorded in `law_changes`. History survives restarts and world resets.
-
-```bash
-curl localhost:8000/api/history?limit=100   # durable chronicle (paginated)
-curl localhost:8000/api/worlds              # all recorded world runs
-```
-
-## Architecture
+## Architecture & Codebase Map
 
 ```
-backend/app/
-├── config.py       # all tunables (geometry, population, behaviour)
-├── entities.py     # Creature castes (Flatland), Food, House
-├── world.py        # entity registry + spatial hash, wrap-aware queries
-├── simulation.py   # deterministic step(): perceive→steer→move→eat→metabolize
-├── protocol.py     # pydantic wire schemas (shared contract with frontend)
-└── main.py         # FastAPI: WS broadcast hub, control actions, REST helpers
-frontend/src/
-├── types.ts        # TS mirror of protocol.py
-├── websocket.ts    # reconnecting WS client
-├── render/CanvasRenderer.tsx  # rAF loop drawing latest snapshot
-└── App.tsx         # HUD (tick/population/seed) + controls
-backend/tui/        # terminal client (Textual) — pure /ws + REST consumer
-├── state.py        # tolerant typed mirror of protocol.py
-├── client.py       # WSClient (reconnect+backoff) + RESTClient (httpx)
-├── theme.py        # caste colors, glyphs (single source of truth)
-├── widgets/        # world_view (half-block renderer), hud, chronicle, …
-└── screens/        # god_laws form, inspector, clan details, help
+ws/
+├── backend/
+│   ├── app/
+│   │   ├── config.py       # Configuration dataclass & default environment values
+│   │   ├── entities.py     # Creature castes, traits, food variants, and houses
+│   │   ├── world.py        # Entity spatial hash index & wrap-aware proximity queries
+│   │   ├── simulation.py   # Deterministic step pipeline: perceive, steer, eat, reproduce
+│   │   ├── protocol.py     # Pydantic schemas shared between backend & frontend
+│   │   ├── db.py           # SQLite persistence for worlds, events, and lineage
+│   │   ├── guide.py        # Backend-rendered HTML Living Guide
+│   │   ├── wiki.py         # Living Wiki & API documentation
+│   │   └── main.py         # FastAPI app, WebSocket broadcaster, and REST endpoints
+│   ├── tui/                # Textual terminal client
+│   └── tests/              # Pytest test suite (231+ automated tests)
+└── frontend/
+    └── src/
+        ├── render/
+        │   ├── CanvasRenderer.tsx  # High-performance 60 FPS batched HTML5 Canvas renderer
+        │   ├── ClanPanel.tsx       # Live clan settlements, totems, and war records
+        │   ├── ChronicleFeed.tsx   # Filterable, scrollable real-time event log
+        │   ├── PlotsPanel.tsx      # Multi-metric population and caste sparklines
+        │   └── Collapsible.tsx     # Dynamic flex collapsible accordion component
+        ├── god/
+        │   └── GodPanel.tsx        # Interactive Laws of Nature control drawer
+        ├── inspect/
+        │   └── Inspector.tsx       # Creature dossier, vitals, inventory & family tree
+        ├── wiki/
+        │   └── Wiki.tsx            # In-app interactive wiki & API playground
+        └── App.tsx                 # Main application layout, HUD, and WebSocket synchronization
 ```
 
-Protocol: server pushes `{type:"hello"}` then `{type:"state"}` snapshots every
-tick; clients send `{action:"pause"|"resume"|"step"|"reset"|"set_speed", value}`.
+---
 
-## Concurrency & performance
+## Performance & Scale
 
-The world is one deterministic, in-process state machine, so it advances on a
-**dedicated engine thread** (`SimEngine` in `main.py`) instead of the asyncio
-loop — HTTP/WebSocket load, JSON snapshot serialization and SQLite writes no
-longer stall ticks, and vice versa. Every touch of the live simulation
-(tick, control actions, law changes, state reads) crosses `RT.lock`, so REST
-and WS clients never observe a half-advanced tick. The tick itself is kept
-lean by algorithmic wins (broad-phase wall tests with cached house segments,
-squared-distance threshold checks); multi-process workers are intentionally
-*not* used — they would mean several disconnected worlds, and CPython's GIL
-makes thread-level compute parallelism a wash for pure-Python simulation.
-Performance round 2 keeps 400–500 creatures smooth: spatial-hash neighbour
-queries for war pair discovery and mob counts, incremental clan relations
-(eater pairs via the hash, one dominant-caste pass, neutral pairs pruned),
-plain-dict snapshots with cached personal identity instead of pydantic
-validation per frame, `orjson` broadcast encoding, and all of a tick's DB
-writes committed together (`Database.batch()`).
+- **Zero-Allocation Spatial Hash**: Pre-allocated 1D bucket list in `world.py` eliminates tuple allocations and dictionary re-hashing per tick; neighbor lookups use squared-distance early-exits.
+- **Dedicated Engine Thread**: Simulation runs on a dedicated high-priority tick loop (`SimEngine` in `main.py`), completely isolating mathematical simulation advancement from asynchronous HTTP/WebSocket I/O.
+- **Batched Canvas 2D Rendering**: `CanvasRenderer.tsx` batches drawing passes by caste, plant variant, and house primitives with inline trigonometric vertex transforms, reducing draw calls from over 20,000 to ~30–50.
+- **Decoupled React State**: High-frequency snapshot data streams directly into mutable refs for canvas rendering at 60 FPS, while React DOM reconciliation for HUD chips and panels is throttled to ~6 Hz to keep the browser responsive.
 
-## Roadmap hooks already in place
+---
 
-- Dimensionality is isolated to `config`/`world` (add a z-axis without redesign)
-- Snapshot protocol is versioned by shape; swap full snapshots for diffs later
-- Deterministic seeded RNG per tick ⇒ future replay/record support
+## Authors & Attribution
+
+- **Developed by**: **[Long Phan](mailto:long@minhnhan.in)**  
+  Email: [long@minhnhan.in](mailto:long@minhnhan.in)  
+  Website: [https://minhnhan.in](https://minhnhan.in)  
+  Live World: [https://world.minhnhan.in](https://world.minhnhan.in)
+- **AI Tooling & Development**: Built and engineered with **OpenCode** and **Antigravity**.
+- **Literary Source**: Based on the mathematical concept and social commentary of ***Flatland: A Romance of Many Dimensions*** by **Edwin A. Abbott** (1884).
+
+---
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE). See [LICENSE.md](LICENSE.md) for details.
-
-## Developer
-
-**Long Phan** — [long@minhnhan.in](mailto:long@minhnhan.in) — long@minhnhan.in
-
-- Website: https://minhnhan.in · World: https://world.minhnhan.in
-- Backend: `backend/` · Frontend: `frontend/` · Docs: `docs/` + `/wiki` & `/guide`
-
-> Flatland is designed, built and maintained by **Long Phan (long@minhnhan.in)**. For inquiries, deployments or collaboration, reach out via long@minhnhan.in.
-
+This project is open source and available under the [MIT License](LICENSE). See [LICENSE.md](LICENSE.md) for the full license text.

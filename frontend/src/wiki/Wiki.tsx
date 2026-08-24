@@ -76,26 +76,35 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
         </div>
 
         {tab === 'guide' && (
-          <div style={{ fontSize: 13, lineHeight: 1.5, color: '#c9d1d9' }}>
-            <h3>Overview</h3>
-            <p>Flatland is a 2D emergent world: geometric castes wander, eat, shelter, age, mate. God sets <em>laws</em>, never a life. Live at <code>/</code>, backend at <code>:8000</code>.</p>
-            <h4>How to use</h4>
+          <div style={{ fontSize: 13, lineHeight: 1.6, color: '#c9d1d9' }}>
+            <h3 style={{ color: '#e6edf3', marginTop: 0 }}>📖 About Flatland</h3>
+            <p>
+              <strong>Flatland</strong> is an autonomous 2D artificial life and ecosystem simulation inspired by <strong>Edwin A. Abbott's 1884 novella <em>Flatland: A Romance of Many Dimensions</em></strong>. Geometric beings wander, forage, farm, master skills, establish multi-generational clan settlements, and evolve under immutable natural laws.
+            </p>
+            <h4 style={{ color: '#e6edf3' }}>Key Simulation Mechanics</h4>
             <ul>
-              <li><b>God panel</b> (⚖ God) — edit laws, presets (sustainable/chaos/extinction), Apply vs Save.</li>
-              <li><b>Wiki</b> (this page) — docs + API playground. Backend wiki at <a href="/wiki">/wiki</a>.</li>
-              <li><b>Controls</b>: space pause, S step, R reset, F fit, +/- zoom, drag/pinch.</li>
+              <li><strong>The God Model</strong>: God sets universal <em>laws of nature</em>, never intervening in individual lives. Everything is 100% emergent.</li>
+              <li><strong>Autonomous Evolution</strong>: Heritable personality archetypes (brave, altruistic, builder, etc.), tools (spears, baskets, poultices, crowns), 4 mastery skills (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿), dynamic titles, and oral lore taught in houses.</li>
+              <li><strong>Life Stages & Metabolism</strong>: Infant low burn (0.45×), combat stamina drain, field food reserves, and natural lifespans.</li>
+              <li><strong>Settlements & Politics</strong>: Walled houses, multi-house clan territories, settlement food larders, mutual coalitions, and schisms.</li>
             </ul>
-            <h4>Quickstart</h4>
-            <pre style={{ background: '#161b22', padding: 12, borderRadius: 6, overflow: 'auto' }}><code>{`./run.sh
-# backend: http://localhost:8000/docs  wiki: http://localhost:8000/wiki
-# frontend: http://localhost:5173`}</code></pre>
-            <h4>Data flow</h4>
-            <p><code>tick_loop → sim.step() → snapshot → WS /ws</code> throttled ~30 Hz. Client sends <code>{"{"}"action":"pause"{"}"}</code>.</p>
-            <h4>Links</h4>
+            <h4 style={{ color: '#e6edf3' }}>Interactive Features</h4>
             <ul>
-              <li><a href="/wiki">Backend Wiki (/wiki)</a> — full docs with presets & playground</li>
-              <li><a href="/guide">Guide (/guide)</a> — minimal living docs</li>
-              <li><a href="/docs">Swagger (/docs)</a> + <a href="/openapi.json">/openapi.json</a></li>
+              <li><strong>God Panel</strong> (⚖ God) — Adjust carrying capacity, food growth, metabolism, disease, and apply presets.</li>
+              <li><strong>Creature Inspector</strong> — Tap any creature to view its live vitals, personality, tools, skill mastery, and family lineage.</li>
+              <li><strong>Controls</strong>: Space pause, S step, R reset seed, F fit camera, +/- zoom, drag to pan.</li>
+            </ul>
+            <h4 style={{ color: '#e6edf3' }}>Quickstart</h4>
+            <pre style={{ background: '#161b22', padding: 12, borderRadius: 6, overflow: 'auto', border: '1px solid #30363d' }}><code>{`./run.sh
+# Frontend: http://localhost:5173
+# Backend API: http://localhost:8000/docs
+# Living Wiki: http://localhost:8000/wiki`}</code></pre>
+            <h4 style={{ color: '#e6edf3' }}>Documentation Links</h4>
+            <ul>
+              <li><a href="/wiki">Backend Living Wiki (/wiki)</a> — Full documentation with presets & curl playground</li>
+              <li><a href="/guide">Living Guide (/guide)</a> — Codebase architecture and system maps</li>
+              <li><a href="/docs">Swagger Interactive API (/docs)</a> + <a href="/openapi.json">/openapi.json</a></li>
+              <li><a href="/docs/god-laws.md">God Laws Reference (/docs/god-laws.md)</a></li>
             </ul>
           </div>
         )}
@@ -226,9 +235,10 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
           </div>
         )}
 
-        <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #21262d', fontSize: 11, color: '#8b949e' }}>
+        <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #21262d', fontSize: 11, color: '#8b949e', lineHeight: 1.5 }}>
           Wiki is live — <code>{data?.laws.length ?? 0} laws</code> · <code>{data?.routes.length ?? 0} routes</code> · <code>{Object.keys(data?.presets ?? {}).length} presets</code> · <a href="/wiki">/wiki HTML</a> · <a href="/api/wiki">/api/wiki JSON</a>
-          <br />Developer <strong>Long Phan</strong> — <a href="mailto:long@minhnhan.in">long@minhnhan.in</a> · <a href="https://minhnhan.in">minhnhan.in</a> · <a href="https://world.minhnhan.in">world.minhnhan.in</a>
+          <br />Developed by <strong>Long Phan</strong> — <a href="mailto:long@minhnhan.in">long@minhnhan.in</a> · <a href="https://minhnhan.in">minhnhan.in</a> · <a href="https://world.minhnhan.in">world.minhnhan.in</a>
+          <br /><span style={{ opacity: 0.85 }}>Built with OpenCode & Antigravity · Inspired by Edwin A. Abbott's <em>Flatland</em></span>
         </div>
       </div>
     </div>

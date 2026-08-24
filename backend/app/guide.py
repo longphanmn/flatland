@@ -365,8 +365,8 @@ table{{border-collapse:collapse;width:100%;margin:12px 0}} th,td{{border:1px sol
 h1{{border-bottom:2px solid #e5e7eb;padding-bottom:6px}} h2{{margin-top:28px;color:#111}}
 @media(max-width:700px){{nav{{position:relative;width:auto;height:auto}} main{{margin-left:0}}}}
 </style></head><body>
-<nav><h3>Flatland Guide</h3><ul>{nav}</ul><p><a href="/docs">Swagger /docs</a> · <a href="/openapi.json">OpenAPI</a></p><p><a href="/guide?format=json">JSON</a></p><p style="font-size:12px;color:#8b949e;margin-top:16px;border-top:1px solid #e5e7eb;padding-top:12px">Developer<br/><strong>Long Phan</strong><br/><a href="mailto:long@minhnhan.in">long@minhnhan.in</a><br/><a href="https://minhnhan.in">minhnhan.in</a></p></nav>
-<main>{content}</main><footer style="margin-left:240px;padding:12px 24px;font-size:12px;color:#8b949e;border-top:1px solid #e5e7eb;text-align:center">© Flatland — Developed by <strong>Long Phan</strong> &lt;<a href="mailto:long@minhnhan.in">long@minhnhan.in</a>&gt; · <a href="https://minhnhan.in">minhnhan.in</a> · <a href="https://world.minhnhan.in">world.minhnhan.in</a></footer></body></html>
+<nav><h3>Flatland Guide</h3><ul>{nav}</ul><p><a href="/docs">Swagger /docs</a> · <a href="/openapi.json">OpenAPI</a></p><p><a href="/guide?format=json">JSON</a></p><p style="font-size:12px;color:#8b949e;margin-top:16px;border-top:1px solid #e5e7eb;padding-top:12px">Developed by<br/><strong>Long Phan</strong><br/><a href="mailto:long@minhnhan.in">long@minhnhan.in</a><br/><a href="https://minhnhan.in">minhnhan.in</a><br/><small style="color:#8b949e;display:block;margin-top:4px">Built with OpenCode & Antigravity<br/>Inspired by Edwin A. Abbott</small></p></nav>
+<main>{content}</main><footer style="margin-left:240px;padding:12px 24px;font-size:12px;color:#8b949e;border-top:1px solid #e5e7eb;text-align:center">© Flatland — Developed by <strong>Long Phan</strong> &lt;<a href="mailto:long@minhnhan.in">long@minhnhan.in</a>&gt; · <a href="https://minhnhan.in">minhnhan.in</a> · <a href="https://world.minhnhan.in">world.minhnhan.in</a> · Built with OpenCode & Antigravity · Inspired by Edwin A. Abbott</footer></body></html>
 """
 
 
