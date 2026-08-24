@@ -44,6 +44,7 @@ export interface EntityState {
   door_width?: number
   door_offset?: number
   door_side?: 'north' | 'east' | 'south' | 'west'
+  is_main?: boolean
   is_ruin?: boolean
   abandoned_ticks?: number
   growth?: number

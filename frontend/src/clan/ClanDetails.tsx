@@ -16,6 +16,14 @@ interface ClanMember {
   glyph: string
 }
 
+interface ClanHouse {
+  id: number
+  x: number
+  y: number
+  size: number
+  is_main?: boolean
+}
+
 interface ClanDetailsData {
   id: number
   name: string
@@ -25,7 +33,9 @@ interface ClanDetailsData {
   leader_id: number | null
   born_tick: number
   population: number
-  house: { x: number; y: number; size: number } | null
+  house: ClanHouse | null
+  houses?: ClanHouse[]
+  main_house_id?: number | null
   war_wins: number
   war_losses: number
   territory_radius: number | null
@@ -212,13 +222,21 @@ export default function ClanDetails({
         <span className="chip">
           War <b>{data.war_wins}W</b> / <b>{data.war_losses}L</b>
         </span>
-        <span className="chip">
+        <span className="chip" style={{ width: '100%' }}>
           {data.house ? (
-            <>🏠 House ({Math.round(data.house.x)}, {Math.round(data.house.y)})</>
+            <>
+              👑 <b>Main House</b> ({Math.round(data.house.x)}, {Math.round(data.house.y)}) ·{' '}
+              <span style={{ color: data.color, fontWeight: 600 }}>Leader #{data.leader_id ?? '—'} lives here</span>
+            </>
           ) : (
             <>🏕 Homeless</>
           )}
         </span>
+        {((data.houses?.length ?? 0) > 1) && (
+          <span className="chip">
+            🏠 Houses <b>{data.houses!.length}</b> total
+          </span>
+        )}
         {data.territory_radius && (
           <span className="chip">
             📍 Radius <b>r{data.territory_radius}</b>
@@ -230,6 +248,36 @@ export default function ClanDetails({
           </span>
         )}
       </div>
+
+      {/* Houses Collapsible */}
+      {(data.houses && data.houses.length > 0) && (
+        <Collapsible id={`clan-houses-${data.id}`} title={<h3 className="insp-h">Houses ({data.houses.length})</h3>}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+            {data.houses.map((h) => (
+              <div
+                key={h.id}
+                className="chip"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '5px 8px',
+                  background: h.is_main ? 'rgba(227, 179, 65, 0.12)' : 'rgba(22, 27, 34, 0.7)',
+                  border: h.is_main ? '1px solid #e3b341' : `1px solid ${data.color}`,
+                  borderRadius: 6,
+                }}
+              >
+                <span>
+                  {h.is_main ? '👑 Main House' : '🏠 House'} #{h.id} ({Math.round(h.x)}, {Math.round(h.y)})
+                </span>
+                <span style={{ fontSize: 10.5, color: h.is_main ? '#e3b341' : '#8b949e', fontWeight: 600 }}>
+                  {h.is_main ? `Leader #${data.leader_id ?? '—'}` : `size ${h.size.toFixed(1)}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Collapsible>
+      )}
 
       {/* Specialization Bars */}
       {data.specialization && (

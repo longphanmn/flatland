@@ -858,12 +858,29 @@ def _clan_details(clan_id: int) -> dict:
                 "personal_name": __import__('app.simulation', fromlist=['personal_name_for']).personal_name_for(c.id, RT.sim.config.seed, c.generation),
                 "glyph": __import__('app.simulation', fromlist=['glyph_for']).glyph_for(c.id, RT.sim.config.seed, c.generation),
             })
-    # house
-    house = None
+    # houses — a clan can have multiple houses, main house is where leader lives
+    clan_houses = []
+    main_house = None
+    main_hid = info.get("main_house_id")
     for ent in RT.sim.world.entities.values():
         if ent.kind == "house" and getattr(ent, "clan_id", 0) == clan_id and not getattr(ent, "is_ruin", False):
-            house = {"x": ent.x, "y": ent.y, "size": getattr(ent, "size", 0), "is_ruin": False, "clan_color": getattr(ent, "clan_color", None)}
-            break
+            is_main = bool(getattr(ent, "is_main", False) or (main_hid and ent.id == main_hid))
+            h_obj = {
+                "id": ent.id,
+                "x": round(ent.x, 2),
+                "y": round(ent.y, 2),
+                "size": getattr(ent, "size", 0),
+                "is_main": is_main,
+                "is_ruin": False,
+                "clan_color": getattr(ent, "clan_color", None),
+            }
+            clan_houses.append(h_obj)
+            if is_main or main_house is None:
+                main_house = h_obj
+
+    if main_house is not None:
+        main_house["is_main"] = True
+
     # war record
     wins = sum(1 for e in RT.sim.history if e.type == "war" and int(e.payload.get("b", 0) or 0) == clan_id)
     losses = sum(1 for e in RT.sim.history if e.type == "war" and int(e.payload.get("a", 0) or 0) == clan_id)
@@ -878,7 +895,9 @@ def _clan_details(clan_id: int) -> dict:
         "leader_id": info.get("leader_id"),
         "born_tick": info.get("born_tick"),
         "population": len(members),
-        "house": house,
+        "house": main_house,
+        "houses": clan_houses,
+        "main_house_id": main_house["id"] if main_house else None,
         "war_wins": wins,
         "war_losses": losses,
         "territory_radius": RT.sim.config.territory_radius if RT.sim.config.territory_enabled else None,

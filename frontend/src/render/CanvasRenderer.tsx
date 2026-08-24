@@ -966,22 +966,27 @@ export default function CanvasRenderer({ stateRef, selectedRef, selectedClanRef,
         if (!e.clan_id || e.is_ruin) continue
         const clan = (state as any).clans?.[String(e.clan_id)]
         const totem: string | undefined = clan?.totem
-        if (!totem) continue
+        const isMain = e.is_main
         const size = e.size ?? 8
         const poleX = e.x + size / 2 + 1.2
         const poleY = e.y - size / 2 + 1.0
         ctx.save()
         ctx.translate(poleX, poleY)
         // pole
-        ctx.fillStyle = '#8b949e'
-        ctx.fillRect(-0.18, -1.2, 0.36, 2.4)
+        ctx.fillStyle = isMain ? '#e3b341' : '#8b949e'
+        ctx.fillRect(-0.2, -1.3, 0.4, 2.6)
         // totem icon (emoji, from the shared registry)
-        const info = TOTEMS[totem]
+        const info = totem ? TOTEMS[totem] : null
         ctx.fillStyle = info?.color ?? '#e6edf3'
-        ctx.font = '1.7px ui-monospace, monospace'
+        ctx.font = isMain ? '2.1px ui-monospace, monospace' : '1.7px ui-monospace, monospace'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText(info?.emoji ?? '•', 0, -1.6)
+        ctx.fillText(info?.emoji ?? (isMain ? '👑' : '•'), 0, -1.8)
+        if (isMain) {
+          ctx.fillStyle = '#e3b341'
+          ctx.font = '1.3px ui-monospace, monospace'
+          ctx.fillText('👑', 0, -3.4)
+        }
         ctx.restore()
       }
       // selection halo
@@ -1030,6 +1035,25 @@ export default function CanvasRenderer({ stateRef, selectedRef, selectedClanRef,
           ctx.arc(m.x, m.y, (m.radius ?? 1.2) + 1.6, 0, TAU)
           ctx.stroke()
           ctx.setLineDash([])
+        }
+
+        // Highlight houses: Main House (Leader's Residence) has a prominent gold accent ring
+        for (const h of clanHouses) {
+          if (h.is_main) {
+            ctx.strokeStyle = '#e3b341'
+            ctx.lineWidth = 0.5
+            ctx.setLineDash([2, 1.5])
+            ctx.beginPath()
+            ctx.arc(h.x, h.y, (h.size ?? 6) * 0.75, 0, TAU)
+            ctx.stroke()
+            ctx.setLineDash([])
+
+            ctx.fillStyle = '#e3b341'
+            ctx.font = '1.7px ui-monospace, monospace'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'bottom'
+            ctx.fillText('👑 Leader Main House', h.x, h.y - (h.size ?? 6) / 2 - 1.2)
+          }
         }
 
         // Territory bounding envelope with dashed border

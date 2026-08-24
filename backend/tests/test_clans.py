@@ -221,3 +221,39 @@ def test_get_plots_handles_mixed_settlement_clans():
     client = TestClient(app)
     r = client.get("/api/plots")
     assert r.status_code == 200
+
+
+def test_clan_can_have_multiple_houses_and_leader_lives_in_main_house():
+    """A clan can possess multiple houses across its territory, and the leader resides in the main house."""
+    s = Simulation(Config(seed=42, max_clans=1, shelter_enabled=True, house_claim_enabled=True))
+    cid = 1
+    leader_id = s.clans[cid]["leader_id"]
+    leader = s.world.entities[leader_id]
+
+    # Main house was assigned at founding
+    main_hid = s.clans[cid]["main_house_id"]
+    assert main_hid is not None
+    main_house = s.world.entities[main_hid]
+    assert isinstance(main_house, House)
+    assert main_house.is_main is True
+    assert main_house.clan_id == cid
+
+    # Spawn additional houses for the clan
+    h2 = s._spawn_settlement_house(clan_id=cid, near=leader)
+    assert h2.clan_id == cid
+    assert h2.is_main is False
+
+    # Check shelter preference: Leader prioritizes main house
+    houses = [h for h in s.world.entities.values() if isinstance(h, House) and not h.is_ruin]
+    chosen = s._house_for(leader, houses)
+    assert chosen is not None
+    assert chosen.id == main_hid
+
+    # Other clan member chooses nearest available clan house
+    other_members = [c for c in s.world.creatures() if c.clan_id == cid and c.id != leader_id]
+    if other_members:
+        om = other_members[0]
+        om_chosen = s._house_for(om, houses)
+        assert om_chosen is not None
+        assert om_chosen.clan_id == cid
+

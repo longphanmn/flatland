@@ -483,6 +483,7 @@ class Simulation:
             "coalition_id": None,
             "larder": 0.0,
             "tribute_to": None,
+            "main_house_id": None,
         }
         return cid
 
@@ -563,6 +564,8 @@ class Simulation:
                 if cfg.house_claim_enabled:
                     h.clan_id = cid
                     h.clan_color = self.clans[cid]["color"]
+                    h.is_main = True
+                    self.clans[cid]["main_house_id"] = h.id
         # No houses and no cap: roofless founders stay clanless — a settlement
         # defines a clan (§V); clans rise later from the generations.
 
@@ -624,6 +627,9 @@ class Simulation:
             h = houses_by_id[hid]
             h.clan_id = cid
             h.clan_color = self.clans[cid]["color"]
+            if not self.clans[cid].get("main_house_id"):
+                h.is_main = True
+                self.clans[cid]["main_house_id"] = h.id
         # clans without a free house: build a settlement when unpinned (§L)
         # (ghost clans with no living members never build)
         for cid in sorted(clan_ids):
@@ -642,6 +648,7 @@ class Simulation:
             if h.clan_id and h.clan_id not in self.clans:
                 h.clan_id = 0
                 h.clan_color = None
+                h.is_main = False
         homeless = [
             cid
             for cid in sorted(self.clans.keys())
@@ -664,6 +671,9 @@ class Simulation:
             h = self._nearest_house_to(ax, ay, free)
             h.clan_id = clan_id
             h.clan_color = self.clans.get(clan_id, {}).get("color")
+            if not self.clans.get(clan_id, {}).get("main_house_id"):
+                h.is_main = True
+                self.clans[clan_id]["main_house_id"] = h.id
             return
         # No free house: a new clan founds a new settlement (§L settlement economy)
         # But respect explicit overrides: tests/scenarios that pin num_houses keep housing shortage
@@ -678,6 +688,7 @@ class Simulation:
             for h in houses:  # type: ignore[union-attr]
                 h.clan_id = 0
                 h.clan_color = None
+                h.is_main = False
         else:
             self._assign_house_claims()
 
@@ -710,6 +721,9 @@ class Simulation:
         if clan_id is not None and self.config.house_claim_enabled:
             house.clan_id = clan_id
             house.clan_color = self.clans.get(clan_id, {}).get("color")
+            if not self.clans.get(clan_id, {}).get("main_house_id"):
+                house.is_main = True
+                self.clans[clan_id]["main_house_id"] = house.id
         self.world.add(house)
         self._emit(
             HistoryEvent(
@@ -734,6 +748,41 @@ class Simulation:
         if len(functional) < target and (self.tick % 100 == 0):
             self._spawn_settlement_house()
 
+        # — clan expansion: growing clans claim free houses or build new ones —
+        if self.config.house_claim_enabled and (self.tick % 50 == 0):
+            living_members_by_clan: dict[int, list[Creature]] = {}
+            for c in self._get_creatures():
+                if c.clan_id:
+                    living_members_by_clan.setdefault(c.clan_id, []).append(c)
+
+            for cid, members in living_members_by_clan.items():
+                clan_houses = [h for h in functional if isinstance(h, House) and h.clan_id == cid]
+                total_beds = sum(self._house_beds(h) for h in clan_houses)
+
+                # Ensure the clan has a designated main house
+                if clan_houses:
+                    main_hid = self.clans.get(cid, {}).get("main_house_id")
+                    if not any(h.id == main_hid and h.is_main for h in clan_houses):
+                        main_h = max(clan_houses, key=lambda h: h.size)
+                        main_h.is_main = True
+                        self.clans[cid]["main_house_id"] = main_h.id
+
+                # If clan population outgrows beds, claim nearby free house or spawn extension
+                if len(members) > total_beds:
+                    unclaimed = [h for h in functional if isinstance(h, House) and h.clan_id == 0]
+                    if unclaimed:
+                        ax, ay = self._clan_centroid(members)
+                        nearest_free = self._nearest_house_to(ax, ay, unclaimed)
+                        max_d = cfg.territory_radius * 2.0 if cfg.territory_enabled else 60.0
+                        if self.world.distance(ax, ay, nearest_free.x, nearest_free.y) <= max_d:
+                            nearest_free.clan_id = cid
+                            nearest_free.clan_color = self.clans[cid]["color"]
+                            nearest_free.is_main = False
+                    elif cfg.shelter_enabled and cfg.num_houses < 0 and len(functional) < target * 1.5:
+                        rand_m = self.rng.choice(members)
+                        exp_house = self._spawn_settlement_house(cid, near=rand_m)
+                        exp_house.is_main = False
+
         # — decay: abandoned houses crumble to ruins —
         # Build living-clan set once
         living_clans = {c.clan_id for c in self._get_creatures() if c.clan_id}
@@ -749,6 +798,7 @@ class Simulation:
                 h.is_ruin = True
                 h.clan_id = 0
                 h.clan_color = None
+                h.is_main = False
                 self._emit(
                     HistoryEvent(
                         type="ruin", tick=self.tick + 1, entity_id=h.id,
@@ -758,11 +808,10 @@ class Simulation:
                 )
 
     def _house_for(self, c: Creature, houses: list[Entity]) -> House | None:
-        """Preferred shelter: the clan's own roof while it has beds free; when
-        it is full (or the creature is clanless) the nearest roof WITH space —
-        a house's capacity depends on its size, so overflow spills across the
-        village instead of queueing all night at one packed door. Only when
-        every roof is full does the nearest door queue for tomorrow."""
+        """Preferred shelter: the clan's own roofs while they have beds free;
+        the clan leader resides and prioritizes the MAIN house; other kin
+        spread across all clan houses. When all roofs are full, overflow
+        spills across the village."""
         if not houses:
             return None
 
@@ -772,26 +821,45 @@ class Simulation:
         def has_room(h: House) -> bool:
             return self._beds.get(h.id, 0) < self._house_beds(h)
 
-        own: House | None = None
         if self.config.house_claim_enabled and c.clan_id:
-            own = next(
-                (
-                    h  # type: ignore[union-attr]
-                    for h in houses
-                    if isinstance(h, House) and h.clan_id == c.clan_id
-                ),
-                None,
-            )
-        if own is not None and has_room(own):
-            return own
-        free = [h for h in houses if isinstance(h, House) and has_room(h)]
+            clan_info = self.clans.get(c.clan_id, {})
+            leader_id = clan_info.get("leader_id")
+            main_hid = clan_info.get("main_house_id")
+
+            own_houses = [
+                h for h in houses
+                if isinstance(h, House) and h.clan_id == c.clan_id and not h.is_ruin
+            ]
+
+            if own_houses:
+                # Leader prioritizes living in the main house
+                if c.id == leader_id:
+                    main_house = next((h for h in own_houses if h.id == main_hid or getattr(h, "is_main", False)), own_houses[0])
+                    if has_room(main_house):
+                        return main_house
+
+                # Members (or leader if main house full) choose nearest own house with room
+                own_free = [h for h in own_houses if has_room(h)]
+                if own_free:
+                    return min(own_free, key=dist)
+
+            # If all own clan houses are full, seek any free house in the world
+            free = [h for h in houses if isinstance(h, House) and not h.is_ruin and has_room(h)]
+            if free:
+                return min(free, key=dist)
+
+            # Every roof is full: queue at main house (if leader) or nearest own house
+            if own_houses:
+                if c.id == leader_id:
+                    return next((h for h in own_houses if h.id == main_hid or getattr(h, "is_main", False)), own_houses[0])
+                return min(own_houses, key=dist)
+
+        # Clanless creature: nearest house with room
+        free = [h for h in houses if isinstance(h, House) and not h.is_ruin and has_room(h)]
         if free:
-            # kin keep to kin where several roofs of their clan have space
-            # (conquest/settlements can leave a clan more than one house)
-            own_free = [h for h in free if own is not None and h.clan_id == c.clan_id]
-            return min(own_free or free, key=dist)
-        # every roof is full: fall back to own (or nearest) and queue at the door
-        return own or min(houses, key=dist)  # type: ignore[arg-type,return-value]
+            return min(free, key=dist)
+        functional = [h for h in houses if isinstance(h, House) and not h.is_ruin]
+        return min(functional, key=dist) if functional else None
 
     def _door_pos(self, h: House) -> tuple[float, float]:
         """Center of the doorway gap (where creatures can pass)."""
@@ -3828,6 +3896,7 @@ class Simulation:
                 "door_side": e.door_side,
                 "clan_id": e.clan_id or None,
                 "clan_color": e.clan_color,
+                "is_main": bool(getattr(e, "is_main", False) or (e.clan_id and self.clans.get(e.clan_id, {}).get("main_house_id") == e.id)),
                 "is_ruin": e.is_ruin or None,
                 "abandoned_ticks": e.abandoned_ticks or None,
             }
