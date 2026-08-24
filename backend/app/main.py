@@ -345,12 +345,25 @@ def _try_restore_snapshot() -> bool:
         # Hotfix live world for N150: reduce query radii and heavy subsystems when pop >800
         c_count = len([e for e in RT.sim.world.entities.values() if e.kind == "creature"])
         if c_count > 800:
-            # Apply cheaper laws in-place without POST (preserves tick)
-            new_cfg = replace(RT.config, perceive_radius=14.0, signal_radius=8.0, knowledge_enabled=False, schism_enabled=False, help_call_enabled=False)
+            # Apply cheaper laws in-place without POST (preserves tick) — keep most restrictive
+            new_cfg = replace(
+                RT.config,
+                perceive_radius=min(RT.config.perceive_radius, 12.0),
+                signal_radius=min(RT.config.signal_radius, 6.0),
+                knowledge_enabled=False,
+                schism_enabled=False,
+                help_call_enabled=False,
+                war_enabled=False,
+                predation_enabled=False,
+                territory_enabled=False,
+                carrying_capacity=min(RT.config.carrying_capacity if RT.config.carrying_capacity>0 else 1200, 1200),
+                max_population=min(RT.config.max_population if RT.config.max_population>0 else 1300, 1300),
+                plant_growth_rate=min(RT.config.plant_growth_rate, 0.03),
+            )
             RT.config = new_cfg
             RT.sim.config = new_cfg
             RT.sim.world.config = new_cfg
-            print(f"[restore] hotfix {c_count}c: perceive 14 signal 8 knowledge/schism/help off for 10t/s", flush=True)
+            print(f"[restore] hotfix {c_count}c: perceive {new_cfg.perceive_radius} signal {new_cfg.signal_radius} cap {new_cfg.carrying_capacity}/{new_cfg.max_population} for 10t/s", flush=True)
         # Move aside so next start is fresh unless explicitly re-saved
         try:
             p.rename(p.with_suffix(".loaded"))

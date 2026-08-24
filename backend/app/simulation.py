@@ -1356,8 +1356,19 @@ class Simulation:
         clan_house_map: dict[int, House] = {
             h.clan_id: h for h in houses if isinstance(h, House) and h.clan_id and not h.is_ruin
         }
+        c_n_pre = len(self._cached_creatures)
+        # N150: stagger creature updates when >1000c (halves per-tick query cost)
         for creature in list(self._cached_creatures):
             if creature.id not in self.world.entities:
+                continue
+            if c_n_pre > 1000 and (creature.id & 1) != (self.tick & 1):
+                # light tick: age+metabolize only, no spatial queries
+                creature.age += 1
+                # stage-aware metabolism (infant 0.45 etc) without full logic
+                mult = STAGE_ENERGY_MULT.get(creature.stage, 1.0)
+                creature.energy -= self.config.energy_decay_per_tick * mult
+                if creature.energy < 0:
+                    creature.energy = 0
                 continue
             self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
         self._refresh_cache()
