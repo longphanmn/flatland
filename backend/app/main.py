@@ -359,6 +359,8 @@ def _try_restore_snapshot() -> bool:
                 carrying_capacity=min(RT.config.carrying_capacity if RT.config.carrying_capacity>0 else 1200, 1200),
                 max_population=min(RT.config.max_population if RT.config.max_population>0 else 1300, 1300),
                 plant_growth_rate=min(RT.config.plant_growth_rate, 0.03),
+                birth_rate=min(RT.config.birth_rate, 0.20),
+                food_count=min(RT.config.food_count, 350),
             )
             RT.config = new_cfg
             RT.sim.config = new_cfg
