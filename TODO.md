@@ -1477,10 +1477,10 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 > Builds on the existing vision / hearing / memory / contact system.
 > Guiding principle: senses should interact and suppress each other, not fire independently.
 
-### Phase S-0: High-Impact, Low-Complexity Fixes  [P0]
-- [ ] [P0] **Sleeping = fully deaf** — sleeping creatures (`c.sleeping == True`) skip all signal processing; predators can silently approach a sleeping village; shelter becomes genuinely life-saving, not just comfort.
-- [ ] [P0] **Food scent at night** — ripe food (`growth == 1.0`) emits a detectable scent within ~8 units regardless of `env_sight`; hungry/starving creatures are drawn to it without direct vision; directly solves the "starving creature at night cannot find food" failure mode.
-- [ ] [P0] **Starvation suppresses fear** — starving creatures have effective `fear_radius × 0.5`; a desperate enough creature walks toward a predator chasing scented food; creates tragic, realistic edge cases.
+### Phase S-0: High-Impact, Low-Complexity Fixes  [P0] — ✅ implemented
+- [x] [P0] **Sleeping = fully deaf** — sleeping creatures skip all signal processing (the sleep branch returns before any hearing) and are excluded from mob-defender counts (`_mob_defenders` skips `o.sleeping`); predators can silently approach a sleeping village — verified by a wolf circling a hut all night while the sleeper holds position. (`simulation.py`, tests `tests/test_senses.py`)
+- [x] [P0] **Food scent at night** — ripe food (`growth == 1.0`) emits a detectable scent within `FOOD_SCENT_RADIUS` 8.0 regardless of `env_sight`; hungry/starving creatures with no visual target lock onto it at night; unripe sprouts carry no scent. Directly solves the "starving creature at night cannot find food" failure mode. (`simulation.py` `_update_creature` scent fallback after perception)
+- [x] [P0] **Starvation suppresses fear** — starving creatures have effective `fear_radius × 0.5` via `_effective_fear_radius` (paranoid +4 / bold −2.5 apply first); a desperate enough creature walks toward a predator chasing scented food.
 
 ### Phase S-1: Hearing Improvements  [P1]
 - [ ] [P1] **Signal confidence attenuation by distance** — `heard_conf = 1 - (dist / signal_radius)`; creatures far from the alarm source react weakly, close ones react fully; replaces the current binary inside/outside detection.

@@ -83,6 +83,10 @@ HEALTH_SELF_DRAIN_RATE = 0.05  # health lost per tick while self-cannibalizing
 HEALTH_SPEED_TIERS = ((80.0, 0.95), (60.0, 0.85), (40.0, 0.70), (20.0, 0.50))
 REPRO_MIN_HEALTH = 50.0  # sickly creatures cannot mate
 
+# §AR S-0 — senses interact: ripe plants smell through the dark, and
+# desperation dulls fear.
+FOOD_SCENT_RADIUS = 8.0  # mature plants are detectable by smell within this range
+
 # §AE food decay — nothing lasts forever: variant lifespan multipliers (§AM)
 FOOD_LIFESPAN_MULT = {
     "grass": 1.0,
@@ -360,6 +364,20 @@ class Simulation:
             if health < threshold:
                 return mult
         return 1.0
+
+    def _effective_fear_radius(self, c: Creature) -> float:
+        """§AR S-0: the fear threshold is a sense like any other — traits bend
+        it (paranoid +4, bold −2.5) and starvation halves it: the desperate
+        walk toward death chasing scented food."""
+        r = self.config.fear_radius
+        if c.trait == "paranoid":
+            r += 4.0
+        elif c.trait == "bold":
+            r = max(2.0, r - 2.5)
+        ratio = c.energy / self.config.energy_max if self.config.energy_max > 0 else 1.0
+        if ratio <= self.config.starving_ratio:
+            r *= 0.5
+        return r
 
     def distance(self, ax: float, ay: float, bx: float, by: float) -> float:
         """Proxy to world distance (convenience for tests)."""
@@ -1827,6 +1845,7 @@ class Simulation:
 
         AA: spatial query around the winner instead of scanning the whole
         roster inside the war pair loop (was O(n) per pair → O(n³)/tick).
+        §AR S-0: the sleeping are fully deaf — a body in bed cannot mob.
         """
         if not (self.config.help_call_enabled and self.config.knowledge_enabled):
             return 0
@@ -1838,6 +1857,7 @@ class Simulation:
             and o.id != loser.id
             and not o.is_predator  # type: ignore[union-attr]
             and not o.is_herbivore  # type: ignore[union-attr]
+            and not o.sleeping  # type: ignore[union-attr]
         )
 
     def _update_war(self) -> None:
@@ -4049,13 +4069,9 @@ class Simulation:
         if self._totem_of(c) and (c.is_predator or perceive > cfg.perceive_radius):
             speed_mult *= 1.0 + self._totem_stat(c, "speed")
 
-        # trait paranoid/bold nudges flee threshold (§S)
-        # paranoid sees predator farther, bold tolerates closer
-        fear_radius_eff = cfg.fear_radius
-        if c.trait == "paranoid":
-            fear_radius_eff += 4.0
-        elif c.trait == "bold":
-            fear_radius_eff = max(2.0, fear_radius_eff - 2.5)
+        # trait paranoid/bold nudges flee threshold (§S); §AR S-0 starvation
+        # dulls fear (all in _effective_fear_radius).
+        fear_radius_eff = self._effective_fear_radius(c)
         # 1. Predation: hunt (predator) / flee (prey) — highest priority after sleep
         hunt_target: Creature | None = None
         flee_target: Creature | None = None
@@ -4154,7 +4170,32 @@ class Simulation:
             if effective_d2 < best_sq:
                 best_sq, target = effective_d2, e
 
-
+        # §AR S-0 Food scent: ripe plants smell through the dark. A hungry or
+        # starving creature whose eyes fail at night still catches the scent
+        # of mature food within FOOD_SCENT_RADIUS — no more blind starvation.
+        if (
+            target is None
+            and is_night
+            and c.status in ("hungry", "starving")
+            and not c.is_predator
+        ):
+            scent_sq = FOOD_SCENT_RADIUS * FOOD_SCENT_RADIUS
+            for e, d2 in w.query_radius_with_dist_sq(c.x, c.y, FOOD_SCENT_RADIUS):
+                if e.kind != "food" or e.id in self._eaten:
+                    continue
+                f = cast(Food, e)
+                if f.growth < 1.0:
+                    continue  # only ripe plants carry a scent worth following
+                # a scented meal behind stone/wall stays grudged (§X fixes)
+                if cfg.food_giveup_ticks > 0 and (
+                    self.tick - c.give_ups.get(e.id, -cfg.food_giveup_ticks)
+                    < cfg.food_giveup_ticks
+                ):
+                    continue
+                if d2 < scent_sq:
+                    scent_sq = d2
+                    target = e
+                    best_sq = d2
         # §AC Desperation: the starving may hunt the living. Sated/hungry
         # creatures never do; a cooldown separates desperate kills.
         prey_target: Creature | None = None
