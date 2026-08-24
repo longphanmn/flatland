@@ -1251,6 +1251,54 @@ Next-generation botanical, agricultural, and culinary simulation advancing crop 
   - [ ] [P2] Clan banquets triggered at $>80\%$ granary capacity boosting morale, bonding, and fertility.
   - [ ] [P2] Famine raids and food blockades between agrarian breadbasket clans and martial clans.
 
+---
+
+## AN. Communication, Language & Diplomatic Ecosystem Roadmap  [P1]
+Next-generation multi-tiered communication ecosystem spanning caste acoustic vocalizations, tactile greeting rituals, forager scent breadcrumbs, inter-clan diplomatic emissaries, boundary stones, trade barter, settlement history glyphs, and divine omens.
+
+### Phase A: Caste Vocalizations & Acoustic Calls  [P1]
+- **Task A.1: Priest Sonorous Liturgy & Morale Chant**
+  - [ ] [P1] High priests emit soothing low-frequency chants that calm panicked/starving clan members, reduce stress/fear, and boost clan cohesion.
+- **Task A.2: Woman's Peace-Hum & Safety Corridor**
+  - [ ] [P1] In accordance with Flatland law, moving women emit a rhythmic peace-hum, causing nearby polygons to socially yield and clear collision-safe walking corridors.
+- **Task A.3: Soldier Phalanx War-Chirp & Battle Rally**
+  - [ ] [P1] Isosceles soldiers blow piercing war signals when engaging threats, rallying allied soldiers into aligned combat formations focusing on the flagged target.
+- **Task A.4: Artisan Trade & Barter Chimes**
+  - [ ] [P1] Friendly artisans emit greeting chimes when encountering neighbors, triggering mutual gift-sharing from baskets.
+
+### Phase B: Tactile Recognition & Scent Breadcrumbs  [P2]
+- **Task B.1: Mutual Angle Feeling & Greeting Rituals**
+  - [ ] [P2] Non-hostile creatures touching vertices at close range ($\le 1.2$ units) perform tactile caste verification, boosting trust ($+2.0$) and mutual bonding.
+  - [ ] [P2] Elder blessing touch transfers skill XP to infants and juveniles.
+- **Task B.2: Forager Harvest Scent Trails**
+  - [ ] [P2] Foragers discovering rich crop patches (`grain`, `berry`, `medicinal_herb`) leave temporary scent trails leading back to settlement for kin to follow.
+- **Task B.3: Danger & Predator Scent Markers**
+  - [ ] [P2] Death sites, predator ambush zones, and ruins emit danger scent markers that steer young and vulnerable creatures away.
+
+### Phase C: Diplomatic Envoys & Territorial Monoliths  [P2]
+- **Task C.1: Diplomatic Emissaries & Peace Missions**
+  - [ ] [P2] Clans commission designated Emissaries (carrying diplomatic banner emotes 📜) to deliver peace treaties, non-aggression pacts, or tribute terms to rival Main Houses.
+- **Task C.2: Tribute Couriers & Vassalage Logistics**
+  - [ ] [P2] Subjugated clans send periodic tribute couriers carrying grain/herbs to suzerain granaries to prevent punitive raids.
+- **Task C.3: Clan Boundary Stones & Border Heralds**
+  - [ ] [P2] Clans construct boundary markers at territory borders that ring warning chimes and alert clan sentries when outsiders trespass.
+
+### Phase D: Trade Caravans & Granary Barter  [P2]
+- **Task D.1: Neutral Trading Posts & Markets**
+  - [ ] [P2] Clans establish neutral trading posts at shared borders during spring/autumn to barter surplus goods (e.g. grain for berries/herbs/stone).
+- **Task D.2: Traveling Peddlers & Trade Caravans**
+  - [ ] [P2] Wandering merchant caravans traveling between settlements to exchange rare items and cultural news.
+
+### Phase E: Settlement Glyphs, Linguistic Drift & Divine Revelations  [P2]
+- **Task E.1: House Murals & Settlement Chronicle Inscriptions**
+  - [ ] [P2] Artisans and Priests inscribe historical murals on Main House walls celebrating founder lineages, winter survivals, and battle victories.
+  - [ ] [P2] Ruin archaeology: exploring ancient ruined house glyphs unlocks lost knowledge and farming techniques.
+- **Task E.2: Linguistic Drift & Clan Dialects**
+  - [ ] [P2] Isolated clans develop acoustic dialect drift over generations, altering cross-clan communication ease and diplomatic fidelity.
+- **Task E.3: Prophetic Omens & Revelations from the Sphere**
+  - [ ] [P2] Priests receive divine prophetic visions from the 3D Sphere (predicting oncoming winters/storms and preaching to worshippers).
+
+
 
 
 
