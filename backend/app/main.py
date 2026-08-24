@@ -981,19 +981,13 @@ async def get_clans() -> dict:
 def _clans_payload() -> dict:
     # live clan dict + live population + house territory + war history
     clans = []
-    # war record from history (both live and DB)
+    # war record from history
     war_wins: dict[int, int] = {}
     war_losses: dict[int, int] = {}
     for e in RT.sim.history:
         if e.type == "war":
-            winner = int(e.payload.get("winner", 0) or 0)
-            loser = int(e.entity_id or 0)
-            # winner's clan vs loser's clan
-            # need to find clan of winner/loser if still alive or via history payload a/b
-            a = int(e.payload.get("a", 0) or 0)  # loser clan
-            b = int(e.payload.get("b", 0) or 0)  # winner clan? actually payload a,b are both clans, winner is id
-            # For war, payload winner is entity id, a/b are clans. Use a as loser clan, b as winner clan? Check simulation war payload: {"winner": winner.id, "a": loser.clan_id, "b": winner.clan_id}
-            # So b is winner clan
+            a = int(e.payload.get("a", 0) or 0)
+            b = int(e.payload.get("b", 0) or 0)
             if b:
                 war_wins[b] = war_wins.get(b, 0) + 1
             if a:
@@ -1003,10 +997,15 @@ def _clans_payload() -> dict:
     for ent in RT.sim.world.entities.values():
         if ent.kind == "house" and getattr(ent, "clan_id", 0):
             houses_by_clan[ent.clan_id] = {"x": ent.x, "y": ent.y, "size": getattr(ent, "size", 0), "is_ruin": getattr(ent, "is_ruin", False)}
+    # single pass for population count across all clans
+    pop_by_clan: dict[int, int] = {}
+    for c in RT.sim._get_creatures():
+        if c.clan_id:
+            pop_by_clan[c.clan_id] = pop_by_clan.get(c.clan_id, 0) + 1
     # §X clan memory computed once for all clans
     knowledge_by_clan = RT.sim.clan_knowledge() if RT.sim.config.knowledge_enabled else {}
     for cid, info in RT.sim.clans.items():
-        pop = sum(1 for c in RT.sim.world.creatures() if c.clan_id == cid)
+        pop = pop_by_clan.get(cid, 0)
         house = houses_by_clan.get(cid)
         clans.append({
             "id": cid,
@@ -1021,14 +1020,14 @@ def _clans_payload() -> dict:
             "war_wins": war_wins.get(cid, 0),
             "war_losses": war_losses.get(cid, 0),
             "territory_radius": RT.sim.config.territory_radius if RT.sim.config.territory_enabled else None,
-        "specialization": info.get("specialization"),
-        "culture": info.get("culture"),
-        "culture_id": info.get("culture_id"),
-        "knowledge": knowledge_by_clan.get(cid),
-        "coalition_id": info.get("coalition_id"),  # §AB
-        "larder": round(float(info.get("larder", 0.0)), 1),  # §AB clan store
-        "tribute_to": info.get("tribute_to"),  # §AB subjugation
-    })
+            "specialization": info.get("specialization"),
+            "culture": info.get("culture"),
+            "culture_id": info.get("culture_id"),
+            "knowledge": knowledge_by_clan.get(cid),
+            "coalition_id": info.get("coalition_id"),  # §AB
+            "larder": round(float(info.get("larder", 0.0)), 1),  # §AB clan store
+            "tribute_to": info.get("tribute_to"),  # §AB subjugation
+        })
     # sort by population desc
     clans.sort(key=lambda c: (-c["population"], c["id"]))
     return {"clans": clans, "tick": RT.sim.tick}
