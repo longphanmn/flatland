@@ -1393,3 +1393,80 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 
 
 
+
+---
+
+## AQ. 2D Physics Ecosystem Roadmap  [P1–P2]
+> Grounded in A.K. Dewdney's *The Planiverse* and Edwin Abbott's *Flatland*.
+> Axioms: all physics is 2D-intrinsic; energy is the universal currency; The Sphere sets laws, physics enforces them.
+
+### Phase PH-0: Foundational Axioms
+- [ ] [P0] **Energy conservation loop** — sunlight (day cycle) inputs energy into plants; every physical process converts energy between forms; no free energy at night or in winter; total system energy = creature + food + heat + structural.
+- [ ] [P0] **Metabolic cost by caste** — energy burn scales with body complexity (sides): Triangle 1.0×, Square 1.1×, Pentagon 1.2× (priests burn energy maintaining aura), Hexagon 1.3×, Circle/Woman 1.5×.
+
+### Phase PH-1: Thermodynamics & Heat  [P0]
+- [ ] [P0] **Temperature field** — per-cell heat map updated each tick by weather/season/fire; seasons sweep temperature across the map from opposing edges.
+- [ ] [P0] **Body temperature** — creature temp drifts toward ambient; too cold → chill (exists), too hot → **hyperthermia** (new) draining health; houses insulate against both extremes.
+- [ ] [P0] **Insulation ratings** — structures have insulation by material: stone > wood > straw; larger houses lose heat faster (perimeter/area ratio in 2D).
+- [ ] [P1] **Hearths** — permanent fire installations inside houses that warm all occupants; require fuel (food/wood); extinguish if unfed; critical winter survival infrastructure.
+- [ ] [P1] **Heat radiation from fire** — fire emits a 2D radial heat field; creatures near fire take heat damage; fire also provides warmth in winter (double-edged tool).
+
+### Phase PH-2: Atmospheric Physics & Wind  [P0]
+- [ ] [P0] **Wind vector field** — wind has direction + magnitude changed by weather events and seasons; direction randomised on weather transition, magnitude scales with storm severity.
+- [ ] [P0] **Wind affects fire spread** — fire propagates faster downwind; firebreaks (bare earth strips) stop propagation; buildings downwind ignite first.
+- [ ] [P1] **Wind affects seed dispersal** — food plants spread seeds farther downwind; creates natural forest clustering with prevailing wind patterns.
+- [ ] [P1] **Scent signals on wind** — olfactory signals travel downwind (predators scent prey downwind; prey detects predators upwind); directional stealth layer.
+- [ ] [P2] **Wind affects thrown weapon range** — spears/tools thrown downwind travel farther; upwind throws fall short.
+- [ ] [P2] **Sound propagation** — loud events (combat, collapse) emit 2D pressure waves triggering nearby creature alarm responses; houses block sound; wind carries sound farther downwind; sleeping creatures cannot hear outside alarms.
+
+### Phase PH-3: Fluid Dynamics & Rivers  [P1]
+> The most Planiverse-authentic feature — rivers are 1D channels, a radical 2D constraint.
+- [ ] [P1] **River entities** — horizontal channel bands across the map; water flows with a direction (east/west) driven by terrain slope; spawned at world creation, seeded by God law.
+- [ ] [P1] **Fording cost** — crossing a river tile costs extra energy; infants and injured creatures risk being swept downstream.
+- [ ] [P1] **Flood mechanics** — rain accumulates water → rivers expand width tick by tick; flood tiles destroy food patches, force creature evacuation; post-flood silt enriches nearby soil (plant growth bonus for N ticks).
+- [ ] [P1] **Bridge construction** — builders with high building skill can construct planks across river cells; bridges decay over time; destroyed bridges trap clans on one side.
+- [ ] [P2] **Dam construction & failure** — stone walls across rivers stop flood propagation; dam failure under heavy rain causes flash flood; deliberately destroying an enemy dam is a war action.
+- [ ] [P2] **Drowning damage** — creatures caught in flood tiles take health drain per tick; swimming skill (foraging-adjacent) reduces damage.
+
+### Phase PH-4: Gravity & Terrain Topology  [P1]
+- [ ] [P1] **Elevation / height map** — terrain has a height field; affects movement cost (uphill = more energy, downhill = faster), water flow direction, and resource spawn altitude bands.
+- [ ] [P1] **Cliff edges** — sharp height discontinuities; creatures who walk off a cliff take fall damage proportional to height; cannot pass through creatures below (2D column constraint from The Planiverse).
+- [ ] [P1] **Soil compaction & emergent roads** — heavily-trafficked tiles become compacted: faster movement but no plant growth; clans naturally create road networks over time.
+- [ ] [P2] **Avalanche / landslide** — steep terrain after heavy rain slides, sweeping entities downstream and reshaping terrain.
+- [ ] [P2] **Ramps / staircases** — sloped tiles enabling height transitions; builders can construct ramps connecting elevation levels.
+
+### Phase PH-5: Ecological & Biological Physics  [P1]
+- [ ] [P1] **Nutrient cycle** — dead creatures and decaying food leave nutrient deposits; plants grow faster on nutrient-rich tiles; overgrazing depletes nutrients → barren patches.
+- [ ] [P1] **Root competition** — mature plants suppress sprouting neighbors in adjacent tiles; creates natural clearings and groves without explicit spawn rules.
+- [ ] [P1] **Composting** — builders bury corpses to enrich nearby soil (farming skill action); converts death into growth.
+- [ ] [P2] **Plant symbiosis & parasitism** — mushrooms only grow on decaying matter; medicinal herbs grow faster near berries; poisonous plants exude toxins suppressing all plant neighbors in a small radius.
+
+### Phase PH-6: Material Physics & Building  [P1]
+- [ ] [P1] **Material types** — four materials with distinct stats:
+  - *Straw*: very low durability, low insulation, cheapest (gathered grass)
+  - *Wood*: medium durability/insulation (forage + build time)
+  - *Stone*: high durability/insulation (mined from rock entities)
+  - *Clay*: medium durability, very high insulation (river bank deposits)
+- [ ] [P1] **Structural integrity / HP** — buildings degrade in storms, floods, and attacks; builders must repair or buildings decay to ruin.
+- [ ] [P2] **Rubble blocking** — ruined structures leave rubble tiles that block movement until cleared by builders.
+- [ ] [P2] **Weight & load-bearing** (Planiverse constraint) — beams support weight at one point from each side; creatures cannot climb over walls, only pass through doors or ramps.
+
+### Phase PH-7: Metabolic & Biological Extremes  [P2]
+- [ ] [P2] **Torpor / hibernation** — at very low energy + very cold ambient, creatures enter torpor (0.05× energy burn/tick), unconscious and vulnerable to predators; exit when temperature rises.
+- [ ] [P2] **Heat exhaustion** — sustained hyperthermia above threshold forces involuntary rest; creature cools passively; fatal if unshaded.
+
+### Phase PH-8: Seismic & Wave Physics  [P2]
+- [ ] [P2] **Earthquake events** — rare seismic events displace entities, collapse weakened structures, crack rock formations opening or blocking paths.
+- [ ] [P2] **Seismic early warning** — Pentagons/Hexagons detect vibration before the quake, triggering evacuation behaviour.
+- [ ] [P2] **Information propagation delay** — signals (sound alarms, pheromone calls) travel at finite speed; distant clans receive news N ticks later proportional to distance; creates tactical asymmetry in war and disaster response.
+
+### Phase PH-9: Electrostatics & Bio-electric Fields  [P2]
+- [ ] [P2] **Lightning physics** — during storms, lightning strikes random tiles: instant kill at strike point, ignites fire, creates briefly electrostatic rock entities.
+- [ ] [P2] **Priestly bio-electric aura** — Priests (Pentagon+) emit a bio-electric field; nearby creatures feel calm/fear depending on the priest's energy and faith state.
+- [ ] [P2] **Totem resonance zones** — multiple totems of the same god create resonance (aura radius multiplied); competing clan totems interfere destructively, weakening both auras in contested territory.
+
+### Phase PH-10: Cosmological & Metaphysical  [P2–P3]
+- [ ] [P2] **Law-change physical wave** — when The Sphere modifies a law, a shimmer wave sweeps across the map; old and new law coexist in a 10–30 tick transition window at different x-positions (creatures feel the boundary moving through them).
+- [ ] [P2] **Anomaly zones** — fixed-position tiles where physics differs (stronger gravity, faster plant growth, slower energy decay); discoverable only by exploration (high foraging skill); totems placed near anomalies gain bonus power.
+- [ ] [P3] **Shadow tiles** — tall structures cast shadows (tiles behind receive less light → slower plant growth, colder temperature); light is a 2D ray quantity visible to God from above.
+- [ ] [P3] **Sunlight edge** — day cycle simulated as illumination sweeping from one map edge; creatures at the illuminated edge get a warmth bonus; shadow behind large structures is a resource and strategic asset.
