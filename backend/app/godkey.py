@@ -2,9 +2,17 @@
 
 Lost or forgotten passkeys are reset from the machine that owns the database:
 
-    cd backend
-    uv run python -m app.godkey reset <new-passkey>   # overwrite (or create)
-    uv run python -m app.godkey clear                 # forget → enroll again on next visit
+    ./godkey reset <new-passkey>                      # from repo root (wrapper, works anywhere)
+    cd backend && uv run python -m app.godkey reset <new-passkey>
+    uv run --project backend python -m app.godkey reset <new-passkey>
+    backend/.venv/bin/python -m app.godkey reset <new-passkey>
+
+Direct `python3 -m app.godkey` from the repo root also works via the
+`app -> backend/app` symlink, but must use the venv python (or `uv run`)
+so `fastapi` is available — system `python3` without the venv will fail.
+
+If you see `ModuleNotFoundError: No module named 'app'` or `fastapi`,
+use the wrapper: `./godkey reset <key>` or `cd backend && uv run ...`.
 
 Honours FLATWORLD_DB; defaults to backend/flatworld.db like the app.
 """
@@ -14,8 +22,25 @@ import os
 import sys
 from pathlib import Path
 
-from .auth import PasskeyAuth
-from .db import Database
+# Friendly hint when invoked as `python3 -m app.godkey` from the repo root
+# with the system interpreter that lacks the venv's site-packages.
+try:
+    from .auth import PasskeyAuth
+    from .db import Database
+except ModuleNotFoundError as _e:
+    # Re-raise with a helpful hint for the common `python3 -m app.godkey` mistake
+    if "fastapi" in str(_e) or "app" in str(_e):
+        print(
+            f"error: {_e}\n"
+            "hint: use the wrapper from the repo root:\n"
+            "  ./godkey reset <new-passkey>\n"
+            "or from backend:\n"
+            "  cd backend && uv run python -m app.godkey reset <new-passkey>\n"
+            "  cd backend && .venv/bin/python -m app.godkey reset <new-passkey>",
+            file=sys.stderr,
+        )
+        raise SystemExit(2) from _e
+    raise
 
 
 def default_db_path() -> str:
