@@ -817,14 +817,12 @@ export default function App() {
 
       {!isMobile && (
         <div className="right-stack">
-          <aside className="info-panel">
-            <h3 className="chronicle-title" title="Live population — creatures (colored) + objects (Food/House) · history below. Creatures also in Caste graph.">
-              Overview
-              {(creatureEntries.length > 0 || objectEntries.length > 0) && (
-                <span className="chronicle-pop">
-                  {' '}
+          <Collapsible id="box-overview" title="Overview" hint="Live population — Caste, Alive spark, Trophic, Plots" defaultOpen={true}>
+            <aside className="info-panel" style={{ height: 'auto', minHeight: 'auto', maxHeight: 'none', border: 'none', padding: 0, background: 'transparent' }}>
+              <div style={{ background: 'rgba(13,17,23,0.93)', border: '1px solid #30363d', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 0', fontSize: 11, color: '#8b949e', marginBottom: 6 }}>
                   {creatureEntries.map(([k, v], i) => (
-                    <span key={k} className="pop-chip" title={`${k}: ${v} alive — see Caste graph for trend`}>
+                    <span key={k} className="pop-chip" title={`${k}: ${v} alive`}>
                       <span className="dot-inline" style={{ background: CASTE_COLORS[k] ?? '#8b949e' }} />
                       {k} <b>{v}</b>
                       {(i < creatureEntries.length - 1 || objectEntries.length > 0) && ' · '}
@@ -833,74 +831,78 @@ export default function App() {
                   {objectEntries.map(([k, v], i) => {
                     const color = k === 'Food' ? '#3fb950' : k === 'House' ? '#8b949e' : k === 'Corpse' ? '#6e7681' : '#8b949e'
                     return (
-                      <span key={k} className="pop-chip" title={`${k}: ${v} objects — Food are plants (growth variant), House are shelters, Corpse are remains`}>
+                      <span key={k} className="pop-chip" title={`${k}: ${v} objects`}>
                         <span className="dot-inline" style={{ background: color }} />
                         {k} <b>{v}</b>
                         {i < objectEntries.length - 1 && ' · '}
                       </span>
                     )
                   })}
-                </span>
-              )}
-            </h3>
-            <Collapsible id="overview-caste-v2" title="Caste population" hint="Stacked per-caste population over recent ticks" defaultOpen={true}>
-              <CasteChart history={popHist} showLegend={false} />
-            </Collapsible>
-            <div className="info-spark" title="alive creatures, recent ticks (was at bottom left, now in info box)">
-              <div style={{ fontSize: '11px', color: '#8b949e', marginBottom: 2 }}>Alive — recent ticks</div>
-              <span className="spark-wrap" title="alive creatures, recent ticks">
-                <svg viewBox="0 0 100 22" className="spark">
-                  {aliveHist.length > 1 && (
-                    <polyline
-                      points={aliveHist
-                        .map(
-                          (v, i) =>
-                            `${(i / (aliveHist.length - 1)) * 100},${21 - ((v - Math.min(...aliveHist)) / (Math.max(...aliveHist, 1) - Math.min(...aliveHist) || 1)) * 20}`,
-                        )
-                        .join(' ')}
-                    />
-                  )}
-                </svg>
-              </span>
-            </div>
-            <Collapsible
-              id="overview-trophic-v2"
-              title={<>Trophic pyramid — Food · Herbivore · Predator <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span></>}
-              hint="Trophic pyramid: stacked history of Food (plants, variant colors) → Herbivore (wild grazers, beast_ratio) → Predator (carnivores). Shows Lotka-Volterra oscillation."
-              defaultOpen={true}
-            >
-              <TrophicChart history={popHist} showLegend={false} />
-            </Collapsible>
-            <Collapsible id="overview-plots" title="Plots" defaultOpen={true}>
-              <PlotsPanel onSelectClan={setSelectedClanId} />
-            </Collapsible>
-          </aside>
-          <aside className="info-panel clan-panel-box">
-            <h3 className="chronicle-title" title="Clans — settlements with population, totem and war record">
-              Clans
-            </h3>
-            <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
-          </aside>
-          {chronicleOpen && (
-            <aside className="chronicle">
-              <h3 className="chronicle-title" title="Event history — births, deaths, wars, plagues. Newest first.">
-                Chronicle — History
-              </h3>
-              <Collapsible id="chronicle-feed" title="Event feed" hint="Newest first — deaths, wars, alliances, births">
-                <ChronicleFeed
-                  events={log}
-                  clanLabel={clanLabel}
-                  onSelectCreature={(id) => setSelectedId(id)}
-                  onSelectClan={(id) => setSelectedClanId(id)}
-                  onLoadOlder={loadOlder}
-                  loadingOlder={loadingOlder}
-                  noMoreHistory={noMoreHistory}
-                  archiveMode={archiveMode}
-                  selectedRunId={selectedRunId}
-                />
-              </Collapsible>
+                </div>
+                <Collapsible id="overview-caste-v2" title="Caste population" hint="Stacked per-caste population over recent ticks" defaultOpen={true}>
+                  <CasteChart history={popHist} showLegend={false} />
+                </Collapsible>
+                <div className="info-spark" title="alive creatures, recent ticks">
+                  <div style={{ fontSize: '11px', color: '#8b949e', marginBottom: 2 }}>Alive — recent ticks</div>
+                  <span className="spark-wrap" title="alive creatures, recent ticks">
+                    <svg viewBox="0 0 100 22" className="spark">
+                      {aliveHist.length > 1 && (
+                        <polyline
+                          points={aliveHist
+                            .map(
+                              (v, i) =>
+                                `${(i / (aliveHist.length - 1)) * 100},${21 - ((v - Math.min(...aliveHist)) / (Math.max(...aliveHist, 1) - Math.min(...aliveHist) || 1)) * 20}`,
+                            )
+                            .join(' ')}
+                        />
+                      )}
+                    </svg>
+                  </span>
+                </div>
+                <Collapsible
+                  id="overview-trophic-v2"
+                  title={<>Trophic pyramid — Food · Herbivore · Predator <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span></>}
+                  hint="Trophic pyramid: stacked history"
+                  defaultOpen={true}
+                >
+                  <TrophicChart history={popHist} showLegend={false} />
+                </Collapsible>
+                <Collapsible id="overview-plots" title="Plots" defaultOpen={true}>
+                  <PlotsPanel onSelectClan={setSelectedClanId} />
+                </Collapsible>
+              </div>
             </aside>
-          )}
+          </Collapsible>
+          <Collapsible id="box-clans" title="Clans" hint="Clans — settlements with population, totem and war record" defaultOpen={true}>
+            <aside className="info-panel clan-panel-box" style={{ height: 'auto', minHeight: 'auto', maxHeight: 'none', border: 'none', padding: 0, background: 'transparent' }}>
+              <div style={{ background: 'rgba(13,17,23,0.93)', border: '1px solid #30363d', borderRadius: 8, padding: '10px 14px' }}>
+                <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
+              </div>
+            </aside>
+          </Collapsible>
+          <Collapsible id="box-chronicle" title="Chronicle" hint="Event history — births, deaths, wars" defaultOpen={true}>
+            {chronicleOpen ? (
+              <aside className="chronicle" style={{ height: 'auto', minHeight: 'auto', maxHeight: 'none', border: 'none', padding: 0, background: 'transparent' }}>
+                <div style={{ background: 'rgba(13,17,23,0.93)', border: '1px solid #30363d', borderRadius: 8, padding: '10px 14px' }}>
+                  <Collapsible id="chronicle-feed" title="Event feed" hint="Newest first — deaths, wars, alliances, births">
+                    <ChronicleFeed
+                      events={log}
+                      clanLabel={clanLabel}
+                      onSelectCreature={(id) => setSelectedId(id)}
+                      onSelectClan={(id) => setSelectedClanId(id)}
+                      onLoadOlder={loadOlder}
+                      loadingOlder={loadingOlder}
+                      noMoreHistory={noMoreHistory}
+                      archiveMode={archiveMode}
+                      selectedRunId={selectedRunId}
+                    />
+                  </Collapsible>
+                </div>
+              </aside>
+            ) : (
+              <div style={{ fontSize: 11, color: '#8b949e', padding: '6px 0' }}>Chronicle hidden — <button className="chronicle-name" onClick={() => setChronicleOpen(true)}>Show</button></div>
+            )}
+          </Collapsible>
         </div>
       )}
 
@@ -949,23 +951,21 @@ export default function App() {
         </div>
       )}
       {/* Desktop only floating panels — on mobile these live cleanly in the thumb bar and detail drawer */}
+      <div className="top-right-panel">
+        <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )" data-hint="Wiki — documentation & API ( /wiki )">
+          📖
+        </button>
+        <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls" data-hint="Show hints for all HUD chips and controls">
+          ?
+        </button>
+        <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life" data-hint="Laws of Nature — god sets laws, never touches a life">
+          ⚖
+        </button>
+      </div>
       {!isMobile && (
-        <>
-          <div className="top-right-panel">
-            <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )" data-hint="Wiki — documentation & API ( /wiki )">
-              📖
-            </button>
-            <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls" data-hint="Show hints for all HUD chips and controls">
-              ?
-            </button>
-            <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life" data-hint="Laws of Nature — god sets laws, never touches a life">
-              ⚖
-            </button>
-          </div>
-          <div className="version-bar" title={versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'Flatland'}>
-            {versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'v0.1.0'}
-          </div>
-        </>
+        <div className="version-bar" title={versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'Flatland'}>
+          {versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'v0.1.0'}
+        </div>
       )}
       <AuthModal />
     </div>
