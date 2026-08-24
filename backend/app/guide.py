@@ -228,11 +228,15 @@ Evolution emerges 100% autonomously without god interventions:
 - **Combat Stamina**: Duels and war clashes expend energy (winner -6, loser -10); low energy (<20%) causes an exhaustion penalty (30% less damage).
 - **Food Reserves & Field Eating**: Roaming creatures with <45 energy autonomously eat carried food from their basket. Full creatures (>85% energy) never eat or destroy food plants.
 
-## Cognitive Agency & Tactical Intelligence (§AL)
-- **Multi-Objective Utility AI Engine**: Replaced hardcoded steering with dynamic utility scoring evaluating survival, duty, traits, and kin needs.
+## Cognitive Agency & Clan Social Intelligence (§AL)
+- **Multi-Objective Utility AI Engine**: Dynamic utility scoring evaluating survival energy, caste duty, personality weights, and kin emergency signals.
 - **Mental Map & Purposeful Waypoints**: Coordinates for `home`, `rich_food`, `danger`, and `patrol` enable purposeful foraging and perimeter circuits over random Brownian noise.
 - **Tactical Combat Formations**: Allied Soldiers in combat align into disciplined phalanxes; 1D lines (women) execute evasive tangential kiting; outnumbered creatures execute organized retreats to shelter.
 - **Interpersonal Trust Matrix**: Pairs develop affinity from healing (+15) and feeding (+20), forming loyal buddy pairs for shared foraging.
+- **Clan Division of Labor & Task Board**: Dynamic macro priorities (`balanced`, `food_security`, `defense`, `quarantine_healing`) boost harvester (2.0×) and guard (2.5×) action weights.
+- **Governance Archetypes**: Distinct institutional succession models (`Monarchy` royal dynasty, `Theocracy` priest succession, `Junta` combat mastery, `Republic` council of elders).
+- **Dynamic Bylaws**: Automated policies including winter food rationing (<35 energy threshold) and wartime martial law curfews.
+
 
 ## Terminal User Interface (§AI)
 A complete Textual terminal interface (`backend/tui/`) attaches to running worlds with:

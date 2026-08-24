@@ -1178,6 +1178,9 @@ def _clan_details(clan_id: int) -> dict:
         "coalition_id": info.get("coalition_id"),  # §AB
         "larder": round(float(info.get("larder", 0.0)), 1),  # §AB clan store
         "tribute_to": info.get("tribute_to"),  # §AB subjugation
+        "governance": info.get("governance", "republic"),  # §AL
+        "bylaws": info.get("bylaws", {}),  # §AL
+        "task_board": info.get("task_board", {}),  # §AL
     }
 
 
@@ -1249,7 +1252,11 @@ def _clans_payload() -> dict:
             "coalition_id": info.get("coalition_id"),  # §AB
             "larder": round(float(info.get("larder", 0.0)), 1),  # §AB clan store
             "tribute_to": info.get("tribute_to"),  # §AB subjugation
+            "governance": info.get("governance", "republic"),  # §AL
+            "bylaws": info.get("bylaws", {}),  # §AL
+            "task_board": info.get("task_board", {}),  # §AL
         })
+
     # sort by population desc and cap at 100
     clans.sort(key=lambda c: (-c["population"], c["id"]))
     clans = clans[:100]

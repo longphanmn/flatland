@@ -1175,24 +1175,25 @@ Next-generation behavioral intelligence roadmap advancing individual cognitive d
   - [x] [P1] High-trust pairs form cooperative hunting/farming duos, share shelters, and prioritize mutual aid.
 
 
-### Phase 2: Clan Division of Labor & Institutional Governance  [P1]
+### Phase 2: Clan Division of Labor & Institutional Governance  [P1] — ✅ implemented
 - **Task 2.1: Autonomous Clan Task Board & Labor Allocation**
-  - [ ] [P1] Clan leaders and councils dynamically assign members to macro roles based on current crises:
-    - *Food Shortage*: $70\%$ assigned to Forager/Harvester duty.
-    - *Border Tension*: Soldiers garrison outpost doors; builders repair walls.
+  - [x] [P1] Clan leaders and councils dynamically assign members to macro roles based on current crises:
+    - *Food Shortage*: $70\%$ assigned to Forager/Harvester duty (2.0x harvester utility).
+    - *Border Tension*: Soldiers garrison outpost doors and patrol (2.5x guard utility).
     - *Plague Outbreak*: Priests establish Main House infirmary; healthy maintain social distance.
     - *Surplus Wealth*: Builders assemble construction parties to erect new outpost houses.
 - **Task 2.2: Clan Governance Archetypes**
-  - [ ] [P1] Implement distinct institutional forms based on founder caste and totem:
-    - *Dynastic Monarchy* (Gentlemen/Nobles): Direct hereditary succession with loyalist bodyguard retinue.
-    - *Council of Elders* (Republic): High-side polygons vote on treaties, wars, and refugee admissions.
-    - *Theocracy* (Priests): High healing/spiritual buffs, pacifist tendencies, and anti-cannibalism taboos.
-    - *Military Junta* (Soldiers): Expansionist conquest, tribute extortion, and high martial training.
+  - [x] [P1] Implement distinct institutional forms based on founder caste and totem:
+    - *Dynastic Monarchy* (Gentlemen/Nobles): Direct hereditary succession with royal lineage priority.
+    - *Council of Elders* (Republic): High-side polygons vote on treaties, wars, and succession.
+    - *Theocracy* (Priests): High healing/spiritual buffs, pacifist tendencies, and priest succession priority.
+    - *Military Junta* (Soldiers): Expansionist conquest, tribute extortion, and combat mastery succession.
 - **Task 2.3: Adaptive Clan Bylaws & Policies**
-  - [ ] [P1] Emergent bylaws triggered by environmental and historical events:
-    - *Winter Rationing Law*: Restricts individual consumption to baseline maintenance during winter/famine.
+  - [x] [P1] Emergent bylaws triggered by environmental and historical events:
+    - *Winter Rationing Law*: Restricts individual consumption to baseline maintenance during winter/famine (<35 energy).
     - *Martial Curfew*: Civilians restricted to settlement borders during active wars.
     - *Open Sanctuary vs. Isolationism*: Policy on admitting homeless defectors and orphaned refugees.
+
 
 ### Phase 3: Macro Geopolitics, Trade Caravans & Cultural Traditions  [P2]
 - **Task 3.1: Calculated Casus Belli & Strategic Peace Terms**

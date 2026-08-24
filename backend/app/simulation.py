@@ -547,7 +547,19 @@ class Simulation:
         # across clans (or worlds!) would couple their specializations.
         spec = dict(TOTEM_SPEC.get(totem, {"warrior": 0.33, "farmer": 0.33, "scavenger": 0.34}))
         culture = f"{CULTURE_ADJECTIVES[(cid * 11 + self.config.seed) % len(CULTURE_ADJECTIVES)]} {CULTURE_NOUNS[(cid * 19 + self.config.seed) % len(CULTURE_NOUNS)]}"
+        # Governance archetype (§AL)
+        if founder and founder.caste in ("Gentleman", "Noble"):
+            governance = "monarchy"
+        elif founder and founder.caste == "Priest":
+            governance = "theocracy"
+        elif founder and founder.caste == "Soldier":
+            governance = "junta"
+        else:
+            governance = "republic"
+
         founder_name = personal_name_for(founder.id, self.config.seed, founder.generation) if founder is not None else None
+
+
         self.clans[cid] = {
             "name": name,
             "founder_id": founder.id if founder is not None else None,
@@ -555,6 +567,17 @@ class Simulation:
             "color": CLAN_COLORS[(cid - 1) % len(CLAN_COLORS)],
             "totem": totem,
             "leader_id": founder.id if founder is not None else None,
+            "governance": governance,
+            "bylaws": {
+                "rationing": False,
+                "martial_law": False,
+                "sanctuary": "open",
+            },
+            "task_board": {
+                "priority": "balanced",
+                "harvester_weight": 1.0,
+                "guard_weight": 1.0,
+            },
             "specialization": spec,
             "culture": culture,
             "culture_id": cid,
@@ -567,11 +590,12 @@ class Simulation:
                     "tick": self.tick,
                     "day": self.day,
                     "event": "founded",
-                    "desc": f"Founded by {founder_name or f'Leader #{founder.id}' if founder else 'Settlers'} (Day {self.day})",
+                    "desc": f"Founded as {governance.capitalize()} by {founder_name or f'Leader #{founder.id}' if founder else 'Settlers'} (Day {self.day})",
                 }
             ],
         }
         return cid
+
 
     def _log_clan_history(self, cid: int, event_type: str, desc: str) -> None:
         """AK: Record major historical milestones for a clan."""
@@ -2392,12 +2416,51 @@ class Simulation:
             )
             break  # one defection per tick keeps the world calm
 
+    def _update_clan_task_boards_and_bylaws(self) -> None:
+        """§AL Clan Division of Labor & Dynamic Bylaws."""
+        if not self.clans:
+            return
+        is_winter = self._season() == "winter"
+
+        for cid, clan in self.clans.items():
+            if not isinstance(clan, dict):
+                continue
+            bylaws = clan.setdefault("bylaws", {"rationing": False, "martial_law": False, "sanctuary": "open"})
+            task_board = clan.setdefault("task_board", {"priority": "balanced", "harvester_weight": 1.0, "guard_weight": 1.0})
+
+            # 1. Food security & winter rationing
+            larder = float(clan.get("larder", 0.0))
+            if is_winter or larder < 30.0:
+                bylaws["rationing"] = True
+                task_board["priority"] = "food_security"
+                task_board["harvester_weight"] = 2.0
+            else:
+                bylaws["rationing"] = False
+                task_board["harvester_weight"] = 1.0
+
+            # 2. Wartime martial law
+            is_at_war = False
+            for pair, score in self.relations.items():
+                if cid in pair and score <= self.config.rivalry_threshold:
+                    is_at_war = True
+                    break
+
+            if is_at_war:
+                bylaws["martial_law"] = True
+                task_board["priority"] = "defense"
+                task_board["guard_weight"] = 2.5
+            else:
+                bylaws["martial_law"] = False
+                task_board["guard_weight"] = 1.0
+
     def _update_politics(self) -> None:
         """§AB orchestrator — fixed order keeps the rng stream deterministic."""
         self._update_coalitions()
         self._update_leader_decisions()
         self._update_larders()
         self._update_defection()
+        self._update_clan_task_boards_and_bylaws()
+
 
     # ------------------------------------------------- §AC desperation cannibalism
     @staticmethod
@@ -3273,14 +3336,28 @@ class Simulation:
                 # AF: use cached creatures list — avoids full entity scan on each death
                 candidates = [cc for cc in self._get_creatures() if cc.clan_id == c.clan_id]
                 if candidates:
-                    successor = sorted(candidates, key=lambda cc: (-cc.age, cc.id))[0]
+                    gov = clan.get("governance", "republic")
+                    if gov == "monarchy":
+                        dynasty = [cc for cc in candidates if cc.mother_id == c.id or cc.father_id == c.id]
+                        successor = sorted(dynasty or candidates, key=lambda cc: (-cc.age, cc.id))[0]
+                    elif gov == "theocracy":
+                        priests = [cc for cc in candidates if cc.caste == "Priest"]
+                        successor = sorted(priests or candidates, key=lambda cc: (-cc.age, cc.id))[0]
+                    elif gov == "junta":
+                        soldiers = [cc for cc in candidates if cc.caste == "Soldier"]
+                        successor = sorted(soldiers or candidates, key=lambda cc: (-getattr(cc, "skills", {}).get("combat", 0.0), -cc.age, cc.id))[0]
+                    else:
+                        # republic (Council of Elders)
+                        successor = sorted(candidates, key=lambda cc: (-cc.sides, -cc.age, cc.id))[0]
+
                     clan["leader_id"] = successor.id
                     succ_name = personal_name_for(successor.id, self.config.seed, successor.generation)
                     self._log_clan_history(
                         c.clan_id,
                         "leader_change",
-                        f"{succ_name} (#{successor.id}) ascended as Leader (Day {self.day})",
+                        f"{succ_name} (#{successor.id}) ascended as Leader ({gov.capitalize()}, Day {self.day})",
                     )
+
                     self._emit(
                         HistoryEvent(
                             type="succession",
@@ -3461,8 +3538,18 @@ class Simulation:
                 # the body does not move again until dawn (or death).
                 return
 
+        # Clan bylaws and task board modifiers (§AL)
+        clan_info = self.clans.get(c.clan_id) if c.clan_id else None
+        bylaws = clan_info.get("bylaws", {}) if isinstance(clan_info, dict) else {}
+        task_board = clan_info.get("task_board", {}) if isinstance(clan_info, dict) else {}
+        harvester_weight = task_board.get("harvester_weight", 1.0)
+        guard_weight = task_board.get("guard_weight", 1.0)
+        is_rationing = bylaws.get("rationing", False)
+
         # Field consumption: eat from personal reserve when hungry or starving
-        if getattr(c, "food_basket", 0) > 0 and not c.sleeping and c.energy < 55.0:
+        # Under rationing bylaw, preserve emergency reserve until energy < 35.0
+        eat_thresh = 35.0 if is_rationing else 55.0
+        if getattr(c, "food_basket", 0) > 0 and not c.sleeping and c.energy < eat_thresh:
             c.food_basket -= 1
             c.energy = min(cfg.energy_max, c.energy + cfg.energy_from_food * 0.9)
             c.ticks_since_meal = 0
@@ -3470,6 +3557,7 @@ class Simulation:
             c.give_ups.clear()
             c.emote = "craft"
             c.emote_ticks = 15
+
 
 
         # Priests heal injured / infected clanmates
@@ -3858,7 +3946,14 @@ class Simulation:
                         waypoint_target = (px, py)
                         u_waypoint = 0.45
 
+        # Task Board scaling (§AL)
+        u_eat *= harvester_weight
+        u_waypoint *= harvester_weight
+        if c.caste == "Soldier":
+            u_help *= guard_weight
+
         # Tactical Formations & Actions
+
         utilities = [
             (u_flee, "flee"),
             (u_alarm, "alarm"),

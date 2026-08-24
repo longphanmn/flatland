@@ -60,8 +60,12 @@ Evolution emerges 100% autonomously without artificial intervention:
 ### 4. Settlements, Clans & Diplomacy
 - **Settlement Houses**: Square walled halls with creature-sized doorways; houses block outside elements and wild carnivores.
 - **Territory & Clan Banners**: Foundational houses establish spatial clans with distinct banner colors, procedurally generated clan names, and totems (Wolf, Bear, Tree, Shield, Eye, Stag, Owl, etc.).
+- **Division of Labor & Task Board**: Dynamic macro priorities (`balanced`, `food_security`, `defense`, `quarantine_healing`) boost harvester (2.0×) and guard (2.5×) action weights.
+- **Governance Archetypes & Succession**: Distinct institutional models (`Monarchy` royal dynasty, `Theocracy` priest succession, `Junta` combat mastery, `Republic` council of elders).
+- **Dynamic Bylaws**: Automated policies including winter food rationing (<35 energy threshold) and wartime martial law curfews.
 - **Resource Sharing & Larders**: Settlements maintain food larders where sated members deposit surplus and hungry kin withdraw.
 - **Diplomacy & Politics**: Emergent alliances, defensive coalitions, tributary pacts, schisms, and territorial rivalries.
+
 
 ### 5. Environment & Ecosystem
 - **Dynamic Seasons & Day/Night**: Spring blossoms, summer abundance, autumn harvests, and winter lean periods.
