@@ -844,6 +844,7 @@ export default function App() {
           id={selectedId}
           onClose={() => setSelectedId(null)}
           onNavigate={(nid) => setSelectedId(nid)}
+          onSelectClan={(cid) => setSelectedClanId(cid)}
         />
       )}
 

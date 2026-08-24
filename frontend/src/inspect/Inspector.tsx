@@ -147,9 +147,10 @@ interface Props {
   id: number
   onClose: () => void
   onNavigate: (id: number) => void
+  onSelectClan?: (clanId: number) => void
 }
 
-export default function Inspector({ id, onClose, onNavigate }: Props) {
+export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Props) {
   const [data, setData] = useState<CreatureResponse | null>(null)
 
   useEffect(() => {
@@ -189,8 +190,20 @@ export default function Inspector({ id, onClose, onNavigate }: Props) {
         </button>
       </header>
       {e && (
-        <div className="chip" style={{ fontSize: 11, opacity: 0.8 }}>
-          {e.personal_name} · {e.caste} #{id} {e.glyph} · scale {(e.scale_jitter ?? 1).toFixed(2)} · hue {(e.hue_shift ?? 0) > 0 ? '+' : ''}{e.hue_shift ?? 0}°
+        <div className="chip" style={{ fontSize: 11, opacity: 0.9, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
+          <span>{e.personal_name} · {e.caste} #{id} {e.glyph} · scale {(e.scale_jitter ?? 1).toFixed(2)}</span>
+          {e.clan_id != null && e.clan_id > 0 && (
+            <button
+              type="button"
+              className="chronicle-name"
+              onClick={() => onSelectClan?.(e.clan_id!)}
+              title={`Open clan details for ${e.clan_name ?? `Clan ${e.clan_id}`}`}
+              style={{ color: e.clan_color ?? '#58a6ff', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              <span className="dot-inline" style={{ background: e.clan_color ?? '#8b949e', width: 6, height: 6 }} />
+              {e.clan_name ?? `Clan ${e.clan_id}`} ↗
+            </button>
+          )}
         </div>
       )}
       {e && <CreatureAvatar e={e} />}
@@ -226,13 +239,32 @@ export default function Inspector({ id, onClose, onNavigate }: Props) {
               </span>
             )}
             {e.clan_id != null && e.clan_id > 0 && (
-              <span className="chip" title={e.clan_name ?? undefined}>
+              <button
+                type="button"
+                className="chip clan-link-chip"
+                onClick={() => onSelectClan?.(e.clan_id!)}
+                title={`Open clan details for ${e.clan_name ?? `Clan ${e.clan_id}`}`}
+                style={{
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  border: `1px solid ${e.clan_color ?? '#58a6ff'}`,
+                  background: 'rgba(33, 38, 45, 0.8)',
+                  color: '#e6edf3',
+                  borderRadius: 6,
+                  padding: '4px 8px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
                 <span
                   className="dot-inline"
-                  style={{ background: e.clan_color ?? '#8b949e', marginRight: 4 }}
+                  style={{ background: e.clan_color ?? '#8b949e', width: 8, height: 8, borderRadius: '50%' }}
                 />
-                {e.clan_name ?? `Clan ${e.clan_id}`}
-              </span>
+                <span>{e.clan_name ?? `Clan ${e.clan_id}`}</span>
+                <span style={{ fontSize: 10, color: '#58a6ff' }}>↗</span>
+              </button>
             )}
             {e.trait && (
               <span className="chip" title={`Heritable trait: ${e.trait} — greedy/peaceful/paranoid/bold nudges food/war/flee`}>
