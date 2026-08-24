@@ -219,6 +219,8 @@ class StateMessage:
     fires: list[dict] = field(default_factory=list)
     age: Optional[str] = None
     age_tick: int = 0
+    age_day: int = 1
+    age_total_days: int = 10
 
     @classmethod
     def from_dict(cls, d: dict) -> "StateMessage":
@@ -247,4 +249,6 @@ class StateMessage:
             fires=d.get("fires") or [],
             age=_o(d, "age"),
             age_tick=_i(d, "age_tick"),
+            age_day=_i(d, "age_day", 1),
+            age_total_days=_i(d, "age_total_days", 10),
         )

@@ -496,6 +496,8 @@ export default function App() {
     : 0
   const weatherIcon =
     state?.weather === 'rain' ? '🌧' : state?.weather === 'fog' ? '🌫' : state?.weather === 'storm' ? '⛈' : ''
+  const ageDay = state?.age_day ?? (state?.age_tick !== undefined ? Math.floor(state.age_tick / 1200) + 1 : 1)
+  const ageTotalDays = state?.age_total_days ?? 10
 
   return (
     <div className="app">
@@ -577,8 +579,12 @@ export default function App() {
           </span>
         )}
         {state && state.age && (
-          <span className="chip desktop-only" title={`Age ${state.age} — super-season bending world: Ice (food×0.55 chill×1.4), Chaos (mutation×1.8), Plague (disease×1.8), Golden (food×1.25 birth×1.3). God sets age_length.`}>
-            🗓 age <b>{state.age}</b> · tick {state.age_tick}
+          <span
+            className="chip desktop-only"
+            title={`Age ${state.age} — super-season bending world: Ice (food×0.55 chill×1.4), Chaos (mutation×1.8), Plague (disease×1.8), Golden (food×1.25 birth×1.3). Day ${ageDay} of ${ageTotalDays} in this age.`}
+            data-hint={`Age ${state.age} · Day ${ageDay}/${ageTotalDays}`}
+          >
+            🗓 age <b>{state.age}</b> · day {ageDay}/{ageTotalDays}
           </span>
         )}
         {state && (
@@ -615,7 +621,7 @@ export default function App() {
             {(state?.entities.filter((e) => (e.chill ?? 0) >= 12).length ?? 0) > 0 && <span className="chip" style={{ color: '#79c0ff' }}>🥶 chilled <b>{state?.entities.filter((e) => (e.chill ?? 0) >= 12).length}</b></span>}
             {raining && exposedCount > 0 && <span className="chip exposed">⛈ exposed <b>{exposedCount}</b></span>}
             {hello && <span className="chip">seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×{state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}</span>}
-            {state?.age && <span className="chip">🗓 age <b>{state.age}</b> · tick {state.age_tick}</span>}
+            {state?.age && <span className="chip">🗓 age <b>{state.age}</b> · day {ageDay}/{ageTotalDays}</span>}
             <span className="chip">hungry <b>{hungryCount}</b> · starving <b>{starvingCount}</b></span>
           </div>
           {worlds.length > 0 && (

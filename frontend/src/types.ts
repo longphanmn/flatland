@@ -87,6 +87,8 @@ export interface StateMessage {
   fires: { x: number; y: number; r: number; ttl: number }[]
   age: string | null
   age_tick: number
+  age_day?: number
+  age_total_days?: number
 }
 
 export interface HistoryEvent {

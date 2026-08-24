@@ -271,6 +271,18 @@ class Simulation:
             return 0
         return self.tick % max(1, self.config.age_length)
 
+    def _age_day(self) -> int:
+        if not self.config.age_enabled:
+            return 1
+        dl = max(1, self.config.day_length)
+        return (self._age_tick() // dl) + 1
+
+    def _age_total_days(self) -> int:
+        if not self.config.age_enabled:
+            return 1
+        dl = max(1, self.config.day_length)
+        return max(1, self.config.age_length // dl)
+
     @property
     def day(self) -> int:
         return self.tick // max(1, self.config.day_length) + 1
@@ -4105,6 +4117,8 @@ class Simulation:
             "fires": [dict(f) for f in self.fires],
             "age": self._age(),
             "age_tick": self._age_tick(),
+            "age_day": self._age_day(),
+            "age_total_days": self._age_total_days(),
         }
 
     def snapshot(self) -> StateMessage:

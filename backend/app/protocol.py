@@ -99,6 +99,8 @@ class StateMessage(BaseModel):
     fires: list[dict[str, Any]] = Field(default_factory=list)
     age: Optional[str] = None
     age_tick: int = 0
+    age_day: int = 1
+    age_total_days: int = 10
 
 
 class HistoryEvent(BaseModel):
