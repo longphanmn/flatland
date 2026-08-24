@@ -122,36 +122,36 @@ WIKI_TEMPLATE = """<!doctype html>
 <meta property="og:url" content="https://world.minhnhan.in/wiki">
 <meta property="og:type" content="article">
 <style>
-:root{color-scheme:dark;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-*{box-sizing:border-box}
-body{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:0;color:#c9d1d9;background:#0b0f14;line-height:1.6}
-a{color:#58a6ff;text-decoration:none} a:hover{text-decoration:underline}
-pre{background:#161b22;padding:12px;overflow:auto;border-radius:6px;border:1px solid #30363d;font-size:13px;color:#e6edf3}
-code{background:#161b22;padding:2px 5px;border-radius:4px;font-size:0.9em;border:1px solid #21262d;color:#ffa657}
-table{border-collapse:collapse;width:100%;margin:14px 0;font-size:12px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #30363d;border-radius:6px}
-th,td{border:1px solid #21262d;padding:8px 10px;text-align:left;white-space:nowrap}
-th{background:#161b22;color:#e6edf3;position:sticky;top:0;font-weight:600;border-bottom:1px solid #30363d}
-td{background:#0d1117}
-tr:hover td{background:#161b22}
-h1{border-bottom:1px solid #21262d;padding-bottom:8px;color:#e6edf3;font-size:20px;letter-spacing:0.04em}
-h2{margin-top:28px;color:#e6edf3;font-size:16px;border-left:3px solid #e3b341;padding-left:8px}
-h3{color:#e6edf3;font-size:14px}
-.search{width:100%;padding:8px 10px;border-radius:6px;border:1px solid #30363d;background:#161b22;color:#e6edf3;margin:8px 0;font-size:13px;font-family:inherit}
-.search:focus{outline:none;border-color:#58a6ff}
-.badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;border:1px solid #30363d;background:#161b22;color:#8b949e;margin:2px}
-.layout{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
-nav{background:#0d1117;border-right:1px solid #21262d;padding:16px;overflow-y:auto;position:sticky;top:0;height:100vh;scrollbar-width:thin}
-main{padding:24px;max-width:980px;overflow-y:auto;background:#0b0f14}
-.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px;margin:8px 0}
-button{background:#21262d;border:1px solid #30363d;color:#c9d1d9;padding:4px 10px;border-radius:6px;font-family:inherit;font-size:12px;cursor:pointer}
-button:hover{background:#30363d;color:#fff}
-hr{border:0;border-top:1px solid #21262d;margin:20px 0}
-@media(max-width:800px){
-  .layout{grid-template-columns:1fr}
-  nav{position:relative;height:auto;border-right:none;border-bottom:1px solid #21262d}
-  main{padding:16px}
-  table{font-size:11px}
-}
+:root{{color-scheme:dark;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}}
+*{{box-sizing:border-box}}
+body{{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:0;color:#c9d1d9;background:#0b0f14;line-height:1.6}}
+a{{color:#58a6ff;text-decoration:none}} a:hover{{text-decoration:underline}}
+pre{{background:#161b22;padding:12px;overflow:auto;border-radius:6px;border:1px solid #30363d;font-size:13px;color:#e6edf3}}
+code{{background:#161b22;padding:2px 5px;border-radius:4px;font-size:0.9em;border:1px solid #21262d;color:#ffa657}}
+table{{border-collapse:collapse;width:100%;margin:14px 0;font-size:12px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #30363d;border-radius:6px}}
+th,td{{border:1px solid #21262d;padding:8px 10px;text-align:left;white-space:nowrap}}
+th{{background:#161b22;color:#e6edf3;position:sticky;top:0;font-weight:600;border-bottom:1px solid #30363d}}
+td{{background:#0d1117}}
+tr:hover td{{background:#161b22}}
+h1{{border-bottom:1px solid #21262d;padding-bottom:8px;color:#e6edf3;font-size:20px;letter-spacing:0.04em}}
+h2{{margin-top:28px;color:#e6edf3;font-size:16px;border-left:3px solid #e3b341;padding-left:8px}}
+h3{{color:#e6edf3;font-size:14px}}
+.search{{width:100%;padding:8px 10px;border-radius:6px;border:1px solid #30363d;background:#161b22;color:#e6edf3;margin:8px 0;font-size:13px;font-family:inherit}}
+.search:focus{{outline:none;border-color:#58a6ff}}
+.badge{{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;border:1px solid #30363d;background:#161b22;color:#8b949e;margin:2px}}
+.layout{{display:grid;grid-template-columns:280px 1fr;min-height:100vh}}
+nav{{background:#0d1117;border-right:1px solid #21262d;padding:16px;overflow-y:auto;position:sticky;top:0;height:100vh;scrollbar-width:thin}}
+main{{padding:24px;max-width:980px;overflow-y:auto;background:#0b0f14}}
+.card{{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px;margin:8px 0}}
+button{{background:#21262d;border:1px solid #30363d;color:#c9d1d9;padding:4px 10px;border-radius:6px;font-family:inherit;font-size:12px;cursor:pointer}}
+button:hover{{background:#30363d;color:#fff}}
+hr{{border:0;border-top:1px solid #21262d;margin:20px 0}}
+@media(max-width:800px){{
+  .layout{{grid-template-columns:1fr}}
+  nav{{position:relative;height:auto;border-right:none;border-bottom:1px solid #21262d}}
+  main{{padding:16px}}
+  table{{font-size:11px}}
+}}
 </style></head><body>
 <div class="layout">
 <nav>
