@@ -34,8 +34,9 @@ class World:
         self.config = config
         self.entities: dict[int, Entity] = {}
         self._next_id = 1
-        # T: fixed ~8 so fine queries don't scan 81 cells
-        self.cell_size = 8.0
+        # T: 12 trades a few extra distance checks for ~2× fewer cells scanned
+        # at 1000+ creatures (~18u perceive → 5×5=25 cells at 8 → 3×3=9 at 12)
+        self.cell_size = 12.0
         self.cols = max(1, math.ceil(config.width / self.cell_size))
         self.rows = max(1, math.ceil(config.height / self.cell_size))
         self._num_cells = self.cols * self.rows

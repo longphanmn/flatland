@@ -250,10 +250,141 @@ class SimEngine:
             stop.wait(max(0.0, interval - elapsed))
 
 
+def _try_restore_snapshot() -> bool:
+    """Restore same world across backend code deploys (no Reset).
+
+    `deploy.sh` saves `GET /api/state` to `~/app/fl/snapshot.json` before
+    killing the old backend. On next start we rehydrate `RT.sim` from that
+    payload so tick+entities survive the restart — same world, same tick.
+    """
+    path = os.environ.get("FLATWORLD_RESTORE_SNAPSHOT", str(Path.home() / "app" / "fl" / "snapshot.json"))
+    p = Path(path)
+    if not p.exists():
+        return False
+    try:
+        raw = p.read_text()
+        data = json.loads(raw)
+        if data.get("type") != "state" or "entities" not in data:
+            return False
+        # Rebuild simulation in-place
+        from .entities import Corpse, Creature, Food, House
+        # Clear existing
+        RT.sim.world.entities.clear()
+        RT.sim.world._next_id = 1
+        # Also clear cached buckets will be rebuilt on next step
+        max_id = 0
+        for ent in data["entities"]:
+            kind = ent.get("kind")
+            eid = int(ent.get("id", 0))
+            max_id = max(max_id, eid)
+            if kind == "creature":
+                c = Creature(
+                    shape=ent.get("shape") or "polygon",
+                    sides=int(ent.get("sides") or 4),
+                    x=float(ent.get("x") or 0),
+                    y=float(ent.get("y") or 0),
+                    angle=float(ent.get("angle") or 0),
+                    speed=0.6,
+                    energy=float(ent.get("energy") or 80),
+                    caste=ent.get("caste") or "",
+                    radius=float(ent.get("radius") or 0),
+                    age=int(ent.get("age") or 0),
+                    lifespan=float(ent.get("lifespan") or 0),
+                    generation=int(ent.get("generation") or 0),
+                    clan_id=int(ent.get("clan_id") or 0),
+                )
+                # preserve extra fields if present
+                for k in ("mother_id", "father_id", "health", "infected", "sleeping", "indoors", "status", "chill"):
+                    if k in ent and ent[k] is not None:
+                        setattr(c, k, ent[k])
+                c.id = eid
+                RT.sim.world.entities[eid] = c
+            elif kind == "food":
+                f = Food(x=float(ent.get("x") or 0), y=float(ent.get("y") or 0), growth=float(ent.get("growth") or 0.15), variant=ent.get("variant") or "grass")
+                # preserve mature_ticks if present
+                if "mature_ticks" in ent:
+                    f.mature_ticks = int(ent["mature_ticks"])
+                f.id = eid
+                RT.sim.world.entities[eid] = f
+            elif kind == "house":
+                h = House(x=float(ent.get("x") or 0), y=float(ent.get("y") or 0), size=float(ent.get("size") or 6), door_width=float(ent.get("door_width") or 4), door_side=ent.get("door_side") or "south")
+                for k in ("clan_id", "clan_color", "is_main", "is_ruin", "abandoned_ticks"):
+                    if k in ent:
+                        setattr(h, k, ent[k])
+                h.id = eid
+                RT.sim.world.entities[eid] = h
+            elif kind == "corpse":
+                co = Corpse(x=float(ent.get("x") or 0), y=float(ent.get("y") or 0), ttl=int(ent.get("ttl") or 600), energy=float(ent.get("energy") or 25))
+                co.id = eid
+                RT.sim.world.entities[eid] = co
+        RT.sim.world._next_id = max_id + 1
+        # Restore tick and meta
+        RT.sim.tick = int(data.get("tick") or 0)
+        if "clans" in data and isinstance(data["clans"], dict):
+            # server keys are strings
+            restored_clans: dict[int, dict] = {}
+            for k, v in data["clans"].items():
+                try:
+                    restored_clans[int(k)] = dict(v)
+                except Exception:
+                    continue
+            RT.sim.clans = restored_clans
+            # repair _next_clan_id
+            if restored_clans:
+                RT.sim._next_clan_id = max(restored_clans.keys()) + 1
+        if "relations" in data and isinstance(data["relations"], list):
+            RT.sim.relations = {(int(r["a"]), int(r["b"])): int(r["score"]) for r in data["relations"] if "a" in r and "b" in r}
+        if "signals" in data:
+            RT.sim.signals = list(data["signals"])
+        if "fires" in data:
+            RT.sim.fires = list(data["fires"])
+        # Rebuild index for next step
+        RT.sim.world.rebuild_index()
+        RT.sim._refresh_cache()
+        print(f"[restore] loaded snapshot tick={RT.sim.tick} entities={len(RT.sim.world.entities)} clans={len(RT.sim.clans)} from {p}", flush=True)
+        # Hotfix live world for N150: reduce query radii and heavy subsystems when pop >800
+        c_count = len([e for e in RT.sim.world.entities.values() if e.kind == "creature"])
+        if c_count > 800:
+            # Apply cheaper laws in-place without POST (preserves tick)
+            new_cfg = replace(RT.config, perceive_radius=14.0, signal_radius=8.0, knowledge_enabled=False, schism_enabled=False, help_call_enabled=False)
+            RT.config = new_cfg
+            RT.sim.config = new_cfg
+            RT.sim.world.config = new_cfg
+            print(f"[restore] hotfix {c_count}c: perceive 14 signal 8 knowledge/schism/help off for 10t/s", flush=True)
+        # Move aside so next start is fresh unless explicitly re-saved
+        try:
+            p.rename(p.with_suffix(".loaded"))
+        except Exception:
+            pass
+        return True
+    except Exception as exc:
+        print(f"[restore] failed {exc}", flush=True)
+        traceback.print_exc()
+        return False
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     DB.connect()
-    start_world()
+    # Try to keep same world across deploys
+    restored = _try_restore_snapshot()
+    if not restored:
+        start_world()
+    else:
+        # reuse existing world_id row, attach event sink
+        if RT.world_id is None:
+            # find latest world row
+            try:
+                rows = DB.worlds()
+                if rows:
+                    RT.world_id = rows[0]["id"]
+            except Exception:
+                pass
+        if RT.world_id is None:
+            start_world()
+        else:
+            RT.sim.on_event = _on_event
+            print(f"[restore] continuing world_id={RT.world_id} tick={RT.sim.tick}", flush=True)
     engine = SimEngine(RT, HUB)
     engine.start()
     yield
