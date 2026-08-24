@@ -143,9 +143,8 @@ body {
   overflow-y: auto;
   pointer-events: auto;
   flex: none;
-  height: 260px;
-  min-height: 260px;
-  max-height: 260px;
+  max-height: 32vh;
+  min-height: 120px;
 }
 
 .clan-panel-box {
@@ -156,9 +155,8 @@ body {
   overflow-y: auto;
   pointer-events: auto;
   flex: none;
-  height: 260px;
-  min-height: 260px;
-  max-height: 260px;
+  max-height: 32vh;
+  min-height: 120px;
 }
 .clan-panel-box h3 {
   margin: 0 0 6px;
@@ -184,9 +182,8 @@ body {
   overflow-y: auto;
   pointer-events: auto;
   flex: none;
-  height: 260px;
-  min-height: 260px;
-  max-height: 260px;
+  max-height: 32vh;
+  min-height: 120px;
 }
 
 .chronicle h3 {
