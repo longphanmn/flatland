@@ -88,6 +88,9 @@ export default function App() {
   const prevSeedRef = useRef<number | null>(null)
   const lastUiUpdateRef = useRef<number>(0)
   const queuedEventsRef = useRef<HistoryEvent[]>([])
+  const [estTps, setEstTps] = useState<number | null>(null)
+  const lastTpsTimeRef = useRef<number>(0)
+  const lastTpsTickRef = useRef<number | null>(null)
   useEffect(() => {
     selectedRef.current = selectedId
   }, [selectedId])
@@ -238,14 +241,39 @@ export default function App() {
         prevSeedRef.current = msg.seed
         stateRef.current = msg
 
-        // AF: Throttle React virtual DOM re-renders to ~5 Hz (every 200ms) to keep browser main thread light,
-        // while CanvasRenderer continues to read stateRef.current at full 60 FPS.
+        // Estimate true ticks/s from WS stream (wall-clock), independent of UI throttle
+        {
+          const nowMs = performance.now()
+          if (lastTpsTickRef.current !== null && lastTpsTimeRef.current) {
+            const dt = (nowMs - lastTpsTimeRef.current) / 1000
+            const dTick = msg.tick - (lastTpsTickRef.current ?? msg.tick)
+            if (dt >= 0.5 && dTick > 0) {
+              const tps = dTick / dt
+              setEstTps(Math.round(tps * 10) / 10)
+              lastTpsTimeRef.current = nowMs
+              lastTpsTickRef.current = msg.tick
+            }
+          } else {
+            lastTpsTimeRef.current = nowMs
+            lastTpsTickRef.current = msg.tick
+          }
+          // Reset on new world
+          if (isNewWorld) {
+            lastTpsTimeRef.current = nowMs
+            lastTpsTickRef.current = msg.tick
+            setEstTps(null)
+          }
+        }
+
+        // AF: Throttle React virtual DOM re-renders to ~10 Hz (every 100ms) so HUD tick
+        // appears at true rate (was 200ms → 5Hz, looked like 2 ticks/s when counting updates).
+        // CanvasRenderer continues to read stateRef.current at full 60 FPS.
         const now = performance.now()
         const isExtinct = msg.creatures_alive === 0
         const shouldUpdateReactState =
           isNewWorld ||
           isExtinct ||
-          now - (lastUiUpdateRef.current || 0) >= 200
+          now - (lastUiUpdateRef.current || 0) >= 100
 
         if (!archiveModeRef.current && msg.events && msg.events.length > 0) {
           for (const ev of msg.events) {
@@ -475,8 +503,8 @@ export default function App() {
         <span className={`dot ${status}`} title={STATUS_LABEL[status]} />
         <span className="chip">{STATUS_LABEL[status]}</span>
         {paused && <span className="chip paused">PAUSED</span>}
-        <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Same seed ⇒ same world.">
-          tick <b>{state?.tick ?? 0}</b>
+        <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Est TPS is wall-clock measured from WS stream; if it drops below target, healthz avg_tick_ms shows overrun.">
+          tick <b>{state?.tick ?? 0}</b>{estTps !== null && ` · ${estTps} t/s`}
         </span>
         <span className="chip alive" title="Alive creatures — Flatland castes + Predators + Herbivores. Hover Caste chart for breakdown.">
           alive <b>{state?.creatures_alive ?? 0}</b>

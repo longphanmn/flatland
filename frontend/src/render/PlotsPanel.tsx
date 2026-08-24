@@ -23,10 +23,18 @@ export default function PlotsPanel({ onSelectClan }: { onSelectClan?: (id: numbe
         .then((d) => alive && setPlots(d.plots ?? []))
         .catch(() => {})
     load()
-    const t = setInterval(load, 2000)
+    const t = setInterval(() => {
+      if (document.hidden) return
+      load()
+    }, 5000)
+    const onVis = () => {
+      if (!document.hidden) load()
+    }
+    document.addEventListener('visibilitychange', onVis)
     return () => {
       alive = false
       clearInterval(t)
+      document.removeEventListener('visibilitychange', onVis)
     }
   }, [])
   if (plots.length === 0) return <p className="chip">no plots — the world is calm</p>

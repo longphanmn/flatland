@@ -162,7 +162,10 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
         .then((d) => alive && setData(d))
         .catch(() => {})
     load()
-    const t = setInterval(load, 1000)
+    const t = setInterval(() => {
+      if (document.hidden) return
+      load()
+    }, 2000)
     return () => {
       alive = false
       clearInterval(t)

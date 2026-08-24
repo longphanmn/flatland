@@ -46,10 +46,19 @@ export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelect
         })
         .catch(() => {})
     load()
-    const t = setInterval(load, 2000)
+    // 5s poll reduces proxy load; visibility check pauses when tab hidden
+    const t = setInterval(() => {
+      if (document.hidden) return
+      load()
+    }, 5000)
+    const onVis = () => {
+      if (!document.hidden) load()
+    }
+    document.addEventListener('visibilitychange', onVis)
     return () => {
       alive = false
       clearInterval(t)
+      document.removeEventListener('visibilitychange', onVis)
     }
   }, [])
 

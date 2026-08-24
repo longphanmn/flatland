@@ -89,7 +89,10 @@ export default function ClanDetails({
         })
     }
     load()
-    const t = setInterval(load, 1500)
+    const t = setInterval(() => {
+      if (document.hidden) return
+      load()
+    }, 3000)
     return () => {
       alive = false
       clearInterval(t)

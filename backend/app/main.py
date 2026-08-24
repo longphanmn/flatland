@@ -101,6 +101,9 @@ class RuntimeState:
         self.saved_config = self.config
         self.current_preset: str | None = "sustainable"
         self.lock = threading.RLock()
+        # Tick timing ring buffer for /healthz diagnostics (true rate vs target)
+        self._tick_times: list[float] = []  # monotonic timestamps of last 50 ticks
+        self._tick_durs: list[float] = []  # durations (ms) of last 50 steps
 
 
 CONFIG = Config.from_env()
@@ -154,6 +157,7 @@ def advance_world(rt: RuntimeState, hub: Hub | None = None) -> dict | None:
     """
     if rt.paused:
         return None
+    t0 = time.monotonic()
     try:
         # AD: chronicle/genealogy writes land in the RAM buffer; the writer
         # daemon commits them off-thread — step() never waits on SQLite.
@@ -174,6 +178,21 @@ def advance_world(rt: RuntimeState, hub: Hub | None = None) -> dict | None:
         traceback.print_exc()
         sys.stdout.flush()
         return None
+    finally:
+        # Record timing for /healthz even when step succeeded (or failed)
+        dur_ms = (time.monotonic() - t0) * 1000.0
+        try:
+            rt._tick_durs.append(dur_ms)
+            rt._tick_times.append(time.monotonic())
+            if len(rt._tick_durs) > 50:
+                rt._tick_durs.pop(0)
+                rt._tick_times.pop(0)
+            # Warn when a single tick overruns the target interval
+            interval_ms = 1000.0 / max(rt.speed, MIN_SPEED)
+            if dur_ms > interval_ms * 1.2:
+                print(f"[tick-engine] overrun tick={rt.sim.tick} dur={dur_ms:.1f}ms > interval={interval_ms:.1f}ms (speed={rt.speed})", flush=True)
+        except Exception:
+            pass
     # If a hub is passed and has no active listeners, skip snapshot payload serialization
     if hub is not None and not hub.clients:
         return None
@@ -736,16 +755,32 @@ async def ws_endpoint(ws: WebSocket) -> None:
 # --------------------------------------------------------------------- rest
 @app.get("/healthz")
 async def healthz() -> dict:
+    # True rate from ring buffer (wall-clock)
+    avg_dur = round(sum(RT._tick_durs) / len(RT._tick_durs), 2) if RT._tick_durs else 0.0
+    max_dur = round(max(RT._tick_durs), 2) if RT._tick_durs else 0.0
+    actual_tps = 0.0
+    if len(RT._tick_times) >= 2:
+        span = RT._tick_times[-1] - RT._tick_times[0]
+        if span > 0:
+            actual_tps = round((len(RT._tick_times) - 1) / span, 2)
     out: dict = {
         "ok": True,
         "tick": RT.sim.tick,
         "paused": RT.paused,
+        "speed_target": RT.speed,
+        "actual_tps": actual_tps,
+        "avg_tick_ms": avg_dur,
+        "max_tick_ms": max_dur,
+        "interval_ms": round(1000.0 / max(RT.speed, MIN_SPEED), 1),
         "clients": len(HUB.clients),
         "db_pending": DB.pending,  # §AD ops still in the RAM log
+        "creatures": len(RT.sim.world.creatures()),
     }
     if RT.last_tick_error:
         out["ok"] = False
         out["last_tick_error"] = RT.last_tick_error
+    if avg_dur > out["interval_ms"] * 1.1:
+        out["overrun"] = True
     return out
 
 
