@@ -536,6 +536,7 @@ class Simulation:
         # across clans (or worlds!) would couple their specializations.
         spec = dict(TOTEM_SPEC.get(totem, {"warrior": 0.33, "farmer": 0.33, "scavenger": 0.34}))
         culture = f"{CULTURE_ADJECTIVES[(cid * 11 + self.config.seed) % len(CULTURE_ADJECTIVES)]} {CULTURE_NOUNS[(cid * 19 + self.config.seed) % len(CULTURE_NOUNS)]}"
+        founder_name = personal_name_for(founder.id, self.config.seed, founder.generation) if founder is not None else None
         self.clans[cid] = {
             "name": name,
             "founder_id": founder.id if founder is not None else None,
@@ -550,8 +551,49 @@ class Simulation:
             "larder": 0.0,
             "tribute_to": None,
             "main_house_id": None,
+            "history": [
+                {
+                    "tick": self.tick,
+                    "day": self.day,
+                    "event": "founded",
+                    "desc": f"Founded by {founder_name or f'Leader #{founder.id}' if founder else 'Settlers'} (Day {self.day})",
+                }
+            ],
         }
         return cid
+
+    def _log_clan_history(self, cid: int, event_type: str, desc: str) -> None:
+        """AK: Record major historical milestones for a clan."""
+        clan = self.clans.get(cid)
+        if not clan:
+            return
+        if "history" not in clan or not isinstance(clan["history"], list):
+            clan["history"] = []
+        clan["history"].append({
+            "tick": self.tick,
+            "day": self.day,
+            "event": event_type,
+            "desc": desc,
+        })
+        if len(clan["history"]) > 30:
+            clan["history"].pop(0)
+
+    def _set_main_house_for_clan(self, cid: int, house: House) -> None:
+        """AK: Ensure strictly ONE main house per clan across entities and metadata."""
+        if not cid or cid not in self.clans:
+            return
+        prev_hid = self.clans[cid].get("main_house_id")
+        self.clans[cid]["main_house_id"] = house.id
+        for e in self.world.entities.values():
+            if isinstance(e, House) and e.clan_id == cid and not e.is_ruin:
+                e.is_main = (e.id == house.id)
+        if prev_hid != house.id:
+            self._log_clan_history(
+                cid,
+                "hq_relocated",
+                f"Headquarters established at House #{house.id} ({house.x:.0f}, {house.y:.0f})",
+            )
+
 
     def _functional_houses(self) -> list[House]:
         """Non-ruin houses in id order — the possible settlement anchors (§V).
@@ -637,8 +679,7 @@ class Simulation:
                 if cfg.house_claim_enabled:
                     h.clan_id = cid
                     h.clan_color = self.clans[cid]["color"]
-                    h.is_main = True
-                    self.clans[cid]["main_house_id"] = h.id
+                    self._set_main_house_for_clan(cid, h)
         # No houses and no cap: roofless founders stay clanless — a settlement
         # defines a clan (§V); clans rise later from the generations.
 
@@ -701,8 +742,9 @@ class Simulation:
             h.clan_id = cid
             h.clan_color = self.clans[cid]["color"]
             if not self.clans[cid].get("main_house_id"):
-                h.is_main = True
-                self.clans[cid]["main_house_id"] = h.id
+                self._set_main_house_for_clan(cid, h)
+            else:
+                h.is_main = False
         # clans without a free house: build a settlement when unpinned (§L)
         # (ghost clans with no living members never build)
         for cid in sorted(clan_ids):
@@ -722,20 +764,15 @@ class Simulation:
                 h.clan_id = 0
                 h.clan_color = None
                 h.is_main = False
-        homeless = [
-            cid
-            for cid in sorted(self.clans.keys())
-            if not any(h.clan_id == cid for h in houses)
-        ]
+        # Clans that already own at least one house keep their claimed settlement
+        claimed_clans = {h.clan_id for h in houses if h.clan_id}
+        homeless = [cid for cid in self.clans if cid not in claimed_clans]
         if not homeless:
             return
         self._anchor_homeless_clans(homeless)
 
     def _claim_house_for_clan(self, clan_id: int) -> None:
-        """Settle a clan at the free house nearest its members (§V anchor claim);
-        with none free it founds a new settlement (§L settlement economy)."""
-        if not self.config.house_claim_enabled:
-            return
+        """Claim nearest free house for homeless clan or found a new settlement (§V)."""
         houses = self._functional_houses()
         members = [c for c in self.world.creatures() if c.clan_id == clan_id]
         free = [h for h in houses if h.clan_id == 0]
@@ -745,8 +782,9 @@ class Simulation:
             h.clan_id = clan_id
             h.clan_color = self.clans.get(clan_id, {}).get("color")
             if not self.clans.get(clan_id, {}).get("main_house_id"):
-                h.is_main = True
-                self.clans[clan_id]["main_house_id"] = h.id
+                self._set_main_house_for_clan(clan_id, h)
+            else:
+                h.is_main = False
             return
         # No free house: a new clan founds a new settlement (§L settlement economy)
         # But respect explicit overrides: tests/scenarios that pin num_houses keep housing shortage
@@ -795,8 +833,9 @@ class Simulation:
             house.clan_id = clan_id
             house.clan_color = self.clans.get(clan_id, {}).get("color")
             if not self.clans.get(clan_id, {}).get("main_house_id"):
-                house.is_main = True
-                self.clans[clan_id]["main_house_id"] = house.id
+                self._set_main_house_for_clan(clan_id, house)
+            else:
+                house.is_main = False
         self.world.add(house)
         self._emit(
             HistoryEvent(
@@ -832,13 +871,15 @@ class Simulation:
                 clan_houses = [h for h in functional if isinstance(h, House) and h.clan_id == cid]
                 total_beds = sum(self._house_beds(h) for h in clan_houses)
 
-                # Ensure the clan has a designated main house
+                # Ensure the clan has strictly ONE designated main house
                 if clan_houses:
                     main_hid = self.clans.get(cid, {}).get("main_house_id")
-                    if not any(h.id == main_hid and h.is_main for h in clan_houses):
+                    if not any(h.id == main_hid for h in clan_houses):
                         main_h = max(clan_houses, key=lambda h: h.size)
-                        main_h.is_main = True
-                        self.clans[cid]["main_house_id"] = main_h.id
+                        self._set_main_house_for_clan(cid, main_h)
+                    else:
+                        for h in clan_houses:
+                            h.is_main = (h.id == main_hid)
 
                 # If clan population outgrows beds, claim nearby free house or spawn extension
                 if len(members) > total_beds:
@@ -3223,6 +3264,12 @@ class Simulation:
                 if candidates:
                     successor = sorted(candidates, key=lambda cc: (-cc.age, cc.id))[0]
                     clan["leader_id"] = successor.id
+                    succ_name = personal_name_for(successor.id, self.config.seed, successor.generation)
+                    self._log_clan_history(
+                        c.clan_id,
+                        "leader_change",
+                        f"{succ_name} (#{successor.id}) ascended as Leader (Day {self.day})",
+                    )
                     self._emit(
                         HistoryEvent(
                             type="succession",
@@ -3236,6 +3283,12 @@ class Simulation:
                     )
                 else:
                     clan["leader_id"] = None
+                    self._log_clan_history(
+                        c.clan_id,
+                        "leader_change",
+                        f"Leader #{c.id} perished without living successor (Day {self.day})",
+                    )
+
 
     def _update_creature_skills_and_titles(self, c: Creature) -> None:
         """Evaluate dynamic titles and milestone level-ups."""
@@ -3381,7 +3434,14 @@ class Simulation:
                     regen *= 1.0 + self._totem_stat(c, "defense")  # totem vitality heals faster
                     c.health = min(100.0, c.health + regen)
                 if c.energy <= 0:
-                    self._kill(c, "starvation")
+                    if getattr(c, "food_basket", 0) > 0:
+                        c.food_basket -= 1
+                        c.energy = min(cfg.energy_max, c.energy + cfg.energy_from_food * 0.9)
+                        c.ticks_since_meal = 0
+                        c.meals += 1
+                        c.give_ups.clear()
+                    else:
+                        self._kill(c, "starvation")
                 elif c.health <= 0:
                     self._kill(c, "disease")
                 elif c.age >= c.lifespan:
@@ -3390,8 +3450,8 @@ class Simulation:
                 # the body does not move again until dawn (or death).
                 return
 
-        # Field consumption: eat from personal reserve when hungry
-        if getattr(c, "food_basket", 0) > 0 and not c.sleeping and c.energy < 45.0:
+        # Field consumption: eat from personal reserve when hungry or starving
+        if getattr(c, "food_basket", 0) > 0 and not c.sleeping and c.energy < 55.0:
             c.food_basket -= 1
             c.energy = min(cfg.energy_max, c.energy + cfg.energy_from_food * 0.9)
             c.ticks_since_meal = 0
@@ -3399,6 +3459,7 @@ class Simulation:
             c.give_ups.clear()
             c.emote = "craft"
             c.emote_ticks = 15
+
 
         # Priests heal injured / infected clanmates
         if c.caste == "Priest" and not c.sleeping and (self.tick + c.id) % 8 == 0:
@@ -4026,10 +4087,20 @@ class Simulation:
             regen = 0.1 * (1.0 + self._totem_stat(c, "defense"))
             c.health = min(100.0, c.health + regen)
         if c.energy <= 0:
-            self._kill(c, "starvation")
-            return
+            if getattr(c, "food_basket", 0) > 0:
+                c.food_basket -= 1
+                c.energy = min(cfg.energy_max, c.energy + cfg.energy_from_food * 0.9)
+                c.ticks_since_meal = 0
+                c.meals += 1
+                c.give_ups.clear()
+                c.emote = "craft"
+                c.emote_ticks = 15
+            else:
+                self._kill(c, "starvation")
+                return
         if c.age >= c.lifespan:
             self._kill(c, "old_age")
+
 
     def _enforce_food_law(self) -> None:
         """God's bounty or famine, bent by the season and age: winter starves the land."""
@@ -4400,8 +4471,9 @@ class Simulation:
                 "door_side": e.door_side,
                 "clan_id": e.clan_id or None,
                 "clan_color": e.clan_color,
-                "is_main": bool(getattr(e, "is_main", False) or (e.clan_id and self.clans.get(e.clan_id, {}).get("main_house_id") == e.id)),
+                "is_main": bool(e.clan_id and self.clans.get(e.clan_id, {}).get("main_house_id") == e.id),
                 "is_ruin": e.is_ruin or None,
+
                 "abandoned_ticks": e.abandoned_ticks or None,
             }
         if isinstance(e, Food):

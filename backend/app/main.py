@@ -1122,28 +1122,33 @@ def _clan_details(clan_id: int) -> dict:
                 "personal_name": __import__('app.simulation', fromlist=['personal_name_for']).personal_name_for(c.id, RT.sim.config.seed, c.generation),
                 "glyph": __import__('app.simulation', fromlist=['glyph_for']).glyph_for(c.id, RT.sim.config.seed, c.generation),
             })
-    # houses — a clan can have multiple houses, main house is where leader lives
+    # houses — a clan can have multiple houses, strictly one main house
     clan_houses = []
     main_house = None
+    valid_clan_houses = [
+        ent for ent in RT.sim.world.entities.values()
+        if ent.kind == "house" and getattr(ent, "clan_id", 0) == clan_id and not getattr(ent, "is_ruin", False)
+    ]
     main_hid = info.get("main_house_id")
-    for ent in RT.sim.world.entities.values():
-        if ent.kind == "house" and getattr(ent, "clan_id", 0) == clan_id and not getattr(ent, "is_ruin", False):
-            is_main = bool(getattr(ent, "is_main", False) or (main_hid and ent.id == main_hid))
-            h_obj = {
-                "id": ent.id,
-                "x": round(ent.x, 2),
-                "y": round(ent.y, 2),
-                "size": getattr(ent, "size", 0),
-                "is_main": is_main,
-                "is_ruin": False,
-                "clan_color": getattr(ent, "clan_color", None),
-            }
-            clan_houses.append(h_obj)
-            if is_main or main_house is None:
-                main_house = h_obj
+    if valid_clan_houses and (not main_hid or not any(h.id == main_hid for h in valid_clan_houses)):
+        main_hid = valid_clan_houses[0].id
+        info["main_house_id"] = main_hid
 
-    if main_house is not None:
-        main_house["is_main"] = True
+    for ent in valid_clan_houses:
+        is_main = (ent.id == main_hid)
+        ent.is_main = is_main
+        h_obj = {
+            "id": ent.id,
+            "x": round(ent.x, 2),
+            "y": round(ent.y, 2),
+            "size": getattr(ent, "size", 0),
+            "is_main": is_main,
+            "is_ruin": False,
+            "clan_color": getattr(ent, "clan_color", None),
+        }
+        clan_houses.append(h_obj)
+        if is_main:
+            main_house = h_obj
 
     # war record
     wins = sum(1 for e in RT.sim.history if e.type == "war" and int(e.payload.get("b", 0) or 0) == clan_id)
@@ -1169,10 +1174,12 @@ def _clan_details(clan_id: int) -> dict:
         "culture": info.get("culture"),
         "members": members,
         "events": [e.model_dump(mode="json") for e in clan_events],
+        "history": info.get("history", []),
         "coalition_id": info.get("coalition_id"),  # §AB
         "larder": round(float(info.get("larder", 0.0)), 1),  # §AB clan store
         "tribute_to": info.get("tribute_to"),  # §AB subjugation
     }
+
 
 
 @app.get("/api/clans")

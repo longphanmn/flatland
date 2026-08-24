@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TOTEMS, totemEmoji } from '../totems'
 import Collapsible from '../render/Collapsible'
+import type { ClanHistoryEvent } from '../types'
 
 interface ClanMember {
   id: number
@@ -43,6 +44,7 @@ interface ClanDetailsData {
   culture: string | null
   members: ClanMember[]
   events: any[]
+  history?: ClanHistoryEvent[]
 }
 
 function Bar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
@@ -92,7 +94,7 @@ export default function ClanDetails({
     const t = setInterval(() => {
       if (document.hidden) return
       load()
-    }, 3000)
+    }, 2500)
     return () => {
       alive = false
       clearInterval(t)
@@ -228,8 +230,10 @@ export default function ClanDetails({
         <span className="chip" style={{ width: '100%' }}>
           {data.house ? (
             <>
-              👑 <b>Main House</b> ({Math.round(data.house.x)}, {Math.round(data.house.y)}) ·{' '}
-              <span style={{ color: data.color, fontWeight: 600 }}>Leader #{data.leader_id ?? '—'} lives here</span>
+              👑 <b>Main House #{data.house.id}</b> ({Math.round(data.house.x)}, {Math.round(data.house.y)})
+              {data.leader_id ? (
+                <span style={{ color: data.color, fontWeight: 600, marginLeft: 4 }}>· Leader Residence</span>
+              ) : null}
             </>
           ) : (
             <>🏕 Homeless</>
@@ -252,6 +256,38 @@ export default function ClanDetails({
         )}
       </div>
 
+      {/* Clan History & Major Milestones Section */}
+      {data.history && data.history.length > 0 && (
+        <Collapsible id={`clan-history-${data.id}`} title={<h3 className="insp-h">📜 Clan History & Milestones</h3>} defaultOpen={true}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 4, maxHeight: 180, overflowY: 'auto' }}>
+            {data.history.slice().reverse().map((h, i) => (
+              <div
+                key={i}
+                style={{
+                  background: 'rgba(22, 27, 34, 0.7)',
+                  borderLeft: `3px solid ${h.event === 'founded' ? '#3fb950' : h.event === 'leader_change' ? '#e3b341' : '#58a6ff'}`,
+                  borderRadius: 4,
+                  padding: '4px 8px',
+                  fontSize: 11,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#8b949e', fontSize: 10 }}>
+                  <span style={{ textTransform: 'capitalize', fontWeight: 600, color: '#c9d1d9' }}>
+                    {h.event === 'founded' ? '🌱 Foundation' :
+                     h.event === 'leader_change' ? '👑 Succession' :
+                     h.event === 'hq_relocated' ? '🏛️ Headquarters' :
+                     h.event === 'war_declared' ? '⚔️ War' :
+                     h.event === 'tribute_paid' ? '🤝 Treaty' : h.event}
+                  </span>
+                  <span>Day {h.day} · tick {h.tick}</span>
+                </div>
+                <div style={{ color: '#e6edf3', marginTop: 1 }}>{h.desc}</div>
+              </div>
+            ))}
+          </div>
+        </Collapsible>
+      )}
+
       {/* Houses Collapsible */}
       {(data.houses && data.houses.length > 0) && (
         <Collapsible id={`clan-houses-${data.id}`} title={<h3 className="insp-h">Houses ({data.houses.length})</h3>}>
@@ -271,10 +307,10 @@ export default function ClanDetails({
                 }}
               >
                 <span>
-                  {h.is_main ? '👑 Main House' : '🏠 House'} #{h.id} ({Math.round(h.x)}, {Math.round(h.y)})
+                  {h.is_main ? '👑 Main House' : '🏠 Outpost'} #{h.id} ({Math.round(h.x)}, {Math.round(h.y)})
                 </span>
                 <span style={{ fontSize: 10.5, color: h.is_main ? '#e3b341' : '#8b949e', fontWeight: 600 }}>
-                  {h.is_main ? `Leader #${data.leader_id ?? '—'}` : `size ${h.size.toFixed(1)}`}
+                  {h.is_main ? `Leader HQ` : `size ${h.size.toFixed(1)}`}
                 </span>
               </div>
             ))}
@@ -298,7 +334,7 @@ export default function ClanDetails({
         {data.members.length === 0 ? (
           <p className="chip" style={{ margin: '4px 0' }}>No living members — clan is extinct.</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto' }}>
             {data.members.map((m) => (
               <button
                 key={m.id}
@@ -329,11 +365,11 @@ export default function ClanDetails({
       </Collapsible>
 
       {/* Events / Chronicle Section */}
-      <Collapsible id={`clan-events-${data.id}`} title={<h3 className="insp-h">Chronicle</h3>}>
+      <Collapsible id={`clan-events-${data.id}`} title={<h3 className="insp-h">Recent Activity</h3>}>
         {data.events.length === 0 ? (
           <p className="chip" style={{ margin: '4px 0' }}>No recent clan events.</p>
         ) : (
-          <ul className="insp-events" style={{ maxHeight: 160, overflowY: 'auto', margin: 0, padding: 0 }}>
+          <ul className="insp-events" style={{ maxHeight: 150, overflowY: 'auto', margin: 0, padding: 0 }}>
             {data.events.slice().reverse().map((ev: any, i: number) => (
               <li key={i} className={`ev-${ev.type}`} style={{ fontSize: 11.5 }}>
                 tick {ev.tick}: <b>{ev.type}</b> {ev.caste ? `· ${ev.caste}` : ''} {ev.cause ? `· ${ev.cause}` : ''}

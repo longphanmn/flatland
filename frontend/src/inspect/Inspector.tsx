@@ -23,7 +23,6 @@ function CreatureAvatar({ e }: { e: EntityState }) {
   const cx = 40
   const cy = 40
   const r = 18 * (e.scale_jitter ?? 1) * (e.stage === 'infant' ? 0.55 : e.stage === 'juvenile' ? 0.8 : 1)
-  // hue shift for avatar border? keep simple use base color
   const points = isLine
     ? null
     : isPriest
@@ -33,11 +32,9 @@ function CreatureAvatar({ e }: { e: EntityState }) {
           return `${cx + Math.cos(a) * r},${cy + Math.sin(a) * r}`
         }).join(' ')
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 4px' }}>
-      <svg width={80} height={80} viewBox="0 0 80 80" style={{ background: '#161b22', borderRadius: 10, border: `1px solid ${e.clan_color ?? '#30363d'}` }}>
-        {/* clan ring */}
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0 2px' }}>
+      <svg width={76} height={76} viewBox="0 0 80 80" style={{ background: '#161b22', borderRadius: 8, border: `1px solid ${e.clan_color ?? '#30363d'}` }}>
         {e.clan_color && <circle cx={cx} cy={cy} r={r + 6} fill="none" stroke={e.clan_color} strokeWidth={1.2} opacity={0.9} />}
-        {/* body */}
         {isLine ? (
           <line x1={cx - r * 1.3} y1={cy} x2={cx + r * 1.3} y2={cy} stroke={color} strokeWidth={3} strokeLinecap="round" />
         ) : isPriest ? (
@@ -45,18 +42,15 @@ function CreatureAvatar({ e }: { e: EntityState }) {
         ) : (
           <polygon points={points!} fill={color} fillOpacity={0.22} stroke={color} strokeWidth={1.2} strokeLinejoin="round" />
         )}
-        {/* glyph in center */}
         {e.glyph && (
           <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" fontSize={r * 0.85} fill="#e6edf3" style={{ fontFamily: 'ui-monospace, monospace' }}>
             {e.glyph}
           </text>
         )}
-        {/* status dots */}
         {e.infected && <circle cx={cx + 22} cy={cy - 22} r={4} fill="#3fb950" stroke="#0d1117" strokeWidth={1} />}
         {e.status === 'starving' && <circle cx={cx + 22} cy={cy - 22} r={4} fill="#f85149" stroke="#0d1117" strokeWidth={1} />}
         {e.status === 'hungry' && <circle cx={cx + 22} cy={cy - 22} r={4} fill="#d29922" stroke="#0d1117" strokeWidth={1} />}
         {(e.chill ?? 0) >= 12 && <circle cx={cx - 22} cy={cy - 22} r={4} fill="#79c0ff" stroke="#0d1117" strokeWidth={1} />}
-        {/* trait glyph corner */}
         {e.trait && (
           <text x={cx} y={72} textAnchor="middle" fontSize={7} fill="#8b949e">
             {e.trait === 'greedy' ? '⬔ greedy' : e.trait === 'peaceful' ? '◯ peaceful' : e.trait === 'paranoid' ? '⬥ paranoid' : e.trait === 'bold' ? '▲ bold' : e.trait}
@@ -94,11 +88,11 @@ function Bar({ label, value, max, color }: { label: string; value: number; max: 
   const pct = Math.max(0, Math.min(100, (value / max) * 100))
   return (
     <div className="insp-bar">
-      <span className="chip">{label}</span>
+      <span className="chip" style={{ minWidth: 60 }}>{label}</span>
       <div className="insp-track">
         <div className="insp-fill" style={{ width: `${pct}%`, background: color }} />
       </div>
-      <span className="chip">
+      <span className="chip" style={{ minWidth: 32, textAlign: 'right' }}>
         <b>{Math.round(value)}</b>
       </span>
     </div>
@@ -185,28 +179,30 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
   return (
     <aside className="inspector">
       <header className="god-head">
-        <h2>
-          {e?.personal_name ?? `${e?.caste ?? 'Creature'} #${id}`}
-          {e?.title ? <span style={{ color: '#e3b341', fontSize: '0.85em', fontWeight: 600, marginLeft: 5 }}>{e.title}</span> : ''}
-          {e?.glyph ? <span title="soul-code glyph" style={{ marginLeft: 4 }}>{e.glyph}</span> : ''}
-          {e && ` · ${e.shape === 'line' ? 'female' : 'male'}`}
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span>{e?.personal_name ?? `${e?.caste ?? 'Creature'}`} #{id}</span>
+          {e?.title ? <span style={{ color: '#e3b341', fontSize: '0.85em', fontWeight: 600 }}>{e.title}</span> : null}
+          {e?.glyph ? <span title="soul-code glyph" style={{ fontSize: '0.9em' }}>{e.glyph}</span> : null}
         </h2>
         <button className="god-close" onClick={onClose} aria-label="close">
           ×
         </button>
       </header>
+
       {e && (
-        <div className="chip" style={{ fontSize: 11, opacity: 0.8 }}>
-          {e.personal_name}{e.title ? ` ${e.title}` : ''} · {e.caste} #{id} {e.glyph} · scale {(e.scale_jitter ?? 1).toFixed(2)} · hue {(e.hue_shift ?? 0) > 0 ? '+' : ''}{e.hue_shift ?? 0}°
+        <div className="chip" style={{ fontSize: 11, opacity: 0.85, margin: '2px 0 4px' }}>
+          {e.caste} · {e.shape === 'line' ? 'female' : 'male'} · {e.stage} · Gen {e.generation ?? 0}
         </div>
       )}
+
       {e && <CreatureAvatar e={e} />}
 
       {!e && data && <p className="god-note">no longer among the living — their chronicle remains.</p>}
+
       {e && (
         <>
           {statusChips.length > 0 && (
-            <div className="status-row">
+            <div className="status-row" style={{ margin: '4px 0' }}>
               {statusChips.map((s) => (
                 <span key={s.text} className={`status-chip ${s.cls}`}>
                   {s.text}
@@ -214,14 +210,17 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
               ))}
             </div>
           )}
-          <Bar label="energy" value={e.energy ?? 0} max={100} color="#d29922" />
-          <Bar label="health" value={e.health ?? 0} max={100} color="#3fb950" />
-          {typeof e.chill === 'number' && e.chill > 0.5 && (
-            <Bar label="chill" value={e.chill} max={24} color="#79c0ff" />
-          )}
 
-          {/* Personality & Evolution Profile */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, margin: '8px 0' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '4px 0' }}>
+            <Bar label="Energy" value={e.energy ?? 0} max={100} color="#d29922" />
+            <Bar label="Health" value={e.health ?? 0} max={100} color="#3fb950" />
+            {typeof e.chill === 'number' && e.chill > 0.5 && (
+              <Bar label="Chill" value={e.chill} max={24} color="#79c0ff" />
+            )}
+          </div>
+
+          {/* Personality & Equipped Tool */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, margin: '6px 0' }}>
             <div className="chip" style={{ background: '#161b22', border: '1px solid #30363d', padding: '6px 8px', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <span style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>Personality</span>
               <span style={{ fontWeight: 600, color: '#58a6ff', textTransform: 'capitalize' }}>
@@ -234,19 +233,20 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
               </span>
             </div>
             <div className="chip" style={{ background: '#161b22', border: '1px solid #30363d', padding: '6px 8px', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>Equipped Tool</span>
+              <span style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>Tool / Basket</span>
               <span style={{ fontWeight: 600, color: '#f2cc60' }}>
                 {e.equipped_item === 'spear' ? '🗡️ Spear' :
                  e.equipped_item === 'crown' ? '👑 Crown' :
                  e.equipped_item === 'basket' ? `🧺 Basket (${e.food_basket ?? 0}/3)` :
-                 e.equipped_item === 'herb_poultice' ? '🌿 Herb Poultice' : 'None'}
+                 e.equipped_item === 'herb_poultice' ? '🌿 Herb Poultice' :
+                 (e.food_basket ?? 0) > 0 ? `🧺 Food (${e.food_basket}/3)` : 'None'}
               </span>
             </div>
           </div>
 
           {/* Skill Mastery Matrix */}
           <Collapsible id="inspector-skills" title={<h3 className="insp-h">Skill Mastery</h3>} defaultOpen={true}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, padding: '4px 0' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 0' }}>
               {[
                 { name: 'Farming', key: 'farming', icon: '🌾', max: 30, color: '#3fb950' },
                 { name: 'Combat', key: 'combat', icon: '⚔️', max: 30, color: '#ff7b72' },
@@ -271,17 +271,17 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
             </div>
           </Collapsible>
 
+          {/* Vitals & Affiliation Grid */}
           <div className="insp-grid">
             <span className="chip">
-              age <b>{e.age ?? 0}</b> / {Math.round(e.lifespan ?? 0)} · {e.stage}
+              Age <b>{e.age ?? 0}</b> / {Math.round(e.lifespan ?? 0)}
             </span>
             <span className="chip">
-              meals <b>{e.meals ?? 0}</b> · sides <b>{e.sides}</b> · gen{' '}
-              <b>{e.generation ?? 0}</b>
+              Meals <b>{e.meals ?? 0}</b> · Sides <b>{e.sides}</b>
             </span>
             {typeof e.irregularity === 'number' && e.irregularity > 0 && (
               <span className="chip" style={{ color: '#f85149' }}>
-                irregularity <b>{e.irregularity}</b>
+                Irregularity <b>{e.irregularity}</b>
               </span>
             )}
             {e.clan_id != null && e.clan_id > 0 && (
@@ -316,26 +316,26 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
               </button>
             )}
             {e.trait && (
-              <span className="chip" title={`Heritable trait: ${e.trait} — greedy/peaceful/paranoid/bold nudges food/war/flee`}>
+              <span className="chip" title={`Heritable trait: ${e.trait}`}>
                 {e.trait === 'greedy' ? '⬔' : e.trait === 'peaceful' ? '◯' : e.trait === 'paranoid' ? '⬥' : e.trait === 'bold' ? '▲' : '•'} {e.trait}
               </span>
             )}
           </div>
 
-          {/* ---- family tree ---- */}
-          <Collapsible id="inspector-family" title={<h3 className="insp-h">Family</h3>}>
+          {/* Family Tree */}
+          <Collapsible id="inspector-family" title={<h3 className="insp-h">Family Lineage</h3>}>
             <div className="family-tree">
               <div className="tree-row">
-                <KinNode kin={fam?.mother ?? null} label="♀ mother" onNavigate={onNavigate} />
-                <KinNode kin={fam?.father ?? null} label="♂ father" onNavigate={onNavigate} />
+                <KinNode kin={fam?.mother ?? null} label="♀ Mother" onNavigate={onNavigate} />
+                <KinNode kin={fam?.father ?? null} label="♂ Father" onNavigate={onNavigate} />
               </div>
-              <div className="tree-self">#{id} ← you are here</div>
+              <div className="tree-self">#{id} · Current Subject</div>
               <div className="tree-row wrap">
                 {(fam?.children ?? []).length === 0 ? (
-                  <span className="chip">no children yet</span>
+                  <span className="chip">No offspring recorded</span>
                 ) : (
                   fam!.children.map((k) => (
-                    <KinNode key={k.id} kin={k} label="child" onNavigate={onNavigate} />
+                    <KinNode key={k.id} kin={k} label="Child" onNavigate={onNavigate} />
                   ))
                 )}
               </div>
@@ -344,15 +344,15 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
         </>
       )}
 
-      <Collapsible id="inspector-chronicle" title={<h3 className="insp-h">Chronicle</h3>}>
-        <ul className="insp-events">
+      <Collapsible id="inspector-chronicle" title={<h3 className="insp-h">Personal Chronicle</h3>}>
+        <ul className="insp-events" style={{ maxHeight: 150, overflowY: 'auto' }}>
           {(data?.events ?? []).slice().reverse().map((ev) => (
             <li key={`${ev.tick}:${ev.type}`} className={`ev-${ev.type}`}>
               tick {ev.tick}: {eventLine(ev)}
             </li>
           ))}
           {(data?.events?.length ?? 0) === 0 && (
-            <li className="chip">nothing recorded yet</li>
+            <li className="chip">Nothing recorded yet</li>
           )}
         </ul>
       </Collapsible>

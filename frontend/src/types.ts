@@ -61,6 +61,30 @@ export interface EntityState {
   father_id?: number
 }
 
+export interface ClanHistoryEvent {
+  tick: number
+  day: number
+  event: string
+  desc: string
+}
+
+export interface ClanInfo {
+  name: string
+  founder_id: number
+  born_tick: number
+  color: string
+  totem?: string
+  culture?: string
+  culture_id?: number
+  leader_id?: number | null
+  main_house_id?: number | null
+  coalition_id?: number | null
+  larder?: number
+  tribute_to?: number | null
+  specialization?: Record<string, number>
+  history?: ClanHistoryEvent[]
+}
+
 export interface StateMessage {
   type: 'state'
   tick: number
@@ -81,7 +105,7 @@ export interface StateMessage {
   terrain_fertile: { x: number; y: number; r: number }[]
   terrain_rocks: { x: number; y: number; r: number }[]
   relations: { a: number; b: number; score: number }[]
-  clans: Record<string, { name: string; founder_id: number; born_tick: number; color: string; totem?: string; culture?: string }>
+  clans: Record<string, ClanInfo>
   events: HistoryEvent[]
   signals: { x: number; y: number; kind: 'food' | 'alarm'; sender: number; clan_id: number | null; ttl: number }[]
   fires: { x: number; y: number; r: number; ttl: number }[]
@@ -106,8 +130,9 @@ export interface DeltaStateMessage {
   day: number
   season: 'spring' | 'summer' | 'autumn' | 'winter'
   weather: 'clear' | 'rain' | 'fog' | 'storm'
-  relations: { a: number; b: number; score: number }[]
-  clans: Record<string, { name: string; founder_id: number; born_tick: number; color: string; totem?: string; culture?: string }>
+  relations?: { a: number; b: number; score: number }[]
+  clans?: Record<string, ClanInfo>
+
   events: HistoryEvent[]
   signals: { x: number; y: number; kind: 'food' | 'alarm'; sender: number; clan_id: number | null; ttl: number }[]
   fires: { x: number; y: number; r: number; ttl: number }[]

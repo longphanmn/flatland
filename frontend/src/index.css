@@ -558,21 +558,26 @@ body {
 
 .inspector {
   position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 300px;
-  max-width: 92vw;
-  background: #0d1117;
-  border-right: 1px solid #30363d;
-  box-shadow: 8px 0 24px rgba(0, 0, 0, 0.55);
+  top: 12px;
+  left: 12px;
+  bottom: auto;
+  width: 320px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  background: rgba(13, 17, 23, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
   padding: 14px 16px;
   overflow-y: auto;
-  z-index: 9;
+  z-index: 40;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  box-sizing: border-box;
 }
+
 
 .insp-bar {
   display: flex;

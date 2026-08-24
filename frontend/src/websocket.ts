@@ -96,10 +96,9 @@ export class WorldSocket {
           time_of_day: delta.time_of_day,
           day: delta.day,
           season: delta.season,
-          weather: delta.weather,
-          relations: delta.relations,
-          clans: delta.clans,
-          events: delta.events,
+          relations: delta.relations && delta.relations.length > 0 ? delta.relations : (this.lastFullState?.relations ?? []),
+          clans: delta.clans && Object.keys(delta.clans).length > 0 ? { ...(this.lastFullState?.clans ?? {}), ...delta.clans } : (this.lastFullState?.clans ?? {}),
+
           signals: delta.signals,
           fires: delta.fires,
           age: delta.age,
