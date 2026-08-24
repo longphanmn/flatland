@@ -361,6 +361,8 @@ def _try_restore_snapshot() -> bool:
                 plant_growth_rate=min(RT.config.plant_growth_rate, 0.03),
                 birth_rate=min(RT.config.birth_rate, 0.20),
                 food_count=min(RT.config.food_count, 350),
+                cannibalism_enabled=False,
+                exile_on_kin_eat=False,
             )
             RT.config = new_cfg
             RT.sim.config = new_cfg
@@ -1161,8 +1163,7 @@ async def get_clans() -> dict:
 
 def _clans_payload() -> dict:
     # live clan dict + live population + house territory + war history
-    clans = []
-    # war record from history
+    # N150: limit to top 100 alive clans to avoid 1.5MB/5s at 4000 clans
     war_wins: dict[int, int] = {}
     war_losses: dict[int, int] = {}
     for e in RT.sim.history:
@@ -1183,10 +1184,22 @@ def _clans_payload() -> dict:
     for c in RT.sim._get_creatures():
         if c.clan_id:
             pop_by_clan[c.clan_id] = pop_by_clan.get(c.clan_id, 0) + 1
-    # §X clan memory computed once for all clans
-    knowledge_by_clan = RT.sim.clan_knowledge() if RT.sim.config.knowledge_enabled else {}
+    # §X clan memory — only for top 50 alive clans to avoid 4000× overhead
+    alive_cids = [cid for cid, pop in pop_by_clan.items() if pop > 0]
+    alive_cids.sort(key=lambda cid: -pop_by_clan.get(cid, 0))
+    top_cids = set(alive_cids[:50])
+    knowledge_by_clan = {}
+    if RT.sim.config.knowledge_enabled and top_cids:
+        # compute only for top 50, not all 4000
+        all_know = RT.sim.clan_knowledge()
+        knowledge_by_clan = {cid: all_know.get(cid) for cid in top_cids if cid in all_know}
+    clans = []
     for cid, info in RT.sim.clans.items():
         pop = pop_by_clan.get(cid, 0)
+        if pop == 0:
+            continue  # skip ghost clans (exile/schism remnants) — saves 1.5MB
+        if cid not in top_cids and len(clans) >= 100:
+            continue
         house = houses_by_clan.get(cid)
         clans.append({
             "id": cid,
@@ -1209,8 +1222,9 @@ def _clans_payload() -> dict:
             "larder": round(float(info.get("larder", 0.0)), 1),  # §AB clan store
             "tribute_to": info.get("tribute_to"),  # §AB subjugation
         })
-    # sort by population desc
+    # sort by population desc and cap at 100
     clans.sort(key=lambda c: (-c["population"], c["id"]))
+    clans = clans[:100]
     return {"clans": clans, "tick": RT.sim.tick}
 
 
