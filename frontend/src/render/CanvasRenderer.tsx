@@ -61,12 +61,13 @@ interface Camera {
 interface Props {
   stateRef: React.RefObject<StateMessage | null>
   selectedRef?: React.RefObject<number | null>
+  selectedClanRef?: React.RefObject<number | null>
   onTapCreature?: (id: number | null) => void
   /** When set, the canvas renders this frozen snapshot instead of the live world. */
   overrideRef?: React.RefObject<StateMessage | null>
 }
 
-export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, overrideRef }: Props) {
+export default function CanvasRenderer({ stateRef, selectedRef, selectedClanRef, onTapCreature, overrideRef }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const camRef = useRef<Camera>({ scale: 1, ox: 0, oy: 0, initialized: false })
 
@@ -93,6 +94,8 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
 
     let lastTrackedId: number | null = null
     let targetZoomScale: number | null = null
+    let lastTrackedClanId: number | null = null
+    let targetClanScale: number | null = null
 
     const fitCamera = (state: StateMessage) => {
       baseFit = Math.min(canvas.width / state.width, canvas.height / state.height)
@@ -102,6 +105,8 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       cam.initialized = true
       targetZoomScale = null
       lastTrackedId = null
+      lastTrackedClanId = null
+      targetClanScale = null
     }
 
     const clampCamera = (state: StateMessage) => {
@@ -712,9 +717,13 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
 
       if (!cam.initialized || cam.scale <= 0) fitCamera(state)
 
-      // Auto-zoom and follow selected creature movement
+      // Auto-zoom and follow selected creature or zoom-out to selected clan area
       const sel = selectedRef?.current ?? null
+      const selClanId = selectedClanRef?.current ?? null
+
       if (sel !== null) {
+        lastTrackedClanId = null
+        targetClanScale = null
         const selEnt = state.entities.find((e) => e.id === sel && e.kind === 'creature')
         if (selEnt) {
           if (sel !== lastTrackedId) {
@@ -742,9 +751,51 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
             clampCamera(state)
           }
         }
+      } else if (selClanId !== null) {
+        lastTrackedId = null
+        targetZoomScale = null
+        const clanHouses = state.entities.filter((e) => e.kind === 'house' && e.clan_id === selClanId && !e.is_ruin)
+        const clanMembers = state.entities.filter((e) => e.kind === 'creature' && e.clan_id === selClanId)
+        const clanEntities = clanHouses.length > 0 ? clanHouses : clanMembers
+
+        if (clanEntities.length > 0) {
+          let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+          for (const e of clanEntities) {
+            if (e.x < minX) minX = e.x
+            if (e.x > maxX) maxX = e.x
+            if (e.y < minY) minY = e.y
+            if (e.y > maxY) maxY = e.y
+          }
+          const pad = 24
+          minX -= pad; maxX += pad
+          minY -= pad; maxY += pad
+          const spanX = Math.max(50, maxX - minX)
+          const spanY = Math.max(50, maxY - minY)
+          const centerX = (minX + maxX) / 2
+          const centerY = (minY + maxY) / 2
+
+          if (selClanId !== lastTrackedClanId) {
+            lastTrackedClanId = selClanId
+            // Zoom out to show full clan territory and surrounding area
+            const fitClanScale = Math.min((cw * 0.8) / spanX, (ch * 0.8) / spanY)
+            targetClanScale = Math.max(baseFit * 0.9, Math.min(fitClanScale, 3.6))
+          }
+
+          if (pointers.size === 0 && !tapStart) {
+            const desiredScale = targetClanScale ?? cam.scale
+            cam.scale += (desiredScale - cam.scale) * 0.08
+            const targetOx = cw / 2 - centerX * cam.scale
+            const targetOy = ch / 2 - centerY * cam.scale
+            cam.ox += (targetOx - cam.ox) * 0.1
+            cam.oy += (targetOy - cam.oy) * 0.1
+            clampCamera(state)
+          }
+        }
       } else {
         lastTrackedId = null
         targetZoomScale = null
+        lastTrackedClanId = null
+        targetClanScale = null
       }
 
       // ---- sky: night darkness + season tint + weather overlays ----
@@ -958,6 +1009,76 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
           }
         }
       }
+
+      // Clan territory overlay (prominent dashed border, area coverage, member halos, and banner)
+      if (selClanId !== null) {
+        const clan = (state as any).clans?.[String(selClanId)]
+        const clanColor = clan?.color ?? '#58a6ff'
+        const clanName = clan?.name ?? `Clan ${selClanId}`
+        const clanTotem = clan?.totem
+        const totemChar = (clanTotem && TOTEMS[clanTotem]?.emoji) || '🚩'
+
+        const clanHouses = state.entities.filter((e) => e.kind === 'house' && e.clan_id === selClanId && !e.is_ruin)
+        const clanMembers = state.entities.filter((e) => e.kind === 'creature' && e.clan_id === selClanId)
+
+        // Accent halo around all living clan members
+        for (const m of clanMembers) {
+          ctx.strokeStyle = clanColor
+          ctx.lineWidth = 0.35
+          ctx.setLineDash([1.0, 0.8])
+          ctx.beginPath()
+          ctx.arc(m.x, m.y, (m.radius ?? 1.2) + 1.6, 0, TAU)
+          ctx.stroke()
+          ctx.setLineDash([])
+        }
+
+        // Territory bounding envelope with dashed border
+        const clanEntities = clanHouses.length > 0 ? clanHouses : clanMembers
+        if (clanEntities.length > 0) {
+          let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+          for (const e of clanEntities) {
+            minX = Math.min(minX, e.x)
+            maxX = Math.max(maxX, e.x)
+            minY = Math.min(minY, e.y)
+            maxY = Math.max(maxY, e.y)
+          }
+          const pad = 16
+          minX -= pad; maxX += pad
+          minY -= pad; maxY += pad
+
+          // Territory area dashed border + tint
+          ctx.strokeStyle = clanColor
+          ctx.lineWidth = 0.55
+          ctx.setLineDash([3.0, 2.0])
+          ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+          ctx.fillStyle = clanColor
+          ctx.globalAlpha = 0.06
+          ctx.fillRect(minX, minY, maxX - minX, maxY - minY)
+          ctx.globalAlpha = 1
+          ctx.setLineDash([])
+
+          // Territory banner at the top edge of clan area
+          const midX = (minX + maxX) / 2
+          const bannerY = minY - 2.8
+          const bannerText = `${totemChar} ${clanName} (${clanMembers.length} members · ${clanHouses.length} houses)`
+
+          ctx.font = '2.2px ui-monospace, monospace'
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          const bw = Math.max(30, (bannerText.length * 1.35) + 4)
+          const bh = 3.8
+
+          ctx.fillStyle = 'rgba(13,17,23,0.92)'
+          ctx.strokeStyle = clanColor
+          ctx.lineWidth = 0.35
+          ctx.fillRect(midX - bw / 2, bannerY - bh / 2, bw, bh)
+          ctx.strokeRect(midX - bw / 2, bannerY - bh / 2, bw, bh)
+
+          ctx.fillStyle = '#e6edf3'
+          ctx.fillText(bannerText, midX, bannerY + 0.1)
+        }
+      }
+
       ctx.setTransform(1, 0, 0, 1, 0, 0)
     }
     raf = requestAnimationFrame(draw)

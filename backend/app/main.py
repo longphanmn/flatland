@@ -1095,6 +1095,7 @@ def _creature_dossier(creature_id: int) -> dict:
                 "clan_id": clan_id or None,
                 "clan_color": RT.sim.clans.get(clan_id, {}).get("color") if clan_id else None,
                 "clan_name": RT.sim.clans.get(clan_id, {}).get("name") if clan_id else None,
+                "clan_totem": RT.sim.clans.get(clan_id, {}).get("totem") if clan_id else None,
                 "generation": gen,
                 "born_tick": row["born_tick"],
                 "personal_name": personal_name_for(creature_id, RT.sim.config.seed, gen),

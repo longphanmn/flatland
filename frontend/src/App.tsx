@@ -77,6 +77,7 @@ export default function App() {
   const sockRef = useRef<WorldSocket | null>(null)
   const seenEventsRef = useRef(new Set<string>())
   const selectedRef = useRef<number | null>(null)
+  const selectedClanRef = useRef<number | null>(null)
   const overrideRef = useRef<StateMessage | null>(null)
   const archiveModeRef = useRef(false)
   const oldestLoadedRef = useRef<number | null>(null)
@@ -90,6 +91,9 @@ export default function App() {
   useEffect(() => {
     selectedRef.current = selectedId
   }, [selectedId])
+  useEffect(() => {
+    selectedClanRef.current = selectedClanId
+  }, [selectedClanId])
 
   const liveWorld = worlds.find((w) => w.ended_at === null)
   const liveWorldId = liveWorld?.id ?? null
@@ -580,6 +584,7 @@ export default function App() {
         <CanvasRenderer
           stateRef={stateRef}
           selectedRef={selectedRef}
+          selectedClanRef={selectedClanRef}
           onTapCreature={(id) => setSelectedId(id)}
         />
       </main>

@@ -27,6 +27,7 @@ export interface EntityState {
   clan_id?: number
   clan_color?: string
   clan_name?: string
+  clan_totem?: string
   is_predator?: boolean
   is_herbivore?: boolean
   sleeping?: boolean
@@ -73,7 +74,7 @@ export interface StateMessage {
   terrain_fertile: { x: number; y: number; r: number }[]
   terrain_rocks: { x: number; y: number; r: number }[]
   relations: { a: number; b: number; score: number }[]
-  clans: Record<string, { name: string; founder_id: number; born_tick: number; color: string }>
+  clans: Record<string, { name: string; founder_id: number; born_tick: number; color: string; totem?: string; culture?: string }>
   events: HistoryEvent[]
   signals: { x: number; y: number; kind: 'food' | 'alarm'; sender: number; clan_id: number | null; ttl: number }[]
   fires: { x: number; y: number; r: number; ttl: number }[]

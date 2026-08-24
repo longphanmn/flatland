@@ -3800,6 +3800,7 @@ class Simulation:
                 "clan_id": e.clan_id or None,
                 "clan_color": c_meta.get("color") if c_meta else None,
                 "clan_name": c_meta.get("name") if c_meta else None,
+                "clan_totem": c_meta.get("totem") if c_meta else None,
                 "is_predator": e.is_predator or None,
                 "is_herbivore": e.is_herbivore or None,
                 "sleeping": e.sleeping,
