@@ -546,15 +546,6 @@ export default function App() {
             ⛈ <b>{exposedCount}</b>
           </span>
         )}
-        {hello && (
-          <span
-            className="chip desktop-only"
-            title={`World Seed: ${state?.seed ?? hello.seed} · Dimensions: ${state?.width ?? hello.width}×${state?.height ?? hello.height} · Edge: ${state?.boundary ?? hello.boundary}. Reset rolls a new seed.`}
-            data-hint={`Seed: ${state?.seed ?? hello.seed} · ${state?.width ?? hello.width}×${state?.height ?? hello.height} (${state?.boundary ?? hello.boundary})`}
-          >
-            🎲 <b>{state?.seed ?? hello.seed}</b>
-          </span>
-        )}
         {state && state.age && (
           <span
             className="chip desktop-only"
