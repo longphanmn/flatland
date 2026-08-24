@@ -469,6 +469,12 @@ body {
   text-align: left;
   padding: 6px 2px;
   cursor: pointer;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 1;
+}
+.right-stack .collapsible {
+  pointer-events: auto;
 }
 .collapsible-head:hover {
   color: #fff;
