@@ -1368,12 +1368,29 @@ class Simulation:
         self._update_war()
         self._refresh_cache()
         self._reproduce()
-        self._update_relations()
-        self._update_territory()
-        self._update_schism()
-        self._update_politics()
-        self._update_clan_specialization()
-        self._update_culture()
+        # N150 hotfix: throttle heavy clan/politics work when pop >800
+        # Relations/territory every 3 ticks, politics 5, specialization 10
+        c_n = len(self._cached_creatures)
+        if c_n > 800:
+            if self.tick % 3 == 0:
+                self._update_relations()
+                self._update_territory()
+            if self.tick % 5 == 0:
+                self._update_politics()
+            if self.tick % 10 == 0:
+                self._update_clan_specialization()
+            # schism/culture already gated by config, but also throttle
+            if self.config.schism_enabled and self.tick % 3 == 0:
+                self._update_schism()
+            if self.config.culture_enabled and self.tick % 10 == 0:
+                self._update_culture()
+        else:
+            self._update_relations()
+            self._update_territory()
+            self._update_schism()
+            self._update_politics()
+            self._update_clan_specialization()
+            self._update_culture()
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
