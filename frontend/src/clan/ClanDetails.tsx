@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { totemEmoji } from '../totems'
+import { TOTEMS, totemEmoji } from '../totems'
+import Collapsible from '../render/Collapsible'
 
 interface ClanMember {
   id: number
@@ -34,97 +35,262 @@ interface ClanDetailsData {
   events: any[]
 }
 
-export default function ClanDetails({ clanId, onClose, onSelectCreature }: { clanId: number; onClose: () => void; onSelectCreature?: (id: number) => void }) {
+function Bar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+  const pct = Math.max(0, Math.min(100, (value / max) * 100))
+  return (
+    <div className="insp-bar">
+      <span className="chip" style={{ minWidth: 80 }}>{label}</span>
+      <div className="insp-track">
+        <div className="insp-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <span className="chip">
+        <b>{Math.round(value)}%</b>
+      </span>
+    </div>
+  )
+}
+
+export default function ClanDetails({
+  clanId,
+  onClose,
+  onSelectCreature,
+}: {
+  clanId: number
+  onClose: () => void
+  onSelectCreature?: (id: number) => void
+}) {
   const [data, setData] = useState<ClanDetailsData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
-    fetch(`/api/clans/${clanId}`)
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false) })
-      .catch(() => setLoading(false))
+    let alive = true
+    const load = () => {
+      fetch(`/api/clans/${clanId}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (alive) {
+            setData(d)
+            setLoading(false)
+          }
+        })
+        .catch(() => {
+          if (alive) setLoading(false)
+        })
+    }
+    load()
+    const t = setInterval(load, 1500)
+    return () => {
+      alive = false
+      clearInterval(t)
+    }
   }, [clanId])
 
-  if (loading) {
+  if (loading && !data) {
     return (
-      <div className="clan-details-backdrop" onClick={onClose}>
-        <div className="clan-details-panel" onClick={e => e.stopPropagation()}>
-          <p className="god-note">Loading clan {clanId}…</p>
-        </div>
-      </div>
+      <aside className="inspector clan-inspector">
+        <header className="god-head">
+          <h2>Clan #{clanId}</h2>
+          <button className="god-close" onClick={onClose} aria-label="close">×</button>
+        </header>
+        <p className="god-note">Loading clan dossier…</p>
+      </aside>
     )
   }
 
   if (!data) {
     return (
-      <div className="clan-details-backdrop" onClick={onClose}>
-        <div className="clan-details-panel" onClick={e => e.stopPropagation()}>
-          <p className="god-note">Clan not found.</p>
-          <button onClick={onClose}>Close</button>
-        </div>
-      </div>
+      <aside className="inspector clan-inspector">
+        <header className="god-head">
+          <h2>Clan #{clanId}</h2>
+          <button className="god-close" onClick={onClose} aria-label="close">×</button>
+        </header>
+        <p className="god-note">Clan not found or has perished from the world.</p>
+      </aside>
     )
   }
 
+  const totemInfo = data.totem ? TOTEMS[data.totem] : null
+
   return (
-    <div className="clan-details-backdrop" onClick={onClose}>
-      <div className="clan-details-panel" onClick={e => e.stopPropagation()}>
-        <header className="god-head">
-          <h2 style={{ color: data.color, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 12, height: 12, borderRadius: '50%', background: data.color, display: 'inline-block' }} />
-            {data.name} <span style={{ fontSize: 12, color: '#8b949e' }}>#{data.id}</span>
-            {data.totem && <span style={{ background: data.color, color: '#0b0f14', padding: '2px 6px', borderRadius: 4, fontSize: 11 }}>{totemEmoji(data.totem)} {data.totem}</span>}
-          </h2>
-          <button className="god-close" onClick={onClose}>×</button>
-        </header>
+    <aside className="inspector clan-inspector">
+      <header className="god-head">
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, color: data.color }}>
+          <span
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              background: data.color,
+              display: 'inline-block',
+              boxShadow: `0 0 6px ${data.color}`,
+            }}
+          />
+          {data.name} <span style={{ fontSize: 11, color: '#8b949e' }}>#{data.id}</span>
+        </h2>
+        <button className="god-close" onClick={onClose} aria-label="close">
+          ×
+        </button>
+      </header>
 
-        <div className="chip" style={{ marginBottom: 8 }}>
-          Founder{' '}
-          <button className="chronicle-name" onClick={() => data.founder_id != null && onSelectCreature?.(data.founder_id)} title="show founder profile">#{data.founder_id ?? '—'}</button>
-          {' · '}Leader{' '}
-          <button className="chronicle-name" onClick={() => data.leader_id != null && onSelectCreature?.(data.leader_id)} title="show leader profile">#{data.leader_id ?? '—'}</button>
-          {' · '}Born tick {data.born_tick} · Pop <b>{data.population}</b> · War {data.war_wins}W/{data.war_losses}L
-          {data.house ? ` · House ${Math.round(data.house.x)},${Math.round(data.house.y)}` : ' · Homeless'}
-          {data.territory_radius ? ` · Territory r${data.territory_radius}` : ''}
+      <div
+        className="chip"
+        style={{
+          fontSize: 11,
+          opacity: 0.9,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <span>
+          {data.totem ? `${totemEmoji(data.totem)} ${data.totem} Totem` : 'No Totem'} · Born tick {data.born_tick}
+        </span>
+        <span style={{ color: data.color, fontWeight: 700 }}>{data.population} alive</span>
+      </div>
+
+      {/* Totem & Clan Emblem Box */}
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 2px' }}>
+        <div
+          style={{
+            width: '100%',
+            background: '#161b22',
+            borderRadius: 8,
+            border: `1px solid ${data.color}`,
+            padding: '10px 12px',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 3,
+          }}
+        >
+          <span style={{ fontSize: 28, lineHeight: 1 }}>{data.totem ? totemEmoji(data.totem) : '🚩'}</span>
+          <div style={{ fontSize: 13, fontWeight: 700, color: data.color }}>{data.name}</div>
+          {totemInfo && (
+            <div style={{ fontSize: 10.5, color: '#8b949e', marginTop: 1 }}>
+              {totemInfo.buff}
+            </div>
+          )}
         </div>
+      </div>
 
-        {data.specialization && (
-          <div className="chip" style={{ marginBottom: 8 }}>
-            <span style={{ color: '#f85149' }}>⚔ warrior {data.specialization.warrior.toFixed(2)}</span> · <span style={{ color: '#3fb950' }}>🌾 farmer {data.specialization.farmer.toFixed(2)}</span> · <span style={{ color: '#8b949e' }}>🦴 scavenger {data.specialization.scavenger.toFixed(2)}</span>
-          </div>
+      {/* Clan Stats Grid */}
+      <div className="insp-grid">
+        <span className="chip">
+          Founder{' '}
+          {data.founder_id != null ? (
+            <button
+              type="button"
+              className="chronicle-name"
+              onClick={() => onSelectCreature?.(data.founder_id)}
+              title="Inspect founder dossier"
+              style={{ fontWeight: 600 }}
+            >
+              #{data.founder_id} ↗
+            </button>
+          ) : (
+            '—'
+          )}
+        </span>
+        <span className="chip">
+          Leader{' '}
+          {data.leader_id != null ? (
+            <button
+              type="button"
+              className="chronicle-name"
+              onClick={() => onSelectCreature?.(data.leader_id!)}
+              title="Inspect leader dossier"
+              style={{ fontWeight: 600, color: data.color }}
+            >
+              #{data.leader_id} ↗
+            </button>
+          ) : (
+            'none'
+          )}
+        </span>
+        <span className="chip">
+          War <b>{data.war_wins}W</b> / <b>{data.war_losses}L</b>
+        </span>
+        <span className="chip">
+          {data.house ? (
+            <>🏠 House ({Math.round(data.house.x)}, {Math.round(data.house.y)})</>
+          ) : (
+            <>🏕 Homeless</>
+          )}
+        </span>
+        {data.territory_radius && (
+          <span className="chip">
+            📍 Radius <b>r{data.territory_radius}</b>
+          </span>
         )}
-        {data.culture && <div className="chip" style={{ marginBottom: 8 }}>🎭 {data.culture}</div>}
+        {data.culture && (
+          <span className="chip" style={{ width: '100%' }}>
+            🎭 {data.culture}
+          </span>
+        )}
+      </div>
 
-        <h3 style={{ fontSize: 13, color: '#e6edf3', margin: '12px 0 6px' }}>Members — {data.members.length} alive</h3>
+      {/* Specialization Bars */}
+      {data.specialization && (
+        <Collapsible id={`clan-spec-${data.id}`} title={<h3 className="insp-h">Specialization</h3>}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+            <Bar label="⚔ warrior" value={data.specialization.warrior * 100} max={100} color="#ff7b72" />
+            <Bar label="🌾 farmer" value={data.specialization.farmer * 100} max={100} color="#3fb950" />
+            <Bar label="🦴 scavenger" value={data.specialization.scavenger * 100} max={100} color="#8b949e" />
+          </div>
+        </Collapsible>
+      )}
+
+      {/* Members Section */}
+      <Collapsible id={`clan-members-${data.id}`} title={<h3 className="insp-h">Members ({data.members.length})</h3>}>
         {data.members.length === 0 ? (
-          <p className="chip">No living members — clan is extinct. History remains.</p>
+          <p className="chip" style={{ margin: '4px 0' }}>No living members — clan is extinct.</p>
         ) : (
-          <div style={{ display: 'grid', gap: 6, maxHeight: 220, overflow: 'auto' }}>
-            {data.members.map(m => (
-              <div key={m.id} onClick={() => onSelectCreature?.(m.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(110,118,129,0.08)', borderRadius: 4, cursor: onSelectCreature ? 'pointer' : 'default', borderLeft: `3px solid ${data.color}` }}>
-                <span><b>{m.personal_name}</b> {m.glyph} #{m.id} · {m.caste} · {m.sex} · {m.stage}</span>
-                <span className="chip" style={{ fontSize: 11 }}>{m.status || 'alive'} · {Math.round(m.energy)}⚡ {Math.round(m.health)}❤</span>
-              </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
+            {data.members.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className="kin-node"
+                onClick={() => onSelectCreature?.(m.id)}
+                style={{
+                  textAlign: 'left',
+                  borderLeft: `3px solid ${data.color}`,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '5px 8px',
+                  cursor: 'pointer',
+                }}
+                title={`Inspect creature #${m.id}`}
+              >
+                <span>
+                  <b>{m.personal_name}</b> {m.glyph} #{m.id} · {m.caste}
+                </span>
+                <span style={{ fontSize: 10, opacity: 0.85 }}>
+                  {Math.round(m.energy)}⚡ {Math.round(m.health)}❤
+                </span>
+              </button>
             ))}
           </div>
         )}
+      </Collapsible>
 
-        <h3 style={{ fontSize: 13, color: '#e6edf3', margin: '12px 0 6px' }}>Recent clan events</h3>
-        {data.events.length === 0 ? <p className="chip">No recent events.</p> : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: 160, overflow: 'auto' }}>
-            {data.events.map((ev: any, i: number) => (
-              <li key={i} style={{ fontSize: 12, padding: '4px 0', borderBottom: '1px solid rgba(48,54,61,0.5)' }}>
-                <b>{ev.type}</b> at tick {ev.tick} {ev.caste ? `· ${ev.caste}` : ''} {ev.cause ? `· ${ev.cause}` : ''}
+      {/* Events / Chronicle Section */}
+      <Collapsible id={`clan-events-${data.id}`} title={<h3 className="insp-h">Chronicle</h3>}>
+        {data.events.length === 0 ? (
+          <p className="chip" style={{ margin: '4px 0' }}>No recent clan events.</p>
+        ) : (
+          <ul className="insp-events" style={{ maxHeight: 160, overflowY: 'auto', margin: 0, padding: 0 }}>
+            {data.events.slice().reverse().map((ev: any, i: number) => (
+              <li key={i} className={`ev-${ev.type}`} style={{ fontSize: 11.5 }}>
+                tick {ev.tick}: <b>{ev.type}</b> {ev.caste ? `· ${ev.caste}` : ''} {ev.cause ? `· ${ev.cause}` : ''}
               </li>
             ))}
           </ul>
         )}
-
-        <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </div>
+      </Collapsible>
+    </aside>
   )
 }
