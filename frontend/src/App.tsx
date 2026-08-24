@@ -815,7 +815,7 @@ export default function App() {
         </aside>
       )}
 
-      {!isMobile && chronicleOpen && (
+      {!isMobile && (
         <div className="right-stack">
           <aside className="info-panel">
             <h3 className="chronicle-title" title="Live population — creatures (colored) + objects (Food/House) · history below. Creatures also in Caste graph.">
@@ -880,24 +880,26 @@ export default function App() {
             </h3>
             <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
           </aside>
-          <aside className="chronicle">
-            <h3 className="chronicle-title" title="Event history — births, deaths, wars, plagues. Newest first.">
-              Chronicle — History
-            </h3>
-            <Collapsible id="chronicle-feed" title="Event feed" hint="Newest first — deaths, wars, alliances, births">
-              <ChronicleFeed
-                events={log}
-                clanLabel={clanLabel}
-                onSelectCreature={(id) => setSelectedId(id)}
-                onSelectClan={(id) => setSelectedClanId(id)}
-                onLoadOlder={loadOlder}
-                loadingOlder={loadingOlder}
-                noMoreHistory={noMoreHistory}
-                archiveMode={archiveMode}
-                selectedRunId={selectedRunId}
-              />
-            </Collapsible>
-          </aside>
+          {chronicleOpen && (
+            <aside className="chronicle">
+              <h3 className="chronicle-title" title="Event history — births, deaths, wars, plagues. Newest first.">
+                Chronicle — History
+              </h3>
+              <Collapsible id="chronicle-feed" title="Event feed" hint="Newest first — deaths, wars, alliances, births">
+                <ChronicleFeed
+                  events={log}
+                  clanLabel={clanLabel}
+                  onSelectCreature={(id) => setSelectedId(id)}
+                  onSelectClan={(id) => setSelectedClanId(id)}
+                  onLoadOlder={loadOlder}
+                  loadingOlder={loadingOlder}
+                  noMoreHistory={noMoreHistory}
+                  archiveMode={archiveMode}
+                  selectedRunId={selectedRunId}
+                />
+              </Collapsible>
+            </aside>
+          )}
         </div>
       )}
 
