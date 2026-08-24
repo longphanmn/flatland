@@ -75,6 +75,14 @@ TREASON_RADIUS = 14.0  # false-knowledge seeding reach during betrayal
 CANNIBAL_COOLDOWN = 120  # ticks between desperate kills
 CANNIBAL_CORPSE_MULT = 0.5  # the body left after a cannibal feeds
 
+# §AT-4 H-0 — health is a real resource: regeneration demands a fed body,
+# weakness slows every stride, and sickly creatures cannot beget children.
+HEALTH_REGEN_MIN_ENERGY = 0.4  # fraction of energy_max: regen stalls below this
+HEALTH_SELF_DRAIN_ENERGY = 0.2  # below this fraction the body cannibalizes itself
+HEALTH_SELF_DRAIN_RATE = 0.05  # health lost per tick while self-cannibalizing
+HEALTH_SPEED_TIERS = ((80.0, 0.95), (60.0, 0.85), (40.0, 0.70), (20.0, 0.50))
+REPRO_MIN_HEALTH = 50.0  # sickly creatures cannot mate
+
 # §AE food decay — nothing lasts forever: variant lifespan multipliers (§AM)
 FOOD_LIFESPAN_MULT = {
     "grass": 1.0,
@@ -344,6 +352,14 @@ class Simulation:
 
     def env_speed_mult(self) -> float:
         return self.config.rain_speed_mult if self.weather in ("rain", "storm") else 1.0
+
+    @staticmethod
+    def _health_speed_mult(health: float) -> float:
+        """§AT-4 H-0: wounds slow the body — a creature at 5 HP is no sprinter."""
+        for threshold, mult in sorted(HEALTH_SPEED_TIERS, key=lambda t: t[0]):
+            if health < threshold:
+                return mult
+        return 1.0
 
     def distance(self, ax: float, ay: float, bx: float, by: float) -> float:
         """Proxy to world distance (convenience for tests)."""
@@ -3409,6 +3425,7 @@ class Simulation:
                 c.age >= cfg.adult_age
                 and c.repro_cooldown <= 0
                 and c.energy >= cfg.mate_energy_min
+                and c.health >= REPRO_MIN_HEALTH  # §AT-4 H-0: no heirs in sickness
             )
 
         females = [c for c in creatures if c.shape == "line" and eligible(c)]
@@ -3889,9 +3906,12 @@ class Simulation:
                     c.energy -= cfg.disease_energy_drain
                     c.health -= 2.0 * cfg.disease_lethality
                 else:
-                    regen = 0.15 * cfg.rest_recovery_mult
-                    regen *= 1.0 + self._totem_stat(c, "defense")  # totem vitality heals faster
-                    c.health = min(100.0, c.health + regen)
+                    # §AT-4 H-0: healing is not free — a body running on fumes
+                    # cannot mend itself, even asleep.
+                    if (c.energy / cfg.energy_max) > HEALTH_REGEN_MIN_ENERGY:
+                        regen = 0.15 * cfg.rest_recovery_mult
+                        regen *= 1.0 + self._totem_stat(c, "defense")  # totem vitality heals faster
+                        c.health = min(100.0, c.health + regen)
                 if c.energy <= 0:
                     if getattr(c, "food_basket", 0) > 0:
                         c.food_basket -= 1
@@ -4538,7 +4558,9 @@ class Simulation:
                         c.angle += max(-cap, min(cap, diff))
 
 
-        # 3. Move (hunger speeds up the desperate; rain slows every body).
+        # 3. Move (hunger speeds up the desperate; rain slows every body;
+        # §AT-4 H-0: wounds and sickness slow it further).
+        speed_mult *= self._health_speed_mult(c.health)
         step_len = c.speed * speed_mult * stage_speed * env_speed
         px, py = c.x, c.y
         nx = c.x + math.cos(c.angle) * step_len
@@ -4758,9 +4780,19 @@ class Simulation:
             if c.health <= 0:
                 self._kill(c, "disease")
                 return
-        elif c.health < 100.0:
-            regen = 0.1 * (1.0 + self._totem_stat(c, "defense"))
-            c.health = min(100.0, c.health + regen)
+        else:
+            # §AT-4 H-0: regen requires an energy surplus; below the self-drain
+            # floor a starving body consumes itself — starvation now threatens
+            # health as well as energy.
+            ratio_now = c.energy / cfg.energy_max if cfg.energy_max > 0 else 1.0
+            if ratio_now <= HEALTH_SELF_DRAIN_ENERGY:
+                c.health -= HEALTH_SELF_DRAIN_RATE
+                if c.health <= 0:
+                    self._kill(c, "starvation")
+                    return
+            elif ratio_now > HEALTH_REGEN_MIN_ENERGY and c.health < 100.0:
+                regen = 0.1 * (1.0 + self._totem_stat(c, "defense"))
+                c.health = min(100.0, c.health + regen)
         if c.energy <= 0:
             if getattr(c, "food_basket", 0) > 0:
                 c.food_basket -= 1

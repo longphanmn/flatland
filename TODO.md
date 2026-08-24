@@ -1594,10 +1594,10 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 ### AT-4. Health System Overhaul — It's Always 100%  [P0–P2]
 > Health only drains from disease, chill, and combat — and regens at 0.10/tick unconditionally. In normal conditions regen outpaces disease drain exactly (`0.05 lethality × 2 = 0.10 = regen`), making health perpetually 100%.
 
-#### Phase H-0: Core Fix — Make Regen Conditional  [P0]
-- [ ] [P0] **Regen requires energy surplus** — health only regenerates if `c.energy > energy_max × 0.4`; below 40% energy regen stops; below 20% (`hungry` status) health slowly drains `−0.05/tick` as the body cannibalizes itself; starvation becomes a double threat: energy AND health.
-- [ ] [P0] **Speed penalty by health** — `health < 80`: `×0.95`; `< 60`: `×0.85`; `< 40`: `×0.70`; `< 20`: `×0.50`; currently a creature at 5 HP moves as fast as one at 100 HP.
-- [ ] [P0] **Reproduction blocked below 50 HP** — sickly creatures cannot mate; disease outbreaks suppress birth rates without touching the birth mechanic; add health check alongside energy check in `_reproduce()`.
+#### Phase H-0: Core Fix — Make Regen Conditional  [P0] — ✅ implemented
+- [x] [P0] **Regen requires energy surplus** — health only regenerates if `c.energy > energy_max × 0.4` (`HEALTH_REGEN_MIN_ENERGY`, awake and asleep); below 20% (`HEALTH_SELF_DRAIN_ENERGY`) health drains `−0.05/tick` (`HEALTH_SELF_DRAIN_RATE`) until death by `starvation` — starvation is a double threat. (`simulation.py` `_update_creature` metabolism + sleep branch; tests `tests/test_health_core.py`)
+- [x] [P0] **Speed penalty by health** — `<80`: ×0.95, `<60`: ×0.85, `<40`: ×0.70, `<20`: ×0.50 (`HEALTH_SPEED_TIERS`, `_health_speed_mult` applied to `step_len`) — a creature at 5 HP no longer sprints.
+- [x] [P0] **Reproduction blocked below 50 HP** — `REPRO_MIN_HEALTH` in `_reproduce().eligible()`, so disease outbreaks suppress births without touching the birth mechanic.
 
 #### Phase H-1: Damage Variety  [P1]
 - [ ] [P1] **Exhaustion drain** — `energy < 20%` for > 30 consecutive ticks triggers `health -= 0.08/tick`; chronic hunger visibly kills; track with `c.low_energy_ticks` counter.

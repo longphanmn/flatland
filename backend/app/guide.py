@@ -181,6 +181,9 @@ HOW_IT_WORKS_MD = """
 ## Life cycle & stages (§A)
 Creature.age ticks + caste-based lifespan (Woman 4800 → Priest 9000). Stage by `age/lifespan`: infant <15%, juvenile <30%, adult <75%, else elder. Stage scales speed & sight (infant 0.6×, elder 0.85×) and fertility (elder ×0.5). Death causes: `starvation`, `old_age`, `euthanasia`, `disease`.
 
+## Health core (§AT-4 H-0)
+Health is a resource, not a constant. Regeneration demands an energy surplus: below 40% of `energy_max` (`HEALTH_REGEN_MIN_ENERGY`) wounds stop closing — awake or asleep; sheltered rest heals at `0.15×rest_recovery_mult`, waking regen is `0.1/tick` (+Shield/Bear totems). Below 20% energy the body cannibalizes itself: `−0.05` health/tick (`HEALTH_SELF_DRAIN_*`) until death by `starvation` — famine now kills twice. Weakness slows every stride (`HEALTH_SPEED_TIERS`): health <80 ×0.95, <60 ×0.85, <40 ×0.70, <20 ×0.50. Sickly bodies cannot beget children: mating requires `health ≥ REPRO_MIN_HEALTH` (50), so a plague suppresses births without touching birth laws.
+
 ## Nature's Law inheritance (§B)
 Sex: polygons male, lines female (`entities.py:137`). Sons `sides = father.sides+1` capped at `max_sides` (24→Priest); daughters lines. Mutation `mutation_rate` ±1 side → `irregularity` 0.3–1.0. Isosceles triangles: `iso_angle+0.5°` per generation, `≥60°` promotes Soldier→Artisan. Fertility: per-caste table × crowding `carrying_capacity`/`max_population`.
 
