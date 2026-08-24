@@ -27,14 +27,15 @@ body {
 
 .hud {
   display: flex;
-  gap: 14px;
+  gap: 10px;
   align-items: center;
-  padding: 6px 16px;
+  padding: 0 16px;
   border-bottom: 1px solid #21262d;
   background: #0d1117;
   flex-wrap: wrap;
   position: relative;
-  min-height: 48px;
+  min-height: 40px;
+  height: 40px;
 }
 
 .title {
@@ -303,12 +304,12 @@ body {
 .run-switcher {
   position: fixed;
   right: 14px;
-  bottom: 7px;
+  bottom: 6px;
   z-index: 7;
   background: rgba(13, 17, 23, 0.93);
   border: 1px solid #30363d;
   border-radius: 6px;
-  padding: 0 10px;
+  padding: 0 8px;
   height: 28px;
   display: flex;
   align-items: center;
@@ -326,6 +327,15 @@ body {
   box-shadow: none;
   padding: 0;
   height: 28px;
+  display: flex;
+  align-items: center;
+}
+.controls .run-switcher .run-label {
+  height: 28px;
+  gap: 4px;
+}
+.controls .run-switcher .run-select {
+  height: 24px;
 }
 
 .archive-banner {
@@ -550,19 +560,20 @@ body {
 
 .controls {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  padding: 6px 16px;
+  padding: 0 16px;
   border-top: 1px solid #21262d;
   background: #0d1117;
-  min-height: 42px;
+  min-height: 40px;
+  height: 40px;
 }
 .controls button {
   height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 10px;
+  padding: 0 8px;
   font-size: 12px;
   line-height: 1;
 }
@@ -572,7 +583,7 @@ body {
   height: 28px;
 }
 .controls select {
-  height: 28px;
+  height: 24px;
   padding: 0 6px;
   font-size: 12px;
 }
@@ -912,19 +923,22 @@ select {
   transform: translateY(-50%);
   z-index: 12;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   pointer-events: auto;
 }
 .top-right-panel .god-btn {
   box-shadow: 0 2px 8px rgba(0,0,0,0.35);
   height: 28px;
+  min-height: 28px;
+  max-height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 10px;
+  padding: 0 8px;
   line-height: 1;
   font-size: 12px;
+  border-radius: 6px;
 }
 .version-bar {
   position: fixed;
