@@ -317,6 +317,16 @@ body {
 .run-switcher .run-label {
   height: 28px;
 }
+/* when nested inside bottom controls, align right and share bar height */
+.controls .run-switcher {
+  position: static;
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  height: 28px;
+}
 
 .archive-banner {
   font-size: 12px;

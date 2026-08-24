@@ -734,23 +734,23 @@ export default function App() {
         <>
           <footer className="controls">
             {paused ? (
-              <button onClick={sendResume} title="Resume (Space)">▶</button>
+              <button onClick={sendResume} title="Resume (Space)" data-hint="Resume (Space)">▶</button>
             ) : (
-              <button onClick={sendPause} title="Pause (Space)">⏸</button>
+              <button onClick={sendPause} title="Pause (Space)" data-hint="Pause (Space)">⏸</button>
             )}
-            <button onClick={sendStep} title="Step (S)">⏭</button>
-            <button onClick={sendReset} title="Reset (R)">🔄</button>
-            <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))} title="Fit view (F)">
+            <button onClick={sendStep} title="Step (S)" data-hint="Step (S)">⏭</button>
+            <button onClick={sendReset} title="Reset (R)" data-hint="Reset (R)">🔄</button>
+            <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))} title="Fit view (F)" data-hint="Fit view (F)">
               ⛶
             </button>
-            <button onClick={() => setChronicleOpen((o) => !o)} title={chronicleOpen ? 'Hide chronicle' : 'Show chronicle'}>
+            <button onClick={() => setChronicleOpen((o) => !o)} title={chronicleOpen ? 'Hide chronicle' : 'Show chronicle'} data-hint={chronicleOpen ? 'Hide chronicle' : 'Show chronicle'}>
               {chronicleOpen ? '▤' : '📜'}
             </button>
-            <button onClick={takeSnapshot} title="Snapshot (freeze) — album">
+            <button onClick={takeSnapshot} title="Snapshot (freeze) — album" data-hint="Snapshot (freeze) — album">
               📷
             </button>
-            <button onClick={openAlbum} title="Album (snapshots)">🖼</button>
-            <label className="chip" htmlFor="speed" title="ticks per second">
+            <button onClick={openAlbum} title="Album (snapshots)" data-hint="Album (snapshots)">🖼</button>
+            <label className="chip" htmlFor="speed" title="ticks per second" data-hint="ticks per second">
               ⚡
             </label>
             <select
@@ -758,6 +758,7 @@ export default function App() {
               value={speed}
               onChange={(e) => changeSpeed(Number(e.target.value))}
               title="ticks/s"
+              data-hint="ticks/s"
             >
               {SPEEDS.map((v) => (
                 <option key={v} value={v}>
@@ -765,6 +766,26 @@ export default function App() {
                 </option>
               ))}
             </select>
+            {worlds.length > 0 && (
+              <div className="run-switcher">
+                <label className="chip run-label" htmlFor="run-bottom" title="Select world run" data-hint="Select world run">
+                  run
+                  <select
+                    id="run-bottom"
+                    className="run-select"
+                    value={String(selectedRunId ?? liveWorldId ?? '')}
+                    onChange={(e) => selectRun(e.target.value)}
+                  >
+                    {worlds.map((w) => (
+                      <option key={w.id} value={String(w.id)}>
+                        #{w.id} · seed {w.seed} · {fmtStart(w.started_at)}
+                        {w.ended_at === null ? ' · (live)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
           </footer>
 
           <p className="key-hints">space pause · S step · R reset · F fit · +/− zoom</p>
@@ -926,39 +947,19 @@ export default function App() {
       {!isMobile && (
         <>
           <div className="top-right-panel">
-            <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )">
-              📖 Wiki
+            <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )" data-hint="Wiki — documentation & API ( /wiki )">
+              📖
             </button>
-            <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls">
+            <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls" data-hint="Show hints for all HUD chips and controls">
               ?
             </button>
-            <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life">
-              ⚖ God
+            <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life" data-hint="Laws of Nature — god sets laws, never touches a life">
+              ⚖
             </button>
           </div>
           <div className="version-bar" title={versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'Flatland'}>
             {versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'v0.1.0'}
           </div>
-          {worlds.length > 0 && (
-            <div className="run-switcher">
-              <label className="chip run-label" htmlFor="run-bottom">
-                run
-                <select
-                  id="run-bottom"
-                  className="run-select"
-                  value={String(selectedRunId ?? liveWorldId ?? '')}
-                  onChange={(e) => selectRun(e.target.value)}
-                >
-                  {worlds.map((w) => (
-                    <option key={w.id} value={String(w.id)}>
-                      #{w.id} · seed {w.seed} · {fmtStart(w.started_at)}
-                      {w.ended_at === null ? ' · (live)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          )}
         </>
       )}
       <AuthModal />
