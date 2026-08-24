@@ -1534,6 +1534,51 @@ class Simulation:
         self._update_plants()
         self.world.rebuild_index()
         self._refresh_cache()
+
+        # Leaderless-clan repair: catch clans whose leader_id points to a dead or
+        # missing creature (e.g. loaded from old state, or succession_enabled=False).
+        # Runs every 30 ticks so the cost is negligible.
+        if self.tick % 30 == 0 and self.clans:
+            live_ids: set[int] = {c.id for c in self._cached_creatures}
+            for cid, clan in self.clans.items():
+                lid = clan.get("leader_id")
+                if lid is not None and lid not in live_ids:
+                    # Leader is dead or missing — elect a replacement immediately.
+                    members = [c for c in self._cached_creatures if c.clan_id == cid]
+                    if members:
+                        gov = clan.get("governance", "republic")
+                        if gov == "monarchy":
+                            successor = sorted(members, key=lambda cc: (-cc.age, cc.id))[0]
+                        elif gov == "theocracy":
+                            priests = [cc for cc in members if cc.caste == "Priest"]
+                            successor = sorted(priests or members, key=lambda cc: (-cc.age, cc.id))[0]
+                        elif gov == "junta":
+                            soldiers = [cc for cc in members if cc.caste == "Soldier"]
+                            successor = sorted(soldiers or members, key=lambda cc: (-getattr(cc, "skills", {}).get("combat", 0.0), -cc.age, cc.id))[0]
+                        else:
+                            successor = sorted(members, key=lambda cc: (-cc.sides, -cc.age, cc.id))[0]
+                        clan["leader_id"] = successor.id
+                        if self.config.succession_enabled:
+                            succ_name = personal_name_for(successor.id, self.config.seed, successor.generation)
+                            self._log_clan_history(
+                                cid,
+                                "leader_change",
+                                f"{succ_name} (#{successor.id}) elected after leaderless interregnum (Day {self.day})",
+                            )
+                            self._emit(
+                                HistoryEvent(
+                                    type="succession",
+                                    tick=self.tick + 1,
+                                    entity_id=successor.id,
+                                    caste=successor.caste,
+                                    x=round(successor.x, 2),
+                                    y=round(successor.y, 2),
+                                    payload={"clan_id": cid, "prev_leader": lid, "new_leader": successor.id, "clan_name": clan.get("name")},
+                                )
+                            )
+                    else:
+                        clan["leader_id"] = None
+
         houses = self._cached_houses
         tod = self._time_of_day()
         is_night = self._is_night(tod)
@@ -3512,12 +3557,13 @@ class Simulation:
         self._events_this_tick.append(event.model_dump(mode="json"))
         if self.on_event is not None:
             self.on_event(event)
-        # Leadership succession (§P)
-        if c.clan_id and self.config.succession_enabled:
+        # Leadership succession (§P) — always runs; succession_enabled only gates the chronicle event.
+        if c.clan_id:
             clan = self.clans.get(c.clan_id)
             if clan and clan.get("leader_id") == c.id:
-                # AF: use cached creatures list — avoids full entity scan on each death
-                candidates = [cc for cc in self._get_creatures() if cc.clan_id == c.clan_id]
+                # Exclude the dying creature from candidates: world.remove() ran above but
+                # _cached_creatures is only rebuilt at _refresh_cache(), so filter explicitly.
+                candidates = [cc for cc in self._get_creatures() if cc.clan_id == c.clan_id and cc.id != c.id]
                 if candidates:
                     gov = clan.get("governance", "republic")
                     if gov == "monarchy":
@@ -3534,31 +3580,32 @@ class Simulation:
                         successor = sorted(candidates, key=lambda cc: (-cc.sides, -cc.age, cc.id))[0]
 
                     clan["leader_id"] = successor.id
-                    succ_name = personal_name_for(successor.id, self.config.seed, successor.generation)
-                    self._log_clan_history(
-                        c.clan_id,
-                        "leader_change",
-                        f"{succ_name} (#{successor.id}) ascended as Leader ({gov.capitalize()}, Day {self.day})",
-                    )
-
-                    self._emit(
-                        HistoryEvent(
-                            type="succession",
-                            tick=self.tick + 1,
-                            entity_id=successor.id,
-                            caste=successor.caste,
-                            x=round(successor.x, 2),
-                            y=round(successor.y, 2),
-                            payload={"clan_id": c.clan_id, "prev_leader": c.id, "new_leader": successor.id, "clan_name": clan.get("name")},
+                    if self.config.succession_enabled:
+                        succ_name = personal_name_for(successor.id, self.config.seed, successor.generation)
+                        self._log_clan_history(
+                            c.clan_id,
+                            "leader_change",
+                            f"{succ_name} (#{successor.id}) ascended as Leader ({gov.capitalize()}, Day {self.day})",
                         )
-                    )
+                        self._emit(
+                            HistoryEvent(
+                                type="succession",
+                                tick=self.tick + 1,
+                                entity_id=successor.id,
+                                caste=successor.caste,
+                                x=round(successor.x, 2),
+                                y=round(successor.y, 2),
+                                payload={"clan_id": c.clan_id, "prev_leader": c.id, "new_leader": successor.id, "clan_name": clan.get("name")},
+                            )
+                        )
                 else:
                     clan["leader_id"] = None
-                    self._log_clan_history(
-                        c.clan_id,
-                        "leader_change",
-                        f"Leader #{c.id} perished without living successor (Day {self.day})",
-                    )
+                    if self.config.succession_enabled:
+                        self._log_clan_history(
+                            c.clan_id,
+                            "leader_change",
+                            f"Leader #{c.id} perished without living successor (Day {self.day})",
+                        )
 
 
     def _update_creature_skills_and_titles(self, c: Creature) -> None:
