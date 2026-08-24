@@ -103,6 +103,34 @@ class StateMessage(BaseModel):
     age_total_days: int = 10
 
 
+class DeltaStateMessage(BaseModel):
+    """Phase 1 AJ: Lightweight delta snapshot broadcasting only changed/moving entities."""
+    type: Literal["delta_state"] = "delta_state"
+    tick: int
+    seed: int = 0
+    upsert_entities: list[EntityState | dict[str, Any]] = Field(default_factory=list)
+    remove_ids: list[int] = Field(default_factory=list)
+    population: dict[str, int] = Field(default_factory=dict)
+    creatures_alive: int = 0
+    creatures_dead: int = 0
+    dead_by_cause: dict[str, int] = Field(default_factory=dict)
+    infected_count: int = 0
+    time_of_day: float = 0.25
+    day: int = 1
+    season: Literal["spring", "summer", "autumn", "winter"] = "spring"
+    weather: Literal["clear", "rain", "fog", "storm"] = "clear"
+    relations: list[dict[str, int]] = Field(default_factory=list)
+    clans: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    events: list["HistoryEvent"] = Field(default_factory=list)
+    signals: list[dict[str, Any]] = Field(default_factory=list)
+    fires: list[dict[str, Any]] = Field(default_factory=list)
+    age: Optional[str] = None
+    age_tick: int = 0
+    age_day: int = 1
+    age_total_days: int = 10
+
+
+
 class HistoryEvent(BaseModel):
     type: Literal[
         "death", "birth", "promotion", "demotion", "outbreak", "recovery",

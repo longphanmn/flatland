@@ -1,4 +1,4 @@
-import type { ControlMessage, HelloMessage, StateMessage } from './types'
+import type { ControlMessage, DeltaStateMessage, EntityState, HelloMessage, StateMessage } from './types'
 
 export type ConnStatus = 'connecting' | 'open' | 'closed'
 
@@ -10,12 +10,16 @@ interface Handlers {
   onAuthError?: () => void
 }
 
-/** WebSocket client with exponential-backoff auto-reconnect. */
+/** WebSocket client with exponential-backoff auto-reconnect and delta state reconstruction. */
 export class WorldSocket {
   private ws: WebSocket | null = null
   private attempts = 0
   private disposed = false
   private timer: ReturnType<typeof setTimeout> | undefined
+
+  // Phase 1 AJ: Entity state map for reconstructing deltas into complete StateMessages
+  private entitiesMap: Map<number, EntityState> = new Map()
+  private lastFullState: StateMessage | null = null
 
   constructor(
     private url: string,
@@ -46,9 +50,71 @@ export class WorldSocket {
   private handle(raw: string): void {
     try {
       const msg = JSON.parse(raw)
-      if (msg.type === 'state') this.handlers.onState?.(msg as StateMessage)
-      else if (msg.type === 'hello') this.handlers.onHello?.(msg as HelloMessage)
-      else if (msg.type === 'auth_error') this.handlers.onAuthError?.()
+      if (msg.type === 'state') {
+        const fullMsg = msg as StateMessage
+        this.lastFullState = fullMsg
+        this.entitiesMap.clear()
+        if (fullMsg.entities) {
+          for (const e of fullMsg.entities) {
+            this.entitiesMap.set(e.id, e)
+          }
+        }
+        this.handlers.onState?.(fullMsg)
+      } else if (msg.type === 'delta_state') {
+        const delta = msg as DeltaStateMessage
+        if (!this.lastFullState) {
+          return
+        }
+        // Apply removals
+        if (delta.remove_ids && delta.remove_ids.length > 0) {
+          for (const id of delta.remove_ids) {
+            this.entitiesMap.delete(id)
+          }
+        }
+        // Apply upserts
+        if (delta.upsert_entities && delta.upsert_entities.length > 0) {
+          for (const e of delta.upsert_entities) {
+            const existing = this.entitiesMap.get(e.id)
+            if (existing) {
+              this.entitiesMap.set(e.id, { ...existing, ...e })
+            } else {
+              this.entitiesMap.set(e.id, e)
+            }
+          }
+        }
+        // Reconstruct complete StateMessage
+        const reconstructed: StateMessage = {
+          ...this.lastFullState,
+          type: 'state',
+          tick: delta.tick,
+          seed: delta.seed ?? this.lastFullState.seed,
+          population: delta.population,
+          creatures_alive: delta.creatures_alive,
+          creatures_dead: delta.creatures_dead,
+          dead_by_cause: delta.dead_by_cause,
+          infected_count: delta.infected_count,
+          time_of_day: delta.time_of_day,
+          day: delta.day,
+          season: delta.season,
+          weather: delta.weather,
+          relations: delta.relations,
+          clans: delta.clans,
+          events: delta.events,
+          signals: delta.signals,
+          fires: delta.fires,
+          age: delta.age,
+          age_tick: delta.age_tick,
+          age_day: delta.age_day,
+          age_total_days: delta.age_total_days,
+          entities: Array.from(this.entitiesMap.values()),
+        }
+        this.lastFullState = reconstructed
+        this.handlers.onState?.(reconstructed)
+      } else if (msg.type === 'hello') {
+        this.handlers.onHello?.(msg as HelloMessage)
+      } else if (msg.type === 'auth_error') {
+        this.handlers.onAuthError?.()
+      }
     } catch {
       // ignore malformed frames
     }
@@ -66,3 +132,4 @@ export class WorldSocket {
     this.ws?.close()
   }
 }
+

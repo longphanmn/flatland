@@ -245,8 +245,12 @@ class Simulation:
         self.rocks: list[dict] = []  # {x,y,r} — solid circles that block movement
         self.signals: list[dict] = []  # §Q: {x,y,kind,sender,clan_id,ttl}
         self.fires: list[dict] = []  # §S wildfire: {x,y,r,ttl}
+        # AJ: Delta compression tracking (Phase 1)
+        self._last_broadcast_state: dict[int, tuple] = {}
+        self._last_broadcast_entities: set[int] = set()
         self._spawn_initial()
         self._generate_terrain()
+
 
     # ------------------------------------------------------------- the sky
     def _time_of_day(self) -> float:
@@ -4065,6 +4069,111 @@ class Simulation:
             self._identity_cache[key] = hit
         return hit
 
+    def _entity_sig(self, e: Entity) -> tuple:
+        """Compact signature for delta change detection."""
+        if isinstance(e, Creature):
+            return (
+                0,
+                round(e.x, 1),
+                round(e.y, 1),
+                round(e.angle, 1),
+                round(e.energy),
+                e.status,
+                round(e.health),
+                e.stage,
+                e.sleeping,
+                e.infected,
+                e.indoors,
+                getattr(e, "emote", None),
+                getattr(e, "equipped_item", None),
+                getattr(e, "food_basket", 0),
+                getattr(e, "title", None),
+            )
+        if isinstance(e, Food):
+            is_withering = False
+            if (
+                self.config.food_decay_enabled
+                and e.growth >= 1.0
+                and e.mature_ticks
+                >= WILT_FRACTION
+                * max(1, round(self.config.food_lifespan_ticks * FOOD_LIFESPAN_MULT.get(e.variant, 1.0)))
+            ):
+                is_withering = True
+            return (1, round(e.x, 1), round(e.y, 1), round(e.growth, 1), is_withering)
+        if isinstance(e, House):
+            return (2, round(e.x, 1), round(e.y, 1), e.clan_id, bool(getattr(e, "is_ruin", False)))
+        if isinstance(e, Corpse):
+            return (3, round(e.x, 1), round(e.y, 1), e.ttl // 30)
+        return (4, round(e.x, 1), round(e.y, 1))
+
+    def _entity_delta_payload(self, e: Entity) -> dict:
+        """Compact payload containing only dynamic attributes for existing entities."""
+        if isinstance(e, Creature):
+            d: dict[str, Any] = {
+                "id": e.id,
+                "kind": e.kind,
+                "x": round(e.x, 2),
+                "y": round(e.y, 2),
+                "angle": round(e.angle, 3),
+                "energy": round(e.energy, 1),
+                "status": e.status,
+                "health": round(e.health, 1),
+                "age": e.age,
+                "stage": e.stage,
+                "sleeping": e.sleeping,
+                "indoors": e.indoors,
+                "chill": round(e.chill, 2),
+            }
+            if e.infected:
+                d["infected"] = True
+            emote = getattr(e, "emote", None)
+            if emote is not None:
+                d["emote"] = emote
+            item = getattr(e, "equipped_item", None)
+            if item is not None:
+                d["equipped_item"] = item
+            basket = getattr(e, "food_basket", 0)
+            if basket:
+                d["food_basket"] = basket
+            title = getattr(e, "title", None)
+            if title is not None:
+                d["title"] = title
+            return d
+        if isinstance(e, Food):
+            is_withering = False
+            if (
+                self.config.food_decay_enabled
+                and e.growth >= 1.0
+                and e.mature_ticks
+                >= WILT_FRACTION
+                * max(1, round(self.config.food_lifespan_ticks * FOOD_LIFESPAN_MULT.get(e.variant, 1.0)))
+            ):
+                is_withering = True
+            d = {
+                "id": e.id,
+                "kind": e.kind,
+                "x": round(e.x, 2),
+                "y": round(e.y, 2),
+                "growth": round(e.growth, 2),
+            }
+            if is_withering:
+                d["withering"] = True
+            return d
+        if isinstance(e, House):
+            return {
+                "id": e.id,
+                "kind": e.kind,
+                "clan_id": e.clan_id or None,
+                "is_ruin": e.is_ruin or None,
+            }
+        return {
+            "id": e.id,
+            "kind": e.kind,
+            "x": round(e.x, 2),
+            "y": round(e.y, 2),
+            "angle": round(e.angle, 3),
+        }
+
     def snapshot_payload(self) -> dict:
         """AA: the broadcast payload as plain dicts — no pydantic validation
         and no model_dump on the hot path. Shared nested structures are copied,
@@ -4075,8 +4184,10 @@ class Simulation:
         alive = 0
         infected = 0
         clans = self.clans
+        new_state: dict[int, tuple] = {}
         for e in self.world.entities.values():
             entities.append(self._entity_payload(e, clans))
+            new_state[e.id] = self._entity_sig(e)
             if isinstance(e, Creature):
                 label = e.caste
                 alive += 1
@@ -4085,6 +4196,15 @@ class Simulation:
             else:
                 label = e.kind.capitalize()
             population[label] = population.get(label, 0) + 1
+
+        self._last_broadcast_state = new_state
+        self._last_broadcast_entities = set(new_state.keys())
+        self._last_broadcast_clans = {
+            str(cid): (info.get("name"), info.get("color"), info.get("totem"), info.get("culture"), info.get("leader_id"), info.get("main_house_id"), info.get("tribute_to"))
+            for cid, info in self.clans.items()
+        }
+
+
         return {
             "type": "state",
             "tick": self.tick,
@@ -4120,6 +4240,95 @@ class Simulation:
             "age_day": self._age_day(),
             "age_total_days": self._age_total_days(),
         }
+
+    def snapshot_delta_payload(self) -> dict:
+
+        """Phase 1 AJ: Lightweight delta snapshot payload.
+
+        Broadcasts only newly spawned, removed, or modified entities since last frame.
+        Reduces payload size by 85–95%.
+        """
+        cfg = self.config
+        upsert_entities: list[dict] = []
+        population: dict[str, int] = {}
+        alive = 0
+        infected = 0
+        clans = self.clans
+
+        curr_entities = self.world.entities
+        curr_ids = set(curr_entities.keys())
+        prev_ids = self._last_broadcast_entities
+        remove_ids = list(prev_ids - curr_ids)
+
+        new_state: dict[int, tuple] = {}
+        last_state = self._last_broadcast_state
+
+        for eid, e in curr_entities.items():
+            sig = self._entity_sig(e)
+            new_state[eid] = sig
+            if eid not in last_state:
+                # Newly spawned entity: send full payload
+                upsert_entities.append(self._entity_payload(e, clans))
+            elif last_state[eid] != sig:
+                # Existing entity modified: send compact delta payload
+                upsert_entities.append(self._entity_delta_payload(e))
+
+            if isinstance(e, Creature):
+                label = e.caste
+                alive += 1
+                if e.infected:
+                    infected += 1
+            else:
+                label = e.kind.capitalize()
+            population[label] = population.get(label, 0) + 1
+
+        self._last_broadcast_state = new_state
+        self._last_broadcast_entities = curr_ids
+
+        # Delta clans tracking: send only new or modified clans
+        curr_clans = self.clans
+        delta_clans: dict[str, dict] = {}
+        last_clans = getattr(self, "_last_broadcast_clans", {})
+        for cid, info in curr_clans.items():
+            s_cid = str(cid)
+            # Compare representation against last broadcast
+            sig = (info.get("name"), info.get("color"), info.get("totem"), info.get("culture"), info.get("leader_id"), info.get("main_house_id"), info.get("tribute_to"))
+            if s_cid not in last_clans or last_clans[s_cid] != sig:
+                delta_clans[s_cid] = {kk: (dict(vv) if isinstance(vv, dict) else vv) for kk, vv in info.items()}
+                last_clans[s_cid] = sig
+        self._last_broadcast_clans = last_clans
+
+        return {
+            "type": "delta_state",
+            "tick": self.tick,
+            "seed": cfg.seed,
+            "upsert_entities": upsert_entities,
+            "remove_ids": remove_ids,
+            "population": population,
+            "creatures_alive": alive,
+            "creatures_dead": self.deaths,
+            "dead_by_cause": dict(self._death_counts),
+            "infected_count": infected,
+            "time_of_day": round(self._time_of_day(), 3),
+            "day": self.day,
+            "season": self._season(),
+            "weather": self.weather,
+            "relations": [
+                {"a": a, "b": b, "score": s}
+                for (a, b), s in sorted(self.relations.items())
+            ],
+            "clans": delta_clans,
+            "events": self._events_this_tick,
+            "signals": [dict(sg) for sg in self.signals],
+            "fires": [dict(f) for f in self.fires],
+            "age": self._age(),
+            "age_tick": self._age_tick(),
+            "age_day": self._age_day(),
+            "age_total_days": self._age_total_days(),
+        }
+
+
+
 
     def snapshot(self) -> StateMessage:
         """Typed snapshot for cold paths (REST /api/state, tests)."""

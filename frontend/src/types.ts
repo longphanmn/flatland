@@ -91,6 +91,33 @@ export interface StateMessage {
   age_total_days?: number
 }
 
+export interface DeltaStateMessage {
+  type: 'delta_state'
+  tick: number
+  seed: number
+  upsert_entities: EntityState[]
+  remove_ids: number[]
+  population: Record<string, number>
+  creatures_alive: number
+  creatures_dead: number
+  dead_by_cause: Record<string, number>
+  infected_count: number
+  time_of_day: number
+  day: number
+  season: 'spring' | 'summer' | 'autumn' | 'winter'
+  weather: 'clear' | 'rain' | 'fog' | 'storm'
+  relations: { a: number; b: number; score: number }[]
+  clans: Record<string, { name: string; founder_id: number; born_tick: number; color: string; totem?: string; culture?: string }>
+  events: HistoryEvent[]
+  signals: { x: number; y: number; kind: 'food' | 'alarm'; sender: number; clan_id: number | null; ttl: number }[]
+  fires: { x: number; y: number; r: number; ttl: number }[]
+  age: string | null
+  age_tick: number
+  age_day?: number
+  age_total_days?: number
+}
+
+
 export interface HistoryEvent {
   /** Present only on events fetched from GET /api/history; absent on live-streamed ones. */
   id?: number

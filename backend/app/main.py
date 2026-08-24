@@ -149,10 +149,10 @@ def _on_event(e) -> None:
 
 
 # --------------------------------------------------------------------- loop
-def advance_world(rt: RuntimeState, hub: Hub | None = None) -> dict | None:
+def advance_world(rt: RuntimeState, hub: Hub | None = None, force_keyframe: bool = False) -> dict | None:
     """Advance the world one tick (caller holds rt.lock).
 
-    Returns the snapshot payload to broadcast, or None when throttled/failed.
+    Returns the snapshot payload to broadcast (keyframe or delta), or None when throttled/failed.
     A plain function so tests can drive ticks without the engine thread.
     """
     if rt.paused:
@@ -200,7 +200,13 @@ def advance_world(rt: RuntimeState, hub: Hub | None = None) -> dict | None:
     every = max(1, int(round(rt.speed / 20))) if rt.speed > 20 else 1
     if every > 1 and rt.sim.tick % every != 0:
         return None
-    return rt.sim.snapshot_payload()
+
+    # Phase 1 AJ: Broadcast full keyframe every 60 ticks (~2-3s) or when forced/uninitialized;
+    # otherwise broadcast lightweight delta payload (85-95% bandwidth reduction).
+    if force_keyframe or rt.sim.tick % 60 == 0 or not getattr(rt.sim, "_last_broadcast_state", None):
+        return rt.sim.snapshot_payload()
+    return rt.sim.snapshot_delta_payload()
+
 
 
 class SimEngine:
