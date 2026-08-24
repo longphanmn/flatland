@@ -1,10 +1,16 @@
 """Deterministic fixed-tick simulation of Flatland."""
 
+import gc
 import math
 import random
+import time
 from collections import deque
 from functools import lru_cache
 from typing import Any, Callable, cast
+
+# N150: disable automatic GC during tick — manual collect every 200 ticks
+# to avoid 1s stop-the-world pauses at 1300c
+gc.disable()
 
 from .config import Config
 from .entities import (
@@ -1334,6 +1340,7 @@ class Simulation:
     # ------------------------------------------------------------------ tick
     def step(self) -> None:
         """Advance the world by exactly one tick (deterministic)."""
+        t_step0 = time.perf_counter()
         self._eaten.clear()
         self._beds.clear()  # beds are re-contested every tick, in id order
         self._events_this_tick = []
@@ -1379,21 +1386,20 @@ class Simulation:
         self._update_war()
         self._refresh_cache()
         self._reproduce()
-        # N150 hotfix: throttle heavy clan/politics work when pop >800
-        # Relations/territory every 3 ticks, politics 5, specialization 10
+        # N150 hotfix: throttle heavy clan/politics work when pop >800 — staggered offsets to avoid 15-tick pileup
         c_n = len(self._cached_creatures)
         if c_n > 800:
-            if self.tick % 3 == 0:
+            if self.tick % 3 == 1:
                 self._update_relations()
                 self._update_territory()
-            if self.tick % 5 == 0:
+            if self.tick % 5 == 2:
                 self._update_politics()
-            if self.tick % 10 == 0:
+            if self.tick % 10 == 3:
                 self._update_clan_specialization()
             # schism/culture already gated by config, but also throttle
-            if self.config.schism_enabled and self.tick % 3 == 0:
+            if self.config.schism_enabled and self.tick % 3 == 1:
                 self._update_schism()
-            if self.config.culture_enabled and self.tick % 10 == 0:
+            if self.config.culture_enabled and self.tick % 10 == 3:
                 self._update_culture()
         else:
             self._update_relations()
@@ -1405,6 +1411,13 @@ class Simulation:
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
+        # Manual GC every 200 ticks to avoid stop-the-world at 1300c
+        if self.tick % 200 == 0:
+            gc.collect(1)
+        # Log slow ticks for N150 profiling (over 150ms)
+        dur = time.perf_counter() - t_step0
+        if dur > 0.15:
+            print(f"[sim] slow tick={self.tick} {dur*1000:.1f}ms c={len(self.world.creatures())} food={len(self._cached_foods)} houses={len(self._cached_houses)}", flush=True)
         self.tick += 1
         self._cached_creatures = []
         self._cached_creatures_sorted = []
