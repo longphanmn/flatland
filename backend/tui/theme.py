@@ -67,6 +67,7 @@ EVENT_COLORS: dict[str, str] = {
     "succession": "#d2a8ff",
     "settlement": "#79c0ff",
     "conquest": "#ff7b72",
+    "takeover": "#ff7b72",
     "culture": "#bc8cff",
     "fire": "#ff6b35",
     "disaster": "#e3b341",

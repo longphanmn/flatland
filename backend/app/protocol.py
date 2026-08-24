@@ -72,6 +72,7 @@ class EntityState(BaseModel):
     door_side: Optional[Literal["north", "east", "south", "west"]] = None
     is_ruin: Optional[bool] = None
     abandoned_ticks: Optional[int] = None
+    takeover_age: Optional[int] = None  # §AT-3: ticks since last hostile takeover
 
 
 class StateMessage(BaseModel):
@@ -139,7 +140,7 @@ class HistoryEvent(BaseModel):
         "fire", "disaster", "conquest", "culture",
         "coalition_formed", "coalition_joined", "coalition_dissolved",
         "peace", "tribute", "betrayal", "defection", "cannibalism", "exile",
-        "wither",
+        "wither", "takeover",
     ] = ("death")
     tick: int
     entity_id: int

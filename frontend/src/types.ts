@@ -53,6 +53,7 @@ export interface EntityState {
   is_main?: boolean
   is_ruin?: boolean
   abandoned_ticks?: number
+  takeover_age?: number | null
   growth?: number
   variant?: 'grass' | 'grain' | 'berry' | 'medicinal_herb' | 'mushroom' | 'poisonous'
   withering?: boolean
@@ -147,7 +148,7 @@ export interface DeltaStateMessage {
 export interface HistoryEvent {
   /** Present only on events fetched from GET /api/history; absent on live-streamed ones. */
   id?: number
-  type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war' | 'ruin' | 'settlement' | 'succession' | 'schism' | 'fire' | 'disaster' | 'conquest' | 'culture'
+  type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war' | 'ruin' | 'settlement' | 'succession' | 'schism' | 'fire' | 'disaster' | 'conquest' | 'culture' | 'takeover' | 'coalition_formed' | 'coalition_joined' | 'coalition_dissolved' | 'peace' | 'tribute' | 'betrayal' | 'defection' | 'cannibalism' | 'exile' | 'wither'
     | 'coalition_formed' | 'coalition_joined' | 'coalition_dissolved' | 'peace' | 'tribute' | 'betrayal' | 'defection' | 'cannibalism' | 'exile' | 'wither'
   tick: number
   entity_id: number

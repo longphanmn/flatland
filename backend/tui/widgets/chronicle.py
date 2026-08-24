@@ -20,13 +20,13 @@ CATEGORIES = ["all", "birth", "death", "war", "politics", "settlement"]
 EVENT_CATEGORIES: dict[str, set[str]] = {
     "birth": {"birth"},
     "death": {"death", "predation", "cannibalism"},
-    "war": {"war", "conquest", "rivalry", "betrayal"},
+    "war": {"war", "conquest", "takeover", "rivalry", "betrayal"},
     "politics": {
         "alliance", "rivalry", "coalition_formed", "coalition_joined",
         "coalition_dissolved", "peace", "tribute", "betrayal", "defection",
         "schism", "succession",
     },
-    "settlement": {"settlement", "conquest", "culture", "disaster", "fire", "outbreak", "recovery"},
+    "settlement": {"settlement", "conquest", "takeover", "culture", "disaster", "fire", "outbreak", "recovery"},
 }
 
 
@@ -154,6 +154,11 @@ def format_event(ev: HistoryEvent, clans: dict | None = None) -> Text:
         line.append(_clan_label(clans, p.get("winner_clan")))
         line.append(f" seized house {p.get('house_id')} from ")
         line.append(_clan_label(clans, p.get("loser_clan")))
+    elif t == "takeover":
+        line.append("takeover: ", style=color)
+        line.append(str(p.get("invader_name") or _clan_label(clans, p.get("invader_clan"))))
+        line.append(f" moved into house {p.get('house_id')} left by ")
+        line.append(str(p.get("victim_name") or _clan_label(clans, p.get("victim_clan"))))
     elif t == "succession":
         line.append(f"succession in ", style=color)
         line.append(_clan_label(clans, p.get("clan_id")))

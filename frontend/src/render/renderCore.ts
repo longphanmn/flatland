@@ -187,6 +187,18 @@ export function drawBatchedEntities(
         ctx.fillRect(h.x - size / 2, h.y - size / 2, size, 1.2)
         ctx.globalAlpha = 1
       }
+      // §AT-3: brief takeover flash — an expanding ring fades over ~90 ticks
+      const tAge = h.takeover_age
+      if (tAge !== null && tAge !== undefined && tAge >= 0 && tAge < 90) {
+        const fade = 1 - tAge / 90
+        ctx.strokeStyle = h.clan_color ?? '#f85149'
+        ctx.globalAlpha = 0.7 * fade
+        ctx.lineWidth = 0.25 + 0.5 * fade
+        ctx.beginPath()
+        ctx.arc(h.x, h.y, size / 2 + 1.5 + tAge * 0.06, 0, TAU)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
     }
   }
 

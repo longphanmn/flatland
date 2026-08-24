@@ -36,6 +36,7 @@ function matchesCategory(ev: HistoryEvent, category: EventCategory): boolean {
       'betrayal',
       'schism',
       'conquest',
+      'takeover',
       'coalition_formed',
       'coalition_joined',
       'coalition_dissolved',
@@ -412,6 +413,22 @@ export default function ChronicleFeed({
                   seized house {p.house_id} from clan{' '}
                   <button className="chronicle-name" onClick={() => p.loser_clan != null && onSelectClan(p.loser_clan)} title="show loser clan">
                     {clanLabel(p.loser_clan)}
+                  </button>{' '}
+                  at tick {ev.tick}
+                </li>
+              )
+            }
+
+            if (ev.type === 'takeover') {
+              return (
+                <li key={key} className="ev-war">
+                  takeover: clan{' '}
+                  <button className="chronicle-name" onClick={() => p.invader_clan != null && onSelectClan(p.invader_clan)} title="show invader clan">
+                    {p.invader_name ?? clanLabel(p.invader_clan)}
+                  </button>{' '}
+                  moved into house {p.house_id} abandoned by clan{' '}
+                  <button className="chronicle-name" onClick={() => p.victim_clan != null && onSelectClan(p.victim_clan)} title="show victim clan">
+                    {p.victim_name ?? clanLabel(p.victim_clan)}
                   </button>{' '}
                   at tick {ev.tick}
                 </li>

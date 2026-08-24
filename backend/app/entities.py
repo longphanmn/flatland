@@ -225,3 +225,4 @@ class House(Entity):
     is_main: bool = False  # chief / main house where the clan leader lives
     abandoned_ticks: int = 0  # how long this house has been without a living clan
     is_ruin: bool = False  # crumbled — no shelter, visually distinct
+    takeover_tick: int = -1  # §AT-3: tick of the last hostile takeover (render flash)

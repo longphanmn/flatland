@@ -349,16 +349,16 @@ class Simulation:
         """Proxy to world distance (convenience for tests)."""
         return self.world.distance(ax, ay, bx, by)
 
-    def _inside_house(self, c: Creature, h: House) -> bool:
-        if h.is_ruin:
+    def _inside_house(self, c: Creature, h: House | None) -> bool:
+        if h is None or h.is_ruin:
             return False
         return (
             abs(c.x - h.x) < h.size / 2 - 0.3 and abs(c.y - h.y) < h.size / 2 - 0.3
         )
 
-    def _is_inside_house(self, c: Creature, h: House) -> bool:
+    def _is_inside_house(self, c: Creature, h: House | None) -> bool:
         """Geometric containment inside the four walls of house h."""
-        if h.is_ruin:
+        if h is None or h.is_ruin:
             return False
         half = h.size / 2
         return abs(c.x - h.x) < half and abs(c.y - h.y) < half
@@ -924,21 +924,83 @@ class Simulation:
         )
         return house
 
+    def _try_house_takeover(self, cid: int, members: list[Creature], houses: list[House]) -> House | None:
+        """§AT-2 House invasion — a growing clan with no free roof seizes a weak
+        rival's spare house. Conditions (all must hold):
+          - the rival house is NOT the rival clan's main house;
+          - nobody is sleeping under that roof this tick (`_house_occupants`);
+          - the rival clan is under-populated (< half its total beds), so the
+            house is genuinely spare rather than contested.
+        The invader claims it outright; relations sour and both chronicles
+        remember. Deterministic: nearest to the clan centroid, ties by id."""
+        if not self.config.house_claim_enabled or not members:
+            return None
+        ax, ay = self._clan_centroid(members)
+        candidates: list[House] = []
+        occupants = getattr(self, "_house_occupants", {})
+        for h in houses:
+            if h.is_ruin or h.clan_id == 0 or h.clan_id == cid:
+                continue
+            if self.clans.get(h.clan_id, {}).get("main_house_id") == h.id:
+                continue  # a clan's seat is never stolen this way
+            if occupants.get(h.id, 0) > 0:
+                continue  # occupied tonight — no bloodless takeover
+            rival_members = self._clan_members.get(h.clan_id, [])
+            rival_beds = sum(self._house_beds(rh) for rh in houses if rh.clan_id == h.clan_id and not rh.is_ruin)
+            if len(rival_members) >= rival_beds / 2.0:
+                continue  # the rival needs its beds
+            candidates.append(h)
+        if not candidates:
+            return None
+        target = min(candidates, key=lambda h: (self.world.distance(ax, ay, h.x, h.y), h.id))
+        old_cid = target.clan_id
+        target.clan_id = cid
+        target.clan_color = self.clans.get(cid, {}).get("color")
+        target.is_main = False
+        target.takeover_tick = self.tick
+        # The rival loses a roof and remembers the theft.
+        self._bump_relation(cid, old_cid, -25)
+        old_name = self.clans.get(old_cid, {}).get("name")
+        new_name = self.clans.get(cid, {}).get("name")
+        self._log_clan_history(
+            cid, "takeover",
+            f"Seized House #{target.id} from {old_name} (Day {self.day})",
+        )
+        self._log_clan_history(
+            old_cid, "takeover_loss",
+            f"Lost House #{target.id} to {new_name} (Day {self.day})",
+        )
+        self._emit(
+            HistoryEvent(
+                type="takeover", tick=self.tick + 1, entity_id=target.id,
+                x=round(target.x, 2), y=round(target.y, 2),
+                payload={
+                    "invader_clan": cid, "victim_clan": old_cid,
+                    "invader_name": new_name, "victim_name": old_name,
+                    "house_id": target.id,
+                },
+            )
+        )
+        return target
+
     def _update_settlements(self) -> None:
         """Settlement economy tick: grow to meet demand, crumble abandoned houses (§L)."""
         cfg = self.config
         if not cfg.shelter_enabled:
             return
+        functional = self._functional_houses()
+        # §AT-3 orphan audit runs every settlement tick — claims hygiene first.
+        self._audit_house_claims(functional)
         # Respect explicit overrides: pinned scenarios (tests) keep exact housing
         if cfg.num_houses >= 0:
             return
         # — growth: replenish houses when ruined/shortage, paced every 100 ticks —
-        functional = self._functional_houses()
         target = self._target_house_count()
         if len(functional) < target and (self.tick % 100 == 0):
             self._spawn_settlement_house()
 
-        # — clan expansion: growing clans claim free houses or build new ones —
+        # — clan expansion: growing clans claim free houses, seize weak rivals'
+        #    spares (§AT-2) or build new ones —
         if self.config.house_claim_enabled and (self.tick % 50 == 0):
             living_members_by_clan: dict[int, list[Creature]] = {}
             for c in self._get_creatures():
@@ -959,21 +1021,26 @@ class Simulation:
                         for h in clan_houses:
                             h.is_main = (h.id == main_hid)
 
-                # If clan population outgrows beds, claim nearby free house or spawn extension
+                # If clan population outgrows beds: claim nearby free house,
+                # then invade a weak rival's empty spare (§AT-2), then build.
                 if len(members) > total_beds:
+                    ax, ay = self._clan_centroid(members)
                     unclaimed = [h for h in functional if isinstance(h, House) and h.clan_id == 0]
+                    claimed_free = False
                     if unclaimed:
-                        ax, ay = self._clan_centroid(members)
                         nearest_free = self._nearest_house_to(ax, ay, unclaimed)
                         max_d = cfg.territory_radius * 2.0 if cfg.territory_enabled else 60.0
                         if self.world.distance(ax, ay, nearest_free.x, nearest_free.y) <= max_d:
                             nearest_free.clan_id = cid
                             nearest_free.clan_color = self.clans[cid]["color"]
                             nearest_free.is_main = False
-                    elif cfg.shelter_enabled and cfg.num_houses < 0 and len(functional) < target * 1.5:
-                        rand_m = self.rng.choice(members)
-                        exp_house = self._spawn_settlement_house(cid, near=rand_m)
-                        exp_house.is_main = False
+                            claimed_free = True
+                    if not claimed_free:
+                        invaded = self._try_house_takeover(cid, members, [h for h in functional if isinstance(h, House)])
+                        if invaded is None and cfg.num_houses < 0 and len(functional) < target * 1.5:
+                            rand_m = self.rng.choice(members)
+                            exp_house = self._spawn_settlement_house(cid, near=rand_m)
+                            exp_house.is_main = False
 
         # — decay: abandoned houses crumble to ruins —
         # Build living-clan set once
@@ -999,11 +1066,45 @@ class Simulation:
                     )
                 )
 
+    def _audit_house_claims(self, houses: list[House] | None = None) -> None:
+        """§AT-3 orphan-house cleanup — a claim whose clan is missing or has no
+        living member is cleared immediately so no house ends a tick owned by
+        a ghost; the roof then decays as abandoned through the usual §L path."""
+        if houses is None:
+            houses = self._functional_houses()
+        living: set[int] | None = None
+        for h in houses:
+            if not h.clan_id:
+                continue
+            if h.clan_id not in self.clans:
+                stale = True
+            else:
+                if living is None:
+                    living = {c.clan_id for c in self._get_creatures() if c.clan_id}
+                stale = h.clan_id not in living
+            if stale:
+                # Re-point the clan's seat before wiping, so main_house_id
+                # never dangles on a house the clan no longer owns.
+                info = self.clans.get(h.clan_id)
+                if info is not None and info.get("main_house_id") == h.id:
+                    others = [
+                        o for o in houses
+                        if o.clan_id == h.clan_id and o.id != h.id and not o.is_ruin
+                    ]
+                    info["main_house_id"] = max(others, key=lambda o: o.size).id if others else None
+                h.clan_id = 0
+                h.clan_color = None
+                h.is_main = False
+
     def _house_for(self, c: Creature, houses: list[Entity]) -> House | None:
         """Preferred shelter: the clan's own roofs while they have beds free;
         the clan leader resides and prioritizes the MAIN house; other kin
-        spread across all clan houses. When all roofs are full, overflow
-        spills across the village."""
+        spread across all clan houses.
+
+        §AT-2/AT-3 hard exclusivity: a creature sleeps only under its own
+        clan's roof (or an unclaimed roof). Foreign houses are never entered —
+        one house, one clan — so rival bodies can't poison occupancy caps.
+        When every eligible roof is full the creature queues at home instead."""
         if not houses:
             return None
 
@@ -1016,12 +1117,16 @@ class Simulation:
                 occ = max(0, occ - 1)
             return occ < self._house_beds(h)
 
+        def allowed(h: House) -> bool:
+            # §AT-3 strict single-clan ownership: own clan or neutral roofs only.
+            return h.clan_id == 0 or h.clan_id == c.clan_id
+
 
 
         if getattr(c, "waypoints", None) and "home" in c.waypoints:
             hx, hy = c.waypoints["home"]
             prev_home = next((h for h in houses if isinstance(h, House) and round(h.x, 2) == hx and round(h.y, 2) == hy and not h.is_ruin), None)
-            if prev_home and has_room(prev_home):
+            if prev_home and allowed(prev_home) and has_room(prev_home):
                 return prev_home
 
         if self.config.house_claim_enabled and c.clan_id:
@@ -1047,19 +1152,27 @@ class Simulation:
                 if own_free:
                     return min(own_free, key=dist_sq)
 
-            # If all own clan houses are full, seek any free house in the world
-            free = [h for h in houses if isinstance(h, House) and not h.is_ruin and has_room(h)]
+            # All own roofs full (or none): spill to the nearest UNCLAIMED roof
+            # with space — never into another clan's house (§AT-2/AT-3).
+            free = [
+                h for h in houses
+                if isinstance(h, House) and not h.is_ruin and h.clan_id == 0 and has_room(h)
+            ]
             if free:
                 return min(free, key=dist_sq)
 
-            # Every roof is full: queue at main house (if leader) or nearest own house
+            # Every eligible roof is full: queue at main house (if leader) or nearest own house
             if own_houses:
                 if c.id == leader_id:
                     return next((h for h in own_houses if h.id == main_hid or getattr(h, "is_main", False)), own_houses[0])
                 return min(own_houses, key=dist_sq)
+            return None
 
-        # Clanless creature: nearest house with room
-        free = [h for h in houses if isinstance(h, House) and not h.is_ruin and has_room(h)]
+        # Clanless creature (or claims disabled): only neutral roofs count.
+        free = [
+            h for h in houses
+            if isinstance(h, House) and not h.is_ruin and h.clan_id == 0 and has_room(h)
+        ]
         return min(free, key=dist_sq) if free else None
 
 
@@ -1809,8 +1922,26 @@ class Simulation:
                     break
             if loser_house is not None:
                 winner_color = self.clans.get(winner.clan_id, {}).get("color")
+                loser_cid = loser.clan_id
                 loser_house.clan_id = winner.clan_id
                 loser_house.clan_color = winner_color
+                loser_house.is_main = False
+                loser_house.takeover_tick = self.tick  # §AT-3 render flash
+                # §AT-3 orphan cleanup: if this was the loser's seat, re-point
+                # or clear it so no clan claims a house it no longer owns.
+                if self.clans.get(loser_cid, {}).get("main_house_id") == loser_house.id:
+                    remaining = [
+                        h for h in (self._cached_houses or self._functional_houses())
+                        if isinstance(h, House) and h.clan_id == loser_cid and not h.is_ruin
+                    ]
+                    if remaining:
+                        self._set_main_house_for_clan(loser_cid, max(remaining, key=lambda h: h.size))
+                    else:
+                        self.clans[loser_cid]["main_house_id"] = None
+                self._log_clan_history(
+                    winner.clan_id, "conquest",
+                    f"Conquered House #{loser_house.id} from {self.clans.get(loser_cid, {}).get('name')} (Day {self.day})",
+                )
                 self._emit(
                     HistoryEvent(
                         type="conquest",
@@ -1818,7 +1949,7 @@ class Simulation:
                         entity_id=loser_house.id,
                         x=round(loser_house.x, 2),
                         y=round(loser_house.y, 2),
-                        payload={"winner_clan": winner.clan_id, "loser_clan": loser.clan_id, "house_id": loser_house.id, "winner": winner.id, "loser": loser.id},
+                        payload={"winner_clan": winner.clan_id, "loser_clan": loser_cid, "house_id": loser_house.id, "winner": winner.id, "loser": loser.id},
                     )
                 )
         for loser, winner in to_wound:
@@ -3715,14 +3846,24 @@ class Simulation:
             # Assigned roof (room-aware, §L); if we're not under it but stand
             # inside ANOTHER roof with a free bed, rest here instead of
             # trekking across the village. No bed ⇒ no rest: capacity is law.
+            # §AT-3: only own-clan or unclaimed roofs may be entered.
             assigned = self._house_for(c, houses)
             home: House | None = None
-            if assigned is not None and self._inside_house(c, assigned):
+            if (
+                assigned is not None
+                and self._inside_house(c, assigned)
+                and (assigned.clan_id == 0 or assigned.clan_id == c.clan_id)
+            ):
                 home = assigned
             else:
                 for h in houses:
                     hh = cast(House, h)
-                    if self._inside_house(c, hh) and self._beds.get(hh.id, 0) < self._house_beds(hh):
+                    if (
+                        hh.is_ruin is False
+                        and (hh.clan_id == 0 or hh.clan_id == c.clan_id)
+                        and self._inside_house(c, hh)
+                        and self._beds.get(hh.id, 0) < self._house_beds(hh)
+                    ):
                         home = hh
                         break
             if home is not None and self._claim_bed(home):
@@ -4575,7 +4716,11 @@ class Simulation:
             and self.weather in ("rain", "storm")
         ):
             home = self._house_for(c, houses)
-            if self._inside_house(c, home) and self._claim_bed(home):
+            if (
+                home is not None
+                and self._inside_house(c, home)
+                and self._claim_bed(home)
+            ):
                 c.indoors = True
                 if cfg.knowledge_enabled:
                     self._learn(c, "safe", home.x, home.y)  # §X: shelter from the rain
@@ -4765,6 +4910,9 @@ class Simulation:
                 "id": e.id,
                 "kind": e.kind,
                 "clan_id": e.clan_id or None,
+                "clan_color": e.clan_color,
+                "is_main": bool(e.clan_id and self.clans.get(e.clan_id, {}).get("main_house_id") == e.id),
+                "takeover_age": (self.tick - e.takeover_tick) if getattr(e, "takeover_tick", -1) >= 0 else None,
                 "is_ruin": e.is_ruin or None,
             }
         return {
@@ -5005,6 +5153,8 @@ class Simulation:
                 "is_ruin": e.is_ruin or None,
 
                 "abandoned_ticks": e.abandoned_ticks or None,
+                # §AT-3: recent hostile takeover — renderer flashes the crest
+                "takeover_age": (self.tick - e.takeover_tick) if getattr(e, "takeover_tick", -1) >= 0 else None,
             }
         if isinstance(e, Food):
             is_withering = False
