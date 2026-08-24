@@ -419,7 +419,10 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://world.minhnhan.in",
+        "https://world.minhnhan.in",
     ],
+    allow_origin_regex="https?://.*",
     allow_methods=["*"],
     allow_headers=["*"],
 )
