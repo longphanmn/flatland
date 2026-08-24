@@ -503,8 +503,8 @@ export default function App() {
     <div className="app">
       <header className={`hud ${isMobile ? 'hud-compact' : ''}`} onClick={isMobile ? () => setStatusExpanded(o => !o) : undefined} style={isMobile ? { cursor: 'pointer' } : undefined}>
         <span className="title">Flatland</span>
-        <span className={`dot ${status}`} title={STATUS_LABEL[status]} />
-        <span className="chip">{STATUS_LABEL[status]}</span>
+        <span className={`dot ${status}`} title={`Connection: ${STATUS_LABEL[status]}`} data-hint={`Connection: ${STATUS_LABEL[status]}`} />
+        {status !== 'open' && <span className="chip" style={{ color: status === 'connecting' ? '#d29922' : '#f85149' }}>{STATUS_LABEL[status]}</span>}
         {paused && <span className="chip paused">PAUSED</span>}
         <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Est TPS is wall-clock measured from WS stream; if it drops below target, healthz avg_tick_ms shows overrun.">
           tick <b>{state?.tick ?? 0}</b>{estTps !== null && ` · ${estTps} t/s`}
