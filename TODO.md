@@ -1151,6 +1151,8 @@ Fixes and ergonomic polish for clan architecture, inventory autonomy, historical
 - [x] [P1] **Emergency Inventory Consumption**: Hungry or starving creatures carrying food (in foraging baskets or equipped inventory) should eat from their carried stock immediately when energy falls below threshold, preventing starvation while returning home or wandering.
 - [x] [P1] **Clan History & Major Event Log**: Track and display major historical milestones per clan (Founded on Day $D$ by Founder $X$, Leader Succession changes, HQ relocation, war declarations, tribute treaties) in the Clan details view.
 - [x] [P1] **Clan & Creature Profile UI Overhaul**: Clean up profile views — eliminate duplicate data fields, prevent text/metric overlapping, and apply dynamic viewport sizing so elements never expand outside the modal container on desktop or mobile.
+- [x] [P1] **House Capacity Bed Limits (16 Beds Max)**: Limit house beds to 16 maximum on max houses (`HOUSE_MAX_BEDS = 16`) with smaller houses scaling down proportionally, preventing single mega-houses from over-concentrating populations.
+
 
 ---
 

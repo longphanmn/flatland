@@ -76,12 +76,16 @@ def test_rest_recovery_mult_scales_indoor_healing():
 
 
 def test_house_beds_scale_with_floor_area():
-    """§L: capacity depends on SIZE — house_capacity counts beds in an 8x8 hall."""
+    """§L: capacity depends on SIZE — house_capacity counts beds in an 8x8 hall, max 16."""
     s = Simulation(shelter_cfg(seed=15, house_capacity=1))
     assert s._house_beds(House(x=0, y=0, size=6.0)) == 1   # int(36/64) -> floor 1
     assert s._house_beds(House(x=0, y=0, size=16.0)) == 4  # int(256/64)
     s2 = Simulation(shelter_cfg(seed=15, house_capacity=12))
+    assert s2._house_beds(House(x=0, y=0, size=6.0)) == 6   # small hut
     assert s2._house_beds(House(x=0, y=0, size=8.0)) == 12  # reference hall
+    assert s2._house_beds(House(x=0, y=0, size=10.0)) == 16 # max house (raw 18 -> capped at 16)
+    assert s2._house_beds(House(x=0, y=0, size=16.0)) == 16 # oversized hall capped at 16
+
 
 
 def test_shelter_law_disabled_stops_sleep_and_exposure():

@@ -58,8 +58,10 @@ AGE_BIRTH_MULT = {"Golden": 1.3, "Ice": 0.85, "Chaos": 1.0, "Plague": 0.9}
 
 YIELD_RADIUS = 2.5  # lower castes step aside within this range
 
-# §L shelter: reference floor area for the house_capacity law (8×8 hall)
+# §L shelter: reference floor area for the house_capacity law (8×8 hall) and maximum bed limit
 HOUSE_REF_AREA = 64.0
+HOUSE_MAX_BEDS = 16
+
 
 # §AB politics pacing (per-tick chances; determinism via fixed iteration order)
 COALITION_FORM_CHANCE = 0.003  # a leader founds a bloc this often
@@ -332,9 +334,11 @@ class Simulation:
 
     def _house_beds(self, house: House) -> int:
         """Beds scale with floor area: `house_capacity` is the law for an
-        average 8×8 hall — a cramped 6×6 hut holds barely half that, a grand
-        hall twice it. No village can cram a whole clan into one shelter."""
-        return max(1, int(self.config.house_capacity * (house.size * house.size) / HOUSE_REF_AREA))
+        average 8×8 hall — smaller huts have fewer beds, and large houses
+        are strictly capped at a maximum of 16 beds (HOUSE_MAX_BEDS)."""
+        raw = int(self.config.house_capacity * (house.size * house.size) / HOUSE_REF_AREA)
+        return max(1, min(HOUSE_MAX_BEDS, raw))
+
 
     # ------------------------------------------------------------------ setup
     def _rand_pos(self) -> tuple[float, float]:
