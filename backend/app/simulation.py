@@ -102,6 +102,23 @@ LEADER_SHOCK_PANIC_TICKS = 20
 LEADER_SHOCK_U_FLEE = 0.3    # flee-urge spike while the panic window lasts
 LEADERLESS_CAUTIOUS_CHANCE = 0.01  # per-tick personality drift toward cautious
 
+# §AQ PH-0 — foundational axioms: energy is the universal currency.
+# Sunlight is the world's only income; every body pays upkeep in proportion
+# to its geometric complexity (Flatland: more sides, more ceremony).
+METABOLIC_COST = {
+    "Woman": 1.5,
+    "Soldier": 1.0,   # triangles
+    "Artisan": 1.0,   # equilateral triangles
+    "Gentleman": 1.1,  # squares
+    "Professional": 1.2,  # pentagons
+    "Noble": 1.3,     # hexagons and beyond
+    "Priest": 1.5,    # near-circles burn energy maintaining the aura
+    "Predator": 1.0,
+    "Herbivore": 0.9,
+}
+DEFAULT_METABOLIC_COST = 1.0
+HEALING_ENERGY_COST = 0.5  # energy burned per point of health regenerated
+
 # §AE food decay — nothing lasts forever: variant lifespan multipliers (§AM)
 FOOD_LIFESPAN_MULT = {
     "grass": 1.0,
@@ -393,6 +410,22 @@ class Simulation:
         if ratio <= self.config.starving_ratio:
             r *= 0.5
         return r
+
+    def _sun_factor(self) -> float:
+        """§AQ PH-0: sunlight is the world's only income — no free growth at
+        night. Zero through the dark, a low arc at the edges of day, full
+        strength at noon. (Winter's bite stays the season table.)"""
+        tod = self._time_of_day()
+        if tod <= 0.22 or tod >= 0.78:
+            return 0.0
+        x = (tod - 0.5) / 0.28  # −1..1 across the daylight window
+        return max(0.15, 1.0 - x * x)
+
+    @staticmethod
+    def _metabolic_cost(c: Creature) -> float:
+        """§AQ PH-0: upkeep scales with body complexity — a priest's aura is
+        expensive, a woman's line burns hot, triangles run lean."""
+        return METABOLIC_COST.get(c.caste, DEFAULT_METABOLIC_COST)
 
     def distance(self, ax: float, ay: float, bx: float, by: float) -> float:
         """Proxy to world distance (convenience for tests)."""
@@ -3258,9 +3291,11 @@ class Simulation:
 
     # ------------------------------------------------------------------ flora
     def _update_plants(self) -> None:
-        """§H: every plant grows toward maturity; the mature ones spread. §O variant rhythms. §R weather waters/damages. §AE mature plants wither."""
+        """§H: every plant grows toward maturity; the mature ones spread. §O variant rhythms. §R weather waters/damages. §AE mature plants wither.
+        §AQ PH-0: growth rides sunlight — the day cycle is the world's income."""
         cfg = self.config
-        if cfg.plant_growth_rate > 0:
+        sun = self._sun_factor()
+        if cfg.plant_growth_rate > 0 and sun > 0.0:
             for e in self.world.entities.values():
                 if isinstance(e, Food) and e.growth < 1.0:
                     if cfg.plant_variants_enabled:
@@ -3273,7 +3308,7 @@ class Simulation:
                         wm = cfg.rain_growth_mult
                     elif self.weather == "fog" and e.variant == "mushroom":
                         wm = cfg.fog_mushroom_mult
-                    e.growth = min(1.0, e.growth + cfg.plant_growth_rate * vm * sm * wm)
+                    e.growth = min(1.0, e.growth + cfg.plant_growth_rate * vm * sm * wm * sun)
                     if e.growth >= 1.0:
                         self._emit_bloom(e)
         # §AE Food decay — a mature plant lives food_lifespan_ticks × its
@@ -3307,13 +3342,13 @@ class Simulation:
                     e.growth = max(0.0, e.growth - self.rng.uniform(0.2, 0.5))
                     if e.growth <= 0.05 and self.rng.random() < 0.5:
                         self.world.remove(e.id)
-        if cfg.plant_spread_rate > 0:
+        if cfg.plant_spread_rate > 0 and sun > 0.0:
             target = round(cfg.food_count * _season_food_mult(self._season(), cfg.winter_food_mult))
             total = sum(1 for e in self.world.entities.values() if e.kind == "food")
             for parent in list(self.world.entities.values()):
                 if not isinstance(parent, Food) or parent.growth < 1.0:
                     continue  # only mature plants carry seeds
-                if self.rng.random() >= cfg.plant_spread_rate:
+                if self.rng.random() >= cfg.plant_spread_rate * sun:
                     continue
                 if total >= target:
                     continue  # the land holds exactly god's seasonal bounty
@@ -3966,17 +4001,20 @@ class Simulation:
                 if cfg.knowledge_enabled:
                     self._learn(c, "safe", home.x, home.y)  # §X: this roof is safe
                 stage_mult = STAGE_ENERGY_MULT.get(c.stage, 1.0) if c.generation > 0 else 1.0
-                c.energy -= cfg.energy_decay_per_tick * cfg.sleep_energy_mult * stage_mult
+                c.energy -= cfg.energy_decay_per_tick * cfg.sleep_energy_mult * stage_mult * self._metabolic_cost(c)
                 if c.infected and cfg.disease_enabled:
                     c.energy -= cfg.disease_energy_drain
                     c.health -= 2.0 * cfg.disease_lethality
                 else:
                     # §AT-4 H-0: healing is not free — a body running on fumes
-                    # cannot mend itself, even asleep.
+                    # cannot mend itself, even asleep. §AQ PH-0: mending costs.
                     if (c.energy / cfg.energy_max) > HEALTH_REGEN_MIN_ENERGY:
                         regen = 0.15 * cfg.rest_recovery_mult
                         regen *= 1.0 + self._totem_stat(c, "defense")  # totem vitality heals faster
-                        c.health = min(100.0, c.health + regen)
+                        healed = min(100.0, c.health + regen) - c.health
+                        if healed > 0:
+                            c.health += healed
+                            c.energy = max(0.0, c.energy - healed * HEALING_ENERGY_COST)
                 if c.energy <= 0:
                     if getattr(c, "food_basket", 0) > 0:
                         c.food_basket -= 1
@@ -4869,7 +4907,7 @@ class Simulation:
 
         # 6. Metabolism, sickness and mortality. §R chill builds when cold & wet
         stage_mult = STAGE_ENERGY_MULT.get(c.stage, 1.0) if c.generation > 0 else 1.0
-        decay_mult = stage_mult
+        decay_mult = stage_mult * self._metabolic_cost(c)  # §AQ PH-0 upkeep
         # §AS L-0: the leader's aura eases every stride; an interregnum wearies.
         if c.clan_id:
             if in_aura:
@@ -4919,7 +4957,10 @@ class Simulation:
                     return
             elif ratio_now > HEALTH_REGEN_MIN_ENERGY and c.health < 100.0:
                 regen = 0.1 * (1.0 + self._totem_stat(c, "defense"))
-                c.health = min(100.0, c.health + regen)
+                healed = min(100.0, c.health + regen) - c.health
+                if healed > 0:
+                    c.health += healed
+                    c.energy = max(0.0, c.energy - healed * HEALING_ENERGY_COST)  # §AQ PH-0: mending costs
         if c.energy <= 0:
             if getattr(c, "food_basket", 0) > 0:
                 c.food_basket -= 1

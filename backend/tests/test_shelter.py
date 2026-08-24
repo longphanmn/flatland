@@ -4,7 +4,7 @@ import pytest
 
 from app.config import Config
 from app.entities import Creature, House
-from app.simulation import Simulation
+from app.simulation import HEALING_ENERGY_COST, METABOLIC_COST, Simulation
 
 
 def shelter_cfg(**kw) -> Config:
@@ -27,11 +27,13 @@ def test_rain_drains_the_outdoors_but_not_the_sheltered():
     s.weather = "rain"
     e_out, e_in = out.energy, sheltered.energy
     s.step()
+    # §AQ PH-0: upkeep scales with body complexity (default spawn = Gentleman)
+    meta = METABOLIC_COST[out.caste]
     assert out.energy < e_out - s.config.energy_decay_per_tick
     assert e_out - out.energy == pytest.approx(
-        s.config.energy_decay_per_tick + s.config.exposure_drain
+        s.config.energy_decay_per_tick * meta + s.config.exposure_drain
     )
-    assert e_in - sheltered.energy == pytest.approx(s.config.energy_decay_per_tick)
+    assert e_in - sheltered.energy == pytest.approx(s.config.energy_decay_per_tick * meta)
     states = {e.id: e for e in s.snapshot().entities}
     assert states[sheltered.id].indoors is True
     assert states[out.id].indoors is False
@@ -51,7 +53,8 @@ def test_house_capacity_overflows_into_the_rain():
     assert first.sleeping and first.indoors
     assert not second.sleeping and not second.indoors
     assert e_second - second.energy == pytest.approx(
-        s.config.energy_decay_per_tick + s.config.exposure_drain
+        s.config.energy_decay_per_tick * METABOLIC_COST[second.caste]
+        + s.config.exposure_drain
     )
 
 
@@ -100,7 +103,11 @@ def test_shelter_law_disabled_stops_sleep_and_exposure():
     e_before, h_before = c.energy, c.health
     s.step()
     assert not c.sleeping
-    assert e_before - c.energy == pytest.approx(s.config.energy_decay_per_tick)
+    # burn + the energy price of the 0.1 health regenerated this tick (§AQ PH-0)
+    assert e_before - c.energy == pytest.approx(
+        s.config.energy_decay_per_tick * METABOLIC_COST[c.caste]
+        + 0.1 * HEALING_ENERGY_COST
+    )
     assert c.health - h_before == pytest.approx(0.1)
 
 

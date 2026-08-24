@@ -1400,9 +1400,9 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 > Grounded in A.K. Dewdney's *The Planiverse* and Edwin Abbott's *Flatland*.
 > Axioms: all physics is 2D-intrinsic; energy is the universal currency; The Sphere sets laws, physics enforces them.
 
-### Phase PH-0: Foundational Axioms
-- [ ] [P0] **Energy conservation loop** — sunlight (day cycle) inputs energy into plants; every physical process converts energy between forms; no free energy at night or in winter; total system energy = creature + food + heat + structural.
-- [ ] [P0] **Metabolic cost by caste** — energy burn scales with body complexity (sides): Triangle 1.0×, Square 1.1×, Pentagon 1.2× (priests burn energy maintaining aura), Hexagon 1.3×, Circle/Woman 1.5×.
+### Phase PH-0: Foundational Axioms  [P0] — ✅ implemented
+- [x] [P0] **Energy conservation loop** — sunlight (day cycle) is the world's only income: `_sun_factor()` arcs from zero at night to 1.0 at noon and gates both plant growth and seed spread — no free growth in the dark; mending converts energy into health (`HEALING_ENERGY_COST` 0.5 per healed point, charged only on actual healing); death already returns energy via corpses + nutrient cycle; winter's bite stays the season table. (`simulation.py` `_sun_factor`, `_update_plants`, regen branches; tests `tests/test_physics_core.py`)
+- [x] [P0] **Metabolic cost by caste** — upkeep scales with body complexity (`METABOLIC_COST`, `_metabolic_cost`): Triangle/Soldier 1.0×, Square/Gentleman 1.1×, Pentagon/Professional 1.2×, Hexagon/Noble 1.3×, Woman & Priest/Circle 1.5× (priests burn energy maintaining the aura); applied to per-tick energy decay awake and asleep.
 
 ### Phase PH-1: Thermodynamics & Heat  [P0]
 - [ ] [P0] **Temperature field** — per-cell heat map updated each tick by weather/season/fire; seasons sweep temperature across the map from opposing edges.
