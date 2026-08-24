@@ -27,41 +27,18 @@ body {
 
 .hud {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
-  padding: 0 240px 0 14px;
+  padding: 0 110px 0 14px;
   border-bottom: 1px solid #21262d;
-  background: rgba(13, 17, 23, 0.96);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: #0d1117;
   position: relative;
-  height: 42px;
-  min-height: 42px;
-  max-height: 42px;
-  flex-wrap: nowrap;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
   white-space: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
+  overflow: hidden;
   z-index: 10;
-}
-.hud::-webkit-scrollbar {
-  display: none;
-}
-
-.hud-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex: none;
-}
-
-.hud-divider {
-  width: 1px;
-  height: 16px;
-  background: #30363d;
-  margin: 0 2px;
-  flex: none;
 }
 
 .title {
@@ -70,6 +47,7 @@ body {
   color: #e6edf3;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  flex: none;
 }
 
 .dot {
@@ -82,7 +60,6 @@ body {
 
 .dot.open {
   background: #3fb950;
-  box-shadow: 0 0 6px rgba(63, 185, 80, 0.4);
 }
 
 .dot.connecting {
@@ -90,15 +67,18 @@ body {
 }
 
 .chip {
-  font-size: 11.5px;
+  font-size: 12px;
   color: #8b949e;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  white-space: nowrap;
+  flex: none;
 }
 
 .chip b {
   color: #e6edf3;
+  font-weight: 600;
+  margin: 0 2px;
 }
 
 .chip.alive b {
@@ -109,75 +89,28 @@ body {
   color: #f85149;
 }
 
-.hud-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 7px;
-  border-radius: 4px;
-  font-size: 11px;
-  line-height: 1.2;
-  background: rgba(110, 118, 129, 0.12);
-  border: 1px solid #30363d;
-  color: #c9d1d9;
-}
-
-.hud-badge.paused {
+.chip.hungry b {
   color: #d29922;
-  border-color: rgba(210, 153, 34, 0.5);
-  background: rgba(210, 153, 34, 0.12);
-  font-weight: 600;
-  letter-spacing: 0.04em;
 }
 
-.hud-badge.age {
-  color: #d2a8ff;
-  border-color: rgba(210, 168, 255, 0.35);
-  background: rgba(210, 168, 255, 0.08);
-}
-.hud-badge.age b {
-  color: #e6edf3;
-}
-
-.hud-alert {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.hud-alert.hungry {
-  color: #d29922;
-  background: rgba(210, 153, 34, 0.15);
-  border: 1px solid rgba(210, 153, 34, 0.35);
-}
-
-.hud-alert.starving {
+.chip.starving b {
   color: #ff7b72;
-  background: rgba(248, 81, 73, 0.18);
-  border: 1px solid rgba(248, 81, 73, 0.45);
 }
 
-.hud-alert.sick {
+.chip.sick b {
   color: #3fb950;
-  background: rgba(46, 160, 67, 0.15);
-  border: 1px solid rgba(46, 160, 67, 0.35);
 }
 
-.hud-alert.chilled {
-  color: #79c0ff;
-  background: rgba(56, 139, 253, 0.15);
-  border: 1px solid rgba(56, 139, 253, 0.35);
-}
-
-.hud-alert.exposed {
+.chip.exposed b {
   color: #e3b341;
-  background: rgba(227, 179, 65, 0.15);
-  border: 1px solid rgba(227, 179, 65, 0.35);
+}
+
+.chip.paused {
+  color: #d29922;
+  border: 1px solid #d29922;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
 }
 
 .stage {

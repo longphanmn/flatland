@@ -496,97 +496,64 @@ export default function App() {
     : 0
   const weatherIcon =
     state?.weather === 'rain' ? '🌧' : state?.weather === 'fog' ? '🌫' : state?.weather === 'storm' ? '⛈' : ''
-  const hasAlerts = hungryCount > 0 || starvingCount > 0 || (state?.infected_count ?? 0) > 0 || chilledCount > 0 || (raining && exposedCount > 0)
 
   return (
     <div className="app">
       <header className={`hud ${isMobile ? 'hud-compact' : ''}`} onClick={isMobile ? () => setStatusExpanded(o => !o) : undefined} style={isMobile ? { cursor: 'pointer' } : undefined}>
-        {/* Brand & Connection status */}
-        <div className="hud-group hud-brand-group">
-          <span className="title">Flatland</span>
-          <span className={`dot ${status}`} title={STATUS_LABEL[status]} />
-          <span className="chip" style={{ fontSize: 11 }}>{STATUS_LABEL[status]}</span>
-          {paused && <span className="hud-badge paused">PAUSED</span>}
-        </div>
-
-        <div className="hud-divider desktop-only" />
-
-        {/* Simulation & Population */}
-        <div className="hud-group hud-metrics-group">
-          <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Est TPS is wall-clock measured from WS stream; if it drops below target, healthz avg_tick_ms shows overrun.">
-            tick <b>{state?.tick ?? 0}</b>{estTps !== null && <span style={{ opacity: 0.75 }}> · {estTps} t/s</span>}
+        <span className="title">Flatland</span>
+        <span className={`dot ${status}`} title={STATUS_LABEL[status]} />
+        <span className="chip">{STATUS_LABEL[status]}</span>
+        {paused && <span className="chip paused">PAUSED</span>}
+        <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Est TPS is wall-clock measured from WS stream; if it drops below target, healthz avg_tick_ms shows overrun.">
+          tick <b>{state?.tick ?? 0}</b>{estTps !== null && ` · ${estTps} t/s`}
+        </span>
+        <span className="chip alive" title="Alive creatures — Flatland castes + Predators + Herbivores. Hover Caste chart for breakdown.">
+          alive <b>{state?.creatures_alive ?? 0}</b>
+        </span>
+        <span className="chip dead desktop-only" title={`${deadBreakdown} — hover for per-cause breakdown (starvation/old_age/euthanasia/disease/predation/war/poison).`}>
+          dead <b>{state?.creatures_dead ?? 0}</b>
+        </span>
+        {hungryCount > 0 && (
+          <span className="chip hungry desktop-only" title="Hungry: energy ≤ 35% of max — perceives food farther (1.3×), still fertile.">
+            hungry <b>{hungryCount}</b>
           </span>
-          <span className="chip alive" title="Alive creatures — Flatland castes + Predators + Herbivores. Hover Caste chart for breakdown.">
-            alive <b>{state?.creatures_alive ?? 0}</b>
-          </span>
-          <span className="chip dead desktop-only" title={`${deadBreakdown} — hover for per-cause breakdown (starvation/old_age/euthanasia/disease/predation/war/poison).`}>
-            dead <b>{state?.creatures_dead ?? 0}</b>
-          </span>
-        </div>
-
-        {/* Vitals / Alerts (only when active) */}
-        {!isMobile && hasAlerts && (
-          <>
-            <div className="hud-divider" />
-            <div className="hud-group hud-alerts-group">
-              {hungryCount > 0 && (
-                <span className="hud-alert hungry" title="Hungry: energy ≤ 35% of max — perceives food farther (1.3×), still fertile.">
-                  🍖 {hungryCount}
-                </span>
-              )}
-              {starvingCount > 0 && (
-                <span className="hud-alert starving" title="Starving: energy ≤ 15% — sees farthest (1.6×) and moves 1.35× faster, pulsing red, will die soon.">
-                  ⚠️ {starvingCount}
-                </span>
-              )}
-              {(state?.infected_count ?? 0) > 0 && (
-                <span className="hud-alert sick" title="Infected — loses 0.15 energy/tick + 1.0 health/tick (winter ×1.5 spread), green pulsing ring, may recover.">
-                  ☣️ {state?.infected_count}
-                </span>
-              )}
-              {chilledCount > 0 && (
-                <span className="hud-alert chilled" title="Chilled: built rain/storm/winter-night outside, past 12 drains health 0.18/tick (death cause chill). Shelter sheds 2.5× faster.">
-                  🥶 {chilledCount}
-                </span>
-              )}
-              {raining && exposedCount > 0 && (
-                <span className="hud-alert exposed" title="Exposed: awake, outdoors, not in a House during rain/storm or winter night — loses 0.03 energy/tick extra. Shelter is scarce.">
-                  ⛈️ {exposedCount}
-                </span>
-              )}
-            </div>
-          </>
         )}
-
-        <div className="hud-divider desktop-only" />
-
-        {/* Environment & Time */}
-        {state && (
-          <div className="hud-group hud-env-group desktop-only">
-            <span className="chip" title={`Time of day ${state.time_of_day} — night (0-0.22, 0.78-1) dims sight 0.6×, fog 0.6× stack; season ${state.season} changes Food target and disease. Weather ${state.weather}: rain slows 0.85×, storm adds wander.`}>
-              {isNight ? '🌙' : '☀'} day <b>{state.day}</b> · {state.season}
-              {weatherIcon && ` · ${weatherIcon}`}
-            </span>
-            {state.age && (
-              <span className="hud-badge age" title={`Age ${state.age} — super-season bending world: Ice (food×0.55 chill×1.4), Chaos (mutation×1.8), Plague (disease×1.8), Golden (food×1.25 birth×1.3). God sets age_length.`}>
-                🗓 <b>{state.age}</b> #{state.age_tick}
-              </span>
-            )}
-          </div>
+        {starvingCount > 0 && (
+          <span className="chip starving desktop-only" title="Starving: energy ≤ 15% — sees farthest (1.6×) and moves 1.35× faster, pulsing red, will die soon.">
+            starving <b>{starvingCount}</b>
+          </span>
         )}
-
-        {/* World seed & bounds */}
+        {(state?.infected_count ?? 0) > 0 && (
+          <span className="chip sick desktop-only" title="Infected — loses 0.15 energy/tick + 1.0 health/tick (winter ×1.5 spread), green pulsing ring, may recover.">
+            infected <b>{state?.infected_count}</b>
+          </span>
+        )}
+        {chilledCount > 0 && (
+          <span className="chip desktop-only" style={{ color: '#79c0ff' }} title="Chilled: built rain/storm/winter-night outside, past 12 drains health 0.18/tick (death cause chill). Shelter sheds 2.5× faster.">
+            🥶 chilled <b>{chilledCount}</b>
+          </span>
+        )}
+        {raining && exposedCount > 0 && (
+          <span className="chip exposed desktop-only" title="Exposed: awake, outdoors, not in a House during rain/storm or winter night — loses 0.03 energy/tick extra. Shelter is scarce.">
+            ⛈ exposed <b>{exposedCount}</b>
+          </span>
+        )}
         {hello && (
-          <>
-            <div className="hud-divider desktop-only" />
-            <div className="hud-group hud-world-group desktop-only">
-              <span className="chip" style={{ opacity: 0.85 }} title="Seed determines entire world deterministically; width×height is world size; wrap vs clamp is edge behavior. Reset rolls a new seed.">
-                seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×{state?.height ?? hello.height}
-              </span>
-            </div>
-          </>
+          <span className="chip desktop-only" title="Seed determines entire world deterministically; width×height is world size; wrap vs clamp is edge behavior. Reset rolls a new seed.">
+            seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×{state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}
+          </span>
         )}
-
+        {state && state.age && (
+          <span className="chip desktop-only" title={`Age ${state.age} — super-season bending world: Ice (food×0.55 chill×1.4), Chaos (mutation×1.8), Plague (disease×1.8), Golden (food×1.25 birth×1.3). God sets age_length.`}>
+            🗓 age <b>{state.age}</b> · tick {state.age_tick}
+          </span>
+        )}
+        {state && (
+          <span className="chip" title={`Time of day ${state.time_of_day} — night (0-0.22, 0.78-1) dims sight 0.6×, fog 0.6× stack; season ${state.season} changes Food target and disease. Weather ${state.weather}: rain slows 0.85×, storm adds wander.`}>
+            {isNight ? '🌙' : '☀'} day <b>{state.day}</b> · {state.season}
+            {weatherIcon && ` · ${weatherIcon}`}
+          </span>
+        )}
         {isMobile && <span className="chip" style={{ marginLeft: 'auto', fontSize: 10, color: '#58a6ff' }}>{statusExpanded ? '▲ Close' : '▼ More'}</span>}
 
         <div className="top-right-panel">
