@@ -213,9 +213,13 @@ class Simulation:
         self.on_event: Callable[[HistoryEvent], None] | None = None
         self._eaten: set[int] = set()
         self._beds: dict[int, int] = {}  # house id -> occupants granted this tick
-        self._events_this_tick: list[HistoryEvent] = []
+        self._events_this_tick: list[dict] = []  # pre-dumped dicts (populated by _emit)
         # T: per-tick caches
         self._cached_creatures: list[Creature] = []
+        self._cached_creatures_sorted: list[Creature] = []  # sorted by id, built in _refresh_cache
+        self._cached_foods: list = []    # Food entities this tick
+        self._cached_houses: list = []   # non-ruin House entities this tick (sorted by id)
+        self._cached_corpses: list = []  # Corpse entities this tick
         self._clan_members: dict[int, list[Creature]] = {}
         self._death_counts: dict[str, int] = {}
         # AA: deterministic cosmetic identity (name/glyph/jitter) per creature,
@@ -528,7 +532,14 @@ class Simulation:
         return cid
 
     def _functional_houses(self) -> list[House]:
-        """Non-ruin houses in id order — the possible settlement anchors (§V)."""
+        """Non-ruin houses in id order — the possible settlement anchors (§V).
+
+        AF: fast-path returns the per-tick cache (sorted by id) when available.
+        Falls back to full entity scan during initialization (pre-first-refresh).
+        """
+        if self._cached_houses:
+            return self._cached_houses
+        # Fallback: initialization or outside-tick context (e.g. _spawn_initial)
         return sorted(
             [e for e in self.world.entities.values() if isinstance(e, House) and not e.is_ruin],
             key=lambda h: h.id,
@@ -723,7 +734,7 @@ class Simulation:
 
     def _refresh_house_claims(self) -> None:
         """Sync house crests with the current law (enable/disable)."""
-        houses = [e for e in self.world.entities.values() if isinstance(e, House) and not e.is_ruin]
+        houses = self._functional_houses()
         if not self.config.house_claim_enabled:
             for h in houses:  # type: ignore[union-attr]
                 h.clan_id = 0
@@ -749,7 +760,7 @@ class Simulation:
         """Spawn a new house — near a clan founder if given, else random; claim it if clan_id."""
         cfg = self.config
         max_radius = max(
-            (c.radius for c in self.world.creatures()), default=DEFAULT_RADIUS
+            (c.radius for c in self._get_creatures()), default=DEFAULT_RADIUS
         )
         size = self.rng.uniform(cfg.house_min_size, cfg.house_max_size)
         x, y = self._find_non_overlapping_house_pos(size, near=near)
@@ -783,7 +794,7 @@ class Simulation:
         if cfg.num_houses >= 0:
             return
         # — growth: replenish houses when ruined/shortage, paced every 100 ticks —
-        functional = [h for h in self.world.entities.values() if isinstance(h, House) and not h.is_ruin]
+        functional = self._functional_houses()
         target = self._target_house_count()
         if len(functional) < target and (self.tick % 100 == 0):
             self._spawn_settlement_house()
@@ -1037,8 +1048,8 @@ class Simulation:
             weights = {"grass": 0.50, "berry": 0.18, "mushroom": 0.32}
         # decomposer boost: near corpses or rocks → more mushrooms
         near_decomposer = False
-        for e in self.world.entities.values():
-            if e.kind == "corpse" and self.world.distance(x, y, e.x, e.y) < NUTRIENT_RADIUS:
+        for e in self.world.query_radius(x, y, NUTRIENT_RADIUS):
+            if e.kind == "corpse":
                 near_decomposer = True
                 break
         if not near_decomposer:
@@ -1285,12 +1296,34 @@ class Simulation:
         return self._find_non_overlapping_house_pos(size)
 
     def _refresh_cache(self) -> None:
-        """T: cache creatures once per tick and clan→members map."""
-        self._cached_creatures = self.world.creatures()
+        """T: single-pass over entities — build creature/food/house/corpse caches + sorted creature list.
+
+        AF: one O(N) scan replaces the old world.creatures() call (O(N)) plus
+        independent per-subsystem entity scans in plants/fires/enforce_food_law/corpses.
+        """
+        creatures: list[Creature] = []
+        foods: list = []
+        houses: list = []
+        corpses: list = []
         m: dict[int, list[Creature]] = {}
-        for c in self._cached_creatures:
-            m.setdefault(c.clan_id, []).append(c)
+        for e in self.world.entities.values():
+            t = type(e)
+            if t is Creature:
+                creatures.append(e)
+                m.setdefault(e.clan_id, []).append(e)  # type: ignore[union-attr]
+            elif t is Food:
+                foods.append(e)
+            elif t is House:
+                if not e.is_ruin:  # type: ignore[union-attr]
+                    houses.append(e)
+            elif t is Corpse:
+                corpses.append(e)
+        self._cached_creatures = creatures
         self._clan_members = m
+        self._cached_creatures_sorted = sorted(creatures, key=lambda c: c.id)
+        self._cached_foods = foods
+        self._cached_houses = sorted(houses, key=lambda h: h.id)
+        self._cached_corpses = corpses
 
     def _get_creatures(self) -> list[Creature]:
         if self._cached_creatures:
@@ -1315,7 +1348,7 @@ class Simulation:
         self._update_plants()
         self.world.rebuild_index()
         self._refresh_cache()
-        houses = [e for e in self.world.entities.values() if e.kind == "house" and not e.is_ruin]  # type: ignore[union-attr]
+        houses = self._cached_houses
         tod = self._time_of_day()
         is_night = self._is_night(tod)
         env_sight = self.env_sight_mult()
@@ -1346,6 +1379,10 @@ class Simulation:
         self._update_settlements()
         self.tick += 1
         self._cached_creatures = []
+        self._cached_creatures_sorted = []
+        self._cached_foods = []
+        self._cached_houses = []
+        self._cached_corpses = []
         self._clan_members = {}
 
     # ---------------------------------------------------------------- society
@@ -1419,7 +1456,8 @@ class Simulation:
         cfg = self.config
         if not cfg.war_enabled:
             return
-        creatures = sorted(self.world.creatures(), key=lambda c: c.id)
+        # AF: pre-sorted in _refresh_cache; fallback if called outside step()
+        creatures = self._cached_creatures_sorted if self._cached_creatures_sorted else sorted(self.world.creatures(), key=lambda c: c.id)
         to_kill: list[tuple[Creature, Creature]] = []
         to_wound: list[tuple[Creature, Creature]] = []
         fallen: set[int] = set()  # losers already scheduled this tick
@@ -1500,8 +1538,8 @@ class Simulation:
             self._mobilise_coalition(winner.clan_id, loser.clan_id)
             # Territory conquest — winner absorbs loser's territory and house (§S)
             loser_house = None
-            for h in self.world.entities.values():
-                if isinstance(h, House) and getattr(h, "clan_id", 0) == loser.clan_id and not getattr(h, "is_ruin", False):
+            for h in (self._cached_houses if self._cached_houses else self._functional_houses()):
+                if isinstance(h, House) and h.clan_id == loser.clan_id and not h.is_ruin:
                     loser_house = h
                     break
             if loser_house is not None:
@@ -1710,7 +1748,7 @@ class Simulation:
         if not cfg.territory_enabled:
             return
         # functional claimed houses are territory anchors
-        houses = [h for h in self.world.entities.values() if isinstance(h, House) and not h.is_ruin and h.clan_id != 0]
+        houses = [h for h in (self._cached_houses if self._cached_houses else self._functional_houses()) if h.clan_id != 0]
         if not houses:
             return
         # Trespass: each creature inside a rival's radius slightly sours the two clans
@@ -1739,17 +1777,19 @@ class Simulation:
             return
         # One schism per tick max to keep determinism smooth
         # AA: one membership pass per tick (was a full roster scan PER CLAN).
-        members_by_clan: dict[int, list[Creature]] = {}
-        for c in self._get_creatures():
-            if c.clan_id:
-                members_by_clan.setdefault(c.clan_id, []).append(c)
+        members_by_clan: dict[int, list[Creature]] = self._clan_members if self._clan_members else {}
+        if not members_by_clan:
+            for c in self._get_creatures():
+                if c.clan_id:
+                    members_by_clan.setdefault(c.clan_id, []).append(c)
+        claimed_houses = {h.clan_id for h in (self._cached_houses if self._cached_houses else self._functional_houses()) if h.clan_id}
         for cid, info in list(self.clans.items()):
             members = members_by_clan.get(cid, [])
             pop = len(members)
             if pop < cfg.schism_min_pop:
                 continue
             # Unhappy: starving or homeless (no house)
-            has_house = any(h.clan_id == cid and not h.is_ruin for h in self.world.entities.values() if isinstance(h, House))
+            has_house = cid in claimed_houses
             unhappy = 0
             for c in members:
                 ratio = c.energy / cfg.energy_max if cfg.energy_max else 1
@@ -1898,12 +1938,10 @@ class Simulation:
                 self._dissolve_coalition(coal_id, reason="soured")
         # A clan petitions to join an existing bloc.
         if self.rng.random() < COALITION_JOIN_CHANCE:
+            claimed_clans = {h.clan_id for h in (self._cached_houses if self._cached_houses else self._functional_houses()) if h.clan_id}
             unaligned = [
                 cid for cid in sorted(self.clans.keys())
-                if cid not in self._clan_coalition and any(
-                    h.clan_id == cid and not h.is_ruin
-                    for h in self.world.entities.values() if isinstance(h, House)
-                )
+                if cid not in self._clan_coalition and cid in claimed_clans
             ]
             for cid in unaligned:
                 joined = False
@@ -2117,7 +2155,7 @@ class Simulation:
         if not cfg.resource_sharing_enabled:
             return
         houses_by_clan: dict[int, House] = {}
-        for e in self.world.entities.values():
+        for e in (self._cached_houses if self._cached_houses else self._functional_houses()):
             if isinstance(e, House) and e.clan_id and not e.is_ruin and e.clan_id not in houses_by_clan:
                 houses_by_clan[e.clan_id] = e
         starving_by_clan: dict[int, int] = {}
@@ -2197,7 +2235,7 @@ class Simulation:
             return
         houses_by_clan: set[int] = {
             e.clan_id
-            for e in self.world.entities.values()
+            for e in (self._cached_houses if self._cached_houses else self._functional_houses())
             if isinstance(e, House) and e.clan_id and not e.is_ruin
         }
         for c in self._get_creatures():
@@ -2373,8 +2411,8 @@ class Simulation:
                 new_fires.append(f)
             else:
                 # ash fertilizes nearby plants (nutrient boost)
-                for e in self.world.entities.values():
-                    if isinstance(e, Food) and self.world.distance(e.x, e.y, f["x"], f["y"]) < 8:
+                for e in self.world.query_radius(f["x"], f["y"], 8.0):
+                    if isinstance(e, Food):
                         e.growth = min(1.0, e.growth + 0.15)
         self.fires = new_fires
         # Ignition: storm lightning or random fire_rate
@@ -2382,7 +2420,7 @@ class Simulation:
         if self.weather == "storm":
             ignite_chance = max(ignite_chance, 0.002)  # lightning
         if self.rng.random() < ignite_chance:
-            foods = [e for e in self.world.entities.values() if isinstance(e, Food) and e.growth > 0.5]
+            foods = [e for e in (self._cached_foods or self.world.entities.values()) if isinstance(e, Food) and e.growth > 0.5]
             if foods:
                 victim = self.rng.choice(foods)
                 self.fires.append({"x": victim.x, "y": victim.y, "r": 3.0, "ttl": 28})
@@ -2391,26 +2429,25 @@ class Simulation:
         # Spread to neighboring plants
         if self.fires and self.rng.random() < cfg.fire_spread_rate * len(self.fires):
             for f in list(self.fires):
-                for e in list(self.world.entities.values()):
+                for e in self.world.query_radius(f["x"], f["y"], 6.0):
                     if not isinstance(e, Food):
                         continue
-                    if self.world.distance(e.x, e.y, f["x"], f["y"]) < 6 and self.rng.random() < 0.35:
+                    if self.rng.random() < 0.35:
                         self.fires.append({"x": e.x, "y": e.y, "r": 2.5, "ttl": 22})
                         self.world.remove(e.id)
                         break
         # Burn creatures and plants within fire radius
         for f in list(self.fires):
-            for e in list(self.world.entities.values()):
-                if isinstance(e, Creature) and self.world.distance(e.x, e.y, f["x"], f["y"]) < f["r"] + 1.2:
-                    # chance to burn
+            for e in self.world.query_radius(f["x"], f["y"], f["r"] + 1.2):
+                if isinstance(e, Creature) and e.id in self.world.entities:
                     if self.rng.random() < 0.18:
                         self._kill(e, "fire")
-                elif isinstance(e, Food) and self.world.distance(e.x, e.y, f["x"], f["y"]) < f["r"]:
-                    if self.rng.random() < 0.25:
+                elif isinstance(e, Food) and e.id in self.world.entities:
+                    if self.world.distance(e.x, e.y, f["x"], f["y"]) < f["r"] and self.rng.random() < 0.25:
                         self.world.remove(e.id)
             # also burn houses? small chance to ignite house (is_ruin)
-            for h in [h for h in self.world.entities.values() if isinstance(h, House) and not h.is_ruin]:
-                if self.world.distance(h.x, h.y, f["x"], f["y"]) < f["r"] + h.size/2:
+            for h in (self._cached_houses if self._cached_houses else self._functional_houses()):
+                if not h.is_ruin and self.world.distance(h.x, h.y, f["x"], f["y"]) < f["r"] + h.size/2:
                     if self.rng.random() < 0.03:
                         h.is_ruin = True
                         h.clan_id = 0
@@ -2453,21 +2490,23 @@ class Simulation:
 
     def _update_clan_specialization(self) -> None:
         """§P Clan specialization — drift toward warrior/farmer/scavenger."""
+        # AF: slice the history deque once before the clan loop; was O(history_len × num_clans)
+        import itertools
+        recent = list(itertools.islice(reversed(self.history), 80))
+        # AF: build clan→house map from the house cache (avoids entity scan per clan)
+        house_by_clan: dict[int, House] = {}
+        for h in self._cached_houses:
+            if isinstance(h, House) and h.clan_id and h.clan_id not in house_by_clan:
+                house_by_clan[h.clan_id] = h
         for cid, info in self.clans.items():
             spec = info.get("specialization")
             if spec is None:
                 spec = {"warrior": 0.33, "farmer": 0.33, "scavenger": 0.34}
                 info["specialization"] = spec
             # totem bias already in founding; now environment drift
-            # find clan house
-            house = None
-            for e in self.world.entities.values():
-                if isinstance(e, House) and getattr(e, "clan_id", 0) == cid and not getattr(e, "is_ruin", False):
-                    house = e
-                    break
+            house = house_by_clan.get(cid)
             # count recent war involvement (last 80 history)
-            recent = list(self.history)[-80:]
-            war_cnt = sum(1 for ev in recent if ev.type == "war" and (ev.payload.get("a")==cid or ev.payload.get("b")==cid))
+            war_cnt = sum(1 for ev in recent if ev.type == "war" and (ev.payload.get("a") == cid or ev.payload.get("b") == cid))
             # count food/corpse near house (if has house)
             food_near = 0
             corpse_near = 0
@@ -2491,13 +2530,13 @@ class Simulation:
             if corpse_near > 2:
                 spec["scavenger"] = min(0.8, spec["scavenger"] + drift * 0.7)
             # slight decay toward 0.33 to avoid lock-in, plus random jitter
-            for k in ("warrior","farmer","scavenger"):
+            for k in ("warrior", "farmer", "scavenger"):
                 spec[k] += self.rng.uniform(-0.0005, 0.0005)
                 spec[k] = max(0.05, min(0.85, spec[k]))
             # renormalize to 1
             tot = spec["warrior"] + spec["farmer"] + spec["scavenger"]
             for k in spec:
-                spec[k] = round(spec[k]/tot, 3)
+                spec[k] = round(spec[k] / tot, 3)
 
     def clan_knowledge(self) -> dict[int, dict]:
         """§X Clan memory — union of member knowledge: 'the clan remembers'."""
@@ -2578,15 +2617,13 @@ class Simulation:
                 plots.append({"type": "war", "a": a, "b": b, "a_name": self.clans.get(a, {}).get("name"), "b_name": self.clans.get(b, {}).get("name"), "progress": prog, "max": 10, "distance": round(min_d,1)})
         # schism plots: clans approaching schism threshold
         if self.config.schism_enabled:
+            claimed_houses = {h.clan_id for h in (self._cached_houses if self._cached_houses else self._functional_houses()) if h.clan_id}
             for cid, info in self.clans.items():
                 members = members_by_clan.get(cid, [])
                 pop = len(members)
                 if pop < self.config.schism_min_pop:
                     continue
-                has_house = any(
-                    isinstance(h, House) and h.clan_id == cid and not h.is_ruin
-                    for h in self.world.entities.values()
-                )
+                has_house = cid in claimed_houses
                 unhappy = sum(1 for c in members if c.energy / self.config.energy_max <= self.config.starving_ratio or not has_house)
                 frac = unhappy / pop if pop else 0
                 if frac >= self.config.schism_threshold * 0.5:  # show even half-way
@@ -2713,22 +2750,21 @@ class Simulation:
         """Corpses rot away once their ttl runs out — and death feeds life."""
         if not self.config.corpses_enabled:
             return
-        for e in list(self.world.entities.values()):
-            if isinstance(e, Corpse):
-                e.ttl -= 1
-                if e.ttl <= 0:
-                    self._release_nutrients(e)
-                    self.world.remove(e.id)
+        # AF: iterate pre-built corpse cache — no full entity scan needed
+        for e in list(self._cached_corpses):
+            e.ttl -= 1
+            if e.ttl <= 0:
+                self._release_nutrients(e)
+                self.world.remove(e.id)
 
     def _release_nutrients(self, corpse: Entity, mult: float = 1.0) -> None:
         """A fully decayed corpse (or withered plant, §AE) boosts nearby plant growth."""
         boost = NUTRIENT_BOOST * self.config.nutrient_cycle_rate * mult
         if boost <= 0:
             return
-        for e in self.world.entities.values():
+        # AF: spatial query around decaying entity instead of scanning all world entities
+        for e in self.world.query_radius(corpse.x, corpse.y, NUTRIENT_RADIUS):
             if not isinstance(e, Food):
-                continue
-            if self.world.distance(e.x, e.y, corpse.x, corpse.y) > NUTRIENT_RADIUS:
                 continue
             was = e.growth
             e.growth = min(1.0, e.growth + boost)
@@ -2738,7 +2774,9 @@ class Simulation:
     # ---------------------------------------------------------------- disease
     def _emit(self, event: HistoryEvent) -> None:
         self.history.append(event)
-        self._events_this_tick.append(event)
+        # AA: pre-dump once at source — snapshot_payload reads plain dicts directly,
+        # eliminating per-frame Pydantic model_dump() on the broadcast hot path.
+        self._events_this_tick.append(event.model_dump(mode="json"))
         if self.on_event is not None:
             self.on_event(event)
 
@@ -2936,7 +2974,7 @@ class Simulation:
                 payload=event_payload,
             )
             self.history.append(event)
-            self._events_this_tick.append(event)
+            self._events_this_tick.append(event.model_dump(mode="json"))
             if self.on_event is not None:
                 self.on_event(event)
             return
@@ -2985,7 +3023,7 @@ class Simulation:
                 payload=event_payload,
             )
             self.history.append(event)
-            self._events_this_tick.append(event)
+            self._events_this_tick.append(event.model_dump(mode="json"))
             if self.on_event is not None:
                 self.on_event(event)
             return
@@ -3080,7 +3118,7 @@ class Simulation:
             payload=event_payload,
         )
         self.history.append(event)
-        self._events_this_tick.append(event)
+        self._events_this_tick.append(event.model_dump(mode="json"))
         if self.on_event is not None:
             self.on_event(event)
 
@@ -3091,7 +3129,7 @@ class Simulation:
                 payload={"from": "Soldier", "to": "Artisan"},
             )
             self.history.append(pevent)
-            self._events_this_tick.append(pevent)
+            self._events_this_tick.append(pevent.model_dump(mode="json"))
             if self.on_event is not None:
                 self.on_event(pevent)
 
@@ -3116,14 +3154,15 @@ class Simulation:
             payload={"personal_name": personal_name_for(c.id, self.config.seed, c.generation), "glyph": glyph_for(c.id, self.config.seed, c.generation)},
         )
         self.history.append(event)
-        self._events_this_tick.append(event)
+        self._events_this_tick.append(event.model_dump(mode="json"))
         if self.on_event is not None:
             self.on_event(event)
         # Leadership succession (§P)
         if c.clan_id and self.config.succession_enabled:
             clan = self.clans.get(c.clan_id)
             if clan and clan.get("leader_id") == c.id:
-                candidates = [cc for cc in self.world.creatures() if cc.clan_id == c.clan_id]
+                # AF: use cached creatures list — avoids full entity scan on each death
+                candidates = [cc for cc in self._get_creatures() if cc.clan_id == c.clan_id]
                 if candidates:
                     successor = sorted(candidates, key=lambda cc: (-cc.age, cc.id))[0]
                     clan["leader_id"] = successor.id
@@ -3361,7 +3400,7 @@ class Simulation:
                 payload={"irregularity": c.irregularity},
             )
             self.history.append(event)
-            self._events_this_tick.append(event)
+            self._events_this_tick.append(event.model_dump(mode="json"))
             if self.on_event is not None:
                 self.on_event(event)
 
@@ -4020,7 +4059,7 @@ class Simulation:
                 str(k): {kk: (dict(vv) if isinstance(vv, dict) else vv) for kk, vv in v.items()}
                 for k, v in self.clans.items()
             },
-            "events": [ev.model_dump(mode="json") for ev in self._events_this_tick],
+            "events": self._events_this_tick,  # AA: pre-dumped in _emit() — zero work here
             "signals": [dict(sg) for sg in self.signals],
             "fires": [dict(f) for f in self.fires],
             "age": self._age(),
