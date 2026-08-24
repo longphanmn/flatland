@@ -1298,6 +1298,47 @@ Next-generation multi-tiered communication ecosystem spanning caste acoustic voc
 - **Task E.3: Prophetic Omens & Revelations from the Sphere**
   - [ ] [P2] Priests receive divine prophetic visions from the 3D Sphere (predicting oncoming winters/storms and preaching to worshippers).
 
+---
+
+## AO. Nocturnal Perils & Vital Shelter Ecosystem Roadmap  [P1]
+Transformation of the Flatland night into an existential outdoor hazard and elevated shelter into an indispensable sanctuary of warmth, healing, defense, and culture.
+
+### Phase A: Extreme Night Chill & Hypothermia Exposure  [P1]
+- **Task A.1: Accelerated Nighttime Chill & Exposure Kinetics**
+  - [ ] [P1] Unsheltered creatures at night accumulate chill $3.0\times$ faster than during daytime rain.
+  - [ ] [P1] In winter nights or night storms, outdoor exposure accumulates extreme chill and inflicts rapid energy drain.
+- **Task A.2: Frostbite Numbness & Hypothermia Mortality**
+  - [ ] [P1] Reaching maximum chill ($>12$) triggers *Frostbite Numbness*: reduces speed to $0.4\times$, forces creatures to drop carried food/seed baskets, and deals $0.5\text{ HP/tick}$ damage until death (`death_cause: exposure`).
+
+### Phase B: Nocturnal Predators & The Dusk Rush  [P1]
+- **Task B.1: Predator Nocturnal Prowling & Night Vision Buff**
+  - [ ] [P1] Predators gain $+40\%$ sight radius in the dark and $+20\%$ stealth chase speed when hunting unsheltered prey at night.
+  - [ ] [P1] Pack-hunting behavior: wolves and wild beasts converge in hunting packs past midnight (`tod > 0.85`), prowling around village borders.
+- **Task B.2: The Dusk Rush (Sunset Urgency Steering)**
+  - [ ] [P1] At dusk (`tod = 0.70`), creatures feel instinctive urgency: dropping non-essential exploration to sprint straight home before nightfall.
+
+### Phase C: Clan Hearths & Indoor Restorative Sanctuaries  [P2]
+- **Task C.1: Central House Hearths & Total Thermal Immunity**
+  - [ ] [P2] Inhabited houses maintain a glowing central hearth that immediately purges chill, halts energy decay, and accelerates HP healing ($+1.5\text{ HP/tick}$).
+- **Task C.2: Door Barricades & Sentry Spearmen**
+  - [ ] [P2] Solid walls and closed doorway thresholds prevent predators from penetrating occupied homes.
+  - [ ] [P2] Clan spearmen near house doorways poke outward to defend against circling night beasts.
+
+### Phase D: Blind Collisions & The Lethal Needle Hazard  [P2]
+- **Task D.1: Pitch-Black Visibility & Blind Collision Fog**
+  - [ ] [P2] Non-predator sight outdoors at night contracts to $2.5$ units, making navigation and obstacle avoidance perilous without light sources.
+- **Task D.2: Accidental Impalement Hazard**
+  - [ ] [P2] Collisions in pitch darkness with unsheltered moving lines (women) inflict severe accidental impalement damage ($\ge 25\text{ HP}$).
+- **Task D.3: Rogue Isosceles Night Marauders**
+  - [ ] [P2] Clanless or starving Isosceles bandits stalk the dark to ambush lone foragers and loot their carried rations.
+
+### Phase E: Field Campfires & Settlement Expansion Economics  [P2]
+- **Task E.1: Emergency Field Campfires & Bivouacs**
+  - [ ] [P2] Stranded explorers caught far from home at nightfall gather dry brush to light temporary campfires ($3.5$ unit illuminated radius) that repel predators and provide warmth until dawn.
+- **Task E.2: Shelter Scarcity & Housing Construction Pressure**
+  - [ ] [P2] Population overflowing bed capacity creates urgent social and economic demand for Artisans to quarry materials and construct new houses or expand existing halls.
+
+
 
 
 
