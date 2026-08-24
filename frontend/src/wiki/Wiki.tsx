@@ -111,23 +111,23 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
 
         {tab === 'api' && (
           <div>
-            <h3>API Reference — live routes</h3>
-            <p className="god-note">From <code>app.routes</code> + <code>/openapi.json</code>. Try with <code>curl</code>.</p>
-            <div style={{ maxHeight: 320, overflowY: 'auto', border: '1px solid #21262d', borderRadius: 6 }}>
+            <h3 style={{ marginTop: 0, color: '#e6edf3' }}>API Reference — live routes</h3>
+            <p className="god-note" style={{ color: '#8b949e', fontSize: 12, margin: '4px 0 10px' }}>From <code>app.routes</code> + <code>/openapi.json</code>. Try with <code>curl</code>.</p>
+            <div style={{ maxHeight: 320, overflowY: 'auto', border: '1px solid #30363d', borderRadius: 6 }}>
               <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
-                <thead><tr><th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid #21262d' }}>Route</th><th style={{ padding: '6px 8px', borderBottom: '1px solid #21262d' }}>Try</th></tr></thead>
+                <thead><tr><th style={{ textAlign: 'left', padding: '8px 10px', background: '#161b22', color: '#e6edf3', borderBottom: '1px solid #30363d' }}>Route</th><th style={{ textAlign: 'left', padding: '8px 10px', background: '#161b22', color: '#e6edf3', borderBottom: '1px solid #30363d' }}>Try</th></tr></thead>
                 <tbody>
                   {(data?.routes ?? []).filter(r => match(r) && r).sort().map(r => (
                     <tr key={r} style={{ borderBottom: '1px solid #21262d' }}>
-                      <td style={{ padding: '6px 8px' }}><code>{r || '/'}</code></td>
-                      <td style={{ padding: '6px 8px' }}><code style={{ fontSize: 11, wordBreak: 'break-all' }}>{`curl ${location.origin}${r}`}</code></td>
+                      <td style={{ padding: '6px 10px' }}><code>{r || '/'}</code></td>
+                      <td style={{ padding: '6px 10px' }}><code style={{ fontSize: 11, wordBreak: 'break-all' }}>{`curl ${location.origin}${r}`}</code></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <h4 style={{ marginTop: 12 }}>Curl playground</h4>
-            <pre style={{ background: '#161b22', padding: 12, borderRadius: 6, overflow: 'auto', fontSize: 12 }}><code>{`curl ${location.origin}/api/laws
+            <h4 style={{ marginTop: 14, color: '#e6edf3' }}>Curl playground</h4>
+            <pre style={{ background: '#161b22', padding: 12, borderRadius: 6, overflow: 'auto', fontSize: 12, border: '1px solid #30363d' }}><code>{`curl ${location.origin}/api/laws
 curl -X POST ${location.origin}/api/laws -H 'content-type: application/json' -H 'X-God-Key: <passkey>' -d '{"food_count": 90}'
 curl -X POST ${location.origin}/api/presets/sustainable?reset=true -H 'X-God-Key: <passkey>'
 curl ${location.origin}/api/state | jq .tick
@@ -137,20 +137,20 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
 
         {tab === 'laws' && (
           <div>
-            <h3>God Laws — {data?.laws.length ?? 0} laws</h3>
-            <p className="god-note">Type/range/default + hint from <code>docs/god-laws.md</code>. Edit in God panel or <code>POST /api/laws</code>. Tap law for hint.</p>
-            <div style={{ maxHeight: 380, overflow: 'auto', border: '1px solid #21262d', borderRadius: 6 }}>
+            <h3 style={{ marginTop: 0, color: '#e6edf3' }}>God Laws — {data?.laws.length ?? 0} laws</h3>
+            <p className="god-note" style={{ color: '#8b949e', fontSize: 12, margin: '4px 0 10px' }}>Type/range/default + hint from <code>docs/god-laws.md</code>. Edit in God panel or <code>POST /api/laws</code>.</p>
+            <div style={{ maxHeight: 380, overflow: 'auto', border: '1px solid #30363d', borderRadius: 6 }}>
               <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', minWidth: 480 }}>
-                <thead><tr><th style={{ textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid #21262d' }}>Law</th><th style={{ padding: '6px 8px', borderBottom: '1px solid #21262d' }}>Default</th><th style={{ padding: '6px 8px', borderBottom: '1px solid #21262d' }}>Hint</th></tr></thead>
+                <thead><tr><th style={{ textAlign: 'left', padding: '8px 10px', background: '#161b22', color: '#e6edf3', borderBottom: '1px solid #30363d' }}>Law</th><th style={{ textAlign: 'left', padding: '8px 10px', background: '#161b22', color: '#e6edf3', borderBottom: '1px solid #30363d' }}>Default</th><th style={{ textAlign: 'left', padding: '8px 10px', background: '#161b22', color: '#e6edf3', borderBottom: '1px solid #30363d' }}>Hint</th></tr></thead>
                 <tbody>
                   {(data?.laws ?? []).filter(n => match(n) || ((data?.law_details as any)?.[n]?.hint ?? '').toLowerCase().includes(q.toLowerCase())).sort().map(name => {
                     const det = (data?.law_details as any)?.[name]
                     const cur = (laws as any)?.[name]
                     return (
                       <tr key={name} style={{ borderBottom: '1px solid #21262d' }}>
-                        <td style={{ padding: '6px 8px' }}><code>{name}</code></td>
-                        <td style={{ padding: '6px 8px' }}>{String(cur ?? det?.default ?? '—')}</td>
-                        <td style={{ padding: '6px 8px', fontSize: 11, color: '#c9d1d9', maxWidth: 280 }}>{det?.hint ?? ''} <a href="/docs/god-laws.md" style={{ color: '#58a6ff', fontSize: 10 }}>md</a> · <a href="/wiki#god-laws" style={{ color: '#58a6ff', fontSize: 10 }}>wiki</a></td>
+                        <td style={{ padding: '6px 10px' }}><code>{name}</code></td>
+                        <td style={{ padding: '6px 10px', color: '#ffa657' }}>{String(cur ?? det?.default ?? '—')}</td>
+                        <td style={{ padding: '6px 10px', fontSize: 11, color: '#c9d1d9', maxWidth: 300 }}>{det?.hint ?? ''} <a href="/docs/god-laws.md" style={{ color: '#58a6ff', fontSize: 10 }}>md</a> · <a href="/wiki#god-laws" style={{ color: '#58a6ff', fontSize: 10 }}>wiki</a></td>
                       </tr>
                     )
                   })}

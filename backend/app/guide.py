@@ -355,18 +355,33 @@ GUIDE_TEMPLATE = """<!doctype html>
 <meta property="og:url" content="https://world.minhnhan.in/guide">
 <meta property="og:type" content="article">
 <style>
-body{{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;color:#222;background:#fafafa}}
-nav{{position:fixed;top:0;left:0;width:240px;height:100vh;overflow:auto;background:#fff;border-right:1px solid #e5e7eb;padding:16px}}
-main{{margin-left:240px;padding:24px;max-width:900px}}
-a{{color:#0a58ca;text-decoration:none}} a:hover{{text-decoration:underline}}
-pre{{background:#f3f4f6;padding:12px;overflow:auto;border-radius:6px}}
-code{{background:#f3f4f6;padding:1px 4px;border-radius:3px;font-size:0.9em}}
-table{{border-collapse:collapse;width:100%;margin:12px 0}} th,td{{border:1px solid #e5e7eb;padding:6px 8px;text-align:left;font-size:0.9em}} th{{background:#f9fafb}}
-h1{{border-bottom:2px solid #e5e7eb;padding-bottom:6px}} h2{{margin-top:28px;color:#111}}
-@media(max-width:700px){{nav{{position:relative;width:auto;height:auto}} main{{margin-left:0}}}}
+:root{color-scheme:dark;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:0;color:#c9d1d9;background:#0b0f14;line-height:1.6}
+nav{position:fixed;top:0;left:0;width:260px;height:100vh;overflow-y:auto;background:#0d1117;border-right:1px solid #21262d;padding:16px;scrollbar-width:thin}
+main{margin-left:260px;padding:24px;max-width:960px;background:#0b0f14}
+a{color:#58a6ff;text-decoration:none} a:hover{text-decoration:underline}
+pre{background:#161b22;padding:12px;overflow:auto;border-radius:6px;border:1px solid #30363d;font-size:13px;color:#e6edf3}
+code{background:#161b22;padding:2px 5px;border-radius:4px;font-size:0.9em;border:1px solid #21262d;color:#ffa657}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:12px;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #30363d;border-radius:6px}
+th,td{border:1px solid #21262d;padding:8px 10px;text-align:left;white-space:nowrap}
+th{background:#161b22;color:#e6edf3;font-weight:600;border-bottom:1px solid #30363d}
+td{background:#0d1117}
+tr:hover td{background:#161b22}
+h1{border-bottom:1px solid #21262d;padding-bottom:8px;color:#e6edf3;font-size:20px;letter-spacing:0.04em}
+h2{margin-top:28px;color:#e6edf3;font-size:16px;border-left:3px solid #e3b341;padding-left:8px}
+h3{color:#e6edf3;font-size:14px}
+ul{padding-left:20px}
+li{margin:4px 0}
+@media(max-width:768px){
+  nav{position:relative;width:auto;height:auto;border-right:none;border-bottom:1px solid #21262d}
+  main{margin-left:0;padding:16px}
+  footer{margin-left:0 !important}
+  table{font-size:11px}
+}
 </style></head><body>
-<nav><h3>Flatland Guide</h3><ul>{nav}</ul><p><a href="/docs">Swagger /docs</a> · <a href="/openapi.json">OpenAPI</a></p><p><a href="/guide?format=json">JSON</a></p><p style="font-size:12px;color:#8b949e;margin-top:16px;border-top:1px solid #e5e7eb;padding-top:12px">Developed by<br/><strong>Long Phan</strong><br/><a href="mailto:long@minhnhan.in">long@minhnhan.in</a><br/><a href="https://minhnhan.in">minhnhan.in</a><br/><small style="color:#8b949e;display:block;margin-top:4px">Built with OpenCode & Antigravity<br/>Inspired by Edwin A. Abbott</small></p></nav>
-<main>{content}</main><footer style="margin-left:240px;padding:12px 24px;font-size:12px;color:#8b949e;border-top:1px solid #e5e7eb;text-align:center">© Flatland — Developed by <strong>Long Phan</strong> &lt;<a href="mailto:long@minhnhan.in">long@minhnhan.in</a>&gt; · <a href="https://minhnhan.in">minhnhan.in</a> · <a href="https://world.minhnhan.in">world.minhnhan.in</a> · Built with OpenCode & Antigravity · Inspired by Edwin A. Abbott</footer></body></html>
+<nav><h3 style="margin:0 0 12px;color:#e6edf3">📖 Flatland Guide</h3><ul style="list-style:none;padding:0;margin:8px 0">{nav}</ul><p style="font-size:13px"><a href="/docs">Swagger /docs</a> · <a href="/openapi.json">OpenAPI</a> · <a href="/wiki">Wiki</a></p><p style="font-size:13px"><a href="/guide?format=json">JSON</a> · <a href="/">← Live world</a></p><p style="font-size:12px;color:#8b949e;margin-top:16px;border-top:1px solid #21262d;padding-top:12px">Developed by<br/><strong style="color:#e6edf3">Long Phan</strong><br/><a href="mailto:long@minhnhan.in">long@minhnhan.in</a><br/><a href="https://minhnhan.in">minhnhan.in</a><br/><small style="color:#8b949e;display:block;margin-top:4px">Built with OpenCode & Antigravity<br/>Inspired by Edwin A. Abbott</small></p></nav>
+<main>{content}</main><footer style="margin-left:260px;padding:16px 24px;font-size:12px;color:#8b949e;border-top:1px solid #21262d;background:#0d1117;text-align:center">© Flatland — Developed by <strong style="color:#e6edf3">Long Phan</strong> &lt;<a href="mailto:long@minhnhan.in">long@minhnhan.in</a>&gt; · <a href="https://minhnhan.in">minhnhan.in</a> · <a href="https://world.minhnhan.in">world.minhnhan.in</a> · Built with OpenCode & Antigravity · Inspired by Edwin A. Abbott</footer></body></html>
 """
 
 
