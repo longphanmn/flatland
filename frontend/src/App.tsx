@@ -555,6 +555,17 @@ export default function App() {
           </span>
         )}
         {isMobile && <span className="chip" style={{ marginLeft: 'auto', fontSize: 10, color: '#58a6ff' }}>{statusExpanded ? '▲ Close' : '▼ More'}</span>}
+        <div className="top-right-panel">
+          <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )" data-hint="Wiki — documentation & API ( /wiki )">
+            📖
+          </button>
+          <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls" data-hint="Show hints for all HUD chips and controls">
+            ?
+          </button>
+          <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life" data-hint="Laws of Nature — god sets laws, never touches a life">
+            ⚖
+          </button>
+        </div>
       </header>
       {isMobile && statusExpanded && (
         <div className="hud-detail-sheet" onClick={(e) => { if ((e.target as HTMLElement).tagName !== 'SELECT' && (e.target as HTMLElement).tagName !== 'BUTTON') setStatusExpanded(false); }}>
@@ -950,18 +961,6 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* Desktop only floating panels — on mobile these live cleanly in the thumb bar and detail drawer */}
-      <div className="top-right-panel">
-        <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )" data-hint="Wiki — documentation & API ( /wiki )">
-          📖
-        </button>
-        <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls" data-hint="Show hints for all HUD chips and controls">
-          ?
-        </button>
-        <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life" data-hint="Laws of Nature — god sets laws, never touches a life">
-          ⚖
-        </button>
-      </div>
       {!isMobile && (
         <div className="version-bar" title={versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'Flatland'}>
           {versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'v0.1.0'}

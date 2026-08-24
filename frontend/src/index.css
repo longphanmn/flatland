@@ -131,6 +131,9 @@ body {
   overflow-y: auto;
   scrollbar-width: thin;
 }
+.right-stack > * {
+  pointer-events: auto;
+}
 
 .info-panel {
   background: rgba(13, 17, 23, 0.93);
