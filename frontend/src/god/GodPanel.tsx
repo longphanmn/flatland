@@ -359,9 +359,9 @@ const PRESET_LIST: PresetItem[] = [
     color: '#e3b341',
     border: '#d29922',
     bg: 'rgba(227, 179, 65, 0.15)',
-    title: 'Goldilocks balance: all systems active in gentle harmony for maximal multi-generational survival',
-    description: 'All 15+ simulation mechanics active in gentle harmony: mild war, rare predation, mild plagues, gentle winters, and thriving multi-generational clans.',
-    tags: ['Everything Active', 'Longevity', 'Harmonious'],
+    title: 'Goldilocks balance: 220 food, carrying 600, max 800 — gentle harmony for 500-800 population',
+    description: 'All 15+ simulation mechanics active in gentle harmony: 220 food, carrying capacity 600 (max 800), mild war, rare predation, mild plagues, gentle winters, and thriving multi-generational clans.',
+    tags: ['500-800 Pop', 'Everything Active', 'Harmonious'],
   },
   {
     key: 'sustainable',
@@ -410,6 +410,7 @@ const PRESET_LIST: PresetItem[] = [
 ]
 
 function detectPreset(laws: GodLaws): string | null {
+  if (laws.food_count === 220 && laws.carrying_capacity === 600) return 'balance'
   if (laws.food_count === 420 && laws.carrying_capacity === 2000) return 'balance'
   if (laws.food_count === 450 && laws.carrying_capacity === 2200) return 'sustainable'
   if (laws.food_count === 320 && laws.carrying_capacity === 800) return 'chaos'

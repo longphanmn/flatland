@@ -17,11 +17,11 @@ from .guide import _api_table, _god_laws_table, _md_to_html, CODEBASE_MAP_MD, CO
 SUSTAINABILITY_MD = """
 # Sustainability — the 1000-day world
 
-The world self-balances for 1000+ days at 400–2000 head when tuned to Goldilocks balance.
+The world self-balances for 1000+ days at 500–800 head when tuned to Goldilocks balance.
 
 ## Presets
 
-- **balance** ⚖️ (Default) — The Goldilocks condition: all 15+ simulation mechanics active in gentle, harmonious proportions (mild war, rare predation, mild plagues, gentle winters, and thriving multi-generational clans).
+- **balance** ⚖️ (Default) — The Goldilocks condition: 220 food, carrying 600, max 800 pop. All 15+ simulation mechanics active in gentle, harmonious proportions (mild war, rare predation, mild plagues, gentle winters, and thriving multi-generational clans).
 - **sustainable** 🌿 — 1000-day gentle: 450 food, carrying 2200, rare war/predation, calm society. Multi-generational flourishing.
 - **chaos** 🔥 — 320 food, carrying 800, max 1200: famine, predators, wars, plagues, fires, schism. Stress test.
 - **extinction** 💀 — 100 food, carrying 250, max 400: 0.3 winter, high decay. Extinction in days.
