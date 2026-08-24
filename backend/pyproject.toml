@@ -4,6 +4,7 @@ version = "0.1.2"
 description = "Flatland 2D world simulation backend (FastAPI + WebSocket)"
 authors = [{ name = "Long Phan", email = "long@minhnhan.in" }]
 maintainers = [{ name = "Long Phan", email = "long@minhnhan.in" }]
+license = { text = "MIT" }
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",

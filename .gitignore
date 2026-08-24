@@ -1,17 +1,55 @@
-# Python
+# Python & Virtual Environments
 .venv/
+venv/
+ENV/
+env/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
 .pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
 
-# Node
+# Node & Frontend
 node_modules/
 dist/
+dist-ssr/
+*.local
+.npm
 
-# Misc
-.DS_Store
+# Logs and Runtime State
 *.log
-
-# SQLite runtime files
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
 backend/flatland.db*
 backend/flatworld.db*
+snapshot.json
+
+# Environment Variables & Private Deploy Scripts
+.env
+.env.*
+!.env.example
+deploy*
+.deployed-commit
+
+# OS & Editor Specific Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

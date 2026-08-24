@@ -92,7 +92,7 @@ production). Several TUIs can watch the same world at once.
 
 ```bash
 ./run.sh tui                                        # attach to localhost:8000
-./run.sh tui ws://192.168.1.21:8000/ws              # attach to another host
+./run.sh tui ws://<remote-host>:8000/ws              # attach to another host
 cd backend && FLATWORLD_WS=ws://host:8000/ws uv run -m tui
 uv run textual serve -m tui.serve                   # optional: TUI in the browser
 ```
@@ -248,12 +248,16 @@ writes committed together (`Database.batch()`).
 - Snapshot protocol is versioned by shape; swap full snapshots for diffs later
 - Deterministic seeded RNG per tick ⇒ future replay/record support
 
+## License
+
+This project is licensed under the [MIT License](LICENSE). See [LICENSE.md](LICENSE.md) for details.
+
 ## Developer
 
 **Long Phan** — [long@minhnhan.in](mailto:long@minhnhan.in) — long@minhnhan.in
 
 - Website: https://minhnhan.in · World: https://world.minhnhan.in
 - Backend: `backend/` · Frontend: `frontend/` · Docs: `docs/` + `/wiki` & `/guide`
-- License & contact: Long Phan <long@minhnhan.in>
 
 > Flatland is designed, built and maintained by **Long Phan (long@minhnhan.in)**. For inquiries, deployments or collaboration, reach out via long@minhnhan.in.
+

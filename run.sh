@@ -81,10 +81,10 @@ cd "$ROOT/frontend"
 npm run dev -- --host 0.0.0.0 --port 5173 &
 PIDS+=("$!")
 
+LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || echo 'localhost')"
 echo ""
-echo "  World UI : http://localhost:5173  (or http://\$(ipconfig getifaddr en0 2>/dev/null || echo 192.168.1.21):5173 on LAN)"
+echo "  World UI : http://localhost:5173  (or http://${LAN_IP}:5173 on LAN)"
 echo "  API docs : http://localhost:8000/docs"
-echo "  Remote   : http://192.168.1.21:5173 (if deployed)"
 echo "  Terminal : ./run.sh tui   (attach a TUI to this world)"
 echo ""
 wait
