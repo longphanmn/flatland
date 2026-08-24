@@ -507,40 +507,73 @@ export default function App() {
         <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Est TPS is wall-clock measured from WS stream; if it drops below target, healthz avg_tick_ms shows overrun.">
           tick <b>{state?.tick ?? 0}</b>{estTps !== null && ` · ${estTps} t/s`}
         </span>
-        <span className="chip alive" title="Alive creatures — Flatland castes + Predators + Herbivores. Hover Caste chart for breakdown.">
-          alive <b>{state?.creatures_alive ?? 0}</b>
+        <span
+          className="chip alive"
+          title={`Alive: ${state?.creatures_alive ?? 0} creatures — Flatland castes + Predators + Herbivores. Hover Caste chart for breakdown.`}
+          data-hint={`Alive: ${state?.creatures_alive ?? 0} creatures`}
+        >
+          💚 <b>{state?.creatures_alive ?? 0}</b>
         </span>
-        <span className="chip dead desktop-only" title={`${deadBreakdown} — hover for per-cause breakdown (starvation/old_age/euthanasia/disease/predation/war/poison).`}>
-          dead <b>{state?.creatures_dead ?? 0}</b>
+        <span
+          className="chip dead desktop-only"
+          title={`Dead: ${state?.creatures_dead ?? 0} — ${deadBreakdown} (hover for per-cause breakdown: starvation/old_age/euthanasia/disease/predation/war/poison).`}
+          data-hint={`Dead: ${state?.creatures_dead ?? 0} creatures (${deadBreakdown})`}
+        >
+          💀 <b>{state?.creatures_dead ?? 0}</b>
         </span>
         {hungryCount > 0 && (
-          <span className="chip hungry desktop-only" title="Hungry: energy ≤ 35% of max — perceives food farther (1.3×), still fertile.">
-            hungry <b>{hungryCount}</b>
+          <span
+            className="chip hungry desktop-only"
+            title={`Hungry: ${hungryCount} creatures (energy ≤ 35% of max) — perceives food farther (1.3×), still fertile.`}
+            data-hint={`Hungry: ${hungryCount} creatures`}
+          >
+            🍖 <b>{hungryCount}</b>
           </span>
         )}
         {starvingCount > 0 && (
-          <span className="chip starving desktop-only" title="Starving: energy ≤ 15% — sees farthest (1.6×) and moves 1.35× faster, pulsing red, will die soon.">
-            starving <b>{starvingCount}</b>
+          <span
+            className="chip starving desktop-only"
+            title={`Starving: ${starvingCount} creatures (energy ≤ 15%) — sees farthest (1.6×) and moves 1.35× faster, pulsing red, will die soon.`}
+            data-hint={`Starving: ${starvingCount} creatures`}
+          >
+            ⚠️ <b>{starvingCount}</b>
           </span>
         )}
         {(state?.infected_count ?? 0) > 0 && (
-          <span className="chip sick desktop-only" title="Infected — loses 0.15 energy/tick + 1.0 health/tick (winter ×1.5 spread), green pulsing ring, may recover.">
-            infected <b>{state?.infected_count}</b>
+          <span
+            className="chip sick desktop-only"
+            title={`Infected: ${state?.infected_count} creatures — loses 0.15 energy/tick + 1.0 health/tick (winter ×1.5 spread), green pulsing ring, may recover.`}
+            data-hint={`Infected: ${state?.infected_count} creatures`}
+          >
+            ☣️ <b>{state?.infected_count}</b>
           </span>
         )}
         {chilledCount > 0 && (
-          <span className="chip desktop-only" style={{ color: '#79c0ff' }} title="Chilled: built rain/storm/winter-night outside, past 12 drains health 0.18/tick (death cause chill). Shelter sheds 2.5× faster.">
-            🥶 chilled <b>{chilledCount}</b>
+          <span
+            className="chip desktop-only"
+            style={{ color: '#79c0ff' }}
+            title={`Chilled: ${chilledCount} creatures — built rain/storm/winter-night outside, past 12 drains health 0.18/tick. Shelter sheds 2.5× faster.`}
+            data-hint={`Chilled: ${chilledCount} creatures`}
+          >
+            🥶 <b>{chilledCount}</b>
           </span>
         )}
         {raining && exposedCount > 0 && (
-          <span className="chip exposed desktop-only" title="Exposed: awake, outdoors, not in a House during rain/storm or winter night — loses 0.03 energy/tick extra. Shelter is scarce.">
-            ⛈ exposed <b>{exposedCount}</b>
+          <span
+            className="chip exposed desktop-only"
+            title={`Exposed: ${exposedCount} creatures — awake, outdoors, not in a House during rain/storm or winter night (loses 0.03 energy/tick extra).`}
+            data-hint={`Exposed: ${exposedCount} creatures`}
+          >
+            ⛈ <b>{exposedCount}</b>
           </span>
         )}
         {hello && (
-          <span className="chip desktop-only" title="Seed determines entire world deterministically; width×height is world size; wrap vs clamp is edge behavior. Reset rolls a new seed.">
-            seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×{state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}
+          <span
+            className="chip desktop-only"
+            title={`World Seed: ${state?.seed ?? hello.seed} · Dimensions: ${state?.width ?? hello.width}×${state?.height ?? hello.height} · Edge: ${state?.boundary ?? hello.boundary}. Reset rolls a new seed.`}
+            data-hint={`Seed: ${state?.seed ?? hello.seed} · ${state?.width ?? hello.width}×${state?.height ?? hello.height} (${state?.boundary ?? hello.boundary})`}
+          >
+            🎲 <b>{state?.seed ?? hello.seed}</b>
           </span>
         )}
         {state && state.age && (
@@ -558,13 +591,13 @@ export default function App() {
 
         <div className="top-right-panel">
           <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )" data-hint="Wiki — documentation & API ( /wiki )">
-            📖 Wiki
+            📖
           </button>
           <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls" data-hint="Show hints for all HUD chips and controls">
-            ❓ Guide
+            ?
           </button>
           <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life" data-hint="Laws of Nature — god sets laws, never touches a life">
-            ⚖ Laws
+            ⚖
           </button>
         </div>
       </header>
