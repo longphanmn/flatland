@@ -1357,11 +1357,11 @@ class Simulation:
             h.clan_id: h for h in houses if isinstance(h, House) and h.clan_id and not h.is_ruin
         }
         c_n_pre = len(self._cached_creatures)
-        # N150: stagger creature updates when >1000c (halves per-tick query cost)
+        # N150: stagger creature updates when >600c (halves per-tick query cost) — 774c was 174ms without
         for creature in list(self._cached_creatures):
             if creature.id not in self.world.entities:
                 continue
-            if c_n_pre > 1000 and (creature.id & 1) != (self.tick & 1):
+            if c_n_pre > 600 and (creature.id & 1) != (self.tick & 1):
                 # light tick: age+metabolize only, no spatial queries
                 creature.age += 1
                 # stage-aware metabolism (infant 0.45 etc) without full logic
