@@ -333,7 +333,8 @@ LAW_HINTS_MD = {
     "euthanasia_threshold": "irregular children at/above this are consumed at adulthood, below it demoted (0.7)",
     "carrying_capacity": "above this population, fertility fades gradually (−1 scales with map area; 80 per 200×200)",
     "max_population": "hard cap — no births beyond (−1 scales with map area; 140 per 200×200)",
-    "house_capacity": "beds in an 8×8 hall (12) — scales with floor area, so a small hut cannot hold a whole clan; overflow spills to the nearest roof with space",
+    "house_capacity": "beds in an 8×8 hall (12) — scales with floor area (small huts have fewer beds, max houses capped at 16 beds); overflow spills to the nearest roof with space",
+
     "exposure_drain": "energy lost per tick outdoors in rain/storm/night (0.03)",
     "rest_recovery_mult": "health regen multiplier when sleeping indoors (2.0)",
     "rain_growth_mult": "rain/storm boost to plant growth (1.25) — soaked ground regrows faster",

@@ -109,7 +109,8 @@ In Flatland, God sets **laws**, never touches individual lives. Every law has a 
 | Law Parameter | Range | Default | Ecological Effect & Hint |
 |---|:---:|:---:|---|
 | `exposure_drain` | 0–2.0 | **0.025** | Energy loss per tick when outdoors during inclement weather. |
-| `house_capacity` | 1–20 | **10** | Maximum bed capacity per average settlement house. |
+| `house_capacity` | 1–20 | **12** | Bed capacity per standard 8×8 hall (scales with size, capped at 16 beds max). |
+
 | `rest_recovery_mult` | 0.5–5.0 | **2.0** | Health regeneration speed multiplier while sleeping indoors. |
 | `door_clearance` | 1.0–4.0 | **1.5** | Doorway width relative to creature size (blocks oversized predators). |
 

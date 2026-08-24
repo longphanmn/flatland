@@ -212,7 +212,8 @@ Only the desperate eat the living: below `cannibalism_hunger_ratio` energy a cre
 Nothing lasts forever: a mature plant lives `food_lifespan_ticks` × its variant's pace (mushroom 0.4×, grass ×1, berry 1.5×, poisonous 3×) before it withers — sprouts and growing plants never rot. Withered plants fade brown in the renderer, release half a corpse's nutrient boost to nearby plants (§H death feeds life), then vanish (`wither` events stay in-memory like blooms, never the DB). The bounty law respawns replacement growth, so plant counts now churn instead of freezing.
 
 ## Shelter & Settlements (§L/N)
-Houses (`entities.py:184`) squares with doorway; walls block except door — doorway too small for Carnivore predators (§L refuge) so houses are safe havens. Exposure `exposure_drain` outdoors in rain/storm or night unless `indoors`. Beds scale with floor area: `house_capacity` counts beds in an average 8×8 hall (`HOUSE_REF_AREA`). Clans can settle across multiple houses, with the leader residing in the primary **Main House** marked with a golden crown. Abandoned houses decay to ruins (`is_ruin`).
+Houses (`entities.py:184`) squares with doorway; walls block except door — doorway too small for Carnivore predators (§L refuge) so houses are safe havens. Exposure `exposure_drain` outdoors in rain/storm or night unless `indoors`. Beds scale with floor area: `house_capacity` counts beds in an average 8×8 hall (`HOUSE_REF_AREA`), small huts have fewer beds, and large houses are strictly capped at 16 beds max (`HOUSE_MAX_BEDS`). Clans can settle across multiple houses, with the leader residing in the primary **Main House** marked with a golden crown. Abandoned houses decay to ruins (`is_ruin`).
+
 
 ## Autonomous Evolution & Tools (§AG)
 Evolution emerges 100% autonomously without god interventions:
