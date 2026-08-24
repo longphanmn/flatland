@@ -65,6 +65,88 @@ Flatland is an autonomous 2D artificial life and world simulation of geometric c
 - **Living Guide & Wiki**: `/guide` (backend HTML) and `/wiki` (interactive documentation).
 """
 
+FLATLAND_BOOK_COMPARISON_MD = """
+# Flatland: The Novella vs. The Simulation
+
+A comparative study between **Edwin A. Abbott’s 1884 satirical classic *Flatland: A Romance of Many Dimensions*** and this autonomous artificial life simulation.
+
+---
+
+## 1. Caste, Geometry & Social Hierarchy
+
+| Dimension | Abbott’s Book (*Flatland*, 1884) | Our Application (*Flatland Simulator*) |
+| :--- | :--- | :--- |
+| **Hierarchy Principle** | *"Configuration makes the man."* Social status is strictly determined by the number of sides and regularity of angles. | Entities inherit exact geometric castes based on vertex count (N-gons) and regularity. |
+| **Women (Lines)** | Straight lines with no angular width. Because they are practically invisible head-on and razor-sharp, they are legally required to make a continuous "peace cry" and use dedicated side doors. | Rendered as 1D segments (`shape: 'line'`). Distinct agility, movement, and domestic shelter dynamics. |
+| **Working Class / Soldiers** | Isosceles triangles with narrow, sharp vertex angles (dangerous, volatile, prone to rebellions). | **Soldiers** (`#ff7b72`): Sharp combatants with boosted attack, military discipline, and perimeter defense behavior. |
+| **Artisans & Middle Class** | Equilateral triangles (3 equal sides) — stable and respectable tradespeople. | **Artisans** (3–4 sides, `#f2cc60`): Farmers, foragers, and builders responsible for harvesting and maintaining houses. |
+| **Gentlemen & Professionals** | Squares (4 sides) and Pentagons (5 sides) — the middle/upper administrative classes. | **Gentlemen** (4 sides, `#ffa657`) and **Professionals** (5 sides, `#d2a8ff`): Administrative and specialized roles. |
+| **Nobility** | Hexagons (6 sides) and higher polygons — aristocrats and statesmen. | **Nobles** (6–8 sides, `#79c0ff`): High influence and lineage priority. |
+| **Priesthood (Circles)** | Polygons with so many sides (≥ 24 to hundreds) that their vertices are imperceptible, forming smooth circles. They govern religion, law, and morality. | **Priests** (≥ 24 sides, `#e6edf3`): Emit soothing auras, heal injured or infected clanmates, and resist disease. |
+
+
+---
+
+## 2. The "Law of Nature" & Generational Ascent
+
+- **In the Book**:
+  - Abbott establishes the **"Law of Upward Development"**: A male child of a regular polygon almost always inherits **one more side** than his father (e.g., a Square fathers a Pentagon, whose son becomes a Hexagon), lifting the lineage toward circular Priesthood over generations.
+  - Rare **"Irregulars"** (whose sides/angles do not match) are viewed as societal threats and sent to state institutions or executed.
+- **In the App**:
+  - **Generational Evolution**: Offspring inherit ancestral traits with a probabilistic side increment (`sides += 1`), simulating the gradual generational ascent toward circular perfection.
+  - **Irregularity & Demotion**: Entities that develop genetic irregularity or undergo trauma have their irregularity tracked and are judged/demoted or marked with distinct visual indicators.
+  - **Dynastic Lineage**: The Family Tree tracks mother, father, and generational pedigree across decades of world history.
+
+---
+
+## 3. Sight Recognition, Weather & Perception
+
+- **In the Book**:
+  - In a 2D world, all inhabitants look like flat lines from the edge!
+  - In the **Foggy South**, Flatlanders rely on **"Sight Recognition"** — judging the angle and distance of an approaching polygon by how quickly its edges fade into the atmospheric fog.
+  - In the **Clear North**, they must rely on **"Feeling"** (touching vertices with fingertips).
+- **In the App**:
+  - **Dynamic Weather Engine**: Simulates **Clear**, **Fog**, **Rain**, and **Storm** states.
+  - **Atmospheric Vision**: Fog and storms dynamically restrict creature vision radii (`sight_radius`), forcing entities to rely on local spatial queries and nearby auditory alarms (`signals`).
+  - **Day/Night & Lighting**: The ambient illuminance curves shift through dawn, noon, dusk, and pitch-black night, restricting wandering and driving creatures into their shelters.
+
+---
+
+## 4. Housing, Settlements & Territorial Architecture
+
+- **In the Book**:
+  - Houses are strictly pentagonal or hexagonal, with specific entrances: a smaller rear entrance for lines (women) and a main entrance for polygons.
+- **In the App**:
+  - **Settlement Economy**: Houses are physical 2D structures with precise interior boundaries, oriented doors (`north`, `east`, `south`, `west`), and bed capacities.
+  - **Single Main House Invariant**: Each clan establishes exactly **one Main House / HQ** (the Leader's residence) with surrounding outpost shelters.
+  - **Shelter Dynamics**: Creatures seek refuge inside houses to sleep at night, protect against winter frostbite, heal from chills, and educate infant offspring.
+
+---
+
+## 5. Clan Diplomacy, Totems & Autonomous Society
+
+While Abbott’s book portrays a centralized Victorian government, our app layers an **evolutionary social simulation**:
+
+- **Tribal Totems & Specialization**:
+  - Clans worship distinct totems (🐺 Wolf, 🐻 Bear, 🦅 Eagle, 🦌 Stag, 🐍 Serpent, 🦉 Owl), shifting personality traits and societal balance between warriors, farmers, and scavengers.
+- **Diplomacy, Tributes & War**:
+  - Dynamic clan relations with wars, peace treaties, tribute subjugation, and schisms.
+- **Personal Autonomy & Inventory**:
+  - Independent personality archetypes (Brave, Cautious, Altruistic, Greedy, Explorer, Builder) with personal foraging baskets, tools (spears, crowns, herb poultices), and emergency self-preservation eating.
+
+---
+
+## 6. The Higher Dimension: The User as "The Sphere"
+
+The most profound connection between the app and the book is the **role of the user**:
+
+- In *Flatland*, the protagonist **A Square** is visited by **A Sphere** from the 3D *Spaceland*, who can look down from the Z-axis, see into locked rooms, view internal organs, and manipulate the 2D world with god-like omnipresence.
+- **In our App**:
+  - **You are the Sphere**: As the observer on your screen, you look down on Flatland from the third dimension.
+  - **The God Panel**: You hold the power to alter the "Laws of Nature" in real-time — toggling famine, changing food growth multipliers, curing or spreading plagues, introducing winter freezes, or blessing clans with prosperity.
+"""
+
+
 
 def _presets_table() -> str:
     from .main import PRESETS  # late import to avoid cycle
@@ -199,6 +281,7 @@ def build_wiki_html(app: Any) -> str:
     presets_html = _md_to_html("# Presets — one-click worlds\n\nSustainable is the 1000-day gentle world. Apply via God panel or `POST /api/presets/{name}?reset`.") + _presets_table()
     sections = [
         ("overview", "Overview", _md_to_html(WIKI_OVERVIEW_MD)),
+        ("book-comparison", "Flatland Book vs Simulation", _md_to_html(FLATLAND_BOOK_COMPARISON_MD)),
         ("quickstart", "Quickstart", _md_to_html(CONFIG_OPS_MD.split("## Run & deploy")[0])),
         ("how-the-world-works", "How the world works", _md_to_html(HOW_IT_WORKS_MD)),
         ("sustainability", "Sustainability", _md_to_html(SUSTAINABILITY_MD)),
@@ -292,6 +375,7 @@ def get_wiki_json(app: Any) -> dict:
     from .main import PRESETS
     return {
         "overview": WIKI_OVERVIEW_MD,
+        "book_comparison": FLATLAND_BOOK_COMPARISON_MD,
         "sustainability": SUSTAINABILITY_MD,
         "performance": PERFORMANCE_MD,
         "how_it_works": HOW_IT_WORKS_MD,
@@ -303,3 +387,4 @@ def get_wiki_json(app: Any) -> dict:
         "presets": PRESETS,
         "law_details": {name: {"type": str(f.annotation), "default": getattr(Config(), name, None) if hasattr(Config(), name) else None, "hint": LAW_HINTS_MD.get(name, "")} for name, f in GodLaws.model_fields.items()},
     }
+

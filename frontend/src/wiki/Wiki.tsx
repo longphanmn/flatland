@@ -11,7 +11,7 @@ type WikiData = {
 
 export default function Wiki({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [data, setData] = useState<WikiData | null>(null)
-  const [tab, setTab] = useState<'guide' | 'api' | 'laws' | 'presets'>('guide')
+  const [tab, setTab] = useState<'guide' | 'book' | 'api' | 'laws' | 'presets'>('guide')
   const [q, setQ] = useState('')
   const [laws, setLaws] = useState<Record<string, any> | null>(null)
 
@@ -68,9 +68,9 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
         </div>
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-          {(['guide', 'api', 'laws', 'presets'] as const).map(t => (
+          {(['guide', 'book', 'api', 'laws', 'presets'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ background: tab === t ? '#1f6feb' : '#21262d', color: tab === t ? '#fff' : '#c9d1d9', borderColor: tab === t ? '#1f6feb' : '#30363d' }}>
-              {t}
+              {t === 'book' ? '📖 Book vs Sim' : t}
             </button>
           ))}
         </div>
@@ -108,6 +108,76 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
             </ul>
           </div>
         )}
+
+        {tab === 'book' && (
+          <div style={{ fontSize: 13, lineHeight: 1.6, color: '#c9d1d9' }}>
+            <h3 style={{ color: '#e6edf3', marginTop: 0 }}>📚 Flatland: Abbott's Novella vs. The Simulation</h3>
+            <p>
+              A comparative study between <strong>Edwin A. Abbott’s 1884 satirical classic <em>Flatland: A Romance of Many Dimensions</em></strong> and our autonomous artificial life simulation.
+            </p>
+
+            <h4 style={{ color: '#e3b341', borderBottom: '1px solid #30363d', paddingBottom: 4 }}>1. Caste, Geometry & Social Hierarchy</h4>
+            <div style={{ overflowX: 'auto', margin: '8px 0' }}>
+              <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '6px 8px', background: '#161b22', color: '#e6edf3', borderBottom: '1px solid #30363d' }}>Dimension</th>
+                    <th style={{ textAlign: 'left', padding: '6px 8px', background: '#161b22', color: '#e6edf3', borderBottom: '1px solid #30363d' }}>Abbott’s Book (1884)</th>
+                    <th style={{ textAlign: 'left', padding: '6px 8px', background: '#161b22', color: '#e6edf3', borderBottom: '1px solid #30363d' }}>Our Simulation App</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={{ borderBottom: '1px solid #21262d' }}>
+                    <td style={{ padding: '6px 8px', fontWeight: 600, color: '#e6edf3' }}>Hierarchy Principle</td>
+                    <td style={{ padding: '6px 8px' }}><em>"Configuration makes the man."</em> Social rank is governed strictly by side count and angular regularity.</td>
+                    <td style={{ padding: '6px 8px' }}>Entities inherit exact geometric castes based on vertex count ($N$-gons) and regularity.</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #21262d' }}>
+                    <td style={{ padding: '6px 8px', fontWeight: 600, color: '#ff9bce' }}>Women (Lines)</td>
+                    <td style={{ padding: '6px 8px' }}>Straight lines (zero angular width). Required to maintain a continuous peace-cry to prevent accidental stabbing.</td>
+                    <td style={{ padding: '6px 8px' }}>Rendered as 1D segments (<code>shape: 'line'</code>). Highly agile with distinct domestic shelter dynamics.</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #21262d' }}>
+                    <td style={{ padding: '6px 8px', fontWeight: 600, color: '#ff7b72' }}>Soldiers / Workers</td>
+                    <td style={{ padding: '6px 8px' }}>Isosceles triangles with sharp vertex angles (volatile and militaristic).</td>
+                    <td style={{ padding: '6px 8px' }}><strong>Soldiers</strong>: High combat damage, defensive patrolling, equipped with spears.</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #21262d' }}>
+                    <td style={{ padding: '6px 8px', fontWeight: 600, color: '#f2cc60' }}>Artisans (Middle Class)</td>
+                    <td style={{ padding: '6px 8px' }}>Equilateral triangles (3 equal sides) — steady tradespeople.</td>
+                    <td style={{ padding: '6px 8px' }}><strong>Artisans</strong> (3–4 sides): Farmers, foragers, and builders managing houses and larders.</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #21262d' }}>
+                    <td style={{ padding: '6px 8px', fontWeight: 600, color: '#ffa657' }}>Gentlemen & Nobles</td>
+                    <td style={{ padding: '6px 8px' }}>Squares (4 sides), Pentagons (5 sides), Hexagons (6 sides), and high polygons.</td>
+                    <td style={{ padding: '6px 8px' }}><strong>Gentlemen</strong> (4), <strong>Professionals</strong> (5), <strong>Nobles</strong> (6–8): Administrative prestige and leadership.</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #21262d' }}>
+                    <td style={{ padding: '6px 8px', fontWeight: 600, color: '#e6edf3' }}>Priesthood (Circles)</td>
+                    <td style={{ padding: '6px 8px' }}>Polygons with so many sides that vertices appear as smooth circles. Rule society and religion.</td>
+                    <td style={{ padding: '6px 8px' }}><strong>Priests</strong> ($\ge 24$ sides): Soothing auras, healing injured/infected clanmates, disease immunity.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h4 style={{ color: '#e3b341', borderBottom: '1px solid #30363d', paddingBottom: 4, marginTop: 16 }}>2. The "Law of Nature" & Generational Ascent</h4>
+            <p>
+              In Abbott's world, the <strong>Law of Upward Development</strong> guarantees that sons of regular polygons gain $+1$ side over their fathers (Square $\to$ Pentagon $\to$ Hexagon), ascending toward circular priesthood over generations. In our simulation, offspring inherit side counts with probabilistic side promotions (<code>sides += 1</code>) and lineage tracking via the Family Tree.
+            </p>
+
+            <h4 style={{ color: '#e3b341', borderBottom: '1px solid #30363d', paddingBottom: 4, marginTop: 16 }}>3. Sight Recognition & Fog Perception</h4>
+            <p>
+              In Flatland, 2D beings look like flat edges. In the foggy South, they rely on <strong>Sight Recognition</strong> (how quickly vertices fade into fog). In our simulation, the <strong>Dynamic Weather Engine</strong> simulates Clear, Fog, Rain, and Storms, modulating creature <code>sight_radius</code> and forcing reliance on auditory alarms (<code>signals</code>).
+            </p>
+
+            <h4 style={{ color: '#e3b341', borderBottom: '1px solid #30363d', paddingBottom: 4, marginTop: 16 }}>4. The Higher Dimension: The User as "The Sphere"</h4>
+            <p>
+              In the novel, <strong>A Square</strong> is visited by <strong>A Sphere</strong> from 3D <em>Spaceland</em>, who gazes down into closed rooms, inspects interiors, and manipulates 2D physics. In our app, <strong>you are the Sphere</strong>: peering down from the Z-axis, inspecting creature minds and lineage, and tuning the fundamental Laws of Nature via the <strong>God Panel</strong>.
+            </p>
+          </div>
+        )}
+
 
         {tab === 'api' && (
           <div>
