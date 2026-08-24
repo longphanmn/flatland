@@ -29,12 +29,12 @@ body {
   display: flex;
   gap: 14px;
   align-items: center;
-  padding: 10px 16px;
+  padding: 6px 16px;
   border-bottom: 1px solid #21262d;
   background: #0d1117;
   flex-wrap: wrap;
   position: relative;
-  min-height: 42px;
+  min-height: 48px;
 }
 
 .title {
@@ -303,16 +303,19 @@ body {
 .run-switcher {
   position: fixed;
   right: 14px;
-  bottom: 10px;
+  bottom: 7px;
   z-index: 7;
   background: rgba(13, 17, 23, 0.93);
   border: 1px solid #30363d;
   border-radius: 6px;
   padding: 0 10px;
-  height: 30px;
+  height: 28px;
   display: flex;
   align-items: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.run-switcher .run-label {
+  height: 28px;
 }
 
 .archive-banner {
@@ -537,11 +540,31 @@ body {
 
 .controls {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  padding: 10px 16px;
+  padding: 6px 16px;
   border-top: 1px solid #21262d;
   background: #0d1117;
+  min-height: 42px;
+}
+.controls button {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  font-size: 12px;
+  line-height: 1;
+}
+.controls .chip {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+}
+.controls select {
+  height: 28px;
+  padding: 0 6px;
+  font-size: 12px;
 }
 
 .spark-wrap {
@@ -889,8 +912,9 @@ select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 12px;
+  padding: 0 10px;
   line-height: 1;
+  font-size: 12px;
 }
 .version-bar {
   position: fixed;

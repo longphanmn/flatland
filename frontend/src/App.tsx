@@ -734,29 +734,30 @@ export default function App() {
         <>
           <footer className="controls">
             {paused ? (
-              <button onClick={sendResume}>Resume</button>
+              <button onClick={sendResume} title="Resume (Space)">▶</button>
             ) : (
-              <button onClick={sendPause}>Pause</button>
+              <button onClick={sendPause} title="Pause (Space)">⏸</button>
             )}
-            <button onClick={sendStep}>Step</button>
-            <button onClick={sendReset}>Reset</button>
-            <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))}>
-              Fit view
+            <button onClick={sendStep} title="Step (S)">⏭</button>
+            <button onClick={sendReset} title="Reset (R)">🔄</button>
+            <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))} title="Fit view (F)">
+              ⛶
             </button>
-            <button onClick={() => setChronicleOpen((o) => !o)}>
-              {chronicleOpen ? 'Hide' : 'Show'} chronicle
+            <button onClick={() => setChronicleOpen((o) => !o)} title={chronicleOpen ? 'Hide chronicle' : 'Show chronicle'}>
+              {chronicleOpen ? '▤' : '📜'}
             </button>
-            <button onClick={takeSnapshot} title="freeze the current moment into the album">
+            <button onClick={takeSnapshot} title="Snapshot (freeze) — album">
               📷
             </button>
-            <button onClick={openAlbum}>Album</button>
-            <label className="chip" htmlFor="speed">
-              ticks/s
+            <button onClick={openAlbum} title="Album (snapshots)">🖼</button>
+            <label className="chip" htmlFor="speed" title="ticks per second">
+              ⚡
             </label>
             <select
               id="speed"
               value={speed}
               onChange={(e) => changeSpeed(Number(e.target.value))}
+              title="ticks/s"
             >
               {SPEEDS.map((v) => (
                 <option key={v} value={v}>
