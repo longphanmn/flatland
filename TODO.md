@@ -1152,6 +1152,57 @@ Fixes and ergonomic polish for clan architecture, inventory autonomy, historical
 - [x] [P1] **Clan History & Major Event Log**: Track and display major historical milestones per clan (Founded on Day $D$ by Founder $X$, Leader Succession changes, HQ relocation, war declarations, tribute treaties) in the Clan details view.
 - [x] [P1] **Clan & Creature Profile UI Overhaul**: Clean up profile views — eliminate duplicate data fields, prevent text/metric overlapping, and apply dynamic viewport sizing so elements never expand outside the modal container on desktop or mobile.
 
+---
+
+## AL. Creature Cognitive Agency & Clan Social Intelligence Roadmap  [P1]
+Next-generation behavioral intelligence roadmap advancing individual cognitive decision-making, clan division of labor, dynamic bylaws, and macro geopolitics.
+
+### Phase 1: Individual Cognitive Agency & Tactical Intelligence  [P1]
+- **Task 1.1: Multi-Objective Utility AI Engine**
+  - [ ] [P1] Implement dynamic utility scoring $U(\text{action})$ replacing rigid if/else trees: balances survival energy, caste duty, personality weights, and kin emergency signals.
+  - [ ] [P1] Context-aware behavior: brave soldiers prioritize defense over snacks when under attack; cautious artisans voluntarily seek shelter before nightfall or storms.
+- **Task 1.2: Spatial Mental Map & Purposeful Waypoint Navigation**
+  - [ ] [P1] Implement compact spatial memory (3–5 remembered coordinates per creature: Home HQ, Fertile Grove, Danger Zone, Trading Post).
+  - [ ] [P1] Replace Brownian random walk with purposeful patrolling, foraging circuits, and planned domestic return trips.
+- **Task 1.3: Tactical Combat Formations & Phalanx Synergy**
+  - [ ] [P1] Soldiers from the same clan form coordinated spear/shield lines during defensive alerts.
+  - [ ] [P1] Agile lines (women) execute flanking and kiting maneuvers to draw enemy aggro away from vulnerable artisans and infants.
+  - [ ] [P1] Local combat odds evaluation: organized tactical retreat toward fortified houses when outnumbered $3:1$.
+- **Task 1.4: Interpersonal Trust & Grudge Matrix**
+  - [ ] [P1] Track pairwise creature trust ($+15$ for healing, $+20$ for saving life, $-15$ for stealing/striking).
+  - [ ] [P1] High-trust pairs form cooperative hunting/farming duos, share shelters, and prioritize mutual aid.
+
+### Phase 2: Clan Division of Labor & Institutional Governance  [P1]
+- **Task 2.1: Autonomous Clan Task Board & Labor Allocation**
+  - [ ] [P1] Clan leaders and councils dynamically assign members to macro roles based on current crises:
+    - *Food Shortage*: $70\%$ assigned to Forager/Harvester duty.
+    - *Border Tension*: Soldiers garrison outpost doors; builders repair walls.
+    - *Plague Outbreak*: Priests establish Main House infirmary; healthy maintain social distance.
+    - *Surplus Wealth*: Builders assemble construction parties to erect new outpost houses.
+- **Task 2.2: Clan Governance Archetypes**
+  - [ ] [P1] Implement distinct institutional forms based on founder caste and totem:
+    - *Dynastic Monarchy* (Gentlemen/Nobles): Direct hereditary succession with loyalist bodyguard retinue.
+    - *Council of Elders* (Republic): High-side polygons vote on treaties, wars, and refugee admissions.
+    - *Theocracy* (Priests): High healing/spiritual buffs, pacifist tendencies, and anti-cannibalism taboos.
+    - *Military Junta* (Soldiers): Expansionist conquest, tribute extortion, and high martial training.
+- **Task 2.3: Adaptive Clan Bylaws & Policies**
+  - [ ] [P1] Emergent bylaws triggered by environmental and historical events:
+    - *Winter Rationing Law*: Restricts individual consumption to baseline maintenance during winter/famine.
+    - *Martial Curfew*: Civilians restricted to settlement borders during active wars.
+    - *Open Sanctuary vs. Isolationism*: Policy on admitting homeless defectors and orphaned refugees.
+
+### Phase 3: Macro Geopolitics, Trade Caravans & Cultural Traditions  [P2]
+- **Task 3.1: Calculated Casus Belli & Strategic Peace Terms**
+  - [ ] [P1] Wars declared with rational intent: fertile territory seizure, emergency larder plunder, or retaliation for fallen leaders.
+  - [ ] [P1] Structured surrender and treaty terms: ceding outpost houses, agreeing to $15\%$ seasonal harvest tribute, or establishing demilitarized buffer zones.
+- **Task 3.2: Inter-Clan Trade Caravans & Economic Specialization**
+  - [ ] [P2] Resource barter between specialized clans (e.g. agricultural clans trading grain for tools/spears from warrior clans).
+  - [ ] [P2] Neutral merchant caravans traveling between clan HQs under neutrality banners.
+- **Task 3.3: Tribal Traditions, Festivals & Oral Epics**
+  - [ ] [P2] Annual Harvest Festivals at autumn end: members gather at Main House for celebration, boosting mood, fertility, and bonding.
+  - [ ] [P2] Lineage Epics: resting elders recount historical chronicle victories to youth, boosting learning rates and hereditary morale.
+
+
 
 
 
