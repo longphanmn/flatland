@@ -1568,3 +1568,54 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [ ] [P2] **Totem change on succession** — when a new leader ascends, 10% chance of totem reassignment biased by new leader's personality and caste (bold Soldier → Wolf/Fox/Boar; peaceful Priest → Tree/Shield/Rabbit; greedy Circle → Raven/Bear); a totem change is a major chronicle event.
 - [ ] [P2] **Schism on contested succession** — within 30 ticks of a leader's death, if two equally-ranked candidates exist, 15% chance the clan splits into two factions each claiming the new leader; leverages existing schism system.
 - [ ] [P2] **Law interpretation by leader** — when The Sphere changes a law, the living clan leader delivers an "interpretation" (trait-biased signal): bold frames it as a call to war, peaceful as a farming blessing; biases how members respond to law changes for 20 ticks.
+
+---
+
+## AT. Four Immediate Issues  [P0–P1]
+
+### AT-1. Clan History Incomplete — Cannot See Full History  [P1]
+> `GET /api/clans/{id}` returns only the last 20 events (`[-20:]` hard-slice on `RT.sim.history`), and `clan["history"]` is the internal log list with no pagination.
+- [ ] [P1] **Paginated clan history endpoint** — `GET /api/clans/{id}/history?page=N&size=50` returning the full filtered event stream for a clan (as attacker, defender, or `clan_id` in payload), paginated; also expose the clan's internal `info["history"]` log (leader changes, war declarations, festivals, schisms) in the same response.
+- [ ] [P1] **Clan history UI** — ClanDetails modal adds a "Full History" tab (or scroll panel) that loads all pages of clan events; currently shows only the last 20 in-memory events; older events that rolled off `RT.sim.history` but are in the DB chronicle must also be queryable.
+- [ ] [P1] **Chronicle DB query by clan** — `GET /api/chronicle?clan_id=N` filter: SQL-level query on the `chronicle` table by `clan_id` in payload JSON, so events persisted to DB before they rolled off in-memory history are still retrievable.
+
+### AT-2. Clan Bed Shortage — Members Sleep in Enemy Houses  [P0]
+> When total clan beds < population, `_house_for()` falls back to the nearest house with a free bed, which may belong to another clan. The expansion logic at `_update_settlements()` only claims `clan_id == 0` (unclaimed) free houses — it never takes occupied-but-underpopulated rival houses.
+- [ ] [P0] **House invasion / takeover logic** — when a growing clan's bed count is below population AND no unclaimed houses are within range, the clan may *invade* a rival clan's non-main house that is empty (no sleeping occupants this tick, rival population < rival beds / 2); invading clan claims it (`house.clan_id = our_cid`); emits a `"conquest"` or new `"takeover"` event; rival clan loses that house (and must expand or shrink). Gated by `house_claim_enabled`.
+- [ ] [P0] **Clan expansion prefers closest rival empty house** — in `_update_settlements()` expansion block, after exhausting `clan_id == 0` free houses, check rival houses where `sleeping_occupants == 0` this tick as secondary candidates; rank by distance to clan centroid.
+- [ ] [P1] **Hard-enforce clan-exclusive sleeping** — creatures should only sleep in houses belonging to their own clan (or no clan); sleeping in a foreign clan's house currently poisons the shelter system and lets rival creatures count toward that house's occupancy cap; add a guard in `_house_for()`: reject any house whose `clan_id != 0 and clan_id != c.clan_id`.
+
+### AT-3. One House = One Clan (Enforce Exclusivity)  [P0]
+> Houses have a `clan_id` field but it is weakly enforced — orphan births, schism splits, and conquest events can leave houses with stale or zero `clan_id` while creatures of multiple clans still use them.
+- [ ] [P0] **Strict single-clan house ownership** — a `House` entity's `clan_id` is authoritative: only creatures whose `clan_id` matches (or `house.clan_id == 0`) may enter/sleep; add enforcement check in `_house_for()` that skips houses owned by a different clan; existing soft guards (`_inside_house`, `_claim_bed`) already respect this but `_house_for()` fallback path does not.
+- [ ] [P0] **Orphan house cleanup** — on schism or conquest, immediately set `house.clan_id` to the winner/new-clan's id; ensure no house ends a tick with two clans claiming it (audit in `_update_settlements` / `_refresh_house_claims`).
+- [ ] [P1] **Visual indicator** — house rendered with the owning clan's color ring; if `clan_id == 0` render as neutral/grey; if recently invaded, show a brief "takeover" animation.
+
+### AT-4. Health System Overhaul — It's Always 100%  [P0–P2]
+> Health only drains from disease, chill, and combat — and regens at 0.10/tick unconditionally. In normal conditions regen outpaces disease drain exactly (`0.05 lethality × 2 = 0.10 = regen`), making health perpetually 100%.
+
+#### Phase H-0: Core Fix — Make Regen Conditional  [P0]
+- [ ] [P0] **Regen requires energy surplus** — health only regenerates if `c.energy > energy_max × 0.4`; below 40% energy regen stops; below 20% (`hungry` status) health slowly drains `−0.05/tick` as the body cannibalizes itself; starvation becomes a double threat: energy AND health.
+- [ ] [P0] **Speed penalty by health** — `health < 80`: `×0.95`; `< 60`: `×0.85`; `< 40`: `×0.70`; `< 20`: `×0.50`; currently a creature at 5 HP moves as fast as one at 100 HP.
+- [ ] [P0] **Reproduction blocked below 50 HP** — sickly creatures cannot mate; disease outbreaks suppress birth rates without touching the birth mechanic; add health check alongside energy check in `_reproduce()`.
+
+#### Phase H-1: Damage Variety  [P1]
+- [ ] [P1] **Exhaustion drain** — `energy < 20%` for > 30 consecutive ticks triggers `health -= 0.08/tick`; chronic hunger visibly kills; track with `c.low_energy_ticks` counter.
+- [ ] [P1] **Elder age-related health decay** — elder stage: passive `health -= 0.02/tick` always; aging is now genuinely dangerous; elders are valuable (oral lore) but fragile.
+- [ ] [P1] **Sight penalty by health** — `health < 60`: `perceive_radius × 0.90`; `< 30`: `× 0.75`; a sick/wounded creature cannot see as far.
+- [ ] [P1] **Combat blocked below 30 HP** — creature cannot *initiate* combat when `health < 30`; can still be attacked; wounded soldiers retreat automatically.
+- [ ] [P1] **Foraging efficiency by health** — `health < 60`: harvest `−20%` energy from food; `< 30`: `−50%`; weakness creates a positive feedback of decline.
+- [ ] [P1] **Regen scales with food quality** — eating berry: `+0.3 HP regen bonus` for 20 ticks; grain: `+0.2` for 30 ticks; medicinal herb: `+0.8` for 40 ticks; mushroom: none; diet becomes active health management.
+- [ ] [P1] **Regen halved outdoors** — outdoor waking regen `×0.5`; shelter (indoors, not sleeping) `×0.8`; sleeping indoors `×1.0`; shelter heals faster.
+- [ ] [P1] **Persistent wounds** — hits above 15 HP in one tick set `c.wound_ticks` (50–100 tick countdown) and `c.wound_severity` (1=wound, 2=grievous); while `wound_ticks > 0`: regen rate halved/quartered, speed penalized, no combat for severity 2.
+- [ ] [P1] **Caste-based max HP pools** — Triangle: 130 HP (built for violence); Square: 100; Priest/Pentagon: 90 (sensitive); Hexagon/Doctor: 120; Circle: 80 (soft, sheltered); Woman/Line: 110 (survivor caste); defined in a `CASTE_MAX_HP` table.
+- [ ] [P1] **Medicinal herb as primary fast heal** — with free regen nerfed, herb is the best heal source; creatures with `health < 60` specifically pathfind toward remembered herb locations even when energy is full; herb patches become strategically contested.
+- [ ] [P1] **Priest active healing rounds** — Priest at main house visits clan members within aura radius every N ticks, applies `+15 × (1 + skills["healing"]/20)` HP; creates a functional doctor role beyond the passive one-time touch.
+
+#### Phase H-2: Systems Depth  [P2]
+- [ ] [P2] **Wound infection risk** — untreated wound (`severity ≥ 1`, `wound_ticks > 30`) has 2% chance/tick of turning into an infection even without disease contact; "wounded soldier alone = dead soldier".
+- [ ] [P2] **Wound dressing by helpers** — healthy clan-mate near a wounded member applies a "dressing" action (emote): halves `wound_ticks`; triggers same altruistic utility logic as altruistic feeding.
+- [ ] [P2] **Morale as second health axis** — `c.morale: float = 100.0`; drains from watching clan-mates die, leader death, prolonged starvation; recovers from eating, leader aura, festivals; `morale < 60`: ignores rally signals; `< 40`: stops foraging; `< 20`: abandons clan (walks off to join nearest other clan or wanders homeless).
+- [ ] [P2] **Overcrowding health drain** — overcrowded house (> capacity occupants): `health -= 0.03/tick` per person over capacity; reinforces the housing shortage crisis.
+- [ ] [P2] **Infirmary bylaw bonus** — when `bylaw["plague_response"]` is active, main house becomes infirmary: creatures sleeping there get `rest_recovery_mult × 2.0`; the bylaw (AL §2.3) was implemented but the infirmary healing bonus was not.
+- [ ] [P3] **Scarring** — surviving a grievous wound may leave a permanent scar: `c.scars: int` counter; each scar applies a tiny permanent `sight_mult × 0.97` or `speed × 0.98`; elder creatures visibly accumulate history on the body.
