@@ -107,9 +107,17 @@ curl -X POST localhost:8000/api/control -d '{"action":"reset"}'
 
 
 WIKI_TEMPLATE = """<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Flatland — Wiki — Long Phan (long@minhnhan.in)</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flatland — Living Wiki — World Simulation by Long Phan (long@minhnhan.in)</title>
+<meta name="description" content="Official living wiki and system encyclopedia for Flatland: 2D autonomous World Simulation by Long Phan (long@minhnhan.in).">
+<meta name="keywords" content="Flatland, World Simulation, Wiki, Presets, Simulation Mechanics, Long Phan, long@minhnhan.in, Artificial Life">
 <meta name="author" content="Long Phan <long@minhnhan.in>">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://world.minhnhan.in/wiki">
+<meta property="og:title" content="Flatland — Living Wiki | World Simulation by Long Phan">
+<meta property="og:description" content="Official living wiki, presets, and mechanics documentation for Flatland World Simulation by Long Phan (long@minhnhan.in).">
+<meta property="og:url" content="https://world.minhnhan.in/wiki">
+<meta property="og:type" content="article">
 <style>
 :root{{color-scheme:dark}}
 *{{box-sizing:border-box}}

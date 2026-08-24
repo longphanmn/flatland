@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Allow: /wiki
+Allow: /guide
+Allow: /docs
+
+Sitemap: https://world.minhnhan.in/sitemap.xml

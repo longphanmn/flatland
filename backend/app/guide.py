@@ -343,9 +343,17 @@ cd backend && uv run pytest tests/test_synergies.py -q
 """
 
 GUIDE_TEMPLATE = """<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Flatland — Living Guide — Long Phan (long@minhnhan.in)</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flatland — Living Guide — World Simulation by Long Phan (long@minhnhan.in)</title>
+<meta name="description" content="Official living architecture guide and technical reference for Flatland: 2D autonomous World Simulation by Long Phan (long@minhnhan.in).">
+<meta name="keywords" content="Flatland, World Simulation, Architecture, Guide, API, God Laws, Long Phan, long@minhnhan.in, Artificial Life">
 <meta name="author" content="Long Phan <long@minhnhan.in>">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://world.minhnhan.in/guide">
+<meta property="og:title" content="Flatland — Living Guide | World Simulation by Long Phan">
+<meta property="og:description" content="Official living guide and architecture documentation for Flatland World Simulation by Long Phan (long@minhnhan.in).">
+<meta property="og:url" content="https://world.minhnhan.in/guide">
+<meta property="og:type" content="article">
 <style>
 body{{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;color:#222;background:#fafafa}}
 nav{{position:fixed;top:0;left:0;width:240px;height:100vh;overflow:auto;background:#fff;border-right:1px solid #e5e7eb;padding:16px}}

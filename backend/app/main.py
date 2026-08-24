@@ -1446,6 +1446,44 @@ async def get_wiki_json():
     return _get(app)
 
 
+@app.get("/robots.txt", response_class=PlainTextResponse)
+async def get_robots_txt():
+    """Robots.txt for SEO."""
+    return PlainTextResponse(
+        "User-agent: *\nAllow: /\nAllow: /wiki\nAllow: /guide\nAllow: /docs\n\nSitemap: https://world.minhnhan.in/sitemap.xml\n",
+        media_type="text/plain",
+    )
+
+
+@app.get("/sitemap.xml", response_class=HTMLResponse)
+async def get_sitemap_xml():
+    """Sitemap.xml for SEO."""
+    xml_content = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://world.minhnhan.in/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://world.minhnhan.in/wiki</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://world.minhnhan.in/guide</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://world.minhnhan.in/docs</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>"""
+    return HTMLResponse(content=xml_content, media_type="application/xml")
+
+
 @app.get("/docs/god-laws.md", response_class=PlainTextResponse)
 async def get_god_laws_md():
     """Serve the markdown docs for god laws — used by wiki + GodPanel hints."""
