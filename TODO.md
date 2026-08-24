@@ -1091,4 +1091,54 @@ Full terminal feature parity with web frontend:
 - [x] [P1] Category-Filtered Chronicle (`t`) — Cycle filters (All, Birth, Death, War, Politics, Settlement).
 - [x] [P1] Camera Follow Mode (`w`) — Auto-track moving selected creature.
 
+## AJ. Next-Gen Performance & Scale Architecture (3 Phases)  [P0 / P1]
+Next frontier optimizations to scale Flatland to 5,000–10,000+ active inhabitants @ 60 FPS, slash network bandwidth by 90%, and achieve zero UI thread rendering lag.
+
+### Phase 1: Network & WebSocket Delta Compression  [P0]
+Slash WebSocket payload bandwidth by 85–95% (from ~1.5 MB/s to <80 KB/s per client) and eliminate JSON parsing bottlenecks on mobile/low-end clients.
+
+- **Task 1.1: Delta-State Serialization Protocol**
+  - [ ] [P0] Define `DeltaStateMessage` schema (new spawns, movements above delta threshold $\Delta x > 0.05$ / $\Delta \theta > 0.02$, status/vitals changes, and despawn/death IDs).
+  - [ ] [P0] Implement keyframe pacing: broadcast a full keyframe snapshot every $N$ ticks (e.g. every 60 ticks / 2s), with lightweight delta snapshots in between.
+  - [ ] [P0] Implement client-side snapshot reconstructor (`deltaAccumulator`) in frontend `websocket.ts` to merge deltas into the live entity map.
+- **Task 1.2: Binary Packed Array Stream (Optional Mode)**
+  - [ ] [P1] Design compact binary buffer format (`ArrayBuffer` / `Float32Array`) for core position streams (`[id, x, y, angle, caste, health, status]`).
+  - [ ] [P1] Add compression negotiation flag in `HelloMessage` so clients can choose JSON Delta vs Binary Delta mode.
+- **Task 1.3: Verification & Network Benchmarks**
+  - [ ] [P0] Automated network benchmark tests in `backend/tests/test_network_perf.py` measuring KB/sec reduction over 1,000 ticks.
+  - [ ] [P0] Verify seamless reconnection, world reset, and snapshot archive loading with delta reconstructor.
+
+---
+
+### Phase 2: Frontend OffscreenCanvas & Web Worker Rendering  [P1]
+Completely decouple the 60 FPS HTML5 Canvas rendering loop from the browser's main UI thread to guarantee zero frame drops during heavy user interactions.
+
+- **Task 2.1: Dedicated Web Worker Setup**
+  - [ ] [P1] Create `render.worker.ts` with canvas render loop, spatial viewport transforms, and batch draw routines.
+  - [ ] [P1] Update `CanvasRenderer.tsx` to transfer canvas control via `canvas.transferControlToOffscreen()`.
+- **Task 2.2: Worker Event & Viewport Synchronization**
+  - [ ] [P1] Route pointer/pan/zoom input events from main thread to the worker via `postMessage` with zero DOM blocking.
+  - [ ] [P1] Direct WebSocket connection streaming into the worker for zero-copy state delivery to the canvas.
+  - [ ] [P1] Post throttled creature inspection events and click hit-testing coordinates from worker back to main React thread.
+- **Task 2.3: Verification & Mobile Testing**
+  - [ ] [P1] Test fluid 60 FPS rendering on mobile and desktop during heavy drawer toggles, Chronicle scrolling, and God panel slider adjustments.
+  - [ ] [P1] Add fallback graceful degradation for browsers without `OffscreenCanvas` support.
+
+---
+
+### Phase 3: Native High-Performance Core (Rust / Cython / PyO3)  [P0]
+Accelerate simulation math (spatial hash, vector steering, boids, and collision detection) by 10x–30x, enabling 5,000–10,000+ active creatures on low-end CPUs (Intel N100/N150).
+
+- **Task 3.1: Rust / Cython Spatial Hash & Distance Math Core**
+  - [ ] [P0] Implement Struct-of-Arrays (SoA) memory contiguous buffers for creature vectors (`x`, `y`, `vx`, `vy`, `radius`, `caste_flags`).
+  - [ ] [P0] Implement compiled uniform spatial grid index with SIMD-accelerated squared distance thresholding (`query_radius_with_dist_sq`).
+  - [ ] [P0] Implement compiled Boids steering forces (separation, cohesion, alignment, wall avoidance).
+- **Task 3.2: Python FFI / PyO3 Bridge**
+  - [ ] [P0] Build Python module bindings (`flatland_core`) using PyO3 / `maturin` or `Cython` with pure Python fallback for non-compiled environments.
+  - [ ] [P0] Connect `flatland_core` to `world.py` and `simulation.py:_update_creature`.
+- **Task 3.3: Verification & Scale Stress Testing**
+  - [ ] [P0] Deterministic validation tests comparing Python reference vs Native core outputs for exact identical seeded trajectories.
+  - [ ] [P0] Scale benchmark tests (`tests/test_scale_benchmarks.py`) verifying 5,000+ creatures @ 60 ticks/second on single-thread CPU.
+
+
 
