@@ -85,6 +85,7 @@ export default function App() {
   const prevTickRef = useRef<number | null>(null)
   const prevSeedRef = useRef<number | null>(null)
   const lastUiUpdateRef = useRef<number>(0)
+  const queuedEventsRef = useRef<HistoryEvent[]>([])
   useEffect(() => {
     selectedRef.current = selectedId
   }, [selectedId])
@@ -232,16 +233,24 @@ export default function App() {
         prevSeedRef.current = msg.seed
         stateRef.current = msg
 
-        // AF: Throttle React virtual DOM re-renders to ~6 Hz to keep browser main thread light,
+        // AF: Throttle React virtual DOM re-renders to ~5 Hz (every 200ms) to keep browser main thread light,
         // while CanvasRenderer continues to read stateRef.current at full 60 FPS.
         const now = performance.now()
-        const isEventTriggered = !archiveModeRef.current && msg.events && msg.events.length > 0
         const isExtinct = msg.creatures_alive === 0
         const shouldUpdateReactState =
           isNewWorld ||
-          isEventTriggered ||
           isExtinct ||
-          now - (lastUiUpdateRef.current || 0) >= 150
+          now - (lastUiUpdateRef.current || 0) >= 200
+
+        if (!archiveModeRef.current && msg.events && msg.events.length > 0) {
+          for (const ev of msg.events) {
+            const key = eventKey(ev)
+            if (!seenEventsRef.current.has(key)) {
+              seenEventsRef.current.add(key)
+              queuedEventsRef.current.push(ev)
+            }
+          }
+        }
 
         if (shouldUpdateReactState) {
           lastUiUpdateRef.current = now
@@ -256,19 +265,9 @@ export default function App() {
               ? [msg.population]
               : [...prev.slice(-239), msg.population],
           )
-        }
-
-        if (!archiveModeRef.current) {
-          const fresh = msg.events.filter((ev) => {
-            const key = eventKey(ev)
-            if (seenEventsRef.current.has(key)) return false
-            seenEventsRef.current.add(key)
-            return true
-          })
-          if (fresh.length > 0) {
-            setLog((prev) =>
-              [...fresh.reverse(), ...prev].slice(0, MAX_LOG),
-            )
+          if (!archiveModeRef.current && queuedEventsRef.current.length > 0) {
+            const batch = queuedEventsRef.current.splice(0)
+            setLog((prev) => [...batch.reverse(), ...prev].slice(0, MAX_LOG))
           }
         }
       },
@@ -279,10 +278,11 @@ export default function App() {
     return () => sock.dispose()
   }, [])
 
-  // World end detection — extinction summary
+  // World end detection — extinction summary & pause
   useEffect(() => {
     if (state && state.creatures_alive === 0 && state.tick > 30 && !showWorldEnd && !archiveMode) {
       setShowWorldEnd(true)
+      setPaused(true)
     }
     if (state && state.creatures_alive > 0 && showWorldEnd) {
       setShowWorldEnd(false)
@@ -558,7 +558,7 @@ export default function App() {
               </select>
             </div>
           )}
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
             <button className="god-btn" onClick={() => { setStatusExpanded(false); setWikiOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
               📖 Wiki
             </button>
@@ -566,7 +566,10 @@ export default function App() {
               ❓ Guide
             </button>
             <button className="god-btn god-main-btn" onClick={() => { setStatusExpanded(false); setGodOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
-              ⚖ God Laws
+              ⚖ God
+            </button>
+            <button className="god-btn" onClick={() => { setStatusExpanded(false); sendReset(); }} style={{ flex: 1, minHeight: 34, fontSize: 12, borderColor: '#f85149', color: '#ff7b72' }} title="Reset world with new seed (R)">
+              🔄 Reset
             </button>
           </div>
         </div>
@@ -585,6 +588,7 @@ export default function App() {
         <div className="mobile-thumb-bar">
           <button onClick={paused ? sendResume : sendPause} title={paused ? 'Resume (space)' : 'Pause (space)'}>{paused ? '▶' : '⏸'}</button>
           <button onClick={sendStep} title="Step (S)">⏭</button>
+          <button onClick={sendReset} title="Reset world with new seed (R)" style={{ color: '#ff7b72' }}>🔄</button>
           <button onClick={() => setGodOpen(true)} title="God laws">⚖</button>
           <button
             className={sheetState !== 'hidden' ? 'active-sheet-btn' : ''}

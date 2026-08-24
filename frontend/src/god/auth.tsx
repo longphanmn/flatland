@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'flatworld-god-key'
 
-type Mode = 'create' | 'enter' | 'reset'
+type Mode = 'create' | 'enter'
 
 interface PromptState {
   mode: Mode
@@ -101,7 +101,7 @@ export async function godFetch(url: string, init?: RequestInit): Promise<Respons
       statusKnown = false
       key = await requestPasskey('create')
     } else {
-      key = await requestPasskey('enter', 'wrong passkey — try again or reset')
+      key = await requestPasskey('enter', 'Wrong passkey — reset must be done in backend terminal (python -m app.godkey reset <key>)')
     }
   }
   throw new Error('cancelled')
@@ -111,7 +111,6 @@ export async function godFetch(url: string, init?: RequestInit): Promise<Respons
 export function AuthModal() {
   const [tick, setTick] = useState(0)
   const [value, setValue] = useState('')
-  const [resetMode, setResetMode] = useState(false)
   useEffect(() => {
     const l = () => setTick((t) => t + 1)
     listeners.add(l)
@@ -121,7 +120,6 @@ export function AuthModal() {
   }, [])
   useEffect(() => {
     setValue('')
-    setResetMode(false)
   }, [current?.mode, tick])
   if (!current) return null
   const submitting = false
@@ -139,10 +137,9 @@ export function AuthModal() {
   const submit = async () => {
     const passkey = value.trim()
     if (!passkey) return
-    if (currentMode === 'create' || resetMode) {
+    if (currentMode === 'create') {
       try {
-        const endpoint = resetMode ? '/api/auth/reset' : '/api/auth/setup'
-        const r = await fetch(endpoint, {
+        const r = await fetch('/api/auth/setup', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ passkey }),
@@ -155,7 +152,7 @@ export function AuthModal() {
         }
         if (r.status === 409) {
           statusKnown = true
-          current = { mode: 'enter', error: 'a passkey already exists — enter it or reset' }
+          current = { mode: 'enter', error: 'A passkey already exists — enter it to unlock.' }
           emit()
           return
         }
@@ -173,8 +170,6 @@ export function AuthModal() {
     rememberKey(passkey)
     close(passkey)
   }
-
-  const mode = resetMode ? 'reset' : currentMode
 
   return (
     <div
@@ -197,7 +192,7 @@ export function AuthModal() {
           border: '1px solid #30363d',
           borderRadius: 12,
           padding: 20,
-          width: 'min(360px, 92vw)',
+          width: 'min(380px, 92vw)',
           display: 'flex',
           gap: 12,
           flexDirection: 'column',
@@ -206,7 +201,7 @@ export function AuthModal() {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, fontSize: 16 }}>
-            {mode === 'create' ? 'Create a god passkey' : mode === 'reset' ? 'Reset god passkey' : 'God passkey'}
+            {currentMode === 'create' ? 'Create a god passkey' : 'God passkey'}
           </h3>
           <button
             onClick={() => close(null)}
@@ -216,18 +211,16 @@ export function AuthModal() {
           </button>
         </div>
         <p style={{ margin: 0, fontSize: 12, color: '#8b949e', lineHeight: 1.4 }}>
-          {mode === 'create'
+          {currentMode === 'create'
             ? 'No passkey exists yet. Pick one (min 4 chars) to control the world.'
-            : mode === 'reset'
-            ? 'Enter a new passkey (min 4 chars) to overwrite the previous one.'
-            : 'Setting laws and controlling the world requires your passkey.'}
+            : 'Setting laws and controlling the world requires your passkey. (Reset is only available via server terminal: python -m app.godkey reset <key>)'}
         </p>
-        {current.error && <p style={{ margin: 0, fontSize: 12, color: '#f85149' }}>{current.error}</p>}
+        {current.error && <p style={{ margin: 0, fontSize: 12, color: '#f85149', lineHeight: 1.4 }}>{current.error}</p>}
         <input
           autoFocus
           type="password"
           value={value}
-          placeholder={mode === 'create' ? 'new passkey' : mode === 'reset' ? 'enter new passkey' : 'passkey'}
+          placeholder={currentMode === 'create' ? 'new passkey' : 'passkey'}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') void submit()
@@ -242,30 +235,17 @@ export function AuthModal() {
             fontSize: 16,
           }}
         />
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
-          {current.mode === 'enter' ? (
-            <button
-              type="button"
-              onClick={() => setResetMode((m) => !m)}
-              style={{ background: 'transparent', border: 'none', color: '#58a6ff', fontSize: 12, cursor: 'pointer', padding: 0, minHeight: 32 }}
-            >
-              {resetMode ? '← Back to unlock' : 'Forgot / Reset?'}
-            </button>
-          ) : (
-            <span />
-          )}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => close(null)} style={{ padding: '6px 12px', minHeight: 36 }}>
-              Cancel
-            </button>
-            <button
-              onClick={() => void submit()}
-              disabled={submitting}
-              style={{ padding: '6px 14px', borderColor: '#d29922', color: '#d29922', minHeight: 36, fontWeight: 600 }}
-            >
-              {mode === 'create' ? 'Create' : mode === 'reset' ? 'Reset' : 'Unlock'}
-            </button>
-          </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+          <button onClick={() => close(null)} style={{ padding: '6px 12px', minHeight: 36 }}>
+            Cancel
+          </button>
+          <button
+            onClick={() => void submit()}
+            disabled={submitting}
+            style={{ padding: '6px 14px', borderColor: '#d29922', color: '#d29922', minHeight: 36, fontWeight: 600 }}
+          >
+            {currentMode === 'create' ? 'Create' : 'Unlock'}
+          </button>
         </div>
       </div>
     </div>

@@ -299,7 +299,7 @@ def test_sight_recognition_scales_with_caste():
                 sides=sides,
                 angle=math.pi,  # heading WEST, away from the food
                 speed=traits_for(caste_name(sides, shape)).speed,
-                energy=100.0,
+                energy=80.0,
                 age=60,  # adult life stage (sight/speed unpenalized)
                 lifespan=100.0,
             )
@@ -352,7 +352,7 @@ def test_infants_see_less_than_adults():
         food = next(e for e in s.world.entities.values() if e.kind == "food")
         c = s.world.add(
             Creature(x=(food.x - 10.0) % 200.0, y=food.y, sides=4, angle=math.pi,
-                     speed=0.55, energy=100.0, lifespan=100.0, age=age)
+                     speed=0.55, energy=80.0, lifespan=100.0, age=age)
         )
         return s, c
 

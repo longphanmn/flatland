@@ -23,6 +23,17 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
 
   if (!open) return null
 
+  const activePreset =
+    laws?.food_count === 450 && laws?.carrying_capacity === 2200
+      ? 'sustainable'
+      : laws?.food_count === 320 && laws?.carrying_capacity === 800
+      ? 'chaos'
+      : laws?.food_count === 100 && laws?.carrying_capacity === 250
+      ? 'extinction'
+      : laws?.food_count === 650 && laws?.carrying_capacity === 3500
+      ? 'boom'
+      : null
+
   const applyPreset = async (name: string) => {
     try {
       const r = await godFetch(`/api/presets/${name}?persist=true`, { method: 'POST' })
@@ -142,25 +153,76 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
 
         {tab === 'presets' && (
           <div>
-            <h3>Presets — one-click worlds</h3>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-              <button onClick={() => applyPreset('sustainable')} style={{ borderColor: '#3fb950', color: '#3fb950' }}>🌿 Sustainable</button>
-              <button onClick={() => applyPreset('chaos')} style={{ borderColor: '#f85149', color: '#f85149' }}>🔥 Chaos</button>
-              <button onClick={() => applyPreset('extinction')}>💀 Extinction</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <h3 style={{ margin: 0 }}>Presets — one-click worlds</h3>
+              {activePreset && (
+                <span className="chip" style={{ color: '#3fb950', borderColor: '#3fb950', background: 'rgba(63, 185, 80, 0.15)' }}>
+                  Active: {activePreset}
+                </span>
+              )}
             </div>
-            {data?.presets && Object.entries(data.presets).map(([name, laws]) => (
-              <div key={name} style={{ border: '1px solid #21262d', borderRadius: 6, padding: 10, marginBottom: 8, background: '#161b22' }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <b style={{ color: '#e6edf3' }}>{name}</b>
-                  <button onClick={() => applyPreset(name)} style={{ marginLeft: 'auto', padding: '4px 8px', fontSize: 12 }}>Apply</button>
-                  <button onClick={async () => { try { const r = await godFetch(`/api/presets/${name}?persist=true&reset=true`, { method: 'POST' }); if (r.ok) alert(name + ' + reset'); else alert('preset failed') } catch { /* cancelled */ } }} style={{ padding: '4px 8px', fontSize: 12 }}>Apply + Reset</button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+              <button
+                onClick={() => applyPreset('sustainable')}
+                style={{
+                  borderColor: '#3fb950',
+                  color: '#3fb950',
+                  background: activePreset === 'sustainable' ? 'rgba(63, 185, 80, 0.2)' : undefined,
+                  fontWeight: activePreset === 'sustainable' ? 700 : undefined,
+                }}
+              >
+                🌿 Sustainable {activePreset === 'sustainable' ? '✓' : ''}
+              </button>
+              <button
+                onClick={() => applyPreset('chaos')}
+                style={{
+                  borderColor: '#f85149',
+                  color: '#f85149',
+                  background: activePreset === 'chaos' ? 'rgba(248, 81, 73, 0.2)' : undefined,
+                  fontWeight: activePreset === 'chaos' ? 700 : undefined,
+                }}
+              >
+                🔥 Chaos {activePreset === 'chaos' ? '✓' : ''}
+              </button>
+              <button
+                onClick={() => applyPreset('extinction')}
+                style={{
+                  borderColor: '#d29922',
+                  color: '#d29922',
+                  background: activePreset === 'extinction' ? 'rgba(210, 153, 34, 0.2)' : undefined,
+                  fontWeight: activePreset === 'extinction' ? 700 : undefined,
+                }}
+              >
+                💀 Extinction {activePreset === 'extinction' ? '✓' : ''}
+              </button>
+              <button
+                onClick={() => applyPreset('boom')}
+                style={{
+                  borderColor: '#79c0ff',
+                  color: '#79c0ff',
+                  background: activePreset === 'boom' ? 'rgba(121, 192, 255, 0.2)' : undefined,
+                  fontWeight: activePreset === 'boom' ? 700 : undefined,
+                }}
+              >
+                🚀 Boom {activePreset === 'boom' ? '✓' : ''}
+              </button>
+            </div>
+            {data?.presets && Object.entries(data.presets).map(([name, pLaws]) => {
+              const isCurrent = activePreset === name
+              return (
+                <div key={name} style={{ border: `1px solid ${isCurrent ? '#3fb950' : '#21262d'}`, borderRadius: 6, padding: 10, marginBottom: 8, background: isCurrent ? 'rgba(63, 185, 80, 0.06)' : '#161b22' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <b style={{ color: isCurrent ? '#3fb950' : '#e6edf3' }}>{name} {isCurrent && '(active)'}</b>
+                    <button onClick={() => applyPreset(name)} style={{ marginLeft: 'auto', padding: '4px 8px', fontSize: 12 }}>Apply</button>
+                    <button onClick={async () => { try { const r = await godFetch(`/api/presets/${name}?persist=true&reset=true`, { method: 'POST' }); if (r.ok) alert(name + ' + reset'); else alert('preset failed') } catch { /* cancelled */ } }} style={{ padding: '4px 8px', fontSize: 12 }}>Apply + Reset</button>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#8b949e', marginTop: 6, wordBreak: 'break-all' }}>
+                    {Object.entries(pLaws).slice(0, 8).map(([k, v]) => <span key={k} style={{ marginRight: 8 }}><code>{k}={String(v)}</code></span>)}
+                    {Object.keys(pLaws).length > 8 && <span>…+{Object.keys(pLaws).length - 8} more</span>}
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, color: '#8b949e', marginTop: 6, wordBreak: 'break-all' }}>
-                  {Object.entries(laws).slice(0, 8).map(([k, v]) => <span key={k} style={{ marginRight: 8 }}><code>{k}={String(v)}</code></span>)}
-                  {Object.keys(laws).length > 8 && <span>…+{Object.keys(laws).length - 8} more</span>}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

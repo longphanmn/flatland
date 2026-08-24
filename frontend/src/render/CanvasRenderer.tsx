@@ -36,7 +36,8 @@ function drawWeather(
     return
   }
   if (weather !== 'rain' && weather !== 'storm') return
-  const drops = weather === 'storm' ? 150 : 80
+  const isMobile = cw <= 768 || ('ontouchstart' in window)
+  const drops = isMobile ? (weather === 'storm' ? 50 : 25) : (weather === 'storm' ? 120 : 60)
   const t = performance.now() / 16
   ctx.strokeStyle = 'rgba(140,170,220,0.35)'
   ctx.lineWidth = Math.max(1, cw / 1200)
@@ -78,8 +79,9 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
     let raf = 0
     let baseFit = 1
 
-    // T: cap DPR ~1.5 to keep 500-head canvas fill ~2.25× not 9× on retina
-    const dpr = () => Math.min(1.5, window.devicePixelRatio || 1)
+    const isMobileClient = typeof window !== 'undefined' && (window.innerWidth <= 768 || 'ontouchstart' in window)
+    // T: cap DPR to 1.25 on mobile, 1.5 on desktop to keep GPU raster fill fast
+    const dpr = () => Math.min(isMobileClient ? 1.25 : 1.5, window.devicePixelRatio || 1)
 
     const resize = () => {
       canvas.width = Math.max(1, Math.floor(canvas.clientWidth * dpr()))
@@ -335,8 +337,9 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       camScale: number,
       selectedId: number | null,
     ) => {
-      const isZoomedOut = camScale < 3.5
-      const isVeryZoomedOut = camScale < 1.8
+      const isZoomedOut = camScale < 4.0
+      const isVeryZoomedOut = camScale < 2.2
+      const isDense = entities.length > 300
 
       // 1. Group visible entities into batch categories in a single pass
       const grassPlants: EntityState[] = []
@@ -400,12 +403,14 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
           list.push(e)
         }
 
-        if (e.sleeping && !isZoomedOut) sleepingCreatures.push(e)
-        if (e.infected) infectedCreatures.push(e)
-        if (e.status === 'starving') starvingCreatures.push(e)
-        else if (e.status === 'hungry') hungryCreatures.push(e)
-        if ((e.chill ?? 0) >= 12) chilledCreatures.push(e)
-        if (e.glyph && (!isZoomedOut || selectedId === e.id)) glyphCreatures.push(e)
+        if (e.sleeping && camScale >= 4.5) sleepingCreatures.push(e)
+        if (camScale >= 1.8) {
+          if (e.infected) infectedCreatures.push(e)
+          if (e.status === 'starving') starvingCreatures.push(e)
+          else if (e.status === 'hungry') hungryCreatures.push(e)
+          if ((e.chill ?? 0) >= 12) chilledCreatures.push(e)
+        }
+        if (e.glyph && ((camScale >= 6.0 && !isDense) || selectedId === e.id)) glyphCreatures.push(e)
       }
 
       // 2. Draw Batched Houses
@@ -519,9 +524,10 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         ctx.stroke()
 
         // Peace-cry ripples for visible women when zoomed in
-        if (!isVeryZoomedOut) {
+        if (!isVeryZoomedOut && women.length < 150) {
           const nowTime = performance.now() / 900
-          for (const w of women) {
+          for (let i = 0; i < Math.min(women.length, 30); i++) {
+            const w = women[i]
             const stage = w.stage ?? 'adult'
             const sizeF = stage === 'infant' ? 0.55 : stage === 'juvenile' ? 0.8 : 1.0
             const r = (w.radius ?? 0.9) * sizeF * (w.scale_jitter ?? 1)
@@ -537,7 +543,8 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
         }
       }
 
-      // 6. Draw Batched Polygons by Caste
+      // 6. Draw Batched Polygons by Caste (with LOD circle fallback when dense/zoomed-out)
+      const useCircleLOD = isVeryZoomedOut || (isZoomedOut && isDense)
       for (const [caste, list] of polygonsByCaste.entries()) {
         const color = CASTE_COLORS[caste] || '#8b949e'
 
@@ -550,7 +557,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
           const sides = c.sides ?? 4
           const ang = c.angle + (c.angle_jitter ?? 0)
 
-          if (sides >= PRIEST_SIDES) {
+          if (useCircleLOD || sides >= PRIEST_SIDES) {
             ctx.moveTo(c.x + r, c.y)
             ctx.arc(c.x, c.y, r, 0, TAU)
           } else {
@@ -666,20 +673,22 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
       if (glyphCreatures.length > 0) {
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
+        ctx.font = '1.2px ui-monospace, monospace'
         for (const c of glyphCreatures) {
           const isSel = selectedId === c.id
           ctx.globalAlpha = isSel ? 1 : 0.75
           ctx.fillStyle = isSel ? '#e6edf3' : 'rgba(230,237,243,0.85)'
-          const r = c.radius ?? 1.2
-          const fontSize = Math.max(0.9, Math.min(1.6, r * 0.9))
-          ctx.font = `${fontSize}px ui-monospace, monospace`
-          ctx.strokeStyle = 'rgba(11,15,20,0.9)'
-          ctx.lineWidth = 0.25
-          ctx.strokeText(c.glyph!, c.x, c.y + 0.15)
+          if (isSel) {
+            ctx.strokeStyle = 'rgba(11,15,20,0.9)'
+            ctx.lineWidth = 0.25
+            ctx.strokeText(c.glyph!, c.x, c.y + 0.15)
+          }
           ctx.fillText(c.glyph!, c.x, c.y + 0.15)
         }
         ctx.globalAlpha = 1
       }
+
+      return houses
     }
 
     const draw = () => {
@@ -857,11 +866,10 @@ export default function CanvasRenderer({ stateRef, selectedRef, onTapCreature, o
 
       // AF: execute high-performance batched draws for all visible entities
       const selId = selectedRef?.current ?? null
-      drawBatchedEntities(ctx, state.entities, visible, cam.scale, selId)
+      const visibleHouses = drawBatchedEntities(ctx, state.entities, visible, cam.scale, selId)
       // totem poles — small marker beside each claimed house (§P) (culled)
-      for (const e of state.entities) {
-        if (e.kind !== 'house' || !e.clan_id || e.is_ruin) continue
-        if (!visible(e.x, e.y, 2)) continue
+      for (const e of visibleHouses) {
+        if (!e.clan_id || e.is_ruin) continue
         const clan = (state as any).clans?.[String(e.clan_id)]
         const totem: string | undefined = clan?.totem
         if (!totem) continue

@@ -337,12 +337,28 @@ interface Props {
   onClose: () => void
 }
 
+const PRESET_LIST = [
+  { key: 'sustainable', label: '🌿 Sustainable', color: '#3fb950', border: '#3fb950', bg: 'rgba(63, 185, 80, 0.2)', title: '1000-day gentle: 450 food, carrying 2200, rare war/predation, calm society' },
+  { key: 'chaos', label: '🔥 Chaos', color: '#f85149', border: '#f85149', bg: 'rgba(248, 81, 73, 0.2)', title: 'Chaos: famine, predators, wars, plagues, fires' },
+  { key: 'extinction', label: '💀 Extinction', color: '#d29922', border: '#d29922', bg: 'rgba(210, 153, 34, 0.2)', title: 'Extinction: 100 food, harsh winter 0.3, high decay' },
+  { key: 'boom', label: '🚀 Boom', color: '#79c0ff', border: '#79c0ff', bg: 'rgba(121, 192, 255, 0.2)', title: 'Boom: 650 food, carrying 3500, max 5000 — massive population scale test' },
+] as const
+
+function detectPreset(laws: GodLaws): string | null {
+  if (laws.food_count === 450 && laws.carrying_capacity === 2200) return 'sustainable'
+  if (laws.food_count === 320 && laws.carrying_capacity === 800) return 'chaos'
+  if (laws.food_count === 100 && laws.carrying_capacity === 250) return 'extinction'
+  if (laws.food_count === 650 && laws.carrying_capacity === 3500) return 'boom'
+  return null
+}
+
 export default function GodPanel({ open, onClose }: Props) {
   const [laws, setLaws] = useState<GodLaws>({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [currentPreset, setCurrentPreset] = useState<string | null>('sustainable')
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768)
 
   useEffect(() => {
@@ -355,9 +371,14 @@ export default function GodPanel({ open, onClose }: Props) {
     if (!open) return
     setLoading(true)
     setError(null)
-    fetch('/api/laws')
-      .then((r) => r.json())
-      .then(setLaws)
+    Promise.all([
+      fetch('/api/laws').then((r) => r.json()),
+      fetch('/api/presets').then((r) => r.json()).catch(() => null),
+    ])
+      .then(([lawsData, presetsData]) => {
+        setLaws(lawsData)
+        setCurrentPreset(presetsData?.current || detectPreset(lawsData) || 'sustainable')
+      })
       .catch(() => setError('failed to load laws'))
       .finally(() => setLoading(false))
   }, [open])
@@ -366,8 +387,14 @@ export default function GodPanel({ open, onClose }: Props) {
 
   if (!open) return null
 
-  const set = (key: NumberLawKey, raw: string | number) =>
-    setLaws((l) => ({ ...l, [key]: raw === '' ? undefined : Number(raw) }))
+  const set = (key: NumberLawKey, raw: string | number) => {
+    const val = raw === '' ? undefined : Number(raw)
+    setLaws((l) => {
+      const updated = { ...l, [key]: val }
+      setCurrentPreset(detectPreset(updated))
+      return updated
+    })
+  }
 
   const stepVal = (key: NumberLawKey, min: number, max: number, step: number, dir: 1 | -1) => {
     const curr = (laws[key] as number | undefined) ?? min
@@ -376,15 +403,21 @@ export default function GodPanel({ open, onClose }: Props) {
   }
 
   const boolVal = (k: BoolLawKey) => laws[k] ?? BOOL_DEFAULTS[k] ?? false
-  const setBool = (k: BoolLawKey, v: boolean) => setLaws((l) => ({ ...l, [k]: v }))
+  const setBool = (k: BoolLawKey, v: boolean) => {
+    setLaws((l) => {
+      const updated = { ...l, [k]: v }
+      setCurrentPreset(detectPreset(updated))
+      return updated
+    })
+  }
   const gateOpen = (gate?: BoolLawKey | BoolLawKey[]) =>
     !gate || (Array.isArray(gate) ? gate : [gate]).every((g) => boolVal(g))
 
   const ToggleRow = ({ k, label, title, hideIfOff }: { k: BoolLawKey; label: string; title?: string; hideIfOff?: BoolLawKey | BoolLawKey[] }) => {
     if (hideIfOff && !gateOpen(hideIfOff)) return null
     return (
-      <div className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <span title={title}>{label}</span>
+      <div className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, borderBottom: '1px solid #21262d', padding: '8px 10px' }}>
+        <span title={title} style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500 }}>{label}</span>
         <Switch checked={boolVal(k)} onChange={(v) => setBool(k, v)} title={title ?? label} />
       </div>
     )
@@ -409,7 +442,9 @@ export default function GodPanel({ open, onClose }: Props) {
             : (body.detail?.[0]?.msg ?? 'law rejected'),
         )
       }
-      setLaws(await res.json())
+      const data = await res.json()
+      setLaws(data)
+      setCurrentPreset(detectPreset(data))
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch (e) {
@@ -430,6 +465,7 @@ export default function GodPanel({ open, onClose }: Props) {
       if (!res.ok) throw new Error((await res.json()).detail ?? 'preset failed')
       const data = await res.json()
       setLaws(data.laws)
+      setCurrentPreset(name)
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch (e) {
@@ -461,6 +497,8 @@ export default function GodPanel({ open, onClose }: Props) {
     </header>
   )
 
+  const activePresetMeta = PRESET_LIST.find((p) => p.key === currentPreset)
+
   const body = (
     <>
       <p className="god-note">
@@ -468,25 +506,100 @@ export default function GodPanel({ open, onClose }: Props) {
         the law; no single life may be touched.
       </p>
       <div className="god-group" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, color: '#8b949e', width: '100%' }}>Presets — one click worlds</span>
-        <button onClick={() => applyPreset('sustainable', false)} title="1000-day gentle: 450 food, carrying 2200, rare war/predation, calm society" style={{ flex: 1, borderColor: '#3fb950', color: '#3fb950' }}>🌿 Sustainable</button>
-        <button onClick={() => applyPreset('chaos', false)} title="Chaos: famine, predators, wars, plagues, fires" style={{ flex: 1, borderColor: '#f85149', color: '#f85149' }}>🔥 Chaos</button>
-        <button onClick={() => applyPreset('extinction', false)} title="Extinction: 100 food, harsh winter 0.3, high decay" style={{ flex: 1 }}>💀 Extinction</button>
-        <button onClick={() => applyPreset('boom', false)} title="Boom: 650 food, carrying 3500, max 5000 — massive population scale test" style={{ flex: 1, borderColor: '#79c0ff', color: '#79c0ff' }}>🚀 Boom</button>
-        <button onClick={() => applyPreset('sustainable', true)} title="Apply sustainable + reset world now" style={{ width: '100%', marginTop: 4 }}>🌿 Sustainable + Reset</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 2 }}>
+          <span style={{ fontSize: 11, color: '#8b949e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Presets — one click worlds
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              padding: '2px 8px',
+              borderRadius: 12,
+              background: activePresetMeta ? activePresetMeta.bg : 'rgba(163, 113, 247, 0.15)',
+              border: `1px solid ${activePresetMeta ? activePresetMeta.border : '#8b949e'}`,
+              color: activePresetMeta ? activePresetMeta.color : '#d2a8ff',
+              fontWeight: 600,
+            }}
+          >
+            {activePresetMeta ? `Active: ${activePresetMeta.label}` : 'Active: ⚙ Custom'}
+          </span>
+        </div>
+
+        {PRESET_LIST.map(({ key, label, title, color, border, bg }) => {
+          const isActive = currentPreset === key
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => applyPreset(key, false)}
+              title={title}
+              style={{
+                flex: '1 1 calc(50% - 4px)',
+                borderColor: isActive ? border : '#30363d',
+                background: isActive ? bg : '#161b22',
+                color: isActive ? color : '#c9d1d9',
+                fontWeight: isActive ? 700 : 500,
+                boxShadow: isActive ? `0 0 10px ${bg}` : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                padding: '8px 10px',
+                minHeight: 38,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>{label}</span>
+              {isActive && (
+                <span
+                  style={{
+                    fontSize: 9,
+                    padding: '1px 5px',
+                    borderRadius: 6,
+                    background: color,
+                    color: '#0d1117',
+                    fontWeight: 800,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  ACTIVE
+                </span>
+              )}
+            </button>
+          )
+        })}
+
+        <button
+          type="button"
+          onClick={() => applyPreset(currentPreset && currentPreset !== 'custom' ? currentPreset : 'sustainable', true)}
+          title={`Apply ${currentPreset || 'sustainable'} preset + reset world now`}
+          style={{
+            width: '100%',
+            marginTop: 4,
+            background: '#238636',
+            borderColor: '#2ea043',
+            color: '#fff',
+            fontWeight: 600,
+            padding: '8px 12px',
+            minHeight: 38,
+          }}
+        >
+          🔄 Apply {activePresetMeta?.label || '🌿 Sustainable'} + Reset
+        </button>
       </div>
 
       {loading ? (
         <p className="god-note">reading the tablets…</p>
       ) : (
         <>
-          <label className="god-row">
-            <span title="what happens at the edge of the world">Edge of world</span>
+          <label className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderBottom: '1px solid #30363d' }}>
+            <span title="what happens at the edge of the world" style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500 }}>Edge of world</span>
             <select
               value={laws.boundary ?? 'wrap'}
               onChange={(e) =>
                 setLaws((l) => ({ ...l, boundary: e.target.value as 'wrap' | 'clamp' }))
               }
+              style={{ minHeight: 32, padding: '4px 8px' }}
             >
               <option value="wrap">wrap</option>
               <option value="clamp">walls</option>
@@ -540,7 +653,7 @@ export default function GodPanel({ open, onClose }: Props) {
                   <ToggleRow k="culture_enabled" label="Culture" title="culture spreads to allied neighbours, can split into rival traditions; grants small collective bonus" />
                 )}
                 {group === 'Genetics' && (
-                  <div className="god-note" style={{ fontSize: 11, opacity: 0.7 }}>Heritable traits: greedy/peaceful/paranoid/bold — mutation {laws.trait_mutation_rate ?? 0.02}</div>
+                  <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>Heritable traits: greedy/peaceful/paranoid/bold — mutation {laws.trait_mutation_rate ?? 0.02}</div>
                 )}
                 {group === 'Ages' && (
                   <ToggleRow k="age_enabled" label="Ages" title="super-seasons: Golden/ Ice/ Chaos/ Plague — each bends food/mutation/disease/chill. God sets length, world cycles." />
@@ -590,15 +703,18 @@ export default function GodPanel({ open, onClose }: Props) {
               const hint = LAW_HINTS[key]
               const isOpen = openHint === key
               return (
-                <div key={key} style={{ borderBottom: '1px solid rgba(48,54,61,0.3)', paddingBottom: isOpen ? 6 : 0 }}>
-                  <label className="god-row">
-                    <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <span title={hint}>{label}</span>
+                <div key={key} style={{ borderBottom: '1px solid #30363d', padding: isOpen ? '8px 10px' : '6px 10px' }}>
+                  <label className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 8 }}>
+                    <span style={{ display: 'flex', gap: 6, alignItems: 'center', flex: 1, minWidth: 0 }}>
+                      <span title={hint} style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {label}
+                      </span>
                       {hint && (
                         <button
+                          type="button"
                           onClick={() => setOpenHint(isOpen ? null : key)}
                           title={hint}
-                          style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #30363d', background: isOpen ? '#21262d' : '#161b22', color: isOpen ? '#e6edf3' : '#8b949e', fontSize: 11, lineHeight: 1, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
+                          style={{ width: 22, height: 22, borderRadius: '50%', border: '1px solid #484f58', background: isOpen ? '#30363d' : '#21262d', color: isOpen ? '#f0f6fc' : '#8b949e', fontSize: 12, lineHeight: 1, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
                           aria-label={`hint for ${label}`}
                         >
                           ?
@@ -606,11 +722,11 @@ export default function GodPanel({ open, onClose }: Props) {
                       )}
                     </span>
                     {isMobile ? (
-                      <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <span style={{ display: 'flex', gap: 6, alignItems: 'center', flex: 'none' }}>
                         <button
                           type="button"
                           onClick={() => stepVal(key, min, max, step, -1)}
-                          style={{ minHeight: 28, height: 28, width: 28, padding: 0, fontSize: 14, borderRadius: 4, background: '#21262d', border: '1px solid #30363d', color: '#c9d1d9', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
+                          style={{ minHeight: 30, height: 30, width: 30, padding: 0, fontSize: 16, fontWeight: 700, borderRadius: 6, background: '#21262d', border: '1px solid #484f58', color: '#f0f6fc', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
                         >
                           -
                         </button>
@@ -621,16 +737,16 @@ export default function GodPanel({ open, onClose }: Props) {
                           step={step}
                           value={(laws[key] as number | undefined) ?? min}
                           onChange={(e) => set(key, e.target.value)}
-                          style={{ width: 80, accentColor: '#e3b341' }}
+                          style={{ width: 88, height: 24, accentColor: '#e3b341', cursor: 'pointer' }}
                         />
                         <button
                           type="button"
                           onClick={() => stepVal(key, min, max, step, 1)}
-                          style={{ minHeight: 28, height: 28, width: 28, padding: 0, fontSize: 14, borderRadius: 4, background: '#21262d', border: '1px solid #30363d', color: '#c9d1d9', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
+                          style={{ minHeight: 30, height: 30, width: 30, padding: 0, fontSize: 16, fontWeight: 700, borderRadius: 6, background: '#21262d', border: '1px solid #484f58', color: '#f0f6fc', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
                         >
                           +
                         </button>
-                        <span style={{ minWidth: 36, textAlign: 'right', fontSize: 11, fontWeight: 600, color: '#e6edf3' }}>
+                        <span style={{ minWidth: 42, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#f0f6fc', fontVariantNumeric: 'tabular-nums' }}>
                           {(laws[key] as number | undefined)?.toFixed?.(step < 1 ? 2 : 0) ?? ''}
                         </span>
                       </span>
@@ -646,7 +762,7 @@ export default function GodPanel({ open, onClose }: Props) {
                     )}
                   </label>
                   {isOpen && hint && (
-                    <div style={{ fontSize: 11, color: '#c9d1d9', background: '#161b22', border: '1px solid #21262d', borderRadius: 6, padding: '6px 8px', margin: '4px 10px 8px 10px', lineHeight: 1.4 }}>
+                    <div style={{ fontSize: 12, color: '#c9d1d9', background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '8px 10px', margin: '6px 0 4px', lineHeight: 1.45 }}>
                       {hint}
                       <div style={{ marginTop: 6 }}>
                         <a href="/docs/god-laws.md" rel="noreferrer" style={{ fontSize: 11, color: '#58a6ff' }}>Open docs/god-laws.md ↗</a>
@@ -658,18 +774,14 @@ export default function GodPanel({ open, onClose }: Props) {
                 </div>
               )
             })
-            if (isMobile) {
-              return (
-                <details key={group} className="god-accordion" open={group === 'Food & Energy'}>
-                  <summary>{group} <span style={{ fontSize: 10, color: '#8b949e' }}>{lawsInGroup.length}</span></summary>
-                  {special}
-                  {rows}
-                </details>
-              )
-            }
             return (
               <section key={group} className="god-group">
-                <h3>{group}</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid #30363d', paddingBottom: 6 }}>
+                  <h3 style={{ margin: 0, fontSize: 13, color: '#e3b341', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{group}</h3>
+                  <span style={{ fontSize: 10, color: '#8b949e', fontWeight: 600, background: '#21262d', padding: '1px 6px', borderRadius: 10, border: '1px solid #30363d' }}>
+                    {lawsInGroup.length} laws
+                  </span>
+                </div>
                 {special}
                 {rows}
               </section>

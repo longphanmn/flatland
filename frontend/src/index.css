@@ -775,39 +775,55 @@ select {
   background: #0d1117;
   display: flex;
   flex-direction: column;
-  padding-top: env(safe-area-inset-top);
+  padding-top: max(8px, env(safe-area-inset-top));
 }
 .god-screen-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 10px 14px 16px;
+  padding: 10px 14px 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 .god-screen .god-row {
   font-size: 14px;
   color: #e6edf3;
-  min-height: 44px;
-  gap: 12px;
+  min-height: 40px;
+  gap: 8px;
 }
 .god-screen .god-note { font-size: 13px; }
-.god-screen .god-group h3 { font-size: 12px; }
-.god-screen .god-accordion summary { font-size: 13px; padding: 12px; }
-.god-screen .god-accordion .god-row { padding: 4px 12px; }
-.god-screen .god-accordion input[type="range"] { width: 150px; height: 28px; accent-color: #e3b341; }
+.god-screen .god-group {
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  background: #161b22;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.god-screen .god-group h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e3b341;
+}
 .god-screen .god-row input[type="number"],
-.god-screen .god-row select { font-size: 15px; padding: 8px 10px; width: 116px; }
+.god-screen .god-row select { font-size: 14px; padding: 6px 10px; width: 116px; }
 .god-screen .god-foot {
   margin: 0;
   padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
-  border-top: 1px solid #21262d;
-  background: #0d1117;
+  border-top: 1px solid #30363d;
+  background: #161b22;
 }
-.god-screen .god-foot button { min-height: 44px; flex: 1; font-size: 15px; }
-.god-screen .god-head { padding: 10px 14px; margin: 0; }
+.god-screen .god-foot button { min-height: 44px; flex: 1; font-size: 15px; font-weight: 600; }
+.god-screen .god-head {
+  padding: 12px 14px;
+  margin: 0;
+  border-bottom: 1px solid #30363d;
+  background: #161b22;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
 .god-saved {
   color: #3fb950;

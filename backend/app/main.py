@@ -99,6 +99,7 @@ class RuntimeState:
         self.tick_failures = 0
         # Baseline laws that survive Reset (Save). Apply mutates only self.config.
         self.saved_config = self.config
+        self.current_preset: str | None = "sustainable"
         self.lock = threading.RLock()
 
 
@@ -145,7 +146,7 @@ def _on_event(e) -> None:
 
 
 # --------------------------------------------------------------------- loop
-def advance_world(rt: RuntimeState) -> dict | None:
+def advance_world(rt: RuntimeState, hub: Hub | None = None) -> dict | None:
     """Advance the world one tick (caller holds rt.lock).
 
     Returns the snapshot payload to broadcast, or None when throttled/failed.
@@ -157,6 +158,9 @@ def advance_world(rt: RuntimeState) -> dict | None:
         # AD: chronicle/genealogy writes land in the RAM buffer; the writer
         # daemon commits them off-thread — step() never waits on SQLite.
         rt.sim.step()
+        # World End / Extinction: if all creatures die (tick > 30), pause ticking automatically
+        if rt.sim.tick > 30 and len(rt.sim.world.creatures()) == 0:
+            rt.paused = True
     except Exception as exc:
         # The world must never die silently: one failed tick is logged
         # loudly and skipped — the loop keeps turning (a frozen tick
@@ -170,8 +174,11 @@ def advance_world(rt: RuntimeState) -> dict | None:
         traceback.print_exc()
         sys.stdout.flush()
         return None
-    # T: throttle broadcast to ~30 Hz instead of every tick
-    every = max(1, int(round(rt.speed / 30))) if rt.speed > 30 else 1
+    # If a hub is passed and has no active listeners, skip snapshot payload serialization
+    if hub is not None and not hub.clients:
+        return None
+    # Throttle broadcast to ~20 Hz when tick rate is high
+    every = max(1, int(round(rt.speed / 20))) if rt.speed > 20 else 1
     if every > 1 and rt.sim.tick % every != 0:
         return None
     return rt.sim.snapshot_payload()
@@ -215,7 +222,7 @@ class SimEngine:
             payload = None
             with self.rt.lock:
                 if not self.rt.paused:
-                    payload = advance_world(self.rt)
+                    payload = advance_world(self.rt, self.hub)
             if payload is not None:
                 asyncio.run_coroutine_threadsafe(
                     self.hub.broadcast(payload), self._loop
@@ -270,6 +277,7 @@ async def apply_control(msg: ControlMessage) -> dict:
             new_cfg = replace(base, seed=random.SystemRandom().randint(0, 2**31 - 1))
             RT.config = new_cfg
             RT.sim = Simulation(new_cfg, history=RT.sim.history)
+            RT.paused = False
             start_world()
             payload = RT.sim.snapshot_payload()
         elif msg.action is ControlAction.SET_SPEED:
@@ -562,8 +570,24 @@ PRESETS: dict[str, dict] = {
 }
 
 
+def detect_current_preset() -> str | None:
+    current_laws = get_laws()
+    for name, p_laws in PRESETS.items():
+        if all(current_laws.get(k) == v for k, v in p_laws.items()):
+            return name
+    for name, p_laws in PRESETS.items():
+        if (
+            current_laws.get("food_count") == p_laws.get("food_count")
+            and current_laws.get("carrying_capacity") == p_laws.get("carrying_capacity")
+            and current_laws.get("max_population") == p_laws.get("max_population")
+        ):
+            return name
+    return getattr(RT, "current_preset", None)
+
+
 def get_laws() -> dict:
-    return {name: getattr(RT.config, name) for name in LAW_FIELDS}
+    laws = {name: getattr(RT.config, name) for name in LAW_FIELDS}
+    return laws
 
 
 def apply_laws(laws: GodLaws, persist: bool = True) -> dict:
@@ -732,16 +756,6 @@ async def auth_setup(body: SetupPasskey) -> dict:
     return {"ok": True, "configured": True}
 
 
-@app.post("/api/auth/reset")
-async def auth_reset(body: SetupPasskey) -> dict:
-    """Reset the god passkey to a new value."""
-    try:
-        AUTH.reset(body.passkey)
-    except ValueError as exc:
-        raise HTTPException(422, str(exc)) from exc
-    return {"ok": True, "configured": True}
-
-
 @app.post("/api/laws", dependencies=[Depends(require_god)])
 async def write_laws(laws: GodLaws, persist: bool = True) -> dict:
     """Set new laws of nature (god-writable).
@@ -755,7 +769,11 @@ async def write_laws(laws: GodLaws, persist: bool = True) -> dict:
 @app.get("/api/presets")
 async def list_presets() -> dict:
     """List available law presets (sustainable is the 1000-day world)."""
-    return {"presets": list(PRESETS.keys()), "details": PRESETS}
+    return {
+        "presets": list(PRESETS.keys()),
+        "details": PRESETS,
+        "current": detect_current_preset(),
+    }
 
 
 @app.post("/api/presets/{name}", dependencies=[Depends(require_god)])
@@ -763,6 +781,7 @@ async def apply_preset(name: str, persist: bool = True, reset: bool = False) -> 
     """Apply a named preset bundle. reset=true also resets the world with new laws."""
     if name not in PRESETS:
         raise HTTPException(404, f"preset {name!r} not found — {list(PRESETS.keys())}")
+    RT.current_preset = name
     laws = GodLaws.model_validate(PRESETS[name])
     result = apply_laws(laws, persist=persist)
     if reset:
@@ -771,6 +790,7 @@ async def apply_preset(name: str, persist: bool = True, reset: bool = False) -> 
         new_cfg = replace(base, seed=random.SystemRandom().randint(0, 2**31 - 1))
         RT.config = new_cfg
         RT.sim = Simulation(new_cfg, history=RT.sim.history)
+        RT.paused = False
         start_world()
         await HUB.broadcast(RT.sim.snapshot_payload())
     return {"preset": name, "laws": result, "reset": reset}

@@ -736,7 +736,7 @@ class Simulation:
 
         # — decay: abandoned houses crumble to ruins —
         # Build living-clan set once
-        living_clans = {c.clan_id for c in self.world.creatures() if c.clan_id}
+        living_clans = {c.clan_id for c in self._get_creatures() if c.clan_id}
         for h in list(functional):
             assert isinstance(h, House)
             # A house is abandoned if unclaimed, or its clan has no living members
@@ -884,17 +884,30 @@ class Simulation:
         self._cached_terrain_fertile = [dict(p) for p in self.fertile]
         self._cached_terrain_rocks = [dict(r) for r in self.rocks]
 
+    def _is_in_rock(self, x: float, y: float, pad: float = 0.5) -> bool:
+        """Check if (x, y) is inside or too close to any solid rock obstacle."""
+        for rock in self.rocks:
+            min_d = rock["r"] + pad
+            if self.world.distance_sq(x, y, rock["x"], rock["y"]) < min_d * min_d:
+                return True
+        return False
+
     def _food_pos(self) -> tuple[float, float]:
-        """New food prefers fertile ground (god law sets the bias)."""
+        """New food prefers fertile ground (god law sets the bias), avoiding solid stone."""
         cfg = self.config
-        if self.fertile and self.rng.random() < cfg.fertile_food_bias:
-            patch = self.rng.choice(self.fertile)
-            ang = self.rng.uniform(0, 2 * math.pi)
-            rad = math.sqrt(self.rng.random()) * patch["r"]
-            return (
-                (patch["x"] + math.cos(ang) * rad) % cfg.width,
-                (patch["y"] + math.sin(ang) * rad) % cfg.height,
-            )
+        for _ in range(16):
+            if self.fertile and self.rng.random() < cfg.fertile_food_bias:
+                patch = self.rng.choice(self.fertile)
+                ang = self.rng.uniform(0, 2 * math.pi)
+                rad = math.sqrt(self.rng.random()) * patch["r"]
+                pos = (
+                    (patch["x"] + math.cos(ang) * rad) % cfg.width,
+                    (patch["y"] + math.sin(ang) * rad) % cfg.height,
+                )
+            else:
+                pos = self._rand_pos()
+            if not self._is_in_rock(pos[0], pos[1]):
+                return pos
         return self._rand_pos()
 
     def _pick_variant(self, x: float, y: float) -> str:
@@ -994,22 +1007,31 @@ class Simulation:
         rr = rock["r"] + pad
         return (px_ - cx) ** 2 + (py_ - cy) ** 2 <= rr * rr
 
+    def _warn_unreachable_food(self, c: Creature, target: Entity) -> None:
+        """Warn nearby creatures about unreachable food so they also seek food elsewhere."""
+        r = max(14.0, self.config.signal_radius)
+        r2 = r * r
+        creatures = self._cached_creatures if self._cached_creatures else self.world.entities.values()
+        for other in creatures:
+            if isinstance(other, Creature) and other.id != c.id:
+                if self.world.distance_sq(c.x, c.y, other.x, other.y) <= r2:
+                    if other.clan_id == c.clan_id or not self.config.territory_enabled:
+                        other.give_ups[target.id] = self.tick
+
     def _give_up_on(self, c: Creature, target: Entity) -> None:
         """A meal is unreachable (behind stone or wall): abandon it for a while
         and seek food somewhere else — no creature starves grinding at an obstacle.
-        Grudges are per-meal and never refreshed while fresh, so each memory
-        always fades and the creature keeps retrying other meals meanwhile."""
+        Grudges are per-meal and shared with nearby clan members."""
         ttl = self.config.food_giveup_ticks
         if ttl <= 0:
             return
         grudges = c.give_ups
-        if len(grudges) > 8:  # keep the memory small
+        if len(grudges) > 16:  # keep the memory bounded
             expired = [k for k, t0 in grudges.items() if self.tick - t0 >= ttl]
             for k in expired:
                 del grudges[k]
-        if self.tick - grudges.get(target.id, -ttl) < ttl:
-            return
         grudges[target.id] = self.tick
+        self._warn_unreachable_food(c, target)
 
     # ------------------------------------------------------------- §X knowledge
     def _fact_fresh(self, c: Creature, key, ttl: int | None = None) -> dict | None:
@@ -1563,23 +1585,23 @@ class Simulation:
         if not houses:
             return
         # Trespass: each creature inside a rival's radius slightly sours the two clans
-        r2 = cfg.territory_radius * cfg.territory_radius
+        # Query spatial hash around each claimed house instead of scanning all creatures
+        r = cfg.territory_radius
+        r2 = r * r
         dist_sq = self.world.distance_sq
-        for c in self.world.creatures():
-            if not c.clan_id or c.is_predator or c.is_herbivore:
-                continue
-            for h in houses:
+        decay_int = int(round(cfg.trespass_decay))
+        for h in houses:
+            for c in self.world.query_radius(h.x, h.y, r):
+                if not isinstance(c, Creature) or not c.clan_id or c.is_predator or c.is_herbivore:
+                    continue
                 if h.clan_id == c.clan_id:
                     continue
                 if dist_sq(c.x, c.y, h.x, h.y) <= r2:
-                    # probabilistic decay if <1, deterministic if >=1
                     if cfg.trespass_decay >= 1:
-                        delta = -int(round(cfg.trespass_decay))
-                        self._bump_relation(c.clan_id, h.clan_id, delta)
+                        self._bump_relation(c.clan_id, h.clan_id, -decay_int)
                     else:
                         if self.rng.random() < cfg.trespass_decay:
                             self._bump_relation(c.clan_id, h.clan_id, -1)
-                    break  # one rival territory per tick is enough
 
     def _update_schism(self) -> None:
         """§S Schism — unhappy members split off as new clan and war parent."""
@@ -2352,14 +2374,17 @@ class Simulation:
         """§X Clan memory — union of member knowledge: 'the clan remembers'."""
         ttl = max(1, self.config.knowledge_ttl)
         out: dict[int, dict] = {}
+        clan_creatures = self._clan_members if self._clan_members else {}
+        if not clan_creatures:
+            for m in self._get_creatures():
+                if m.clan_id:
+                    clan_creatures.setdefault(m.clan_id, []).append(m)
         for cid in self.clans:
             enemies: set[int] = set()
             danger: list[dict] = []
             food: list[dict] = []
             safe_spots = 0
-            for m in self.world.creatures():
-                if m.clan_id != cid:
-                    continue
+            for m in clan_creatures.get(cid, ()):
                 for clan_id, meta in (m.facts.get("enemies") or {}).items():
                     if isinstance(meta, dict) and self.tick - int(meta.get("tick", 0)) <= ttl:
                         enemies.add(int(clan_id))
@@ -2538,8 +2563,9 @@ class Simulation:
                     parent.x + math.cos(ang) * rad,
                     parent.y + math.sin(ang) * rad,
                 )
-                self.world.add(self._new_food(x, y, growth=SPROUT_GROWTH))
-                total += 1
+                if not self._is_in_rock(x, y):
+                    self.world.add(self._new_food(x, y, growth=SPROUT_GROWTH))
+                    total += 1
 
     def _emit_bloom(self, plant: Food) -> None:
         """A plant has reached maturity: recorded in the chronicle."""
@@ -2722,7 +2748,8 @@ class Simulation:
             if self.rng.random() >= min(rate * fert, 1.0):
                 continue
             self._birth(mother, father)
-            if len(self.world.creatures()) >= max_pop:
+            pop += 1
+            if pop >= max_pop:
                 break
 
     def _birth(self, mother: Creature, father: Creature) -> None:
@@ -3399,7 +3426,7 @@ class Simulation:
             desired = math.atan2(dy, dx)
             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
             c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
-        elif target is not None:
+        elif target is not None and (c.is_predator or c.energy <= 0.85 * cfg.energy_max):
             dx, dy = w.delta(target.x, target.y, c.x, c.y)
             desired = math.atan2(dy, dx)
             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
@@ -3529,7 +3556,7 @@ class Simulation:
                     break
 
         # 4b. Rocks are solid: push out and face away. A meal whose straight path
-        # crosses the stone is abandoned — give up and look somewhere else.
+        # crosses the stone or sits inside is abandoned — give up, warn others, and steer away.
         if self.rocks:
             hit_rock = self._resolve_rock_collision(c)
             if hit_rock is not None and target is not None and cfg.food_giveup_ticks > 0:
@@ -3547,8 +3574,8 @@ class Simulation:
             if c.id not in w.entities:  # a kin-eater may have been exiled (still alive)
                 return
 
-        # 5. Eat. §O variant yields: grass low, berry high (autumn), mushroom decomposer, poisonous sickens.
-        if target is not None and best_sq <= cfg.eat_radius * cfg.eat_radius:
+        # 5. Eat. Full creatures (>85% energy) don't consume food.
+        if target is not None and best_sq <= cfg.eat_radius * cfg.eat_radius and (c.is_predator or c.energy <= 0.85 * cfg.energy_max):
             w.remove(target.id)
             self._eaten.add(target.id)
             c.ticks_since_meal = 0
@@ -3693,7 +3720,7 @@ class Simulation:
         alive = 0
         infected = 0
         clans = self.clans
-        for e in sorted(self.world.entities.values(), key=lambda e: e.id):
+        for e in self.world.entities.values():
             entities.append(self._entity_payload(e, clans))
             if isinstance(e, Creature):
                 label = e.caste

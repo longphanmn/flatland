@@ -133,3 +133,30 @@ def test_food_giveup_ticks_law_roundtrip():
     r = client.post("/api/laws?persist=false", json={"food_giveup_ticks": 77})
     assert r.status_code == 200
     assert r.json()["food_giveup_ticks"] == 77
+
+
+def test_full_creatures_do_not_eat_food():
+    """Creatures with >85% energy are full and do not consume food."""
+    s = Simulation(stuck_cfg(food_count=1))
+    food = s.world.add(Food(x=20.0, y=20.0, growth=1.0))
+    # creature is right on top of food (distance 0) with energy 90% (>85%)
+    c = s.world.add(Creature(x=20.0, y=20.0, energy=90.0, age=1000))
+    s.step()
+    # Food is still intact, creature did not consume it
+    assert food.id in foods(s)
+    assert c.meals == 0
+
+
+def test_unreachable_food_warning_shared_with_others():
+    """When a creature gives up on a food blocked by a rock, nearby creatures are warned."""
+    s = Simulation(stuck_cfg(food_count=1, food_giveup_ticks=50))
+    s.rocks.append({"x": 30.0, "y": 30.0, "r": 5.0})
+    blocked = s.world.add(Food(x=30.0, y=40.0, growth=1.0))
+    c1 = s.world.add(Creature(x=30.0, y=24.0, angle=math.pi / 2, energy=60.0, age=1000))
+    c2 = s.world.add(Creature(x=32.0, y=24.0, angle=math.pi / 2, energy=60.0, age=1000))
+
+    # c1 hits the rock and gives up on blocked food
+    s._give_up_on(c1, blocked)
+    # c2 within signal radius should have received the unreachable food warning
+    assert blocked.id in c2.give_ups
+
