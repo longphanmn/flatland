@@ -413,7 +413,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Flatland World Simulation",
-    version="0.1.0",
+    version="0.1.2",
     description="Flatland — 2D world simulation by Long Phan <long@minhnhan.in>",
     contact={"name": "Long Phan", "email": "long@minhnhan.in", "url": "https://minhnhan.in"},
     lifespan=lifespan,
@@ -946,7 +946,7 @@ async def get_version() -> dict:
     """Version + git revision for footer display."""
     import subprocess
 
-    version = "0.1.0"
+    version = "0.1.2"
     revision = ""
     # try pyproject
     try:
@@ -961,7 +961,7 @@ async def get_version() -> dict:
             txt = pathlib.Path("pyproject.toml").read_text()
             for line in txt.splitlines():
                 if line.strip().startswith("version"):
-                    # version = "0.1.0"
+                    # version = "0.1.2"
                     parts = line.split("=")
                     if len(parts) == 2:
                         version = parts[1].strip().strip('"').strip("'")
