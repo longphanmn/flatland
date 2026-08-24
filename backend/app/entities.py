@@ -148,6 +148,10 @@ class Creature(Entity):
     title: str | None = None  # earned dynamic epithet (e.g. "the Fearless", "the Harvester")
     emote: str | None = None  # active emote: "hungry"|"love"|"combat"|"panic"|"heal"|"cheer"|"sleep"|"craft"
     emote_ticks: int = 0  # remaining ticks for emote balloon
+    # Cognitive Agency & Social Intelligence (§AL)
+    waypoints: dict = field(default_factory=dict)  # {"home": (x,y), "rich_food": (x,y), "danger": (x,y), "patrol": (x,y)}
+    trust: dict = field(default_factory=dict)  # target_id -> trust_score (-100..+100)
+
 
     def __post_init__(self) -> None:
         if not self.caste:

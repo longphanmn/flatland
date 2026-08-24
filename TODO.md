@@ -1159,20 +1159,21 @@ Fixes and ergonomic polish for clan architecture, inventory autonomy, historical
 ## AL. Creature Cognitive Agency & Clan Social Intelligence Roadmap  [P1]
 Next-generation behavioral intelligence roadmap advancing individual cognitive decision-making, clan division of labor, dynamic bylaws, and macro geopolitics.
 
-### Phase 1: Individual Cognitive Agency & Tactical Intelligence  [P1]
+### Phase 1: Individual Cognitive Agency & Tactical Intelligence  [P1] — ✅ implemented
 - **Task 1.1: Multi-Objective Utility AI Engine**
-  - [ ] [P1] Implement dynamic utility scoring $U(\text{action})$ replacing rigid if/else trees: balances survival energy, caste duty, personality weights, and kin emergency signals.
-  - [ ] [P1] Context-aware behavior: brave soldiers prioritize defense over snacks when under attack; cautious artisans voluntarily seek shelter before nightfall or storms.
+  - [x] [P1] Implement dynamic utility scoring $U(\text{action})$ replacing rigid if/else trees: balances survival energy, caste duty, personality weights, and kin emergency signals.
+  - [x] [P1] Context-aware behavior: brave soldiers prioritize defense over snacks when under attack; cautious artisans voluntarily seek shelter before nightfall or storms.
 - **Task 1.2: Spatial Mental Map & Purposeful Waypoint Navigation**
-  - [ ] [P1] Implement compact spatial memory (3–5 remembered coordinates per creature: Home HQ, Fertile Grove, Danger Zone, Trading Post).
-  - [ ] [P1] Replace Brownian random walk with purposeful patrolling, foraging circuits, and planned domestic return trips.
+  - [x] [P1] Implement compact spatial memory (3–5 remembered coordinates per creature: Home HQ, Fertile Grove, Danger Zone, Trading Post).
+  - [x] [P1] Replace Brownian random walk with purposeful patrolling, foraging circuits, and planned domestic return trips.
 - **Task 1.3: Tactical Combat Formations & Phalanx Synergy**
-  - [ ] [P1] Soldiers from the same clan form coordinated spear/shield lines during defensive alerts.
-  - [ ] [P1] Agile lines (women) execute flanking and kiting maneuvers to draw enemy aggro away from vulnerable artisans and infants.
-  - [ ] [P1] Local combat odds evaluation: organized tactical retreat toward fortified houses when outnumbered $3:1$.
+  - [x] [P1] Soldiers from the same clan form coordinated spear/shield lines during defensive alerts.
+  - [x] [P1] Agile lines (women) execute flanking and kiting maneuvers to draw enemy aggro away from vulnerable artisans and infants.
+  - [x] [P1] Local combat odds evaluation: organized tactical retreat toward fortified houses when outnumbered $3:1$.
 - **Task 1.4: Interpersonal Trust & Grudge Matrix**
-  - [ ] [P1] Track pairwise creature trust ($+15$ for healing, $+20$ for saving life, $-15$ for stealing/striking).
-  - [ ] [P1] High-trust pairs form cooperative hunting/farming duos, share shelters, and prioritize mutual aid.
+  - [x] [P1] Track pairwise creature trust ($+15$ for healing, $+20$ for saving life, $-15$ for stealing/striking).
+  - [x] [P1] High-trust pairs form cooperative hunting/farming duos, share shelters, and prioritize mutual aid.
+
 
 ### Phase 2: Clan Division of Labor & Institutional Governance  [P1]
 - **Task 2.1: Autonomous Clan Task Board & Labor Allocation**

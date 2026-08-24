@@ -54,6 +54,8 @@ Evolution emerges 100% autonomously without artificial intervention:
 - **Skill Mastery Matrix**: Four masterable disciplines (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿) unlocking earned titles (*the Slayer*, *the Fearless Champion*, *the Grand Harvester*, *the Wise Shaman*, *the Pathfinder*).
 - **Oral Lore in Houses**: Resting elders teach their highest skill mastery to sleeping youth indoors.
 - **Thought Bubbles**: Real-time floating emote indicators (`🍖`, `❤️`, `⚔️`, `🌿`, `🏆`, `💤`, `🧺`, `😱`).
+- **Cognitive Agency & Tactical Intelligence**: Multi-objective utility AI scoring replaces rigid if/else trees (evaluating survival, duty, traits, and kin needs); spatial waypoint mental maps (`home`, `rich_food`, `danger`, `patrol`); tactical soldier phalanxes, line kiting maneuvers, and interpersonal trust-based buddy pairing.
+
 
 ### 4. Settlements, Clans & Diplomacy
 - **Settlement Houses**: Square walled halls with creature-sized doorways; houses block outside elements and wild carnivores.

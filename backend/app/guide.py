@@ -228,6 +228,12 @@ Evolution emerges 100% autonomously without god interventions:
 - **Combat Stamina**: Duels and war clashes expend energy (winner -6, loser -10); low energy (<20%) causes an exhaustion penalty (30% less damage).
 - **Food Reserves & Field Eating**: Roaming creatures with <45 energy autonomously eat carried food from their basket. Full creatures (>85% energy) never eat or destroy food plants.
 
+## Cognitive Agency & Tactical Intelligence (§AL)
+- **Multi-Objective Utility AI Engine**: Replaced hardcoded steering with dynamic utility scoring evaluating survival, duty, traits, and kin needs.
+- **Mental Map & Purposeful Waypoints**: Coordinates for `home`, `rich_food`, `danger`, and `patrol` enable purposeful foraging and perimeter circuits over random Brownian noise.
+- **Tactical Combat Formations**: Allied Soldiers in combat align into disciplined phalanxes; 1D lines (women) execute evasive tangential kiting; outnumbered creatures execute organized retreats to shelter.
+- **Interpersonal Trust Matrix**: Pairs develop affinity from healing (+15) and feeding (+20), forming loyal buddy pairs for shared foraging.
+
 ## Terminal User Interface (§AI)
 A complete Textual terminal interface (`backend/tui/`) attaches to running worlds with:
 - Camera follow mode (`w`) tracking moving creatures.
@@ -235,6 +241,7 @@ A complete Textual terminal interface (`backend/tui/`) attaches to running world
 - Full creature dossier inspector (`enter` / `i`) and clan details modal (`c`).
 - God laws manager (`g`) and ASCII/half-block renderer (`a` / `f`).
 """
+
 
 CODEBASE_MAP_MD = """
 # Codebase map

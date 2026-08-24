@@ -380,6 +380,13 @@ class Simulation:
         c.title = None
         c.emote = None
         c.emote_ticks = 0
+        c.waypoints = {}
+        c.trust = {}
+        if parent_a and hasattr(parent_a, "id"):
+            c.trust[parent_a.id] = 30.0
+        if parent_b and hasattr(parent_b, "id"):
+            c.trust[parent_b.id] = 30.0
+
 
     def _spawn_creature(self, shape: str, sides: int) -> None:
         cfg = self.config
@@ -3477,6 +3484,12 @@ class Simulation:
                         c.emote_ticks = 20
                         o.emote = "cheer"
                         o.emote_ticks = 20
+                        if not hasattr(o, "trust") or o.trust is None:
+                            o.trust = {}
+                        o.trust[c.id] = min(100.0, o.trust.get(c.id, 0.0) + 15.0)
+                        if not hasattr(c, "trust") or c.trust is None:
+                            c.trust = {}
+                        c.trust[o.id] = min(100.0, c.trust.get(o.id, 0.0) + 5.0)
                         break
 
         # Altruistic feeding & basket hauling
@@ -3491,7 +3504,14 @@ class Simulation:
                             c.emote_ticks = 15
                             o.emote = "cheer"
                             o.emote_ticks = 15
+                            if not hasattr(o, "trust") or o.trust is None:
+                                o.trust = {}
+                            o.trust[c.id] = min(100.0, o.trust.get(c.id, 0.0) + 20.0)
+                            if not hasattr(c, "trust") or c.trust is None:
+                                c.trust = {}
+                            c.trust[o.id] = min(100.0, c.trust.get(o.id, 0.0) + 10.0)
                             break
+
             elif c.indoors or (c.clan_id and c.clan_id in clan_house_map and self.world.distance(c.x, c.y, clan_house_map[c.clan_id].x, clan_house_map[c.clan_id].y) <= 8.0):
                 if c.clan_id and c.clan_id in self.clans:
                     clan_obj = self.clans[c.clan_id]
@@ -3774,76 +3794,183 @@ class Simulation:
                 dd2 = w.distance_sq(c.x, c.y, danger_fact["x"], danger_fact["y"])
                 if dd2 < (cfg.fear_radius * 1.5) ** 2:
                     danger_avoid_target = (danger_fact["x"], danger_fact["y"])
+        # §AL Multi-Objective Utility Engine & Purposeful Tactical Steering
+        u_flee = 0.0
         if flee_target is not None:
-            # Prey flees directly away from predator (with extra urgency when starving)
-            dx, dy = w.delta(c.x, c.y, flee_target.x, flee_target.y)
-            desired = math.atan2(dy, dx)
-            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
-            # Flee is more urgent than normal steering
-            c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
-        elif signal_alarm_target is not None:
-            # Alarm call: flee even without seeing predator (clan awareness)
-            dx, dy = w.delta(c.x, c.y, signal_alarm_target["x"], signal_alarm_target["y"])
-            desired = math.atan2(dy, dx)
-            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
-            c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
-        elif signal_help_target is not None:
-            # §X Mobbing: converge on the attacker threatening a clan-mate
-            hx, hy = signal_help_target
-            dx, dy = w.delta(hx, hy, c.x, c.y)
-            desired = math.atan2(dy, dx)
-            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
-            c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
-        elif danger_avoid_target is not None:
-            # §X steer away from a remembered danger zone
-            gx, gy = danger_avoid_target
-            dx, dy = w.delta(c.x, c.y, gx, gy)
-            desired = math.atan2(dy, dx)
-            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
-            c.angle += max(-cfg.steer_turn * 0.6, min(cfg.steer_turn * 0.6, diff))
-        elif hunt_target is not None:
-            dx, dy = w.delta(hunt_target.x, hunt_target.y, c.x, c.y)
-            desired = math.atan2(dy, dx)
-            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
-            c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
-        elif prey_target is not None:
-            # §AC: desperation outranks plants and calls — close on living prey
-            dx, dy = w.delta(prey_target.x, prey_target.y, c.x, c.y)
-            desired = math.atan2(dy, dx)
-            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
-            c.angle += max(-cfg.steer_turn * 1.1, min(cfg.steer_turn * 1.1, diff))
-        elif signal_food_target is not None and target is None:
-            # Hungry follows clan-mate food call toward remembered food
-            fx, fy = signal_food_target
-            dx, dy = w.delta(fx, fy, c.x, c.y)
-            desired = math.atan2(dy, dx)
-            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
-            c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
-        elif cfg.sleep_enabled and not c.is_predator and not c.is_herbivore and is_night and houses:
-            home = self._house_for(c, houses)
-            if home is None:
-                home = min(houses, key=lambda h: w.distance_sq(c.x, c.y, h.x, h.y))
-            # Edge-follow door seek: slide along the near wall to the gap
-            # instead of bumping the centre and grinding at the wall face.
-            if self._inside_house(c, home):
-                tx, ty = home.x, home.y
-            else:
-                tx, ty = self._house_entry_target(c, home)
-            dx, dy = w.delta(tx, ty, c.x, c.y)
-            desired = math.atan2(dy, dx)
-            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
-            c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
-        elif target is not None and (c.is_predator or c.energy <= 0.85 * cfg.energy_max):
-            dx, dy = w.delta(target.x, target.y, c.x, c.y)
-            desired = math.atan2(dy, dx)
-            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
-            step = max(-cfg.steer_turn, min(cfg.steer_turn, diff))
-            c.angle += step
+            u_flee = 1.2
+            if c.personality == "cautious":
+                u_flee += 0.3
+            elif c.personality == "brave" and c.caste == "Soldier":
+                u_flee -= 0.3
+            if c.health < 40.0:
+                u_flee += 0.4
+
+        u_alarm = 1.0 if (signal_alarm_target is not None and flee_target is None) else 0.0
+
+        u_help = 0.0
+        if signal_help_target is not None and flee_target is None:
+            u_help = 0.8
+            if c.personality == "brave" or c.equipped_item == "spear":
+                u_help += 0.35
+            if c.personality == "cautious" or c.health < 35.0:
+                u_help -= 0.45
+
+        u_hunt = 1.15 if hunt_target is not None else 0.0
+        u_cannibal = 1.25 if prey_target is not None else 0.0
+
+        u_shelter = 0.0
+        if cfg.sleep_enabled and not c.is_predator and not c.is_herbivore and houses:
+            if is_night:
+                u_shelter = 1.5
+            elif self.weather in ("storm", "rain") or c.chill > 5.0:
+                u_shelter = 0.85
+            elif c.personality == "cautious" and (c.energy < 40.0 or c.health < 50.0):
+                u_shelter = 0.7
+
+        u_eat = 0.0
+        if target is not None and (c.is_predator or c.energy <= 0.85 * cfg.energy_max):
+            energy_deficit = 1.0 - (c.energy / cfg.energy_max) if cfg.energy_max > 0 else 0.5
+            u_eat = 0.6 + energy_deficit * 0.8
+            if c.personality == "greedy":
+                u_eat += 0.25
+            if c.status == "starving":
+                u_eat += 0.5
+
+        u_signal_food = 0.0
+        if signal_food_target is not None and target is None and c.status in ("hungry", "starving"):
+            u_signal_food = 0.75
+
+        u_danger_avoid = 0.6 if (danger_avoid_target is not None and flee_target is None) else 0.0
+
+        # Purposeful Waypoint Navigation (§AL)
+        waypoint_target = None
+        u_waypoint = 0.0
+        if not c.is_predator and not c.is_herbivore:
+            if getattr(c, "waypoints", None) and isinstance(c.waypoints, dict):
+                if c.status in ("hungry", "starving") and target is None and "rich_food" in c.waypoints:
+                    rx, ry = c.waypoints["rich_food"]
+                    if w.distance_sq(c.x, c.y, rx, ry) > 4.0:
+                        waypoint_target = (rx, ry)
+                        u_waypoint = 0.55
+                elif c.personality == "explorer" and target is None and "patrol" in c.waypoints:
+                    px, py = c.waypoints["patrol"]
+                    if w.distance_sq(c.x, c.y, px, py) > 4.0:
+                        waypoint_target = (px, py)
+                        u_waypoint = 0.45
+
+        # Tactical Formations & Actions
+        utilities = [
+            (u_flee, "flee"),
+            (u_alarm, "alarm"),
+            (u_help, "help"),
+            (u_cannibal, "cannibal"),
+            (u_hunt, "hunt"),
+            (u_shelter, "shelter"),
+            (u_eat, "eat"),
+            (u_signal_food, "signal_food"),
+            (u_danger_avoid, "danger_avoid"),
+            (u_waypoint, "waypoint"),
+        ]
+        top_util, top_action = max(utilities, key=lambda pair: pair[0])
+
+        if top_util > 0.3:
+            if top_action == "flee" and flee_target is not None:
+                # Kiting & Flanking Maneuver (§AL): Women / lines kite at 90 deg tangent
+                if c.shape == "line" or c.caste == "Woman":
+                    dx, dy = w.delta(c.x, c.y, flee_target.x, flee_target.y)
+                    base_angle = math.atan2(dy, dx)
+                    desired = base_angle + (math.pi / 2 if (c.id % 2 == 0) else -math.pi / 2)
+                    diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                    c.angle += max(-cfg.steer_turn * 1.3, min(cfg.steer_turn * 1.3, diff))
+                else:
+                    dx, dy = w.delta(c.x, c.y, flee_target.x, flee_target.y)
+                    desired = math.atan2(dy, dx)
+                    diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                    c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
+            elif top_action == "alarm" and signal_alarm_target is not None:
+                dx, dy = w.delta(c.x, c.y, signal_alarm_target["x"], signal_alarm_target["y"])
+                desired = math.atan2(dy, dx)
+                diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
+            elif top_action == "help" and signal_help_target is not None:
+                hx, hy = signal_help_target
+                dx, dy = w.delta(hx, hy, c.x, c.y)
+                desired = math.atan2(dy, dx)
+                # Phalanx Alignment (§AL): Soldiers within 4.0 align angle with allied soldiers
+                if c.caste == "Soldier":
+                    for o in w.query_radius(c.x, c.y, 4.0):
+                        if isinstance(o, Creature) and o.clan_id == c.clan_id and o.caste == "Soldier" and o.id != c.id:
+                            desired = (desired + o.angle) / 2.0
+                            break
+                diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
+            elif top_action == "cannibal" and prey_target is not None:
+                dx, dy = w.delta(prey_target.x, prey_target.y, c.x, c.y)
+                desired = math.atan2(dy, dx)
+                diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                c.angle += max(-cfg.steer_turn * 1.1, min(cfg.steer_turn * 1.1, diff))
+            elif top_action == "hunt" and hunt_target is not None:
+                dx, dy = w.delta(hunt_target.x, hunt_target.y, c.x, c.y)
+                desired = math.atan2(dy, dx)
+                diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
+            elif top_action == "shelter" and houses:
+                home = self._house_for(c, houses)
+                if home is None:
+                    home = min(houses, key=lambda h: w.distance_sq(c.x, c.y, h.x, h.y))
+                if getattr(c, "waypoints", None) is not None:
+                    c.waypoints["home"] = (round(home.x, 2), round(home.y, 2))
+                if self._inside_house(c, home):
+                    tx, ty = home.x, home.y
+                else:
+                    tx, ty = self._house_entry_target(c, home)
+                dx, dy = w.delta(tx, ty, c.x, c.y)
+                desired = math.atan2(dy, dx)
+                diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
+            elif top_action == "eat" and target is not None:
+                if isinstance(target, Food) and target.variant in ("berry", "mushroom") and getattr(c, "waypoints", None) is not None:
+                    c.waypoints["rich_food"] = (round(target.x, 2), round(target.y, 2))
+                dx, dy = w.delta(target.x, target.y, c.x, c.y)
+                desired = math.atan2(dy, dx)
+                diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
+            elif top_action == "signal_food" and signal_food_target is not None:
+                fx, fy = signal_food_target
+                dx, dy = w.delta(fx, fy, c.x, c.y)
+                desired = math.atan2(dy, dx)
+                diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
+            elif top_action == "danger_avoid" and danger_avoid_target is not None:
+                gx, gy = danger_avoid_target
+                dx, dy = w.delta(c.x, c.y, gx, gy)
+                desired = math.atan2(dy, dx)
+                diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                c.angle += max(-cfg.steer_turn * 0.6, min(cfg.steer_turn * 0.6, diff))
+            elif top_action == "waypoint" and waypoint_target is not None:
+                wx, wy = waypoint_target
+                dx, dy = w.delta(wx, wy, c.x, c.y)
+                desired = math.atan2(dy, dx)
+                diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                c.angle += max(-cfg.steer_turn * 0.8, min(cfg.steer_turn * 0.8, diff))
         else:
-            wander = cfg.wander_turn
-            if self.weather == "storm":
-                wander += cfg.storm_wander_bonus  # storms fling the lost about
-            c.angle += self.rng.uniform(-wander, wander)
+            # High-trust buddy attraction (§AL): steer towards trusted kin when idle
+            buddy_found = False
+            if getattr(c, "trust", None) and isinstance(c.trust, dict) and not c.is_predator and not c.is_herbivore:
+                for o in w.query_radius(c.x, c.y, cfg.flock_radius):
+                    if isinstance(o, Creature) and o.id in c.trust and c.trust[o.id] >= 15.0 and o.id != c.id:
+                        dx, dy = w.delta(o.x, o.y, c.x, c.y)
+                        desired = math.atan2(dy, dx)
+                        diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                        c.angle += max(-cfg.steer_turn * 0.4, min(cfg.steer_turn * 0.4, diff))
+                        buddy_found = True
+                        break
+            if not buddy_found:
+                wander = cfg.wander_turn
+                if self.weather == "storm":
+                    wander += cfg.storm_wander_bonus
+                c.angle += self.rng.uniform(-wander, wander)
+
 
         # 2b. Social yielding: the lowly give way to their betters.
         my_rank = YIELD_RANK.get(c.caste, 0)

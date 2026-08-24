@@ -56,11 +56,13 @@ This project is **developed from the Flatland idea rather than mimicking the boo
 
 ### Core Architecture & Systems
 - **The God Model**: God sets global **laws of nature** (carrying capacity, food growth, metabolism, disease, climate) but never intervenes in individual lives. All behavior is 100% emergent.
+- **Cognitive Agency & Tactical Intelligence**: Multi-objective utility AI replaces rigid if/else trees, evaluating survival, duty, traits, and kin needs; spatial waypoint mental maps; tactical soldier phalanxes, line kiting maneuvers, and interpersonal trust-based buddy pairing.
 - **Autonomous Evolution & Culture**: 6 heritable personality archetypes (`brave`, `cautious`, `altruistic`, `greedy`, `explorer`, `builder`), craftable tools (spears, baskets, herb poultices, chieftain crowns), 4 mastery skills (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿), earned dynamic titles, oral lore passed from elders to youth in houses, and live thought bubbles.
 - **Realistic Energy & Metabolism**: Infant low metabolism ($0.45\\times$ energy decay), combat stamina expenditure, and autonomous field food reserve management via baskets.
 - **Settlements & Diplomacy**: Walled houses with creature-sized doors, multi-house clan territories, settlement food larders, mutual coalitions, tributary pacts, and schisms.
 - **Real-Time Synchronization**: Deterministic fixed-rate engine loop streaming state over WebSocket (`/ws`) at ~30–60 FPS with durable SQLite historical chronicle storage.
 """
+
 
 
 FLATLAND_BOOK_COMPARISON_MD = """
