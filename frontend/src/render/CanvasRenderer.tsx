@@ -205,6 +205,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, selectedClanRef,
     }
 
     const onPointerDown = (ev: PointerEvent) => {
+      if (ev.target !== canvas) return
       canvas.setPointerCapture(ev.pointerId)
       pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY })
       if (pointers.size === 2) {
@@ -329,6 +330,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, selectedClanRef,
     }
 
     const onWheel = (ev: WheelEvent) => {
+      if (ev.target !== canvas) return
       ev.preventDefault()
       const state = stateRef.current
       if (!state || !cam.initialized) return
@@ -338,6 +340,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, selectedClanRef,
 
     // §Y double-click zoom: plain = in, Shift/Alt+double-click = out (at the cursor)
     const onDblClick = (ev: MouseEvent) => {
+      if (ev.target !== canvas) return
       ev.preventDefault()
       const state = stateRef.current
       if (!state || !cam.initialized) return

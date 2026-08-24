@@ -160,15 +160,14 @@ export default function App() {
     const onClick = (e: Event) => {
       const raw = e.target as HTMLElement | null
       if (!raw || !(raw instanceof Element)) return
-      const chip = raw.closest('[title], [data-hint]') as HTMLElement | null
-      if (chip) {
+      const chip = raw.closest('.hud [title], .hud [data-hint], .chip[data-hint]') as HTMLElement | null
+      if (chip && !chip.closest('button, select, input, a, .collapsible-head, .right-stack')) {
         const txt = chip.getAttribute('title') || chip.getAttribute('data-hint') || chip.getAttribute('data-title')
         if (txt) {
           const rect = chip.getBoundingClientRect()
           setTooltip({ text: txt, x: rect.left + rect.width / 2, y: rect.top })
           if (hideTimer) window.clearTimeout(hideTimer)
           hideTimer = window.setTimeout(() => setTooltip(null), 2800) as unknown as number
-          e.preventDefault()
         }
       }
     }
@@ -185,11 +184,11 @@ export default function App() {
         }
       }
     })
-    document.addEventListener('click', onClick, true)
+    document.addEventListener('click', onClick, false)
     return () => {
       document.removeEventListener('mouseenter', onEnter, true)
       document.removeEventListener('mouseleave', onLeave, true)
-      document.removeEventListener('click', onClick, true)
+      document.removeEventListener('click', onClick, false)
       if (hideTimer) window.clearTimeout(hideTimer)
     }
   }, [tooltip])
