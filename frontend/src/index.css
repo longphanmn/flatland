@@ -129,6 +129,8 @@ body {
   gap: 8px;
   z-index: 5;
   pointer-events: none;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .info-panel {
