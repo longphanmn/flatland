@@ -76,7 +76,9 @@ export function drawBatchedEntities(
   const isDense = entities.length > 300
 
   const grassPlants: EntityState[] = []
+  const grainPlants: EntityState[] = []
   const berryPlants: EntityState[] = []
+  const herbPlants: EntityState[] = []
   const mushroomPlants: EntityState[] = []
   const poisonPlants: EntityState[] = []
   const corpses: EntityState[] = []
@@ -98,12 +100,15 @@ export function drawBatchedEntities(
 
     if (e.kind === 'food') {
       const v = e.variant ?? 'grass'
-      if (v === 'berry') berryPlants.push(e)
+      if (v === 'grain') grainPlants.push(e)
+      else if (v === 'berry') berryPlants.push(e)
+      else if (v === 'medicinal_herb') herbPlants.push(e)
       else if (v === 'mushroom') mushroomPlants.push(e)
       else if (v === 'poisonous') poisonPlants.push(e)
       else grassPlants.push(e)
       continue
     }
+
 
     if (e.kind === 'corpse') {
       corpses.push(e)
@@ -201,9 +206,12 @@ export function drawBatchedEntities(
   }
 
   drawPlantBatch(grassPlants, '#3fb950')
+  drawPlantBatch(grainPlants, '#e3b341')
   drawPlantBatch(berryPlants, '#f85149')
+  drawPlantBatch(herbPlants, '#2ea043')
   drawPlantBatch(mushroomPlants, '#a67c52')
   drawPlantBatch(poisonPlants, '#8957e5')
+
 
   if (poisonPlants.length > 0) {
     ctx.globalAlpha = 0.25

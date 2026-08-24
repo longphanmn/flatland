@@ -198,9 +198,10 @@ class Food(Entity):
 
     kind: str = "food"
     growth: float = 0.15  # 0..1 — 1.0 means mature
-    variant: str = "grass"  # grass | berry | mushroom | poisonous
-    # poisonous plants sicken; mushrooms are decomposers (spawn on corpses/rocks)
+    variant: str = "grass"  # grass | grain | berry | medicinal_herb | mushroom | poisonous
+    # poisonous plants sicken; mushrooms are decomposers; herbs cure; grain is calorie-dense
     mature_ticks: int = 0  # §AE: ticks lived since reaching maturity (decay clock)
+
 
 
 @dataclass

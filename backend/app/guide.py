@@ -242,7 +242,17 @@ Evolution emerges 100% autonomously without god interventions:
 
 
 
+## Food & Botanical Ecology (§AM)
+- **Crop Diversity & Botanical Variants**: 6 distinct flora species (`grass`, `grain`, `berry`, `medicinal_herb`, `mushroom`, `poisonous`).
+- **Functional Nutrition**:
+  - *Golden Grain*: Dense calorie staple (+45 Energy), slow decay rate ($2.5\times$ lifespan), foundational for settlement security.
+  - *Sun Berry*: Energy burst (+48 Energy) and $+15\%$ movement speed surge.
+  - *Medicinal Herb*: Healing remedy (+18 Energy, $+30\text{ HP}$), cures infections, grants heal emotes.
+  - *Fungi / Mushroom*: Decomposer thriving near corpses, rocks, and during winter (+24 Energy).
+- **Targeted Dietary Selection**: Injured and infected creatures actively seek medicinal herbs (0.2× effective distance weighting); starving creatures seek golden grain (0.4× distance weighting).
+
 ## Terminal User Interface (§AI)
+
 A complete Textual terminal interface (`backend/tui/`) attaches to running worlds with:
 - Camera follow mode (`w`) tracking moving creatures.
 - Category-filtered Chronicle (`t`) (All, Birth, Death, War, Politics, Settlement).

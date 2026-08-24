@@ -73,8 +73,8 @@ Evolution emerges 100% autonomously without artificial intervention:
 
 ### 5. Environment & Ecosystem
 - **Dynamic Seasons & Day/Night**: Spring blossoms, summer abundance, autumn harvests, and winter lean periods.
-- **Weather & Disasters**: Rain, fog, thunderstorms with lightning wildfires, and exposure sickness for unsheltered creatures.
-- **Biodiversity**: Distinct plant varieties (Grass, Berry Bushes, Mushrooms, and Poisonous Sprouts) and nutrient recycling from fallen corpses.
+- **Biodiversity & Functional Nutrition**: Six distinct plant species (Grass, Golden Grain, Berry Bushes, Medicinal Herbs, Fungi Mushrooms, and Poisonous Sprouts) with targeted health-based foraging preferences and nutrient recycling from fallen corpses.
+
 
 ---
 

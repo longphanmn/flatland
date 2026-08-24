@@ -1198,13 +1198,59 @@ Next-generation behavioral intelligence roadmap advancing individual cognitive d
 ### Phase 3: Macro Geopolitics, Trade Caravans & Cultural Traditions  [P2] — ✅ implemented
 - **Task 3.1: Calculated Casus Belli & Strategic Peace Terms**
   - [x] [P1] Wars declared with rational intent: famine raid plunder, blood feuds, and territorial friction with documented Casus Belli logs.
-  - [x] [P1] Structured surrender and treaty terms: vassal tribute pacts and mutual peace treaties.
-- **Task 3.2: Inter-Clan Trade Caravans & Economic Specialization**
-  - [x] [P2] Resource barter between specialized clans (agricultural clans trading grain surplus for combat martial lore from warrior clans).
-  - [x] [P2] Inter-clan trade missions and relations boosts (+12 relation points per caravan trade).
-- **Task 3.3: Tribal Traditions, Festivals & Oral Epics**
-  - [x] [P2] Annual Harvest Festivals at autumn end: members gather at Main House for feast (+25 energy, cheer emotes, trust gains).
-  - [x] [P2] Lineage Epics: youth receive oral lore and skill XP boosts (+2.0 farming/combat XP).
+
+
+---
+
+## AM. Food & Agriculture Ecosystem Roadmap  [P1]
+Next-generation botanical, agricultural, and culinary simulation advancing crop diversity, intentional clan farming, granaries, soil nutrient dynamics, and caste food culture.
+
+### Phase A: Crop Diversity & Functional Nutrition  [P1] — ✅ implemented
+- **Task A.1: Botanical Diversity & Variant Expansion**
+  - [x] [P1] Expand `Food.variant` with `grain` (dense calories, slow decay) and `medicinal_herb` (infection cure & healing).
+  - [x] [P1] Configure variant-specific growth speeds, seasonal growth multipliers, and lifespan timers in `backend/app/simulation.py`.
+- **Task A.2: Functional Dietary Effects & Nutritional Metabolics**
+  - [x] [P1] Implement distinct physiological effects upon consumption:
+    - *Grain*: Yields $+45$ energy baseline with high storage stability and craft emote.
+    - *Berry*: Yields $+48$ energy and $+15\%$ movement speed boost with cheer emote.
+    - *Medicinal Herb*: Yields $+18$ energy, heals $+30\text{ HP}$, cures active infections, and grants heal emote.
+    - *Mushroom*: Yields $+24$ energy and decomposer nutrient recycling.
+- **Task A.3: Foraging Preference & Health-Based Dietary Selection**
+  - [x] [P1] Injured or infected creatures prioritize seeking `medicinal_herb` over standard grass (0.2x effective distance weighting).
+  - [x] [P1] Starving creatures prioritize high-calorie `grain` (0.4x effective distance weighting).
+
+
+### Phase B: Clan Agriculture, Sowing & Farm Plots  [P2]
+- **Task B.1: Seed Harvesting & Sowing Mechanics**
+  - [ ] [P2] High-farming creatures gather seed pouches from mature crops and sow them in farm plots near clan houses.
+  - [ ] [P2] Cultivated crops grow $2.0\times$ faster and yield $2.5\times$ more energy than wild weeds.
+- **Task B.2: Crop Tending & Weeding**
+  - [ ] [P2] Farmers tend nearby crops, eliminating toxic sprouts and preventing premature withering.
+  - [ ] [P2] Irrigation furrows constructed near water groves to maintain soil moisture during summer droughts.
+
+### Phase C: Granaries, Food Preservation & Winter Spoilage  [P2]
+- **Task C.1: Settlement Granaries & Physical Storage**
+  - [ ] [P2] Physical granaries in clan houses storing harvested grains and cured rations securely from rain and wild beasts.
+  - [ ] [P2] Granary visual fill levels and historical harvest capacity tracking.
+- **Task C.2: Food Preservation & Spoilage Dynamics**
+  - [ ] [P2] Sun-drying and curing techniques to convert perishable berries into long-lasting field rations.
+  - [ ] [P2] Winter frost spoilage for unharvested/exposed field crops.
+
+### Phase D: Dynamic Soil Ecology, Composting & Crop Rotation  [P2]
+- **Task D.1: Soil Nutrient Depletion Grid**
+  - [ ] [P2] Dynamic soil fertility grid where repeated monocropping exhausts local nitrogen/nutrients.
+- **Task D.2: Composting, Ash & Corpse Decomposition**
+  - [ ] [P2] Corpse decomposition and wildfire ash replenish soil fertility ($+0.4$ nutrient boost).
+  - [ ] [P2] Farmers build compost heaps near houses to revitalize depleted soil.
+
+### Phase E: Food Culture, Feasting & Breadbasket Geopolitics  [P2]
+- **Task E.1: Caste Gastronomy & Dietary Taboos**
+  - [ ] [P2] Geometric caste dietary privileges: Priests/Nobles demand refined grain/fruit; Isosceles soldiers eat meat/high-protein rations.
+  - [ ] [P2] Sacred hospitality laws (sharing food with foreigners grants mutual non-aggression).
+- **Task E.2: Clan Banquets & Famine Wars**
+  - [ ] [P2] Clan banquets triggered at $>80\%$ granary capacity boosting morale, bonding, and fertility.
+  - [ ] [P2] Famine raids and food blockades between agrarian breadbasket clans and martial clans.
+
 
 
 

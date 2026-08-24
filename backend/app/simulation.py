@@ -75,8 +75,15 @@ TREASON_RADIUS = 14.0  # false-knowledge seeding reach during betrayal
 CANNIBAL_COOLDOWN = 120  # ticks between desperate kills
 CANNIBAL_CORPSE_MULT = 0.5  # the body left after a cannibal feeds
 
-# §AE food decay — nothing lasts forever: variant lifespan multipliers
-FOOD_LIFESPAN_MULT = {"grass": 1.0, "berry": 1.5, "mushroom": 0.4, "poisonous": 3.0}
+# §AE food decay — nothing lasts forever: variant lifespan multipliers (§AM)
+FOOD_LIFESPAN_MULT = {
+    "grass": 1.0,
+    "grain": 2.5,
+    "berry": 1.5,
+    "medicinal_herb": 1.2,
+    "mushroom": 0.4,
+    "poisonous": 3.0,
+}
 WILT_FRACTION = 0.8  # wilting (render fade) begins at this fraction of lifespan
 WITHER_NUTRIENT_MULT = 0.5  # a withered plant fertilises at half a corpse's worth
 
@@ -86,17 +93,42 @@ NUTRIENT_RADIUS = 10.0  # a fully decayed corpse fertilises plants within this r
 NUTRIENT_BOOST = 0.5  # base growth granted by a decayed corpse (× nutrient_cycle_rate)
 SPROUT_GROWTH = 0.15  # every newly spawned plant starts here
 
-# §O Biodiversity — plant variants (§O)
-VARIANT_ENERGY = {"grass": 32.0, "berry": 48.0, "mushroom": 24.0, "poisonous": 8.0}
-VARIANT_HEALTH = {"grass": 0.0, "berry": 1.0, "mushroom": 0.0, "poisonous": -30.0}
-VARIANT_GROWTH_MULT = {"grass": 1.0, "berry": 0.65, "mushroom": 0.85, "poisonous": 0.60}
-# berry peaks in autumn, mushrooms tolerate winter, grass thrives summer
-VARIANT_SEASON_MULT = {
-    "grass": {"spring": 1.05, "summer": 1.15, "autumn": 1.0, "winter": 0.45},
-    "berry": {"spring": 0.5, "summer": 0.8, "autumn": 1.9, "winter": 0.25},
-    "mushroom": {"spring": 1.0, "summer": 0.6, "autumn": 1.35, "winter": 1.1},
-    "poisonous": {"spring": 1.0, "summer": 1.0, "autumn": 1.0, "winter": 1.0},
+# §O Biodiversity — plant variants (§O, §AM)
+VARIANT_ENERGY = {
+    "grass": 32.0,
+    "grain": 45.0,
+    "berry": 48.0,
+    "medicinal_herb": 18.0,
+    "mushroom": 24.0,
+    "poisonous": 8.0,
 }
+VARIANT_HEALTH = {
+    "grass": 0.0,
+    "grain": 2.0,
+    "berry": 1.0,
+    "medicinal_herb": 30.0,
+    "mushroom": 0.0,
+    "poisonous": -30.0,
+}
+VARIANT_GROWTH_MULT = {
+    "grass": 1.0,
+    "grain": 0.85,
+    "berry": 0.65,
+    "medicinal_herb": 0.70,
+    "mushroom": 0.85,
+    "poisonous": 0.60,
+}
+# seasonal rhythms: grain thrives summer/autumn, berry peaks autumn, herb thrives spring, mushrooms tolerate winter
+VARIANT_SEASON_MULT = {
+    "grass": {"spring": 1.05, "summer": 1.15, "autumn": 1.00, "winter": 0.45},
+    "grain": {"spring": 0.90, "summer": 1.40, "autumn": 1.25, "winter": 0.15},
+    "berry": {"spring": 0.50, "summer": 0.80, "autumn": 1.90, "winter": 0.25},
+    "medicinal_herb": {"spring": 1.35, "summer": 1.10, "autumn": 0.65, "winter": 0.00},
+    "mushroom": {"spring": 1.00, "summer": 0.60, "autumn": 1.35, "winter": 1.10},
+    "poisonous": {"spring": 1.00, "summer": 1.00, "autumn": 1.00, "winter": 1.00},
+}
+
+
 
 # Creature Evolution: Personality Archetypes & Metabolism
 PERSONALITIES = ("brave", "cautious", "altruistic", "greedy", "explorer", "builder")
@@ -1128,22 +1160,23 @@ class Simulation:
         return self._rand_pos()
 
     def _pick_variant(self, x: float, y: float) -> str:
-        """§O: choose grass/berry/mushroom/poisonous for a new sprout."""
+        """§O, §AM: choose grass/grain/berry/medicinal_herb/mushroom/poisonous for a new sprout."""
         cfg = self.config
         if not cfg.plant_variants_enabled:
             return "grass"
         if cfg.poison_rate > 0 and self.rng.random() < cfg.poison_rate:
             return "poisonous"
         season = self._season()
-        # base weights shift with season (autumn → berries, winter → mushrooms)
+        # base weights shift with season (§AM)
         if season == "autumn":
-            weights = {"grass": 0.30, "berry": 0.48, "mushroom": 0.22}
+            weights = {"grass": 0.25, "grain": 0.25, "berry": 0.35, "medicinal_herb": 0.05, "mushroom": 0.10}
         elif season == "winter":
-            weights = {"grass": 0.35, "berry": 0.08, "mushroom": 0.57}
+            weights = {"grass": 0.35, "grain": 0.05, "berry": 0.05, "medicinal_herb": 0.00, "mushroom": 0.55}
         elif season == "summer":
-            weights = {"grass": 0.58, "berry": 0.22, "mushroom": 0.20}
+            weights = {"grass": 0.30, "grain": 0.40, "berry": 0.15, "medicinal_herb": 0.10, "mushroom": 0.05}
         else:  # spring
-            weights = {"grass": 0.50, "berry": 0.18, "mushroom": 0.32}
+            weights = {"grass": 0.35, "grain": 0.15, "berry": 0.15, "medicinal_herb": 0.20, "mushroom": 0.15}
+
         # decomposer boost: near corpses or rocks → more mushrooms
         near_decomposer = False
         for e in self.world.query_radius(x, y, NUTRIENT_RADIUS):
@@ -1156,8 +1189,8 @@ class Simulation:
                     near_decomposer = True
                     break
         if near_decomposer:
-            # shift 0.25 from grass/berry to mushroom
-            weights["mushroom"] = min(0.70, weights["mushroom"] + 0.25)
+            # shift weight from grass/grain to mushroom
+            weights["mushroom"] = min(0.70, weights["mushroom"] + 0.30)
             # renormalize proportionally
             total = sum(weights.values())
             for k in weights:
@@ -1169,6 +1202,7 @@ class Simulation:
             if r < cum:
                 return v
         return "grass"
+
 
     def _new_food(self, x: float, y: float, growth: float) -> Food:
         """Create a Food with §O variant (deterministic via rng)."""
@@ -3840,12 +3874,22 @@ class Simulation:
                 if c.is_herbivore and isinstance(e, Food) and e.variant == "poisonous" and cfg.diet_strictness > 0.3:
                     if self.rng.random() < cfg.diet_strictness:
                         continue
-                # trait greedy: prefer richer food (berry/corpse) over grass
+                # trait greedy: prefer richer food (grain/berry/corpse) over grass
                 if c.trait == "greedy" and isinstance(e, Food) and e.variant == "grass":
                     if self.rng.random() < 0.45:
                         continue
-            if d2 < best_sq:
-                best_sq, target = d2, e
+
+            effective_d2 = d2
+            # Health & status based dietary preferences (§AM)
+            if isinstance(e, Food):
+                if (c.health < 70.0 or c.infected) and e.variant == "medicinal_herb":
+                    effective_d2 *= 0.2  # high attraction to healing herbs
+                elif c.status == "starving" and e.variant == "grain":
+                    effective_d2 *= 0.4  # high attraction to calorie-dense grain
+
+            if effective_d2 < best_sq:
+                best_sq, target = effective_d2, e
+
 
         # §AC Desperation: the starving may hunt the living. Sated/hungry
         # creatures never do; a cooldown separates desperate kills.
@@ -4343,6 +4387,23 @@ class Simulation:
                 c.energy = min(cfg.energy_max, c.energy + gain)
                 if isinstance(target, Food):
                     c.skills["farming"] = c.skills.get("farming", 0.0) + 0.4
+                    # Functional Dietary Effects (§AM)
+                    if target.variant == "medicinal_herb":
+                        c.infected = False
+                        c.disease_id = 0
+                        c.health = min(100.0, c.health + 20.0)
+                        c.emote = "heal"
+                        c.emote_ticks = 20
+                    elif target.variant in ("sun_berry", "berry"):
+                        c.speed = min(1.2, c.speed * 1.15)
+                        c.emote = "cheer"
+                        c.emote_ticks = 15
+                    elif target.variant == "grain":
+                        c.emote = "craft"
+                        c.emote_ticks = 15
+                    elif target.variant == "poisonous":
+                        c.emote = "fear"
+                        c.emote_ticks = 20
                 elif isinstance(target, Corpse):
                     c.skills["foraging"] = c.skills.get("foraging", 0.0) + 0.6
 
@@ -4351,6 +4412,7 @@ class Simulation:
                 if c.health <= 0:
                     self._kill(c, "poison")
                     return
+
 
         # 5b. Rain and storms send the roofless under cover — beds permitting.
         # Predators cannot shelter: the doorway is too small (§L refuge). Wild grazers don't seek roofs.

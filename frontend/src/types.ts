@@ -54,8 +54,9 @@ export interface EntityState {
   is_ruin?: boolean
   abandoned_ticks?: number
   growth?: number
-  variant?: 'grass' | 'berry' | 'mushroom' | 'poisonous'
+  variant?: 'grass' | 'grain' | 'berry' | 'medicinal_herb' | 'mushroom' | 'poisonous'
   withering?: boolean
+
   sex?: 'male' | 'female'
   mother_id?: number
   father_id?: number

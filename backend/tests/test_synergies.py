@@ -421,7 +421,7 @@ def test_winter_as_apex_pressure():
             seed=51, width=60, height=60,
             food_count=3, plant_growth_rate=0.02, plant_spread_rate=0.01,
             energy_decay_per_tick=0.08, energy_from_food=12,
-            season_length=60,
+            season_length=120,
             predation_enabled=True, predator_ratio=0.0, hunt_radius=10, fear_radius=8, bite_cooldown=5,
             disease_enabled=True, disease_rate=0.35, disease_radius=4.0, recovery_rate=0.0, disease_outbreak_rate=0.001,
             war_enabled=False,
@@ -437,9 +437,9 @@ def test_winter_as_apex_pressure():
         s.disease_id = 1
         s._infect(prey)
         if winter:
-            s.tick = 180  # winter: 180//60=3 => winter
+            s.tick = 360  # winter: 360//120=3 => winter
         else:
-            s.tick = 60   # summer: 60//60=1 => summer
+            s.tick = 120  # summer: 120//120=1 => summer
         return s
     winter = make_world(True)
     summer = make_world(False)
@@ -451,6 +451,8 @@ def test_winter_as_apex_pressure():
     # winter should be harsher (more deaths from stacked pressures)
     assert winter_deaths >= summer_deaths, f"winter {winter_deaths} vs summer {summer_deaths}"
     assert winter_deaths >= 3, "winter apex should kill at least 3"
+
+
 
 
 def test_mutation_demotions_well_fodder():

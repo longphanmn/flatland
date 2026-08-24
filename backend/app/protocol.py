@@ -35,8 +35,9 @@ class EntityState(BaseModel):
     caste: Optional[str] = None
     energy: Optional[float] = None
     growth: Optional[float] = None  # plants: 0..1 maturity (renderer scales size)
-    variant: Optional[Literal["grass", "berry", "mushroom", "poisonous"]] = None
+    variant: Optional[Literal["grass", "grain", "berry", "medicinal_herb", "mushroom", "poisonous"]] = None
     withering: Optional[bool] = None  # §AE: mature plant past its wilt threshold
+
     size: Optional[float] = None
     status: Optional[Literal["", "hungry", "starving"]] = None
     radius: Optional[float] = None
