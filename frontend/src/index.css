@@ -146,10 +146,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 5;
-  pointer-events: none;
+  z-index: 25;
+  pointer-events: auto;
   overflow-y: auto;
   scrollbar-width: thin;
+  touch-action: pan-y;
 }
 .right-stack > * {
   pointer-events: auto;
@@ -157,12 +158,10 @@ body {
 
 /* 3 main collapsible boxes in right stack: Overview, Clans, Chronicle */
 .right-stack > .collapsible {
-  background: rgba(13, 17, 23, 0.93);
+  background: #0d1117;
   border: 1px solid #30363d;
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   pointer-events: auto;
   flex: none;
   overflow: hidden;
@@ -178,7 +177,7 @@ body {
   color: #e6edf3;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  background: transparent;
+  background: #161b22;
   border: none;
   border-bottom: 1px solid transparent;
   cursor: pointer;
@@ -194,12 +193,12 @@ body {
 }
 
 .right-stack > .collapsible[data-open="true"] > .collapsible-head {
-  border-bottom: 1px solid rgba(48, 54, 61, 0.6);
+  border-bottom: 1px solid #30363d;
 }
 
 .right-stack > .collapsible > .collapsible-head:hover {
   color: #fff;
-  background: rgba(255, 255, 255, 0.04);
+  background: #21262d;
 }
 
 .right-stack > .collapsible > .collapsible-body {
@@ -207,10 +206,41 @@ body {
   overflow-y: auto;
   max-height: 28vh;
   scrollbar-width: thin;
+  background: #0d1117;
+  pointer-events: auto;
+}
+
+/* Nested collapsibles in right stack */
+.right-stack .collapsible .collapsible {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  margin: 6px 0;
+  overflow: hidden;
+  pointer-events: auto;
+}
+.right-stack .collapsible .collapsible .collapsible-head {
+  background: #1c2128;
+  padding: 6px 8px;
+  font-size: 11px;
+  border-bottom: 1px solid transparent;
+  color: #c9d1d9;
+}
+.right-stack .collapsible .collapsible[data-open="true"] .collapsible-head {
+  border-bottom: 1px solid #30363d;
+}
+.right-stack .collapsible .collapsible .collapsible-head:hover {
+  background: #282e36;
+  color: #fff;
+}
+.right-stack .collapsible .collapsible .collapsible-body {
+  background: #161b22;
+  padding: 8px;
+  max-height: 24vh;
 }
 
 .info-panel {
-  background: rgba(13, 17, 23, 0.93);
+  background: #0d1117;
   border: 1px solid #30363d;
   border-radius: 8px;
   padding: 10px 14px;
@@ -222,7 +252,7 @@ body {
 }
 
 .clan-panel-box {
-  background: rgba(13, 17, 23, 0.93);
+  background: #0d1117;
   border: 1px solid #30363d;
   border-radius: 8px;
   padding: 10px 14px;
@@ -248,8 +278,35 @@ body {
   text-transform: uppercase;
 }
 
+.info-spark {
+  background: #161b22;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 6px 0;
+}
+
+.clan-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.clan-card {
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.clan-card:hover {
+  background: #21262d !important;
+}
+
+.plots-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .chronicle {
-  background: rgba(13, 17, 23, 0.93);
+  background: #0d1117;
   border: 1px solid #30363d;
   border-radius: 8px;
   padding: 10px 14px;

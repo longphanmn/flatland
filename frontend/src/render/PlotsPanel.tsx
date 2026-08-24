@@ -43,7 +43,7 @@ export default function PlotsPanel({ onSelectClan }: { onSelectClan?: (id: numbe
       <h4 style={{ margin: '8px 0 6px', fontSize: '0.9em' }}>Plots — foreshadowing</h4>
       <div style={{ display: 'grid', gap: 4 }}>
         {plots.map((pl, i) => (
-          <div key={i} style={{ background: 'rgba(227,179,65,0.08)', border: '1px solid #7e6325', borderRadius: 4, padding: '6px 8px' }}>
+          <div key={i} style={{ background: '#161b22', border: '1px solid #7e6325', borderRadius: 6, padding: '6px 8px' }}>
             <div className="chip" style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>
                 {pl.type === 'war' ? '⚔ ' : '💔 '}

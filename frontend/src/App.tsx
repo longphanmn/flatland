@@ -867,7 +867,13 @@ export default function App() {
       )}
 
       {!isMobile && (
-        <div className="right-stack">
+        <div
+          className="right-stack"
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onWheel={(e) => e.stopPropagation()}
+        >
           <Collapsible id="box-overview" title="Overview" hint="Live population — Caste, Alive spark, Trophic, Plots" defaultOpen={true}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 0', fontSize: 11, color: '#8b949e', marginBottom: 6 }}>
               {creatureEntries.map(([k, v], i) => (

@@ -70,7 +70,7 @@ export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelect
       <h4 style={{ margin: '8px 0 6px', fontSize: '0.9em' }}>Clans — {tick} ticks</h4>
       <div style={{ display: 'grid', gap: 6 }}>
         {alive.map((c) => (
-          <div key={c.id} className="clan-card" onClick={() => onSelectClan?.(c.id)} style={{ borderLeft: `4px solid ${c.color}`, padding: '6px 8px', background: 'rgba(110,118,129,0.08)', borderRadius: 4, cursor: onSelectClan ? 'pointer' : 'default' }} title={onSelectClan ? 'Click for clan details' : undefined}>
+          <div key={c.id} className="clan-card" onClick={() => onSelectClan?.(c.id)} style={{ borderLeft: `4px solid ${c.color}`, padding: '6px 8px', background: '#161b22', border: '1px solid #30363d', borderLeftWidth: 4, borderRadius: 6, cursor: onSelectClan ? 'pointer' : 'default' }} title={onSelectClan ? 'Click for clan details' : undefined}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <b style={{ color: c.color }}>{c.name}</b>
               <span className="chip" style={{ background: c.color, color: '#0b0f14' }}>{totemEmoji(c.totem)} {c.totem ?? '—'}</span>

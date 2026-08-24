@@ -29,7 +29,13 @@ export default function Collapsible({ id, title, children, defaultOpen = true, h
   }, [open, storageKey])
 
   return (
-    <section className={`collapsible ${className}`.trim()} data-open={open}>
+    <section
+      className={`collapsible ${className}`.trim()}
+      data-open={open}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
       <button
         type="button"
         className="collapsible-head"
@@ -37,6 +43,9 @@ export default function Collapsible({ id, title, children, defaultOpen = true, h
           e.stopPropagation()
           setOpen((o) => !o)
         }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
         aria-expanded={open}
         title={hint}
       >
@@ -53,7 +62,16 @@ export default function Collapsible({ id, title, children, defaultOpen = true, h
         </span>
         {title}
       </button>
-      {open && <div className="collapsible-body">{children}</div>}
+      {open && (
+        <div
+          className="collapsible-body"
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
+          {children}
+        </div>
+      )}
     </section>
   )
 }
