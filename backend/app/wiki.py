@@ -124,6 +124,8 @@ A comparative study between **Edwin A. Abbott’s 1884 satirical classic *Flatla
   - **Settlement Economy**: Houses are physical 2D structures with precise interior boundaries, oriented doors (`north`, `east`, `south`, `west`), and bed capacities.
   - **Single Main House Invariant**: Each clan establishes exactly **one Main House / HQ** (the Leader's residence) with surrounding outpost shelters.
   - **Shelter Dynamics**: Creatures seek refuge inside houses to sleep at night, protect against winter frostbite, heal from chills, and educate infant offspring.
+  - **Doorway Entry & Exit Navigation**: Creatures calculate vector standoff waypoints to transition smoothly through doorway openings when entering shelter at dusk or exiting to forage and explore at dawn, preventing indoor wall trapping.
+
 
 ---
 
