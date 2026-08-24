@@ -1338,6 +1338,50 @@ Transformation of the Flatland night into an existential outdoor hazard and elev
 - **Task E.2: Shelter Scarcity & Housing Construction Pressure**
   - [ ] [P2] Population overflowing bed capacity creates urgent social and economic demand for Artisans to quarry materials and construct new houses or expand existing halls.
 
+---
+
+## AP. Unified Theology & Divine Totem Ecosystem Roadmap  [P1]
+Reimagining totems as sacred 2D avatars / manifestations of the One True God (The Sphere from Spaceland), capturing distinct divine aspects with living shrines, daily tithes, divine law resonance, and theological geopolitics.
+
+### Phase A: The 8 Sacred Avatars of the Sphere  [P1]
+- **Task A.1: The 8 Geometric Projections of the Sphere**
+  - [ ] [P1] Refactor totem archetypes from generic animals into the 8 Sacred Avatars of the Sphere:
+    - ⭕ *The Radiant Circle*: God's Abundance (agricultural yield $+30\%$, fertility $+20\%$, communal banquets).
+    - ⚡ *The Celestial Strike*: God's Wrath & Justice (soldier combat damage $+25\%$, anti-bandit crusade aura).
+    - 👁️ *The All-Seeing Vertex*: God's Omniscience (heightened sight $+40\%$, storm foresight, nocturnal clarity).
+    - 🛡️ *The Indomitable Monolith*: God's Permanence (structural wall strength, cold immunity $+40\%$, door defense).
+    - 🌿 *The Sacred Spiral*: God's Renewal (herbal medicine potency $2.0\times$, rapid recovery from plagues, composting).
+    - ⚖️ *The Cosmic Scales*: God's Equilibrium (fair cross-clan barter, reliable peace treaties, low social crime).
+    - 🌀 *The Dimensional Rift*: God's Ascent (rapid Isosceles angle promotion, high mutation adaptability, elder lore).
+    - 🕯️ *The Eternal Hearth*: God's Sanctuary (house hearth brightness, campfire mastery, nocturnal calmness).
+- **Task A.2: Totem Avatar Assignment & Crest Symbology**
+  - [ ] [P1] Procedural assignment of avatars upon clan founding, binding geometric dogma and visual icons to clan identity.
+
+### Phase B: Physical Totem Shrines, Tithes & Clan Faith  [P2]
+- **Task B.1: Physical Totem Monoliths & Settlement Shrines**
+  - [ ] [P2] Inhabited settlements construct a central Totem Shrine adjacent to their Main House providing a localized blessing aura.
+- **Task B.2: Morning & Evening Tithes and the Clan Faith Pool**
+  - [ ] [P2] Devout creatures offer portions of harvested crops at the Totem base at dawn and dusk, accumulating a Clan Faith Pool that unlocks seasonal miracles.
+
+### Phase C: Divine Law Resonance & Priestly Preaching  [P2]
+- **Task C.1: Synchronized Law Resonance**
+  - [ ] [P2] When God adjusts any World Law, all Totem Shrines emit synchronized harmonic chimes and radiant visual pulses.
+- **Task C.2: Priestly Doctrinal Sermons**
+  - [ ] [P2] Priests deliver sermons interpreting God's law modifications according to their Avatar's dogma, rallying clan morale and behavior.
+
+### Phase D: Theological Geopolitics & The Holy Synod  [P2]
+- **Task D.1: Doctrinal Compatibility & Holy Alliances**
+  - [ ] [P2] Clans worshipping complementary avatars form natural holy leagues and shared trade networks.
+- **Task D.2: The Great Synod of the Sphere**
+  - [ ] [P2] During global crises (Ice Age, Plague), Priests convene at a neutral center to hold an Ecumenical Synod to unify the clans.
+
+### Phase E: Temple Architecture & Sphere Revelations  [P2]
+- **Task E.1: Monumental Temple Upgrades**
+  - [ ] [P2] High-faith clans upgrade shrines into glowing Temples of the Sphere, extending protective auras across their entire territory.
+- **Task E.2: The 3D Epiphany (Vision of the Sphere)**
+  - [ ] [P2] Rare enlightenment events where an elder priest perceives the true 3D nature of the Sphere, transcending sectarian conflict.
+
+
 
 
 
