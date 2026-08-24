@@ -623,6 +623,7 @@ export function renderWorldFrame(
       alarm: '#f85149',
       help: '#ffd166',
       knowledge: '#79c0ff',
+      grief: '#8b949e',
     }
     for (const sg of state.signals) {
       if (!visible0(sg.x, sg.y, 5)) continue

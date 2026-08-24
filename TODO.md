@@ -1531,10 +1531,10 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 > Design principle: leader alive = clan multiplier; leader dead = clan crisis.
 > The leader must be a single point of leverage — both a buff when present and a vulnerability when killed.
 
-### Phase L-0: Make Leader Death Painful  [P0]
-- [ ] [P0] **Morale aura** — all clan members within `leader_aura_radius` (~15 units) of the living leader gain: −5% energy decay, +10% sight, −0.1 fear threshold; members outside or leaderless lose the same amounts.
-- [ ] [P0] **Leaderless penalty** — when `clan["leader_id"]` is `None`: all members get −15% food energy gain, bylaw enforcement pauses, war declarations stop, members drift toward `cautious` personality over time; the interregnum is visibly painful.
-- [ ] [P0] **Leader death = clan shock** — at the moment of leader death, all living clan members: lose 10 energy instantly, emit a `"grief"` signal, gain `u_flee += 0.3` for 20 ticks, and the clan larder loses 20% (interregnum looting/chaos); this 20-tick window is when the clan is most vulnerable.
+### Phase L-0: Make Leader Death Painful  [P0] — ✅ implemented
+- [x] [P0] **Morale aura** — all clan members within `LEADER_AURA_RADIUS` (15) of the living leader gain: −5% energy decay (`LEADER_DECAY_MULT`), +10% sight (`LEADER_SIGHT_BONUS`), fear radius −1 (`LEADER_CALM`); with no living leader the clan glooms: +5% decay, −10% sight, +1 fear (`_leader_pos` cache built in `_refresh_cache`, applied in `_update_creature`). (`simulation.py`, tests `tests/test_leader.py`)
+- [x] [P0] **Leaderless penalty** — when `clan["leader_id"]` resolves to nobody living: all members harvest at ×0.85 (`LEADERLESS_GAIN_MULT`), bylaws/task boards pause (rationing off, duty weights neutral), war declarations stop (`_update_leader_decisions` requires a living leader creature), and members drift toward `cautious` personality at `LEADERLESS_CAUTIOUS_CHANCE`/tick.
+- [x] [P0] **Leader death = clan shock** — in `_kill` succession block: every living member instantly loses 10 energy (`LEADER_SHOCK_ENERGY`, floored 0.5), gains `panic_ticks = 20` (+0.3 `u_flee` while it lasts, panic emote), the larder loses 20% (`LEADER_SHOCK_LARDER_MULT`), and a grey `"grief"` ripple emits at the death spot.
 
 ### Phase L-1: Military Command  [P1]
 - [ ] [P1] **Combat effectiveness halved without leader** — during `_update_war`, if the attacking or defending clan has no living leader (`leader_id` missing or dead), apply `×0.5` modifier to their attack roll / yield calculation; an army without a general fights at half strength.

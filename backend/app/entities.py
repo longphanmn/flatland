@@ -151,6 +151,8 @@ class Creature(Entity):
     # Cognitive Agency & Social Intelligence (§AL)
     waypoints: dict = field(default_factory=dict)  # {"home": (x,y), "rich_food": (x,y), "danger": (x,y), "patrol": (x,y)}
     trust: dict = field(default_factory=dict)  # target_id -> trust_score (-100..+100)
+    # §AS L-0: panic window right after the clan leader's death — flee urge spikes
+    panic_ticks: int = 0
 
 
     def __post_init__(self) -> None:

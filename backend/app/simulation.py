@@ -87,6 +87,21 @@ REPRO_MIN_HEALTH = 50.0  # sickly creatures cannot mate
 # desperation dulls fear.
 FOOD_SCENT_RADIUS = 8.0  # mature plants are detectable by smell within this range
 
+# §AS L-0 — the leader is a single point of leverage: an aura when present,
+# a crisis when dead.
+LEADER_AURA_RADIUS = 15.0
+LEADER_SIGHT_BONUS = 0.10     # +10% perceive inside the aura
+LEADER_DECAY_MULT = 0.95      # −5% energy burn inside the aura
+LEADERLESS_DECAY_MULT = 1.05  # +5% energy burn with no living leader
+LEADER_CALM = 1.0             # fear radius shaved inside the aura (braver kin)
+LEADERLESS_FEAR = 1.0         # fear radius added when leaderless
+LEADERLESS_GAIN_MULT = 0.85   # −15% food energy gain while leaderless
+LEADER_SHOCK_ENERGY = 10.0    # instant loss at the leader's death
+LEADER_SHOCK_LARDER_MULT = 0.8  # looting: larder loses 20%
+LEADER_SHOCK_PANIC_TICKS = 20
+LEADER_SHOCK_U_FLEE = 0.3    # flee-urge spike while the panic window lasts
+LEADERLESS_CAUTIOUS_CHANCE = 0.01  # per-tick personality drift toward cautious
+
 # §AE food decay — nothing lasts forever: variant lifespan multipliers (§AM)
 FOOD_LIFESPAN_MULT = {
     "grass": 1.0,
@@ -1655,6 +1670,18 @@ class Simulation:
                             house_occ[h.id] = house_occ.get(h.id, 0) + 1
                             break
         self._house_occupants = house_occ
+
+        # §AS L-0: living leader positions per clan (for the morale aura)
+        leader_pos: dict[int, tuple[float, float]] = {}
+        for cid, info in self.clans.items():
+            lid = info.get("leader_id")
+            if not lid:
+                continue
+            for c in m.get(cid, ()):
+                if c.id == lid:
+                    leader_pos[cid] = (c.x, c.y)
+                    break
+        self._leader_pos = leader_pos
 
 
     def _get_creatures(self) -> list[Creature]:
@@ -3774,6 +3801,22 @@ class Simulation:
                             "leader_change",
                             f"Leader #{c.id} perished without living successor (Day {self.day})",
                         )
+                # §AS L-0 Leader shock: the chief's death rocks the whole clan —
+                # energy drains in an instant, panic takes hold for 20 ticks,
+                # the larder is looted, and a grief cry rings out.
+                for member in self._get_creatures():
+                    if member.clan_id == c.clan_id and member.id != c.id:
+                        member.energy = max(0.5, member.energy - LEADER_SHOCK_ENERGY)
+                        member.panic_ticks = LEADER_SHOCK_PANIC_TICKS
+                        member.emote = "panic"
+                        member.emote_ticks = 15
+                if clan:
+                    clan["larder"] = float(clan.get("larder", 0.0)) * LEADER_SHOCK_LARDER_MULT
+                self.signals.append({
+                    "x": round(c.x, 2), "y": round(c.y, 2),
+                    "kind": "grief", "sender": c.id,
+                    "clan_id": c.clan_id or None, "ttl": 15,
+                })
 
 
     def _update_creature_skills_and_titles(self, c: Creature) -> None:
@@ -3843,6 +3886,8 @@ class Simulation:
             c.bite_cooldown -= 1
         if c.cannibal_cooldown > 0:
             c.cannibal_cooldown -= 1
+        if c.panic_ticks > 0:
+            c.panic_ticks -= 1
 
         # Emote timer countdown
         if c.emote_ticks > 0:
@@ -3949,12 +3994,23 @@ class Simulation:
                 # the body does not move again until dawn (or death).
                 return
 
-        # Clan bylaws and task board modifiers (§AL)
+        # Clan bylaws and task board modifiers (§AL). §AS L-0: with no living
+        # leader the institutions pause — no rationing, no duty weights.
         clan_info = self.clans.get(c.clan_id) if c.clan_id else None
-        bylaws = clan_info.get("bylaws", {}) if isinstance(clan_info, dict) else {}
-        task_board = clan_info.get("task_board", {}) if isinstance(clan_info, dict) else {}
-        harvester_weight = task_board.get("harvester_weight", 1.0)
-        guard_weight = task_board.get("guard_weight", 1.0)
+        leaderless = bool(c.clan_id) and not getattr(self, "_leader_pos", {}).get(c.clan_id)
+        if leaderless:
+            bylaws: dict = {}
+            task_board: dict = {}
+            harvester_weight = 1.0
+            guard_weight = 1.0
+            # The interregnum slowly makes everyone timid.
+            if self.rng.random() < LEADERLESS_CAUTIOUS_CHANCE:
+                c.personality = "cautious"
+        else:
+            bylaws = clan_info.get("bylaws", {}) if isinstance(clan_info, dict) else {}
+            task_board = clan_info.get("task_board", {}) if isinstance(clan_info, dict) else {}
+            harvester_weight = task_board.get("harvester_weight", 1.0)
+            guard_weight = task_board.get("guard_weight", 1.0)
         is_rationing = bylaws.get("rationing", False)
 
         # Field consumption: eat from personal reserve when hungry or starving
@@ -4072,6 +4128,22 @@ class Simulation:
         # trait paranoid/bold nudges flee threshold (§S); §AR S-0 starvation
         # dulls fear (all in _effective_fear_radius).
         fear_radius_eff = self._effective_fear_radius(c)
+
+        # §AS L-0 Morale aura — the leader's presence is a stat: kin within
+        # LEADER_AURA_RADIUS see farther and burn less; a dead leader casts
+        # gloom over the whole clan (weaker eyes, faster burn, deeper fear).
+        clan_info_aura = self.clans.get(c.clan_id) if c.clan_id else None
+        leader_alive = bool(clan_info_aura and clan_info_aura.get("leader_id"))
+        lpos = getattr(self, "_leader_pos", {}).get(c.clan_id) if c.clan_id else None
+        in_aura = False
+        if leader_alive and lpos is not None:
+            in_aura = w.distance_sq(c.x, c.y, lpos[0], lpos[1]) <= LEADER_AURA_RADIUS * LEADER_AURA_RADIUS
+            if in_aura:
+                perceive *= 1.0 + LEADER_SIGHT_BONUS
+                fear_radius_eff = max(1.0, fear_radius_eff - LEADER_CALM)
+        elif c.clan_id:
+            perceive *= 1.0 - LEADER_SIGHT_BONUS
+            fear_radius_eff += LEADERLESS_FEAR
         # 1. Predation: hunt (predator) / flee (prey) — highest priority after sleep
         hunt_target: Creature | None = None
         flee_target: Creature | None = None
@@ -4334,6 +4406,10 @@ class Simulation:
                 u_flee -= 0.3
             if c.health < 40.0:
                 u_flee += 0.4
+        # §AS L-0: the clan shock — for LEADER_SHOCK_PANIC_TICKS after the
+        # leader's death every member startles at shadows.
+        if c.panic_ticks > 0:
+            u_flee += LEADER_SHOCK_U_FLEE
 
         u_alarm = 1.0 if (signal_alarm_target is not None and flee_target is None) else 0.0
 
@@ -4729,6 +4805,9 @@ class Simulation:
                     gain *= 1.0 + 0.4 * h
                 if scav:
                     gain *= (1.0 + scav * 0.35)
+            # §AS L-0: a leaderless clan gathers less — no one organises the hunt.
+            if leaderless:
+                gain *= LEADERLESS_GAIN_MULT
 
             # Store in food basket / reserve when well-fed, else eat
             if isinstance(target, Food) and c.energy > 0.60 * cfg.energy_max and c.food_basket < 3:
@@ -4790,7 +4869,14 @@ class Simulation:
 
         # 6. Metabolism, sickness and mortality. §R chill builds when cold & wet
         stage_mult = STAGE_ENERGY_MULT.get(c.stage, 1.0) if c.generation > 0 else 1.0
-        c.energy -= cfg.energy_decay_per_tick * stage_mult
+        decay_mult = stage_mult
+        # §AS L-0: the leader's aura eases every stride; an interregnum wearies.
+        if c.clan_id:
+            if in_aura:
+                decay_mult *= LEADER_DECAY_MULT
+            elif leaderless:
+                decay_mult *= LEADERLESS_DECAY_MULT
+        c.energy -= cfg.energy_decay_per_tick * decay_mult
         if (
             cfg.shelter_enabled
             and not c.indoors
