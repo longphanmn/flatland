@@ -585,7 +585,12 @@ export default function App() {
           stateRef={stateRef}
           selectedRef={selectedRef}
           selectedClanRef={selectedClanRef}
-          onTapCreature={(id) => setSelectedId(id)}
+          onTapCreature={(id) => {
+            setSelectedId(id)
+            if (id === null) {
+              setSelectedClanId(null)
+            }
+          }}
         />
       </main>
 
