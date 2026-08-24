@@ -2,6 +2,8 @@
   "name": "flatworld-frontend",
   "private": true,
   "version": "0.1.0",
+  "author": "Long Phan <long@minhnhan.in>",
+  "maintainers": ["Long Phan <long@minhnhan.in>"],
   "type": "module",
   "scripts": {
     "dev": "vite",

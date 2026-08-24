@@ -1,5 +1,7 @@
 # God Laws — Flatland
 
+> **Developer:** Long Phan — [long@minhnhan.in](mailto:long@minhnhan.in) · long@minhnhan.in · https://minhnhan.in
+
 God sets **laws**, never touches a life. Each law has a range, default, and hint. Edit via **⚖ God** panel or `POST /api/laws`.
 
 All laws are in `backend/app/config.py` and `protocol.py:GodLaws`. Presets: `sustainable` / `chaos` / `extinction` via `POST /api/presets/{name}`.
@@ -187,3 +189,7 @@ All laws are in `backend/app/config.py` and `protocol.py:GodLaws`. Presets: `sus
 | `door_clearance` | 1–4 | 1.5 | door width = clearance × largest creature diameter |
 | `house_min_size` | 4–30 | 6 | applies to houses built after next reset |
 | `house_max_size` | 6–60 | 10 | applies to houses built after next reset |
+
+---
+
+*Maintained by **Long Phan** — long@minhnhan.in · https://minhnhan.in · World https://world.minhnhan.in*

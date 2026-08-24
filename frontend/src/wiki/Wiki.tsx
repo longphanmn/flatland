@@ -228,6 +228,7 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
 
         <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #21262d', fontSize: 11, color: '#8b949e' }}>
           Wiki is live — <code>{data?.laws.length ?? 0} laws</code> · <code>{data?.routes.length ?? 0} routes</code> · <code>{Object.keys(data?.presets ?? {}).length} presets</code> · <a href="/wiki">/wiki HTML</a> · <a href="/api/wiki">/api/wiki JSON</a>
+          <br />Developer <strong>Long Phan</strong> — <a href="mailto:long@minhnhan.in">long@minhnhan.in</a> · <a href="https://minhnhan.in">minhnhan.in</a> · <a href="https://world.minhnhan.in">world.minhnhan.in</a>
         </div>
       </div>
     </div>

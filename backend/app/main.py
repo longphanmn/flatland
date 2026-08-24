@@ -1,4 +1,4 @@
-"""FastAPI application: WebSocket state broadcast + control, REST helpers."""
+"""FastAPI application: WebSocket state broadcast + control, REST helpers — Developer: Long Phan <long@minhnhan.in>."""
 
 import asyncio
 import json
@@ -411,7 +411,13 @@ async def lifespan(_: FastAPI):
     DB.close()
 
 
-app = FastAPI(title="Flatland World Simulation", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="Flatland World Simulation",
+    version="0.1.0",
+    description="Flatland — 2D world simulation by Long Phan <long@minhnhan.in>",
+    contact={"name": "Long Phan", "email": "long@minhnhan.in", "url": "https://minhnhan.in"},
+    lifespan=lifespan,
+)
 AUTH = PasskeyAuth(DB)
 app.state.god_auth = AUTH
 app.add_middleware(
@@ -969,7 +975,13 @@ async def get_version() -> dict:
             revision = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], timeout=2).decode().strip()
         except Exception:
             revision = "dev"
-    return {"version": version, "revision": revision}
+    return {
+        "version": version,
+        "revision": revision,
+        "developer": "Long Phan",
+        "email": "long@minhnhan.in",
+        "contact": "long@minhnhan.in",
+    }
 
 
 @app.get("/api/config")

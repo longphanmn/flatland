@@ -344,7 +344,8 @@ cd backend && uv run pytest tests/test_synergies.py -q
 
 GUIDE_TEMPLATE = """<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Flatland — Living Guide</title>
+<title>Flatland — Living Guide — Long Phan (long@minhnhan.in)</title>
+<meta name="author" content="Long Phan <long@minhnhan.in>">
 <style>
 body{{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;color:#222;background:#fafafa}}
 nav{{position:fixed;top:0;left:0;width:240px;height:100vh;overflow:auto;background:#fff;border-right:1px solid #e5e7eb;padding:16px}}
@@ -356,8 +357,8 @@ table{{border-collapse:collapse;width:100%;margin:12px 0}} th,td{{border:1px sol
 h1{{border-bottom:2px solid #e5e7eb;padding-bottom:6px}} h2{{margin-top:28px;color:#111}}
 @media(max-width:700px){{nav{{position:relative;width:auto;height:auto}} main{{margin-left:0}}}}
 </style></head><body>
-<nav><h3>Flatland Guide</h3><ul>{nav}</ul><p><a href="/docs">Swagger /docs</a> · <a href="/openapi.json">OpenAPI</a></p><p><a href="/guide?format=json">JSON</a></p></nav>
-<main>{content}</main></body></html>
+<nav><h3>Flatland Guide</h3><ul>{nav}</ul><p><a href="/docs">Swagger /docs</a> · <a href="/openapi.json">OpenAPI</a></p><p><a href="/guide?format=json">JSON</a></p><p style="font-size:12px;color:#8b949e;margin-top:16px;border-top:1px solid #e5e7eb;padding-top:12px">Developer<br/><strong>Long Phan</strong><br/><a href="mailto:long@minhnhan.in">long@minhnhan.in</a><br/><a href="https://minhnhan.in">minhnhan.in</a></p></nav>
+<main>{content}</main><footer style="margin-left:240px;padding:12px 24px;font-size:12px;color:#8b949e;border-top:1px solid #e5e7eb;text-align:center">© Flatland — Developed by <strong>Long Phan</strong> &lt;<a href="mailto:long@minhnhan.in">long@minhnhan.in</a>&gt; · <a href="https://minhnhan.in">minhnhan.in</a> · <a href="https://world.minhnhan.in">world.minhnhan.in</a></footer></body></html>
 """
 
 

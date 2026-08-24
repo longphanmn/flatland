@@ -1,4 +1,4 @@
-"""World and simulation configuration."""
+"""World and simulation configuration — Developer: Long Phan <long@minhnhan.in>."""
 
 import os
 from dataclasses import dataclass

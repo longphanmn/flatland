@@ -479,6 +479,7 @@ export default function App() {
 
   const hungryCount = state?.entities.filter((e) => e.status === 'hungry').length ?? 0
   const starvingCount = state?.entities.filter((e) => e.status === 'starving').length ?? 0
+  const chilledCount = state?.entities.filter((e) => (e.chill ?? 0) >= 12).length ?? 0
   const deadBreakdown = state
     ? Object.entries(state.dead_by_cause)
         .sort((a, b) => b[1] - a[1])
@@ -495,75 +496,108 @@ export default function App() {
     : 0
   const weatherIcon =
     state?.weather === 'rain' ? '🌧' : state?.weather === 'fog' ? '🌫' : state?.weather === 'storm' ? '⛈' : ''
+  const hasAlerts = hungryCount > 0 || starvingCount > 0 || (state?.infected_count ?? 0) > 0 || chilledCount > 0 || (raining && exposedCount > 0)
 
   return (
     <div className="app">
       <header className={`hud ${isMobile ? 'hud-compact' : ''}`} onClick={isMobile ? () => setStatusExpanded(o => !o) : undefined} style={isMobile ? { cursor: 'pointer' } : undefined}>
-        <span className="title">Flatland</span>
-        <span className={`dot ${status}`} title={STATUS_LABEL[status]} />
-        <span className="chip">{STATUS_LABEL[status]}</span>
-        {paused && <span className="chip paused">PAUSED</span>}
-        <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Est TPS is wall-clock measured from WS stream; if it drops below target, healthz avg_tick_ms shows overrun.">
-          tick <b>{state?.tick ?? 0}</b>{estTps !== null && ` · ${estTps} t/s`}
-        </span>
-        <span className="chip alive" title="Alive creatures — Flatland castes + Predators + Herbivores. Hover Caste chart for breakdown.">
-          alive <b>{state?.creatures_alive ?? 0}</b>
-        </span>
-        <span className="chip dead desktop-only" title={`${deadBreakdown} — hover for per-cause breakdown (starvation/old_age/euthanasia/disease/predation/war/poison).`}>
-          dead <b>{state?.creatures_dead ?? 0}</b>
-        </span>
-        {hungryCount > 0 && (
-          <span className="chip hungry desktop-only" title="Hungry: energy ≤ 35% of max — perceives food farther (1.3×), still fertile.">
-            hungry <b>{hungryCount}</b>
+        {/* Brand & Connection status */}
+        <div className="hud-group hud-brand-group">
+          <span className="title">Flatland</span>
+          <span className={`dot ${status}`} title={STATUS_LABEL[status]} />
+          <span className="chip" style={{ fontSize: 11 }}>{STATUS_LABEL[status]}</span>
+          {paused && <span className="hud-badge paused">PAUSED</span>}
+        </div>
+
+        <div className="hud-divider desktop-only" />
+
+        {/* Simulation & Population */}
+        <div className="hud-group hud-metrics-group">
+          <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Est TPS is wall-clock measured from WS stream; if it drops below target, healthz avg_tick_ms shows overrun.">
+            tick <b>{state?.tick ?? 0}</b>{estTps !== null && <span style={{ opacity: 0.75 }}> · {estTps} t/s</span>}
           </span>
-        )}
-        {starvingCount > 0 && (
-          <span className="chip starving desktop-only" title="Starving: energy ≤ 15% — sees farthest (1.6×) and moves 1.35× faster, pulsing red, will die soon.">
-            starving <b>{starvingCount}</b>
+          <span className="chip alive" title="Alive creatures — Flatland castes + Predators + Herbivores. Hover Caste chart for breakdown.">
+            alive <b>{state?.creatures_alive ?? 0}</b>
           </span>
-        )}
-        {(state?.infected_count ?? 0) > 0 && (
-          <span className="chip sick desktop-only" title="Infected — loses 0.15 energy/tick + 1.0 health/tick (winter ×1.5 spread), green pulsing ring, may recover.">
-            infected <b>{state?.infected_count}</b>
+          <span className="chip dead desktop-only" title={`${deadBreakdown} — hover for per-cause breakdown (starvation/old_age/euthanasia/disease/predation/war/poison).`}>
+            dead <b>{state?.creatures_dead ?? 0}</b>
           </span>
+        </div>
+
+        {/* Vitals / Alerts (only when active) */}
+        {!isMobile && hasAlerts && (
+          <>
+            <div className="hud-divider" />
+            <div className="hud-group hud-alerts-group">
+              {hungryCount > 0 && (
+                <span className="hud-alert hungry" title="Hungry: energy ≤ 35% of max — perceives food farther (1.3×), still fertile.">
+                  🍖 {hungryCount}
+                </span>
+              )}
+              {starvingCount > 0 && (
+                <span className="hud-alert starving" title="Starving: energy ≤ 15% — sees farthest (1.6×) and moves 1.35× faster, pulsing red, will die soon.">
+                  ⚠️ {starvingCount}
+                </span>
+              )}
+              {(state?.infected_count ?? 0) > 0 && (
+                <span className="hud-alert sick" title="Infected — loses 0.15 energy/tick + 1.0 health/tick (winter ×1.5 spread), green pulsing ring, may recover.">
+                  ☣️ {state?.infected_count}
+                </span>
+              )}
+              {chilledCount > 0 && (
+                <span className="hud-alert chilled" title="Chilled: built rain/storm/winter-night outside, past 12 drains health 0.18/tick (death cause chill). Shelter sheds 2.5× faster.">
+                  🥶 {chilledCount}
+                </span>
+              )}
+              {raining && exposedCount > 0 && (
+                <span className="hud-alert exposed" title="Exposed: awake, outdoors, not in a House during rain/storm or winter night — loses 0.03 energy/tick extra. Shelter is scarce.">
+                  ⛈️ {exposedCount}
+                </span>
+              )}
+            </div>
+          </>
         )}
-        {(state?.entities.filter((e) => (e.chill ?? 0) >= 12).length ?? 0) > 0 && (
-          <span className="chip desktop-only" style={{ color: '#79c0ff' }} title="Chilled: built rain/storm/winter-night outside, past 12 drains health 0.18/tick (death cause chill). Shelter sheds 2.5× faster.">
-            🥶 chilled <b>{state?.entities.filter((e) => (e.chill ?? 0) >= 12).length}</b>
-          </span>
-        )}
-        {raining && exposedCount > 0 && (
-          <span className="chip exposed desktop-only" title="Exposed: awake, outdoors, not in a House during rain/storm or winter night — loses 0.03 energy/tick extra. Shelter is scarce.">
-            ⛈ exposed <b>{exposedCount}</b>
-          </span>
-        )}
-        {hello && (
-          <span className="chip desktop-only" title="Seed determines entire world deterministically; width×height is world size; wrap vs clamp is edge behavior. Reset rolls a new seed.">
-            seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×
-            {state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}
-          </span>
-        )}
-        {state && state.age && (
-          <span className="chip desktop-only" title={`Age ${state.age} — super-season bending world: Ice (food×0.55 chill×1.4), Chaos (mutation×1.8), Plague (disease×1.8), Golden (food×1.25 birth×1.3). God sets age_length.`}>
-            🗓 age <b>{state.age}</b> · tick {state.age_tick}
-          </span>
-        )}
+
+        <div className="hud-divider desktop-only" />
+
+        {/* Environment & Time */}
         {state && (
-          <span className="chip" title={`Time of day ${state.time_of_day} — night (0-0.22, 0.78-1) dims sight 0.6×, fog 0.6× stack; season ${state.season} changes Food target and disease. Weather ${state.weather}: rain slows 0.85×, storm adds wander.`}>
-            {isNight ? '🌙' : '☀'} day <b>{state.day}</b> · {state.season}
-            {weatherIcon && ` · ${weatherIcon}`}
-          </span>
+          <div className="hud-group hud-env-group desktop-only">
+            <span className="chip" title={`Time of day ${state.time_of_day} — night (0-0.22, 0.78-1) dims sight 0.6×, fog 0.6× stack; season ${state.season} changes Food target and disease. Weather ${state.weather}: rain slows 0.85×, storm adds wander.`}>
+              {isNight ? '🌙' : '☀'} day <b>{state.day}</b> · {state.season}
+              {weatherIcon && ` · ${weatherIcon}`}
+            </span>
+            {state.age && (
+              <span className="hud-badge age" title={`Age ${state.age} — super-season bending world: Ice (food×0.55 chill×1.4), Chaos (mutation×1.8), Plague (disease×1.8), Golden (food×1.25 birth×1.3). God sets age_length.`}>
+                🗓 <b>{state.age}</b> #{state.age_tick}
+              </span>
+            )}
+          </div>
         )}
+
+        {/* World seed & bounds */}
+        {hello && (
+          <>
+            <div className="hud-divider desktop-only" />
+            <div className="hud-group hud-world-group desktop-only">
+              <span className="chip" style={{ opacity: 0.85 }} title="Seed determines entire world deterministically; width×height is world size; wrap vs clamp is edge behavior. Reset rolls a new seed.">
+                seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×{state?.height ?? hello.height}
+              </span>
+            </div>
+          </>
+        )}
+
         {isMobile && <span className="chip" style={{ marginLeft: 'auto', fontSize: 10, color: '#58a6ff' }}>{statusExpanded ? '▲ Close' : '▼ More'}</span>}
+
         <div className="top-right-panel">
           <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )" data-hint="Wiki — documentation & API ( /wiki )">
-            📖
+            📖 Wiki
           </button>
           <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls" data-hint="Show hints for all HUD chips and controls">
-            ?
+            ❓ Guide
           </button>
           <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life" data-hint="Laws of Nature — god sets laws, never touches a life">
-            ⚖
+            ⚖ Laws
           </button>
         </div>
       </header>
@@ -829,87 +863,75 @@ export default function App() {
       {!isMobile && (
         <div className="right-stack">
           <Collapsible id="box-overview" title="Overview" hint="Live population — Caste, Alive spark, Trophic, Plots" defaultOpen={true}>
-            <aside className="info-panel" style={{ height: 'auto', minHeight: 'auto', maxHeight: 'none', border: 'none', padding: 0, background: 'transparent' }}>
-              <div style={{ background: 'rgba(13,17,23,0.93)', border: '1px solid #30363d', borderRadius: 8, padding: '10px 14px' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 0', fontSize: 11, color: '#8b949e', marginBottom: 6 }}>
-                  {creatureEntries.map(([k, v], i) => (
-                    <span key={k} className="pop-chip" title={`${k}: ${v} alive`}>
-                      <span className="dot-inline" style={{ background: CASTE_COLORS[k] ?? '#8b949e' }} />
-                      {k} <b>{v}</b>
-                      {(i < creatureEntries.length - 1 || objectEntries.length > 0) && ' · '}
-                    </span>
-                  ))}
-                  {objectEntries.map(([k, v], i) => {
-                    const color = k === 'Food' ? '#3fb950' : k === 'House' ? '#8b949e' : k === 'Corpse' ? '#6e7681' : '#8b949e'
-                    return (
-                      <span key={k} className="pop-chip" title={`${k}: ${v} objects`}>
-                        <span className="dot-inline" style={{ background: color }} />
-                        {k} <b>{v}</b>
-                        {i < objectEntries.length - 1 && ' · '}
-                      </span>
-                    )
-                  })}
-                </div>
-                <Collapsible id="overview-caste-v2" title="Caste population" hint="Stacked per-caste population over recent ticks" defaultOpen={true}>
-                  <CasteChart history={popHist} showLegend={false} />
-                </Collapsible>
-                <div className="info-spark" title="alive creatures, recent ticks">
-                  <div style={{ fontSize: '11px', color: '#8b949e', marginBottom: 2 }}>Alive — recent ticks</div>
-                  <span className="spark-wrap" title="alive creatures, recent ticks">
-                    <svg viewBox="0 0 100 22" className="spark">
-                      {aliveHist.length > 1 && (
-                        <polyline
-                          points={aliveHist
-                            .map(
-                              (v, i) =>
-                                `${(i / (aliveHist.length - 1)) * 100},${21 - ((v - Math.min(...aliveHist)) / (Math.max(...aliveHist, 1) - Math.min(...aliveHist) || 1)) * 20}`,
-                            )
-                            .join(' ')}
-                        />
-                      )}
-                    </svg>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 0', fontSize: 11, color: '#8b949e', marginBottom: 6 }}>
+              {creatureEntries.map(([k, v], i) => (
+                <span key={k} className="pop-chip" title={`${k}: ${v} alive`}>
+                  <span className="dot-inline" style={{ background: CASTE_COLORS[k] ?? '#8b949e' }} />
+                  {k} <b>{v}</b>
+                  {(i < creatureEntries.length - 1 || objectEntries.length > 0) && ' · '}
+                </span>
+              ))}
+              {objectEntries.map(([k, v], i) => {
+                const color = k === 'Food' ? '#3fb950' : k === 'House' ? '#8b949e' : k === 'Corpse' ? '#6e7681' : '#8b949e'
+                return (
+                  <span key={k} className="pop-chip" title={`${k}: ${v} objects`}>
+                    <span className="dot-inline" style={{ background: color }} />
+                    {k} <b>{v}</b>
+                    {i < objectEntries.length - 1 && ' · '}
                   </span>
-                </div>
-                <Collapsible
-                  id="overview-trophic-v2"
-                  title={<>Trophic pyramid — Food · Herbivore · Predator <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span></>}
-                  hint="Trophic pyramid: stacked history"
-                  defaultOpen={true}
-                >
-                  <TrophicChart history={popHist} showLegend={false} />
-                </Collapsible>
-                <Collapsible id="overview-plots" title="Plots" defaultOpen={true}>
-                  <PlotsPanel onSelectClan={setSelectedClanId} />
-                </Collapsible>
-              </div>
-            </aside>
+                )
+              })}
+            </div>
+            <Collapsible id="overview-caste-v2" title="Caste population" hint="Stacked per-caste population over recent ticks" defaultOpen={true}>
+              <CasteChart history={popHist} showLegend={false} />
+            </Collapsible>
+            <div className="info-spark" title="alive creatures, recent ticks">
+              <div style={{ fontSize: '11px', color: '#8b949e', marginBottom: 2 }}>Alive — recent ticks</div>
+              <span className="spark-wrap" title="alive creatures, recent ticks">
+                <svg viewBox="0 0 100 22" className="spark">
+                  {aliveHist.length > 1 && (
+                    <polyline
+                      points={aliveHist
+                        .map(
+                          (v, i) =>
+                            `${(i / (aliveHist.length - 1)) * 100},${21 - ((v - Math.min(...aliveHist)) / (Math.max(...aliveHist, 1) - Math.min(...aliveHist) || 1)) * 20}`,
+                        )
+                        .join(' ')}
+                    />
+                  )}
+                </svg>
+              </span>
+            </div>
+            <Collapsible
+              id="overview-trophic-v2"
+              title={<>Trophic pyramid — Food · Herbivore · Predator <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span></>}
+              hint="Trophic pyramid: stacked history"
+              defaultOpen={true}
+            >
+              <TrophicChart history={popHist} showLegend={false} />
+            </Collapsible>
+            <Collapsible id="overview-plots" title="Plots" defaultOpen={true}>
+              <PlotsPanel onSelectClan={setSelectedClanId} />
+            </Collapsible>
           </Collapsible>
           <Collapsible id="box-clans" title="Clans" hint="Clans — settlements with population, totem and war record" defaultOpen={true}>
-            <aside className="info-panel clan-panel-box" style={{ height: 'auto', minHeight: 'auto', maxHeight: 'none', border: 'none', padding: 0, background: 'transparent' }}>
-              <div style={{ background: 'rgba(13,17,23,0.93)', border: '1px solid #30363d', borderRadius: 8, padding: '10px 14px' }}>
-                <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
-              </div>
-            </aside>
+            <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
           </Collapsible>
           <Collapsible id="box-chronicle" title="Chronicle" hint="Event history — births, deaths, wars" defaultOpen={true}>
             {chronicleOpen ? (
-              <aside className="chronicle" style={{ height: 'auto', minHeight: 'auto', maxHeight: 'none', border: 'none', padding: 0, background: 'transparent' }}>
-                <div style={{ background: 'rgba(13,17,23,0.93)', border: '1px solid #30363d', borderRadius: 8, padding: '10px 14px' }}>
-                  <Collapsible id="chronicle-feed" title="Event feed" hint="Newest first — deaths, wars, alliances, births">
-                    <ChronicleFeed
-                      events={log}
-                      clanLabel={clanLabel}
-                      onSelectCreature={(id) => setSelectedId(id)}
-                      onSelectClan={(id) => setSelectedClanId(id)}
-                      onLoadOlder={loadOlder}
-                      loadingOlder={loadingOlder}
-                      noMoreHistory={noMoreHistory}
-                      archiveMode={archiveMode}
-                      selectedRunId={selectedRunId}
-                    />
-                  </Collapsible>
-                </div>
-              </aside>
+              <Collapsible id="chronicle-feed" title="Event feed" hint="Newest first — deaths, wars, alliances, births">
+                <ChronicleFeed
+                  events={log}
+                  clanLabel={clanLabel}
+                  onSelectCreature={(id) => setSelectedId(id)}
+                  onSelectClan={(id) => setSelectedClanId(id)}
+                  onLoadOlder={loadOlder}
+                  loadingOlder={loadingOlder}
+                  noMoreHistory={noMoreHistory}
+                  archiveMode={archiveMode}
+                  selectedRunId={selectedRunId}
+                />
+              </Collapsible>
             ) : (
               <div style={{ fontSize: 11, color: '#8b949e', padding: '6px 0' }}>Chronicle hidden — <button className="chronicle-name" onClick={() => setChronicleOpen(true)}>Show</button></div>
             )}
@@ -962,8 +984,8 @@ export default function App() {
         </div>
       )}
       {!isMobile && (
-        <div className="version-bar" title={versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'Flatland'}>
-          {versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'v0.1.0'}
+        <div className="version-bar" title={versionInfo ? `v${versionInfo.version} · ${versionInfo.revision} · Long Phan <long@minhnhan.in>` : 'Flatland · Long Phan <long@minhnhan.in>'}>
+          {versionInfo ? `v${versionInfo.version} · ${versionInfo.revision}` : 'v0.1.0'} · <span style={{ opacity: 0.85 }}>Long Phan · <a href="mailto:long@minhnhan.in" style={{ color: 'inherit', textDecoration: 'underline' }}>long@minhnhan.in</a></span>
         </div>
       )}
       <AuthModal />

@@ -29,25 +29,52 @@ body {
   display: flex;
   gap: 10px;
   align-items: center;
-  padding: 6px 160px 6px 16px;
+  padding: 0 240px 0 14px;
   border-bottom: 1px solid #21262d;
-  background: #0d1117;
-  flex-wrap: wrap;
+  background: rgba(13, 17, 23, 0.96);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   position: relative;
-  min-height: 40px;
+  height: 42px;
+  min-height: 42px;
+  max-height: 42px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  z-index: 10;
+}
+.hud::-webkit-scrollbar {
+  display: none;
+}
+
+.hud-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.hud-divider {
+  width: 1px;
+  height: 16px;
+  background: #30363d;
+  margin: 0 2px;
+  flex: none;
 }
 
 .title {
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
   color: #e6edf3;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #f85149;
   flex: none;
@@ -55,6 +82,7 @@ body {
 
 .dot.open {
   background: #3fb950;
+  box-shadow: 0 0 6px rgba(63, 185, 80, 0.4);
 }
 
 .dot.connecting {
@@ -62,35 +90,94 @@ body {
 }
 
 .chip {
-  font-size: 12px;
+  font-size: 11.5px;
   color: #8b949e;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .chip b {
   color: #e6edf3;
 }
 
-.chip.paused {
-  color: #d29922;
-  border: 1px solid #d29922;
-  border-radius: 4px;
-  padding: 1px 6px;
-}
-
-.chip.hungry b {
-  color: #d29922;
-}
-
-.chip.starving b {
-  color: #f85149;
-}
-
-.chip.sick b {
+.chip.alive b {
   color: #3fb950;
 }
 
-.chip.exposed b {
+.chip.dead b {
+  color: #f85149;
+}
+
+.hud-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.2;
+  background: rgba(110, 118, 129, 0.12);
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+}
+
+.hud-badge.paused {
+  color: #d29922;
+  border-color: rgba(210, 153, 34, 0.5);
+  background: rgba(210, 153, 34, 0.12);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.hud-badge.age {
+  color: #d2a8ff;
+  border-color: rgba(210, 168, 255, 0.35);
+  background: rgba(210, 168, 255, 0.08);
+}
+.hud-badge.age b {
+  color: #e6edf3;
+}
+
+.hud-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.hud-alert.hungry {
+  color: #d29922;
+  background: rgba(210, 153, 34, 0.15);
+  border: 1px solid rgba(210, 153, 34, 0.35);
+}
+
+.hud-alert.starving {
+  color: #ff7b72;
+  background: rgba(248, 81, 73, 0.18);
+  border: 1px solid rgba(248, 81, 73, 0.45);
+}
+
+.hud-alert.sick {
+  color: #3fb950;
+  background: rgba(46, 160, 67, 0.15);
+  border: 1px solid rgba(46, 160, 67, 0.35);
+}
+
+.hud-alert.chilled {
+  color: #79c0ff;
+  background: rgba(56, 139, 253, 0.15);
+  border: 1px solid rgba(56, 139, 253, 0.35);
+}
+
+.hud-alert.exposed {
   color: #e3b341;
+  background: rgba(227, 179, 65, 0.15);
+  border: 1px solid rgba(227, 179, 65, 0.35);
 }
 
 .stage {
@@ -133,6 +220,60 @@ body {
 }
 .right-stack > * {
   pointer-events: auto;
+}
+
+/* 3 main collapsible boxes in right stack: Overview, Clans, Chronicle */
+.right-stack > .collapsible {
+  background: rgba(13, 17, 23, 0.93);
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: auto;
+  flex: none;
+  overflow: hidden;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.right-stack > .collapsible > .collapsible-head {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e6edf3;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.right-stack > .collapsible[data-open="true"] > .collapsible-head {
+  border-bottom: 1px solid rgba(48, 54, 61, 0.6);
+}
+
+.right-stack > .collapsible > .collapsible-head:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.right-stack > .collapsible > .collapsible-body {
+  padding: 10px 12px;
+  overflow-y: auto;
+  max-height: 28vh;
+  scrollbar-width: thin;
 }
 
 .info-panel {
@@ -944,11 +1085,11 @@ select {
   font-size: 12px;
 }
 
-/* top-right God button — centered vertically inside hud, no overflow */
+/* top-right action buttons in hud */
 .top-right-panel {
   position: absolute;
   top: 50%;
-  right: 14px;
+  right: 12px;
   transform: translateY(-50%);
   z-index: 12;
   display: flex;
@@ -957,17 +1098,40 @@ select {
   pointer-events: auto;
 }
 .top-right-panel .god-btn {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   height: 28px;
   min-height: 28px;
   max-height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 8px;
+  padding: 0 9px;
   line-height: 1;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 500;
   border-radius: 6px;
+  border: 1px solid #30363d;
+  background: rgba(22, 27, 34, 0.85);
+  color: #c9d1d9;
+  cursor: pointer;
+  gap: 4px;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.top-right-panel .god-btn:hover {
+  background: #30363d;
+  color: #ffffff;
+  border-color: #8b949e;
+}
+.top-right-panel .god-btn.god-main-btn {
+  border-color: rgba(227, 179, 65, 0.4);
+  color: #e3b341;
+  background: rgba(227, 179, 65, 0.08);
+  font-weight: 600;
+}
+.top-right-panel .god-btn.god-main-btn:hover {
+  background: rgba(227, 179, 65, 0.2);
+  border-color: #e3b341;
+  color: #ffffff;
 }
 .version-bar {
   position: fixed;

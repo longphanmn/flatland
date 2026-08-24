@@ -46,6 +46,8 @@ See `world.py:38`, `simulation.py:2680`, `CanvasRenderer.tsx:370`, `App.tsx:230`
 WIKI_OVERVIEW_MD = """
 # Flatland Wiki
 
+> **Developer:** Long Phan — long@minhnhan.in · https://minhnhan.in — Flatland is designed, built and maintained by Long Phan.
+
 A 2D world of geometric castes (Soldier, Artisan, Gentleman, Professional, Noble, Priest, Woman) plus predators/herbivores. Creatures wander, eat, shelter, age, mate, and die. God sets **laws**, never touches a life — everything else emerges.
 
 - **Autonomous Evolution**: 6 personality archetypes (brave, cautious, altruistic, greedy, explorer, builder), tools (spears, baskets, herb poultices, crowns), skill progression matrix (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿), dynamic titles, oral lore, and live emote balloons.
@@ -106,7 +108,8 @@ curl -X POST localhost:8000/api/control -d '{"action":"reset"}'
 
 WIKI_TEMPLATE = """<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Flatland — Wiki</title>
+<title>Flatland — Wiki — Long Phan (long@minhnhan.in)</title>
+<meta name="author" content="Long Phan <long@minhnhan.in>">
 <style>
 :root{{color-scheme:dark}}
 *{{box-sizing:border-box}}
@@ -137,11 +140,12 @@ main{{padding:24px;max-width:960px;overflow:auto}}
 <p style="font-size:13px"><a href="/docs">Swagger /docs</a> · <a href="/openapi.json">OpenAPI</a> · <a href="/guide">Guide</a></p>
 <p style="font-size:13px"><a href="/api/wiki">JSON</a> · <a href="/">← Live world</a></p>
 <div class="card" style="margin-top:12px;font-size:12px;color:#8b949e">Presets: <a href="#" onclick="applyPreset('sustainable');return false">🌿 sustainable</a> · <a href="#" onclick="applyPreset('chaos');return false">🔥 chaos</a> · <a href="#" onclick="applyPreset('extinction');return false">💀 extinction</a></div>
+<div class="card" style="margin-top:12px;font-size:12px;color:#8b949e;border-color:#1f6feb">Developer<br/><strong>Long Phan</strong><br/><a href="mailto:long@minhnhan.in">long@minhnhan.in</a><br/><a href="https://minhnhan.in">minhnhan.in</a> · <a href="https://world.minhnhan.in">world.minhnhan.in</a></div>
 </nav>
 <main>
 <div class="card" style="position:sticky;top:0;z-index:2;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:-24px -24px 16px -24px;padding:12px 16px;border-radius:0;border-left:none;border-right:none;border-top:none"><span class="badge">{laws} laws</span><span class="badge">{routes} routes</span><span class="badge">{presets} presets</span><span style="margin-left:auto;font-size:12px;color:#8b949e">God sets laws, never a life · <a href="/guide">Guide</a></span></div>
 {content}
-<hr/><p style="font-size:12px;color:#8b949e">Generated from live code — <code>Config</code> defaults + <code>GodLaws</code> + <code>app.routes</code>. See <a href="/guide">/guide</a> for minimal guide.</p>
+<hr/><p style="font-size:12px;color:#8b949e">Generated from live code — <code>Config</code> defaults + <code>GodLaws</code> + <code>app.routes</code>. See <a href="/guide">/guide</a> for minimal guide. · Developer <strong>Long Phan</strong> — <a href="mailto:long@minhnhan.in">long@minhnhan.in</a> · <a href="https://minhnhan.in">minhnhan.in</a></p>
 </main>
 </div>
 <script>

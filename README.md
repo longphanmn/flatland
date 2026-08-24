@@ -247,3 +247,13 @@ writes committed together (`Database.batch()`).
 - Dimensionality is isolated to `config`/`world` (add a z-axis without redesign)
 - Snapshot protocol is versioned by shape; swap full snapshots for diffs later
 - Deterministic seeded RNG per tick ⇒ future replay/record support
+
+## Developer
+
+**Long Phan** — [long@minhnhan.in](mailto:long@minhnhan.in) — long@minhnhan.in
+
+- Website: https://minhnhan.in · World: https://world.minhnhan.in
+- Backend: `backend/` · Frontend: `frontend/` · Docs: `docs/` + `/wiki` & `/guide`
+- License & contact: Long Phan <long@minhnhan.in>
+
+> Flatland is designed, built and maintained by **Long Phan (long@minhnhan.in)**. For inquiries, deployments or collaboration, reach out via long@minhnhan.in.
