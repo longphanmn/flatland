@@ -123,7 +123,10 @@ export default function ChronicleFeed({
   const displayed = useMemo(() => filtered.slice(0, visibleLimit), [filtered, visibleLimit])
 
   return (
-    <div className={`chronicle-feed-container ${compact ? 'chronicle-compact' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: compact ? 6 : 8 }}>
+    <div
+      className={`chronicle-feed-container ${compact ? 'chronicle-compact' : ''}`}
+      style={{ display: 'flex', flexDirection: 'column', gap: compact ? 6 : 8, height: '100%', minHeight: 0, flex: '1 1 0' }}
+    >
       {archiveMode && selectedRunId !== null && (
         <p className="archive-banner" style={{ margin: 0 }}>
           viewing archive of world #{selectedRunId} — live feed paused
@@ -280,7 +283,10 @@ export default function ChronicleFeed({
           {search || category !== 'all' ? 'No events matching filter' : 'No major events recorded yet'}
         </p>
       ) : (
-        <ul className="chronicle-feed-list" style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+        <ul
+          className="chronicle-feed-list"
+          style={{ margin: 0, padding: 0, listStyle: 'none', flex: '1 1 0', overflowY: 'auto', minHeight: 0 }}
+        >
           {displayed.map((ev) => {
             const key = `${ev.tick}:${ev.entity_id}:${ev.type}`
             const p = (ev.payload ?? {}) as Record<string, any>

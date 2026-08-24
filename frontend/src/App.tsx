@@ -929,23 +929,17 @@ export default function App() {
             <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
           </Collapsible>
           <Collapsible id="box-chronicle" title="Chronicle" hint="Event history — births, deaths, wars" defaultOpen={true}>
-            {chronicleOpen ? (
-              <Collapsible id="chronicle-feed" title="Event feed" hint="Newest first — deaths, wars, alliances, births">
-                <ChronicleFeed
-                  events={log}
-                  clanLabel={clanLabel}
-                  onSelectCreature={(id) => setSelectedId(id)}
-                  onSelectClan={(id) => setSelectedClanId(id)}
-                  onLoadOlder={loadOlder}
-                  loadingOlder={loadingOlder}
-                  noMoreHistory={noMoreHistory}
-                  archiveMode={archiveMode}
-                  selectedRunId={selectedRunId}
-                />
-              </Collapsible>
-            ) : (
-              <div style={{ fontSize: 11, color: '#8b949e', padding: '6px 0' }}>Chronicle hidden — <button className="chronicle-name" onClick={() => setChronicleOpen(true)}>Show</button></div>
-            )}
+            <ChronicleFeed
+              events={log}
+              clanLabel={clanLabel}
+              onSelectCreature={(id) => setSelectedId(id)}
+              onSelectClan={(id) => setSelectedClanId(id)}
+              onLoadOlder={loadOlder}
+              loadingOlder={loadingOlder}
+              noMoreHistory={noMoreHistory}
+              archiveMode={archiveMode}
+              selectedRunId={selectedRunId}
+            />
           </Collapsible>
         </div>
       )}

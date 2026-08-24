@@ -148,8 +148,7 @@ body {
   gap: 8px;
   z-index: 15;
   pointer-events: auto;
-  overflow-y: auto;
-  scrollbar-width: thin;
+  overflow: hidden;
   touch-action: pan-y;
 }
 .right-stack > * {
@@ -163,11 +162,22 @@ body {
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   pointer-events: auto;
-  flex: none;
   overflow: hidden;
   margin: 0;
   display: flex;
   flex-direction: column;
+  transition: flex 0.2s ease;
+}
+
+/* Collapsed box: only occupies the height of its header button */
+.right-stack > .collapsible[data-open="false"] {
+  flex: 0 0 auto;
+}
+
+/* Expanded box: expands dynamically to take equal share of available space */
+.right-stack > .collapsible[data-open="true"] {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .right-stack > .collapsible > .collapsible-head {
@@ -190,6 +200,7 @@ body {
   pointer-events: auto;
   position: relative;
   z-index: 1;
+  flex: 0 0 auto;
 }
 
 .right-stack > .collapsible[data-open="true"] > .collapsible-head {
@@ -202,12 +213,15 @@ body {
 }
 
 .right-stack > .collapsible > .collapsible-body {
-  padding: 10px 12px;
+  padding: 8px 10px;
   overflow-y: auto;
-  max-height: 28vh;
+  flex: 1 1 0;
+  min-height: 0;
   scrollbar-width: thin;
   background: #0d1117;
   pointer-events: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Nested collapsibles in right stack */
@@ -361,58 +375,73 @@ body {
   list-style: none;
 }
 
-.chronicle li {
+.chronicle li,
+.chronicle-feed-list li {
   font-size: 12px;
   color: #c9d1d9;
-  padding: 3px 0;
-  border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(48, 54, 61, 0.4);
+  line-height: 1.4;
+  word-break: break-word;
 }
 
-.chronicle li b {
+.chronicle li b,
+.chronicle-feed-list li b {
   color: #ffa657;
 }
 
-.chronicle li.ev-birth b {
+.chronicle li.ev-birth b,
+.chronicle-feed-list li.ev-birth b {
   color: #3fb950;
 }
 
-.chronicle li.ev-promo b {
+.chronicle li.ev-promo b,
+.chronicle-feed-list li.ev-promo b {
   color: #e3b341;
 }
 
-.chronicle li.ev-demote b {
+.chronicle li.ev-demote b,
+.chronicle-feed-list li.ev-demote b {
   color: #f85149;
 }
 
-.chronicle li.ev-war b {
+.chronicle li.ev-war b,
+.chronicle-feed-list li.ev-war b {
   color: #f85149;
 }
 
-.chronicle li.ev-predation b {
+.chronicle li.ev-predation b,
+.chronicle-feed-list li.ev-predation b {
   color: #ff7b72;
 }
 
-.chronicle li.ev-alliance b {
+.chronicle li.ev-alliance b,
+.chronicle-feed-list li.ev-alliance b {
   color: #3fb950;
 }
 
-.chronicle li.ev-rivalry b {
+.chronicle li.ev-rivalry b,
+.chronicle-feed-list li.ev-rivalry b {
   color: #d29922;
 }
 
-.chronicle li.ev-schism b {
+.chronicle li.ev-schism b,
+.chronicle-feed-list li.ev-schism b {
   color: #e3b341;
 }
 
-.chronicle li.ev-bloom b {
+.chronicle li.ev-bloom b,
+.chronicle-feed-list li.ev-bloom b {
   color: #58a6ff;
 }
 
-.chronicle li.ev-outbreak b {
+.chronicle li.ev-outbreak b,
+.chronicle-feed-list li.ev-outbreak b {
   color: #d29922;
 }
 
-.chronicle li.ev-recovery b {
+.chronicle li.ev-recovery b,
+.chronicle-feed-list li.ev-recovery b {
   color: #3fb950;
 }
 
