@@ -55,8 +55,9 @@ Flatland is an autonomous 2D artificial life and world simulation developed from
 This project is **developed from the Flatland idea rather than mimicking the book literally**. It adopts Abbott's core premises — 2D planar constraints, geometric vertex hierarchies, atmospheric perception, and higher-dimensional observation — as a foundation to create a **living, evolutionary artificial life ecosystem that organically changes and expands over time**.
 
 ### Core Architecture & Systems
-- **The God Model**: God sets global **laws of nature** (carrying capacity, food growth, metabolism, disease, climate) but never intervenes in individual lives. All behavior is 100% emergent.
+- **The Sphere (God Model)**: The Sphere (God) sets global **laws of nature** (carrying capacity, food growth, metabolism, disease, climate) from Spaceland, never intervening in individual lives. All behavior is 100% emergent.
 - **Botanical Ecology & Functional Nutrition**: 6 diverse plant species (`grass`, `grain`, `berry`, `medicinal_herb`, `mushroom`, `poisonous`) with distinct caloric densities, decay clocks, infection remedy effects, and targeted health-based foraging preferences.
+
 - **Cognitive Agency & Clan Social Intelligence**: Multi-objective utility AI replaces rigid if/else trees (evaluating survival, duty, traits, and kin needs); spatial waypoint mental maps; tactical soldier phalanxes, line kiting maneuvers, interpersonal trust-based buddy pairing, autonomous clan task boards (dynamic labor division), governance archetypes (Monarchy, Theocracy, Junta, Republic), adaptive bylaws (winter rationing, martial law), calculated Casus Belli, inter-clan trade caravans, and annual autumn harvest festivals.
 - **Autonomous Evolution & Culture**: 6 heritable personality archetypes (`brave`, `cautious`, `altruistic`, `greedy`, `explorer`, `builder`), craftable tools (spears, baskets, herb poultices, chieftain crowns), 4 mastery skills (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿), earned dynamic titles, oral lore passed from elders to youth in houses, and live thought bubbles.
 - **Realistic Energy & Metabolism**: Infant low metabolism ($0.45\\times$ energy decay), combat stamina expenditure, and autonomous field food reserve management via baskets.
@@ -148,8 +149,9 @@ The most profound connection between the app and the book is the **role of the u
 
 - In *Flatland*, the protagonist **A Square** is visited by **A Sphere** from the 3D *Spaceland*, who can look down from the Z-axis, see into locked rooms, view internal organs, and manipulate the 2D world with god-like omnipresence.
 - **In our App**:
-  - **You are the Sphere**: As the observer on your screen, you look down on Flatland from the third dimension.
-  - **The God Panel**: You hold the power to alter the "Laws of Nature" in real-time — toggling famine, changing food growth multipliers, curing or spreading plagues, introducing winter freezes, or blessing clans with prosperity.
+  - **You are the Sphere (God)**: As the observer on your screen, you look down on Flatland from Spaceland (the third dimension).
+  - **The Sphere Panel**: You hold the power of The Sphere to alter the "Laws of Nature" in real-time — toggling famine, changing food growth multipliers, curing or spreading plagues, introducing winter freezes, or blessing clans with prosperity.
+
 """
 
 
@@ -252,7 +254,7 @@ hr{{border:0;border-top:1px solid #21262d;margin:20px 0}}
 <div class="card" style="margin-top:12px;font-size:12px;color:#8b949e;border-color:#1f6feb">Developed by<br/><strong>Long Phan</strong><br/><a href="mailto:long@minhnhan.in">long@minhnhan.in</a><br/><a href="https://minhnhan.in">minhnhan.in</a> · <a href="https://world.minhnhan.in">world.minhnhan.in</a><br/><small style="color:#8b949e;display:block;margin-top:4px">Built with OpenCode & Antigravity<br/>Inspired by Edwin A. Abbott</small></div>
 </nav>
 <main>
-<div class="card" style="position:sticky;top:0;z-index:2;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:-24px -24px 16px -24px;padding:12px 16px;border-radius:0;border-left:none;border-right:none;border-top:none"><span class="badge">{laws} laws</span><span class="badge">{routes} routes</span><span class="badge">{presets} presets</span><span style="margin-left:auto;font-size:12px;color:#8b949e">God sets laws, never a life · <a href="/guide">Guide</a></span></div>
+<div class="card" style="position:sticky;top:0;z-index:2;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:-24px -24px 16px -24px;padding:12px 16px;border-radius:0;border-left:none;border-right:none;border-top:none"><span class="badge">{laws} laws</span><span class="badge">{routes} routes</span><span class="badge">{presets} presets</span><span style="margin-left:auto;font-size:12px;color:#8b949e">The Sphere sets laws, never a life · <a href="/guide">Guide</a></span></div>
 {content}
 <hr/><p style="font-size:12px;color:#8b949e">Generated from live code — <code>Config</code> defaults + <code>GodLaws</code> + <code>app.routes</code>. See <a href="/guide">/guide</a> for minimal guide. · Developed by <strong>Long Phan</strong> — <a href="mailto:long@minhnhan.in">long@minhnhan.in</a> · <a href="https://minhnhan.in">minhnhan.in</a> · Built with OpenCode & Antigravity</p>
 </main>
@@ -283,8 +285,8 @@ async function applyPreset(name){{ const r=await fetch('/api/presets/'+name+'?pe
 def build_wiki_html(app: Any) -> str:
     from .main import PRESETS
     api_html = _md_to_html("# API reference\n\nLive routes from `app.routes` + Swagger at [/docs](/docs). Try `curl` examples below.") + _api_table(app) + _curl_examples()
-    laws_html = _md_to_html("# God laws\n\nEvery `GodLaws` field — type/range/default. Set via `POST /api/laws` or presets.") + _god_laws_table()
-    presets_html = _md_to_html("# Presets — one-click worlds\n\nSustainable is the 1000-day gentle world. Apply via God panel or `POST /api/presets/{name}?reset`.") + _presets_table()
+    laws_html = _md_to_html("# Laws of the Sphere\n\nEvery `GodLaws` field — type/range/default. Set via `POST /api/laws` or presets.") + _god_laws_table()
+    presets_html = _md_to_html("# Presets — one-click worlds\n\nSustainable is the 1000-day gentle world. Apply via The Sphere panel or `POST /api/presets/{name}?reset`.") + _presets_table()
     sections = [
         ("overview", "Overview", _md_to_html(WIKI_OVERVIEW_MD)),
         ("book-comparison", "Flatland Book vs Simulation", _md_to_html(FLATLAND_BOOK_COMPARISON_MD)),
@@ -294,11 +296,12 @@ def build_wiki_html(app: Any) -> str:
         ("performance", "Performance", _md_to_html(PERFORMANCE_MD)),
         ("codebase-map", "Codebase map", _md_to_html(CODEBASE_MAP_MD)),
         ("data-model-protocol", "Data model & protocol", _md_to_html(DATA_MODEL_MD)),
-        ("god-laws", "God laws", laws_html),
+        ("god-laws", "Laws of the Sphere", laws_html),
         ("presets", "Presets", presets_html),
         ("api-reference", "API reference", api_html),
         ("configuration-ops", "Configuration & ops", _md_to_html(CONFIG_OPS_MD)),
     ]
+
     nav_items = []
     content_parts = []
     for slug, title, body in sections:

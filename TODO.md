@@ -1,7 +1,8 @@
 # Flatland — World Simulation TODO
 
-God model: god sets **laws**, never touches individual creatures. Everything else emerges.
+The Sphere model: The Sphere (God) sets **laws** from Spaceland, never touches individual creatures. Everything else emerges.
 Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observability
+
 
 ## F. Infrastructure — Database  [P0]
 - [x] ~~SQLite via SQLAlchemy 2.0 + aiosqlite~~ → **stdlib `sqlite3`** behind a thin

@@ -173,7 +173,7 @@ def _api_table(app: Any) -> str:
 HOW_IT_WORKS_MD = """
 # How the world works
 
-**God model:** god sets *laws*, never touches individual creatures. Everything else emerges.
+**The Sphere (God model):** The Sphere (God) sets *laws* from Spaceland, never touches individual creatures. Everything else emerges.
 
 ## The deterministic tick
 `s = Simulation(Config(seed))` → `s.step()` is fully deterministic (one `random.Random` per world). Same seed ⇒ same world. Tick loop (`simulation.py:539` `simulation.py:335`) order: weather → plants → rebuild index → creatures → disease → war → reproduce → relations → food law → corpses → settlements → tick+=1. Snapshots are pushed over WebSocket `state` every tick.
@@ -415,13 +415,13 @@ li{{margin:4px 0}}
 def build_guide_html(app: Any) -> str:
     """Assemble full guide HTML with nav + all sections + auto tables."""
     api_html = _md_to_html("# API reference\n\nAuto-generated from live OpenAPI (`/openapi.json`).") + _api_table(app) + _md_to_html("\nInteractive docs at [/docs](/docs).\n")
-    laws_html = _md_to_html("# God laws\n\nEvery law in `GodLaws` (`protocol.py:108`) with type/range/default. God sets via `POST /api/laws`.") + _god_laws_table()
+    laws_html = _md_to_html("# Laws of the Sphere\n\nEvery law in `GodLaws` (`protocol.py:108`) with type/range/default. The Sphere sets via `POST /api/laws`.") + _god_laws_table()
     sections = [
         ("how-the-world-works", "How the world works", _md_to_html(HOW_IT_WORKS_MD)),
         ("codebase-map", "Codebase map", _md_to_html(CODEBASE_MAP_MD)),
         ("data-model-protocol", "Data model & protocol", _md_to_html(DATA_MODEL_MD)),
+        ("laws-of-the-sphere", "Laws of the Sphere", laws_html),
         ("api-reference", "API reference", api_html),
-        ("god-laws", "God laws", laws_html),
         ("configuration-ops", "Configuration & ops", _md_to_html(CONFIG_OPS_MD)),
     ]
 

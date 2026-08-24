@@ -18,13 +18,14 @@
 
 1. **Developed from the Idea, Not a Literal Mimic**: The simulation embraces Abbott's fundamental concepts — 2D geometric constraints, line and polygon dynamics, generational side inheritance, and the perspective of a 3D observer (the Sphere / God Model) — while freely diverging from Victorian social satire to build an authentic artificial life ecosystem.
 2. **Living & Changing Over Time**: The world evolves dynamically across seasons, generations, and historical ages. Organisms develop heritable personalities, master distinct craft disciplines, form tribal coalitions, exchange oral traditions, and manage domestic economies.
-3. **Immutable Natural Laws**: God governs exclusively through universal laws of nature (metabolism, carrying capacity, climate volatility, disease), leaving all individual outcomes to 100% emergent behavior.
+3. **Immutable Natural Laws**: The Sphere (God) governs exclusively through universal laws of nature (metabolism, carrying capacity, climate volatility, disease), leaving all individual outcomes to 100% emergent behavior.
 
 
-### 1. The God Model: Laws over Fates
-In Flatland, God sets the **laws of nature** but never touches an individual life. God cannot kill, heal, or move a single creature; the simulation advances deterministically under physical and biological rules.
-- **God Panel (`⚖ God`)**: Adjust carrying capacity, food growth, energy metabolism, weather volatility, disease virulence, or clan aggression in real-time.
+### 1. The Sphere (God Model): Laws over Fates
+In Flatland, The Sphere (God) sets the **laws of nature** from Spaceland but never touches an individual life. The Sphere cannot kill, heal, or move a single creature; the simulation advances deterministically under physical and biological rules.
+- **The Sphere Panel (`⚖ The Sphere`)**: Adjust carrying capacity, food growth, energy metabolism, weather volatility, disease virulence, or clan aggression in real-time.
 - **Curated World Presets**:
+
   - **⚖️ Balance (Default)**: Goldilocks harmony tuned for **500–800 inhabitants** with 220 food, carrying capacity 600 (max 800), gentle wars, rare predation, and flourishing multi-generational clans.
   - **🌿 Sustainable**: Abundant food (450), carrying capacity 2200 (max 3000), low conflict, 1000-day peace.
   - **🔥 Chaos**: High predator ratio, lethal wars, wildfires, frequent plagues, and fast seasonal turnover.

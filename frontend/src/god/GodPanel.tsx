@@ -553,7 +553,7 @@ export default function GodPanel({ open, onClose }: Props) {
       {!error && saved && <span className="god-saved">✓ Laws active</span>}
       {!error && !saved && submitting && <span className="god-note" style={{ color: '#d29922' }}>Applying…</span>}
       <button onClick={apply} disabled={submitting} title="apply to current world only (Reset reverts)">Apply</button>
-      <button onClick={save} disabled={submitting} title="save to current and future worlds (Reset keeps it)" className="god-save">
+      <button onClick={save} disabled={submitting} title="The Sphere — save laws to current and future worlds (Reset keeps it)" className="god-save">
         Save
       </button>
     </footer>
@@ -561,7 +561,7 @@ export default function GodPanel({ open, onClose }: Props) {
 
   const head = (
     <header className="god-head">
-      <h2>⚖ Laws of Nature</h2>
+      <h2>⚖ The Sphere — Laws of Flatland</h2>
       <button className="god-close" onClick={onClose} aria-label="close">
         ×
       </button>
@@ -573,9 +573,10 @@ export default function GodPanel({ open, onClose }: Props) {
   const body = (
     <>
       <p className="god-note">
-        You are god: set the rules, never the fates. Creatures and the world obey
-        the law; no single life may be touched.
+        You are The Sphere (God): set the universal laws from Spaceland, never the fates.
+        Creatures and the world obey the higher-dimensional law; no single life may be touched.
       </p>
+
       <div className="god-group" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 2 }}>
           <span style={{ fontSize: 12, color: '#8b949e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>

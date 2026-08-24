@@ -83,7 +83,7 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
             </p>
             <h4 style={{ color: '#e6edf3' }}>Key Simulation Mechanics</h4>
             <ul>
-              <li><strong>The God Model</strong>: God sets universal <em>laws of nature</em>, never intervening in individual lives. Everything is 100% emergent.</li>
+              <li><strong>The Sphere (God Model)</strong>: The Sphere (God) sets universal <em>laws of nature</em> from Spaceland, never intervening in individual lives. Everything is 100% emergent.</li>
               <li><strong>Autonomous Evolution</strong>: Heritable personality archetypes (brave, altruistic, builder, etc.), tools (spears, baskets, poultices, crowns), 4 mastery skills (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿), dynamic titles, and oral lore taught in houses.</li>
               <li><strong>Life Stages & Metabolism</strong>: Infant low burn (0.45×), combat stamina drain, field food reserves, and natural lifespans.</li>
               <li><strong>Settlements & Politics</strong>: Walled houses, multi-house clan territories, settlement food larders, mutual coalitions, and schisms.</li>
@@ -91,7 +91,7 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
 
             <h4 style={{ color: '#e6edf3' }}>Interactive Features</h4>
             <ul>
-              <li><strong>God Panel</strong> (⚖ God) — Adjust carrying capacity, food growth, metabolism, disease, and apply presets.</li>
+              <li><strong>The Sphere Panel</strong> (⚖ The Sphere) — Adjust carrying capacity, food growth, metabolism, disease, and apply presets.</li>
               <li><strong>Creature Inspector</strong> — Tap any creature to view its live vitals, personality, tools, skill mastery, and family lineage.</li>
               <li><strong>Controls</strong>: Space pause, S step, R reset seed, F fit camera, +/- zoom, drag to pan.</li>
             </ul>
@@ -105,8 +105,9 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
               <li><a href="/wiki">Backend Living Wiki (/wiki)</a> — Full documentation with presets & curl playground</li>
               <li><a href="/guide">Living Guide (/guide)</a> — Codebase architecture and system maps</li>
               <li><a href="/docs">Swagger Interactive API (/docs)</a> + <a href="/openapi.json">/openapi.json</a></li>
-              <li><a href="/docs/god-laws.md">God Laws Reference (/docs/god-laws.md)</a></li>
+              <li><a href="/docs/god-laws.md">Laws of the Sphere (/docs/god-laws.md)</a></li>
             </ul>
+
           </div>
         )}
 
@@ -174,7 +175,7 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
 
             <h4 style={{ color: '#e3b341', borderBottom: '1px solid #30363d', paddingBottom: 4, marginTop: 16 }}>4. The Higher Dimension: The User as "The Sphere"</h4>
             <p>
-              In the novel, <strong>A Square</strong> is visited by <strong>A Sphere</strong> from 3D <em>Spaceland</em>, who gazes down into closed rooms, inspects interiors, and manipulates 2D physics. In our app, <strong>you are the Sphere</strong>: peering down from the Z-axis, inspecting creature minds and lineage, and tuning the fundamental Laws of Nature via the <strong>God Panel</strong>.
+              In the novel, <strong>A Square</strong> is visited by <strong>A Sphere</strong> from 3D <em>Spaceland</em>, who gazes down into closed rooms, inspects interiors, and manipulates 2D physics. In our app, <strong>you are the Sphere (God)</strong>: peering down from the Z-axis, inspecting creature minds and lineage, and tuning the fundamental Laws of Nature via <strong>The Sphere Panel</strong>.
             </p>
           </div>
         )}
@@ -208,8 +209,9 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
 
         {tab === 'laws' && (
           <div>
-            <h3 style={{ marginTop: 0, color: '#e6edf3' }}>God Laws — {data?.laws.length ?? 0} laws</h3>
-            <p className="god-note" style={{ color: '#8b949e', fontSize: 12, margin: '4px 0 10px' }}>Type/range/default + hint from <code>docs/god-laws.md</code>. Edit in God panel or <code>POST /api/laws</code>.</p>
+            <h3 style={{ marginTop: 0, color: '#e6edf3' }}>Laws of the Sphere — {data?.laws.length ?? 0} laws</h3>
+            <p className="god-note" style={{ color: '#8b949e', fontSize: 12, margin: '4px 0 10px' }}>Type/range/default + hint from <code>docs/god-laws.md</code>. Edit in The Sphere panel or <code>POST /api/laws</code>.</p>
+
             <div style={{ maxHeight: 380, overflow: 'auto', border: '1px solid #30363d', borderRadius: 6 }}>
               <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', minWidth: 480 }}>
                 <thead><tr><th style={{ textAlign: 'left', padding: '8px 10px', background: '#161b22', color: '#e6edf3', borderBottom: '1px solid #30363d' }}>Law</th><th style={{ textAlign: 'left', padding: '8px 10px', background: '#161b22', color: '#e6edf3', borderBottom: '1px solid #30363d' }}>Default</th><th style={{ textAlign: 'left', padding: '8px 10px', background: '#161b22', color: '#e6edf3', borderBottom: '1px solid #30363d' }}>Hint</th></tr></thead>

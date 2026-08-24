@@ -568,7 +568,7 @@ export default function App() {
           <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls" data-hint="Show hints for all HUD chips and controls">
             ?
           </button>
-          <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="Laws of Nature — god sets laws, never touches a life" data-hint="Laws of Nature — god sets laws, never touches a life">
+          <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="The Sphere (God) — sets laws from Spaceland, never touches a life" data-hint="The Sphere (God) — sets laws from Spaceland, never touches a life">
             ⚖
           </button>
         </div>
@@ -592,7 +592,7 @@ export default function App() {
           </div>
           {worlds.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, paddingTop: 6, borderTop: '1px solid #21262d' }}>
-              <span style={{ fontSize: 12, color: '#8b949e', flex: 'none' }}>⚖ History Run (God only):</span>
+              <span style={{ fontSize: 12, color: '#8b949e', flex: 'none' }}>⚖ History Run (The Sphere):</span>
               <select
                 className="run-select"
                 value={String(selectedRunId ?? liveWorldId ?? '')}
@@ -622,8 +622,9 @@ export default function App() {
               ❓ Guide
             </button>
             <button className="god-btn god-main-btn" onClick={() => { setStatusExpanded(false); setGodOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
-              ⚖ God
+              ⚖ The Sphere
             </button>
+
             <button className="god-btn" onClick={() => { setStatusExpanded(false); sendReset(); }} style={{ flex: 1, minHeight: 34, fontSize: 12, borderColor: '#f85149', color: '#ff7b72' }} title="Reset world with new seed (R)">
               🔄 Reset
             </button>
@@ -651,8 +652,9 @@ export default function App() {
           <button onClick={paused ? sendResume : sendPause} title={paused ? 'Resume (space)' : 'Pause (space)'}>{paused ? '▶' : '⏸'}</button>
           <button onClick={sendStep} title="Step (S)">⏭</button>
           <button onClick={sendReset} title="Reset world with new seed (R)" style={{ color: '#ff7b72' }}>🔄</button>
-          <button onClick={() => setGodOpen(true)} title="God laws">⚖</button>
+          <button onClick={() => setGodOpen(true)} title="Laws of the Sphere (God)">⚖</button>
           <button
+
             className={sheetState !== 'hidden' ? 'active-sheet-btn' : ''}
             onClick={() => {
               if (sheetState === 'hidden') {
@@ -785,7 +787,7 @@ export default function App() {
             </select>
             {worlds.length > 0 && (
               <div className="run-switcher">
-                <label className="chip run-label" htmlFor="run-bottom" title="Select world run (God only)" data-hint="Select world run (God only)">
+                <label className="chip run-label" htmlFor="run-bottom" title="Select world run (The Sphere)" data-hint="Select world run (The Sphere)">
                   ⚖ run
                   <select
                     id="run-bottom"
@@ -921,7 +923,7 @@ export default function App() {
               <h3>Hints</h3>
               <button className="god-close" onClick={() => setHelpOpen(false)}>×</button>
             </header>
-            <p className="god-note">Tap any chip to see its hint. God never touches a single life — only laws.</p>
+            <p className="god-note">Tap any chip to see its hint. The Sphere (God) sets universal laws from Spaceland, never touching a single life.</p>
             <ul>
               <li><b>tick</b>: step count, 10/s by default, same seed ⇒ same world</li>
               <li><b>entities</b>: creatures + Food plants + Houses + Corpses</li>

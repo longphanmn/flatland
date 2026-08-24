@@ -201,7 +201,7 @@ export function AuthModal() {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, fontSize: 16 }}>
-            {currentMode === 'create' ? 'Create a god passkey' : 'God passkey'}
+            {currentMode === 'create' ? 'Create a Sphere passkey' : 'The Sphere (God Passkey)'}
           </h3>
           <button
             onClick={() => close(null)}
@@ -212,9 +212,10 @@ export function AuthModal() {
         </div>
         <p style={{ margin: 0, fontSize: 12, color: '#8b949e', lineHeight: 1.4 }}>
           {currentMode === 'create'
-            ? 'No passkey exists yet. Pick one (min 4 chars) to control the world.'
-            : 'Setting laws and controlling the world requires your passkey. (Reset is only available via server terminal: python -m app.godkey reset <key>)'}
+            ? 'No passkey exists yet. Set a passkey (min 4 chars) to govern Flatland as The Sphere (God).'
+            : 'Setting laws and governing Flatland requires the passkey of The Sphere (God). (Reset is only available via server terminal: python -m app.godkey reset <key>)'}
         </p>
+
         {current.error && <p style={{ margin: 0, fontSize: 12, color: '#f85149', lineHeight: 1.4 }}>{current.error}</p>}
         <input
           autoFocus
