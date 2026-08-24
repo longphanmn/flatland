@@ -58,9 +58,6 @@ export default function App() {
   const [showWorldEnd, setShowWorldEnd] = useState(false)
   const [aliveHist, setAliveHist] = useState<number[]>([])
   const [popHist, setPopHist] = useState<Array<Record<string, number>>>([])
-  const [album, setAlbum] = useState<Array<{ id: number; tick: number }>>([])
-  const [albumOpen, setAlbumOpen] = useState(false)
-  const [viewSnapTick, setViewSnapTick] = useState<number | null>(null)
   const [worlds, setWorlds] = useState<WorldSummary[]>([])
   /** null = follow the live run; a number = pinned to that (past) run. */
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null)
@@ -78,8 +75,8 @@ export default function App() {
   const seenEventsRef = useRef(new Set<string>())
   const selectedRef = useRef<number | null>(null)
   const selectedClanRef = useRef<number | null>(null)
-  const overrideRef = useRef<StateMessage | null>(null)
   const archiveModeRef = useRef(false)
+
   const oldestLoadedRef = useRef<number | null>(null)
   const fetchedByIdRef = useRef(new Map<string, HistoryEvent>())
   const seededRef = useRef(false)
@@ -233,8 +230,6 @@ export default function App() {
           oldestLoadedRef.current = null
           seededRef.current = false
           setNoMoreHistory(false)
-          setViewSnapTick(null)
-          overrideRef.current = null
         }
         prevTickRef.current = msg.tick
         prevSeedRef.current = msg.seed
@@ -382,29 +377,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [sendControl, sendStep, sendReset])
 
-  const takeSnapshot = useCallback(async () => {
-    await fetch('/api/snapshot', { method: 'POST' })
-    const list = await fetch('/api/snapshots').then((r) => r.json())
-    setAlbum(list.snapshots)
-  }, [])
-
-  const openAlbum = useCallback(async () => {
-    const list = await fetch('/api/snapshots').then((r) => r.json())
-    setAlbum(list.snapshots)
-    setAlbumOpen((o) => !o)
-  }, [])
-
-  const viewSnapshot = useCallback(async (id: number) => {
-    const data = await fetch(`/api/snapshot/${id}`).then((r) => r.json())
-    overrideRef.current = data.state as StateMessage
-    setViewSnapTick(data.tick)
-    setAlbumOpen(false)
-  }, [])
-
-  const exitSnapshot = useCallback(() => {
-    overrideRef.current = null
-    setViewSnapTick(null)
-  }, [])
 
   /** Merge fetched (id-bearing) events into the log newest-first, deduped by tick+entity_id+type. */
   const mergeFetched = useCallback((fetched: HistoryEvent[]) => {
@@ -505,6 +477,12 @@ export default function App() {
         <span className={`dot ${status}`} title={`Connection: ${STATUS_LABEL[status]}`} data-hint={`Connection: ${STATUS_LABEL[status]}`} />
         {status !== 'open' && <span className="chip" style={{ color: status === 'connecting' ? '#d29922' : '#f85149' }}>{STATUS_LABEL[status]}</span>}
         {paused && <span className="chip paused">PAUSED</span>}
+        {state && (
+          <span className="chip" title={`Time of day ${state.time_of_day} — night (0-0.22, 0.78-1) dims sight 0.6×, fog 0.6× stack; season ${state.season} changes Food target and disease. Weather ${state.weather}: rain slows 0.85×, storm adds wander.`}>
+            {isNight ? '🌙' : '☀'} day <b>{state.day}</b> · {state.season}
+            {weatherIcon && ` · ${weatherIcon}`}
+          </span>
+        )}
         <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Est TPS is wall-clock measured from WS stream; if it drops below target, healthz avg_tick_ms shows overrun.">
           tick <b>{state?.tick ?? 0}</b>{estTps !== null && ` · ${estTps} t/s`}
         </span>
@@ -586,12 +564,7 @@ export default function App() {
             🗓 age <b>{state.age}</b> · day {ageDay}/{ageTotalDays}
           </span>
         )}
-        {state && (
-          <span className="chip" title={`Time of day ${state.time_of_day} — night (0-0.22, 0.78-1) dims sight 0.6×, fog 0.6× stack; season ${state.season} changes Food target and disease. Weather ${state.weather}: rain slows 0.85×, storm adds wander.`}>
-            {isNight ? '🌙' : '☀'} day <b>{state.day}</b> · {state.season}
-            {weatherIcon && ` · ${weatherIcon}`}
-          </span>
-        )}
+
         {isMobile && <span className="chip" style={{ marginLeft: 'auto', fontSize: 10, color: '#58a6ff' }}>{statusExpanded ? '▲ Close' : '▼ More'}</span>}
 
         <div className="top-right-panel">
@@ -694,8 +667,6 @@ export default function App() {
             📊
           </button>
           <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))} title="Fit view (F)">⛶</button>
-          <button onClick={takeSnapshot} title="Snapshot 📷">📷</button>
-          <button onClick={openAlbum} title="Album">🖼</button>
           <select value={speed} onChange={e => changeSpeed(Number(e.target.value))} title="ticks/s">
             {SPEEDS.map(v => <option key={v} value={v}>{v}t/s</option>)}
           </select>
@@ -796,10 +767,6 @@ export default function App() {
             <button onClick={() => setChronicleOpen((o) => !o)} title={chronicleOpen ? 'Hide chronicle' : 'Show chronicle'} data-hint={chronicleOpen ? 'Hide chronicle' : 'Show chronicle'}>
               {chronicleOpen ? '▤' : '📜'}
             </button>
-            <button onClick={takeSnapshot} title="Snapshot (freeze) — album" data-hint="Snapshot (freeze) — album">
-              📷
-            </button>
-            <button onClick={openAlbum} title="Album (snapshots)" data-hint="Album (snapshots)">🖼</button>
             <label className="chip" htmlFor="speed" title="ticks per second" data-hint="ticks per second">
               ⚡
             </label>
@@ -842,28 +809,6 @@ export default function App() {
         </>
       )}
 
-      {viewSnapTick !== null && (
-        <button className="snap-banner" onClick={exitSnapshot}>
-          viewing snapshot from tick {viewSnapTick} — click to return to the living
-        </button>
-      )}
-
-      {albumOpen && (
-        <aside className="album">
-          <h3>Snapshot album</h3>
-          {album.length === 0 ? (
-            <p className="chip">no photos yet — press 📷</p>
-          ) : (
-            <ul>
-              {album.map((s) => (
-                <li key={s.id}>
-                  <button onClick={() => viewSnapshot(s.id)}>tick {s.tick}</button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </aside>
-      )}
 
       {!isMobile && (
         <div

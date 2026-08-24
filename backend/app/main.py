@@ -1270,33 +1270,8 @@ async def get_plots() -> dict:
         return {"plots": RT.sim.get_plots(), "tick": RT.sim.tick}
 
 
-@app.post("/api/snapshot", dependencies=[Depends(require_god)])
-async def take_snapshot() -> dict:
-    """Freeze the current world state into the album (god's photo, not a hand)."""
-    with RT.lock:
-        if RT.world_id is None:
-            raise HTTPException(409, "no active world")
-        payload = _dumps(RT.sim.snapshot_payload())
-    sid = DB.save_snapshot(RT.world_id, RT.sim.tick, payload)
-    return {"id": sid, "tick": RT.sim.tick}
-
-
-@app.get("/api/snapshots")
-async def list_snapshots() -> dict:
-    if RT.world_id is None:
-        return {"snapshots": []}
-    return {"snapshots": DB.list_snapshots(RT.world_id)}
-
-
-@app.get("/api/snapshot/{snapshot_id}")
-async def get_snapshot(snapshot_id: int) -> dict:
-    snap = DB.get_snapshot(snapshot_id)
-    if snap is None or (RT.world_id is not None and snap["world_id"] != RT.world_id):
-        raise HTTPException(404, "snapshot not found")
-    return {"id": snap["id"], "tick": snap["tick"], "state": snap["payload"]}
-
-
 def _kin_card(entity_id: int) -> dict:
+
     """Dossier card for a family-tree node (alive creatures preferred)."""
     seed = RT.sim.config.seed if hasattr(RT.sim, "config") else RT.config.seed
     ent = RT.sim.world.entities.get(entity_id)

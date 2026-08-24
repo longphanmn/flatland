@@ -175,24 +175,8 @@ def test_genealogy_table_written(client):
         conn.close()
 
 
-def test_snapshot_album_roundtrip(client):
-    r = client.post("/api/snapshot")
-    assert r.status_code == 200
-    sid = r.json()["id"]
-    tick = r.json()["tick"]
-
-    listing = client.get("/api/snapshots").json()["snapshots"]
-    assert any(s["id"] == sid for s in listing)
-
-    got = client.get(f"/api/snapshot/{sid}").json()
-    assert got["tick"] == tick
-    assert got["state"]["type"] == "state"
-    assert len(got["state"]["entities"]) == len(client.get("/api/state").json()["entities"])
-
-    assert client.get("/api/snapshot/999999").status_code == 404
-
-
 def test_creature_family_tree(client):
+
     from app.entities import Creature
 
     # mother (alive), father (dies -> genealogy card), child

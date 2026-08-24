@@ -17,8 +17,6 @@ interface Props {
   selectedRef?: React.RefObject<number | null>
   selectedClanRef?: React.RefObject<number | null>
   onTapCreature?: (id: number | null) => void
-  /** When set, the canvas renders this frozen snapshot instead of the live world. */
-  overrideRef?: React.RefObject<StateMessage | null>
 }
 
 export default function CanvasRenderer({
@@ -26,8 +24,8 @@ export default function CanvasRenderer({
   selectedRef,
   selectedClanRef,
   onTapCreature,
-  overrideRef,
 }: Props) {
+
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const camRef = useRef<Camera>({ scale: 1, ox: 0, oy: 0, initialized: false })
 
@@ -94,13 +92,13 @@ export default function CanvasRenderer({
     }
 
     const onFit = () => {
-      const st = overrideRef?.current ?? stateRef.current
+      const st = stateRef.current
       if (st) fitCamera(st)
     }
     window.addEventListener('flatworld-fit', onFit)
 
     const onZoomEvent = (ev: Event) => {
-      const state = overrideRef?.current ?? stateRef.current
+      const state = stateRef.current
       if (!state || !cam.initialized) return
       const factor = (ev as CustomEvent<{ factor?: number }>).detail?.factor ?? 1.2
       zoomAt(state, factor, canvas.width / 2, canvas.height / 2)
@@ -142,7 +140,7 @@ export default function CanvasRenderer({
     const onPointerMove = (ev: PointerEvent) => {
       const prev = pointers.get(ev.pointerId)
       if (!prev || !cam.initialized) return
-      const state = overrideRef?.current ?? stateRef.current
+      const state = stateRef.current
       if (!state) return
       pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY })
       const ratio = dpr()
@@ -197,7 +195,7 @@ export default function CanvasRenderer({
         now - lastTap.t < 300 &&
         Math.hypot(tapStart.x - lastTap.x, tapStart.y - lastTap.y) < 24
 
-      const state = overrideRef?.current ?? stateRef.current
+      const state = stateRef.current
       const id = pickCreatureAt(state, tapStart.x, tapStart.y, cam, dpr())
 
       if (isDoubleTap) {
@@ -223,7 +221,7 @@ export default function CanvasRenderer({
     const onWheel = (ev: WheelEvent) => {
       if (ev.target !== canvas) return
       ev.preventDefault()
-      const state = overrideRef?.current ?? stateRef.current
+      const state = stateRef.current
       if (!state || !cam.initialized) return
       const factor = Math.exp(-ev.deltaY * 0.0015)
       zoomAt(state, factor, ev.clientX * dpr(), ev.clientY * dpr())
@@ -232,7 +230,7 @@ export default function CanvasRenderer({
     const onDblClick = (ev: MouseEvent) => {
       if (ev.target !== canvas) return
       ev.preventDefault()
-      const state = overrideRef?.current ?? stateRef.current
+      const state = stateRef.current
       if (!state || !cam.initialized) return
       const out = ev.shiftKey || ev.altKey
       zoomAt(state, out ? 1 / 1.8 : 1.8, ev.clientX * dpr(), ev.clientY * dpr())
@@ -249,9 +247,10 @@ export default function CanvasRenderer({
     // Render loop
     const draw = () => {
       raf = requestAnimationFrame(draw)
-      const state = overrideRef?.current ?? stateRef.current
+      const state = stateRef.current
       const cw = canvas.width
       const ch = canvas.height
+
 
       if (!state) {
         ctx.setTransform(1, 0, 0, 1, 0, 0)
