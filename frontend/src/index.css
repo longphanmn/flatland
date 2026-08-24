@@ -120,16 +120,18 @@ body {
 .right-stack {
   position: fixed;
   right: 14px;
-  top: 58px;
-  bottom: 62px;
+  top: 50px;
+  bottom: 50px;
   width: 320px;
   max-width: 90vw;
-  max-height: 66vh;
+  max-height: 78vh;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   z-index: 5;
   pointer-events: none;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .info-panel {
@@ -140,7 +142,25 @@ body {
   overflow-y: auto;
   pointer-events: auto;
   flex: 0 1 auto;
-  max-height: 30vh;
+  max-height: 26vh;
+}
+
+.clan-panel-box {
+  background: rgba(13, 17, 23, 0.93);
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 10px 14px;
+  overflow-y: auto;
+  pointer-events: auto;
+  flex: 0 1 auto;
+  max-height: 28vh;
+}
+.clan-panel-box h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #e6edf3;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .info-panel h3 {
@@ -160,7 +180,7 @@ body {
   pointer-events: auto;
   flex: 0 1 auto;
   min-height: 80px;
-  max-height: 30vh;
+  max-height: 26vh;
 }
 
 .chronicle h3 {

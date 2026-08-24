@@ -823,7 +823,6 @@ export default function App() {
               {(creatureEntries.length > 0 || objectEntries.length > 0) && (
                 <span className="chronicle-pop">
                   {' '}
-                  —{' '}
                   {creatureEntries.map(([k, v], i) => (
                     <span key={k} className="pop-chip" title={`${k}: ${v} alive — see Caste graph for trend`}>
                       <span className="dot-inline" style={{ background: CASTE_COLORS[k] ?? '#8b949e' }} />
@@ -871,12 +870,15 @@ export default function App() {
             >
               <TrophicChart history={popHist} showLegend={false} />
             </Collapsible>
-            <Collapsible id="overview-clans" title="Clans">
-              <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
-            </Collapsible>
             <Collapsible id="overview-plots" title="Plots" defaultOpen={true}>
               <PlotsPanel onSelectClan={setSelectedClanId} />
             </Collapsible>
+          </aside>
+          <aside className="info-panel clan-panel-box">
+            <h3 className="chronicle-title" title="Clans — settlements with population, totem and war record">
+              Clans
+            </h3>
+            <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
           </aside>
           <aside className="chronicle">
             <h3 className="chronicle-title" title="Event history — births, deaths, wars, plagues. Newest first.">
