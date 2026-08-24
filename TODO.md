@@ -1524,3 +1524,47 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [ ] [P2] **`"grief"` signal** — emitted by creatures witnessing a clan-mate die within vision range; nearby kin pause movement for 1–3 ticks (grief emote) and receive a small trust boost to all others present (shared loss bonds survivors).
 - [ ] [P2] **`"joy"` signal** — emitted at birth events; nearby kin receive a morale boost (energy +2.0, health +1.0); birth is literally good news.
 - [ ] [P2] **`"disease"` signal** — (see §S-6 above; unify the environmental and social detection into a single signal type).
+
+---
+
+## AS. Clan Leader Importance Roadmap  [P0–P2]
+> Design principle: leader alive = clan multiplier; leader dead = clan crisis.
+> The leader must be a single point of leverage — both a buff when present and a vulnerability when killed.
+
+### Phase L-0: Make Leader Death Painful  [P0]
+- [ ] [P0] **Morale aura** — all clan members within `leader_aura_radius` (~15 units) of the living leader gain: −5% energy decay, +10% sight, −0.1 fear threshold; members outside or leaderless lose the same amounts.
+- [ ] [P0] **Leaderless penalty** — when `clan["leader_id"]` is `None`: all members get −15% food energy gain, bylaw enforcement pauses, war declarations stop, members drift toward `cautious` personality over time; the interregnum is visibly painful.
+- [ ] [P0] **Leader death = clan shock** — at the moment of leader death, all living clan members: lose 10 energy instantly, emit a `"grief"` signal, gain `u_flee += 0.3` for 20 ticks, and the clan larder loses 20% (interregnum looting/chaos); this 20-tick window is when the clan is most vulnerable.
+
+### Phase L-1: Military Command  [P1]
+- [ ] [P1] **Combat effectiveness halved without leader** — during `_update_war`, if the attacking or defending clan has no living leader (`leader_id` missing or dead), apply `×0.5` modifier to their attack roll / yield calculation; an army without a general fights at half strength.
+- [ ] [P1] **Bodyguard clustering** — clan Soldiers within `aura_radius` of their own living leader gain `u_help = 1.5` (ultra-high priority to defend the leader's position); the bodyguard cluster emerges from the existing signal/utility system with no extra mechanics.
+- [ ] [P1] **Rally signal before war** — before a war declaration fires, leader emits a `"rally"` signal (new kind) toward the remembered enemy; Soldiers within range boost `u_help`; all members get +0.3 combat skill for 30 ticks; long-distance war declarations without a rally are strategically weaker.
+- [ ] [P1] **Targeted assassination** — bold/Junta leaders specifically target the enemy clan's `leader_id` creature during combat (`+0.2` attack bonus); killing the enemy leader ends the war immediately (forced peace event); decapitation is a valid strategy.
+
+### Phase L-2: Active Commands — Leader Issues Orders  [P1–P2]
+- [ ] [P1] **Retreat command** — leader health < 30%: emits a `"retreat"` signal (new kind) at `signal_radius × 2`; all clan-mates in range switch to `u_shelter = 2.0`, overriding all other drives; catastrophic for the clan but realistic.
+- [ ] [P1] **Ritual at main house boosts totem** — leader at main house every N ticks conducts a "ritual" (emote); totem buff magnitude doubles for 30 ticks for all clan members; without a living leader at the main house, totem power drops to 50% effectiveness.
+- [ ] [P2] **Harvest order signal** — leader at main house in autumn emits `"harvest"` signal; all farmers in radius boost foraging range and `u_eat` weight; increases larder fill rate during the crucial autumn window.
+- [ ] [P2] **Evacuation order** — leader detects disaster (fire/flood spreading nearby): emits `"evacuate"` signal with a direction vector; clan members set highest-priority waypoint in that direction.
+
+### Phase L-3: Economic Control  [P1]
+- [ ] [P1] **Larder deposits require leader presence** — food deposits into the clan larder are only accepted when a living leader is within `main_house_radius`; without leader, members can still withdraw (eat reserves) but cannot deposit; a leaderless clan slowly starves even with a full larder.
+- [ ] [P1] **Leader distributes rations** — larder distribution becomes a periodic leader action at the main house rather than automatic; distribution quality scales with leader `farming` skill; absent/dead leader = no distribution.
+
+### Phase L-4: Diplomacy Requires Presence  [P2]
+- [ ] [P2] **Peace requires physical meeting** — peace negotiations require both leaders to be within `talk_radius` (~6 units) of each other; a peace offer only finalises if the rival leader is nearby; if a leader dies mid-negotiation, the deal collapses.
+- [ ] [P2] **Herald system** — when leaders are far apart, the highest-caste living member is dispatched as a "herald" creature with a waypoint toward the rival leader; the herald must survive the journey for diplomacy to succeed.
+- [ ] [P2] **Regicide political fallout** — killing an enemy leader without formal war declaration fires a `"regicide"` history event; the assassin's clan gets −60 relations with all neutrals ("they murder chiefs"), but the victim clan gets +40 sympathy from all others; high-risk, high-reward political weapon.
+
+### Phase L-5: Governance Differentiation  [P1]
+> Governance types already exist (republic/monarchy/theocracy/junta) but only differ in succession order.
+- [ ] [P1] **Republic active bonus** — strongest diplomacy (+20% peace offer acceptance), best larder distribution efficiency, but slowest war decisions (requires 2-tick deliberation before war fires).
+- [ ] [P1] **Monarchy active bonus** — largest morale aura radius (×1.5); tribute income doubles; risk: if gene pool small, inbreeding mutation chance increases.
+- [ ] [P1] **Theocracy active bonus** — ritual power ×2 (totem always at 100%); cannot declare war unilaterally (requires a Priest elder co-sign signal); strongest spiritual defenses.
+- [ ] [P1] **Junta active bonus** — all clan combat skill ×1.5; assassination attempts get ×2 frequency; peace offers from Junta clans are ignored by rivals (militarist reputation); larder distribution is poorest (food wasted).
+
+### Phase L-6: Symbolic / Succession Flavor  [P2]
+- [ ] [P2] **Totem change on succession** — when a new leader ascends, 10% chance of totem reassignment biased by new leader's personality and caste (bold Soldier → Wolf/Fox/Boar; peaceful Priest → Tree/Shield/Rabbit; greedy Circle → Raven/Bear); a totem change is a major chronicle event.
+- [ ] [P2] **Schism on contested succession** — within 30 ticks of a leader's death, if two equally-ranked candidates exist, 15% chance the clan splits into two factions each claiming the new leader; leverages existing schism system.
+- [ ] [P2] **Law interpretation by leader** — when The Sphere changes a law, the living clan leader delivers an "interpretation" (trait-biased signal): bold frames it as a call to war, peaceful as a farming blessing; biases how members respond to law changes for 20 ticks.
