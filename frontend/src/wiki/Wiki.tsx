@@ -79,7 +79,7 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
           <div style={{ fontSize: 13, lineHeight: 1.6, color: '#c9d1d9' }}>
             <h3 style={{ color: '#e6edf3', marginTop: 0 }}>📖 About Flatland</h3>
             <p>
-              <strong>Flatland</strong> is an autonomous 2D artificial life and ecosystem simulation inspired by <strong>Edwin A. Abbott's 1884 novella <em>Flatland: A Romance of Many Dimensions</em></strong>. Geometric beings wander, forage, farm, master skills, establish multi-generational clan settlements, and evolve under immutable natural laws.
+              <strong>Flatland</strong> is an autonomous 2D artificial life and ecosystem simulation developed from the foundational ideas of <strong>Edwin A. Abbott's 1884 classic <em>Flatland: A Romance of Many Dimensions</em></strong>. Rather than mimicking the novella literally, it takes Flatland's core geometric premises to build a <strong>living, autonomous evolutionary ecosystem that organically evolves and changes over time</strong>.
             </p>
             <h4 style={{ color: '#e6edf3' }}>Key Simulation Mechanics</h4>
             <ul>
@@ -88,6 +88,7 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
               <li><strong>Life Stages & Metabolism</strong>: Infant low burn (0.45×), combat stamina drain, field food reserves, and natural lifespans.</li>
               <li><strong>Settlements & Politics</strong>: Walled houses, multi-house clan territories, settlement food larders, mutual coalitions, and schisms.</li>
             </ul>
+
             <h4 style={{ color: '#e6edf3' }}>Interactive Features</h4>
             <ul>
               <li><strong>God Panel</strong> (⚖ God) — Adjust carrying capacity, food growth, metabolism, disease, and apply presets.</li>

@@ -47,23 +47,21 @@ WIKI_OVERVIEW_MD = """
 # Flatland Wiki & Encyclopedia
 
 > **Developed by [Long Phan](mailto:long@minhnhan.in)** ([long@minhnhan.in](mailto:long@minhnhan.in) · [minhnhan.in](https://minhnhan.in) · [world.minhnhan.in](https://world.minhnhan.in))  
-> Built and refined using **OpenCode** and **Antigravity** · Inspired by **Edwin A. Abbott's *Flatland: A Romance of Many Dimensions*** (1884).
+> Built and refined using **OpenCode** and **Antigravity** · Developed from the core ideas of **Edwin A. Abbott's *Flatland: A Romance of Many Dimensions*** (1884).
 
-Flatland is an autonomous 2D artificial life and world simulation of geometric castes (Soldier, Artisan, Gentleman, Professional, Noble, Priest, and Woman) plus apex predators and wild herbivores. Creatures explore, forage, farm, master skills, establish multi-generational clan settlements, and evolve across generations under immutable natural laws.
+Flatland is an autonomous 2D artificial life and world simulation developed from the foundational mathematical and spatial ideas of Edwin A. Abbott's 1884 classic *Flatland*. 
+
+### Design Philosophy
+This project is **developed from the Flatland idea rather than mimicking the book literally**. It adopts Abbott's core premises — 2D planar constraints, geometric vertex hierarchies, atmospheric perception, and higher-dimensional observation — as a foundation to create a **living, evolutionary artificial life ecosystem that organically changes and expands over time**.
 
 ### Core Architecture & Systems
-- **The God Model**: God sets global **laws of nature** (carrying capacity, food growth, metabolism, disease, climate) but never intervenes in individual lives. All behavior is emergent.
+- **The God Model**: God sets global **laws of nature** (carrying capacity, food growth, metabolism, disease, climate) but never intervenes in individual lives. All behavior is 100% emergent.
 - **Autonomous Evolution & Culture**: 6 heritable personality archetypes (`brave`, `cautious`, `altruistic`, `greedy`, `explorer`, `builder`), craftable tools (spears, baskets, herb poultices, chieftain crowns), 4 mastery skills (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿), earned dynamic titles, oral lore passed from elders to youth in houses, and live thought bubbles.
-- **Realistic Energy & Metabolism**: Infant low metabolism ($0.45\times$ energy decay), combat stamina expenditure, and autonomous field food reserve management via baskets.
+- **Realistic Energy & Metabolism**: Infant low metabolism ($0.45\\times$ energy decay), combat stamina expenditure, and autonomous field food reserve management via baskets.
 - **Settlements & Diplomacy**: Walled houses with creature-sized doors, multi-house clan territories, settlement food larders, mutual coalitions, tributary pacts, and schisms.
 - **Real-Time Synchronization**: Deterministic fixed-rate engine loop streaming state over WebSocket (`/ws`) at ~30–60 FPS with durable SQLite historical chronicle storage.
-
-### Endpoints & Interfaces
-- **Live World UI**: `http://localhost:5173` (interactive 60 FPS HTML5 canvas with real-time HUD and controls).
-- **Terminal UI**: Textual TUI (`cd backend && uv run python -m tui`) with camera tracking and filterable chronicle.
-- **REST API & Swagger**: `GET /api/state`, `POST /api/laws`, `GET /api/presets`, `GET /api/history` at `/docs`.
-- **Living Guide & Wiki**: `/guide` (backend HTML) and `/wiki` (interactive documentation).
 """
+
 
 FLATLAND_BOOK_COMPARISON_MD = """
 # Flatland: The Novella vs. The Simulation

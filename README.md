@@ -6,15 +6,20 @@
 [![React: 18](https://img.shields.io/badge/React-18-61DAFB.svg)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6.svg)](https://www.typescriptlang.org/)
 
-**Flatland** is an autonomous 2D artificial life and ecosystem simulation inspired by **Edwin A. Abbott's 1884 novella *Flatland: A Romance of Many Dimensions***. Geometric creatures (Soldiers, Artisans, Gentlemen, Professionals, Nobles, Priests, and Women) explore a bounded plane, harvest plants, shelter in settlements, master crafts, pass down oral lore, and evolve across generations under immutable natural laws.
+**Flatland** is an autonomous 2D artificial life and ecosystem simulation developed from the foundational ideas of **Edwin A. Abbott's 1884 classic *Flatland: A Romance of Many Dimensions***. Rather than rigidly mimicking or reenacting the 19th-century novella, this project takes Flatland's core geometric premises — 2D spatial existence, vertex-based caste hierarchy, atmospheric perception, and higher-dimensional observation — and transforms them into a **living, autonomous evolutionary world that dynamically changes and expands over time**.
 
 > **Developed by [Long Phan](mailto:long@minhnhan.in)** ([long@minhnhan.in](mailto:long@minhnhan.in) · [minhnhan.in](https://minhnhan.in) · [world.minhnhan.in](https://world.minhnhan.in))  
 > Built and refined using **OpenCode** and **Antigravity**.  
-> Inspired by the social satire and mathematical world of **Edwin A. Abbott** (1884).
+> Developed from the core mathematical and spatial ideas of **Edwin A. Abbott** (1884).
 
 ---
 
-## Key Features & Simulation Mechanics
+## 🏛️ Design Philosophy: Evolution from Flatland
+
+1. **Developed from the Idea, Not a Literal Mimic**: The simulation embraces Abbott's fundamental concepts — 2D geometric constraints, line and polygon dynamics, generational side inheritance, and the perspective of a 3D observer (the Sphere / God Model) — while freely diverging from Victorian social satire to build an authentic artificial life ecosystem.
+2. **Living & Changing Over Time**: The world evolves dynamically across seasons, generations, and historical ages. Organisms develop heritable personalities, master distinct craft disciplines, form tribal coalitions, exchange oral traditions, and manage domestic economies.
+3. **Immutable Natural Laws**: God governs exclusively through universal laws of nature (metabolism, carrying capacity, climate volatility, disease), leaving all individual outcomes to 100% emergent behavior.
+
 
 ### 1. The God Model: Laws over Fates
 In Flatland, God sets the **laws of nature** but never touches an individual life. God cannot kill, heal, or move a single creature; the simulation advances deterministically under physical and biological rules.

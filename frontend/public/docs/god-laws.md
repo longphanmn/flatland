@@ -1,7 +1,8 @@
 # God Laws — Flatland Simulation Reference
 
 > **Developed by [Long Phan](mailto:long@minhnhan.in)** ([long@minhnhan.in](mailto:long@minhnhan.in) · [minhnhan.in](https://minhnhan.in) · [world.minhnhan.in](https://world.minhnhan.in))  
-> Built and refined using **OpenCode** and **Antigravity** · Inspired by **Edwin A. Abbott's *Flatland***.
+> Built and refined using **OpenCode** and **Antigravity** · Developed from the core concepts of **Edwin A. Abbott's *Flatland***.
+
 
 In Flatland, God sets **laws**, never touches individual lives. Every law has a specified range, default value, and ecological effect. Laws can be adjusted live via the in-app **⚖ God** drawer or programmatically via `POST /api/laws`.
 
