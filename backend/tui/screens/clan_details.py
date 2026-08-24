@@ -43,7 +43,7 @@ class ClanDetailsScreen(ModalScreen):
     async def on_mount(self) -> None:
         table = self.query_one("#clan-members", DataTable)
         table.cursor_type = "row"
-        table.add_columns("#id", "who", "caste", "sex", "age", "energy", "status")
+        table.add_columns("#id", "who", "caste", "personality", "item", "energy", "status")
         try:
             self._data = await self.app.rest.clan(self.clan_id)  # type: ignore[attr-defined]
         except Exception:
@@ -60,16 +60,19 @@ class ClanDetailsScreen(ModalScreen):
         head.append(str(data.get("name") or f"Clan {self.clan_id}"), style=f"bold {color}")
         totem = data.get("totem")
         if totem:
-            head.append(f" · totem {totem}", style=color)
+            head.append(f" · {theme.TOTEM_ICONS.get(totem, totem)}", style=f"bold {color}")
         head.append(
             f" · pop {data.get('population', 0)} · wars {data.get('war_wins', 0)}W/"
             f"{data.get('war_losses', 0)}L",
             style="dim",
         )
+        larder = data.get("larder")
+        if larder is not None:
+            head.append(f" · 🥖 larder {round(larder)}", style="#f4a261")
         sp = data.get("specialization")
         if isinstance(sp, dict):
             parts = []
-            for key in ("warrior", "farmer", "scavenger"):
+            for key in ("warrior", "farmer", "scavenger", "builder"):
                 v = sp.get(key)
                 if v is not None:
                     parts.append(f"{key} {v:.2f}")
@@ -78,27 +81,46 @@ class ClanDetailsScreen(ModalScreen):
         cult = data.get("culture")
         if cult:
             head.append(f" · culture {cult}", style="#bc8cff")
-        house = data.get("house")
-        if house and not house.get("is_ruin"):
-            head.append(f" · house ({round(house['x'])},{round(house['y'])})", style="dim")
+        houses = data.get("houses") or ([data["house"]] if data.get("house") else [])
+        if houses:
+            active_h = [h for h in houses if not h.get("is_ruin")]
+            if active_h:
+                main_h = next((h for h in active_h if h.get("is_main")), active_h[0])
+                head.append(f" · 👑 main ({round(main_h['x'])},{round(main_h['y'])})", style="#ffd166")
+                if len(active_h) > 1:
+                    head.append(f" (+{len(active_h)-1} houses)", style="dim")
         leader = data.get("leader_id")
         if leader:
-            head.append(f" · leader #{leader}", style="bold #e3b341")
+            head.append(f" · 👑 leader #{leader}", style="bold #e3b341")
         self.query_one("#clan-head", Static).update(head)
 
         table = self.query_one("#clan-members", DataTable)
+        table.clear()
         for m in data.get("members") or []:
-            who = Text(
-                f"{m.get('personal_name') or ''} {m.get('glyph') or ''}".strip(),
-                style=theme.caste_color(m.get("caste")),
-            )
+            name = m.get("personal_name") or ""
+            title = m.get("title") or ""
+            glyph = m.get("glyph") or ""
+            full_name = f"{name} {title} {glyph}".strip() or f"#{m.get('id')}"
+            who = Text(full_name, style=theme.caste_color(m.get("caste")))
+            pers = m.get("personality") or m.get("trait") or "-"
+            pers_label = theme.PERSONALITY_ICONS.get(pers, pers)
+            item = m.get("equipped_item") or ""
+            fb = m.get("food_basket", 0)
+            if item == "basket" or fb > 0:
+                item_label = f"🧺 {fb}/3"
+            elif item:
+                item_label = theme.ITEM_ICONS.get(item, item)
+            else:
+                item_label = "-"
+            energy_val = m.get("energy")
+            energy_str = f"{round(energy_val)}" if isinstance(energy_val, (int, float)) else "-"
             table.add_row(
                 str(m.get("id")),
                 who,
                 m.get("caste") or "-",
-                str(m.get("sex") or "-"),
-                str(m.get("age") if m.get("age") is not None else "-"),
-                str(m.get("energy") if m.get("energy") is not None else "-"),
+                pers_label,
+                item_label,
+                energy_str,
                 m.get("status") or "",
                 key=str(m.get("id")),
             )

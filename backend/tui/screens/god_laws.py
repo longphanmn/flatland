@@ -228,7 +228,7 @@ BOOL_LAWS: dict[str, list[tuple[str, str]]] = {
 
 GROUP_ORDER = list(NUMBER_LAWS.keys())
 
-PRESETS = ["sustainable", "chaos", "extinction", "boom"]
+PRESETS = ["balance", "sustainable", "chaos", "extinction", "boom"]
 
 
 def _slug(group: str) -> str:

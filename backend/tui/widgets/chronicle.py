@@ -15,6 +15,20 @@ MAX_LOG = 400
 # blooms and withers churn by the tick, ruins are just old age for houses.
 HIDDEN_EVENTS = {"bloom", "wither", "ruin"}
 
+CATEGORIES = ["all", "birth", "death", "war", "politics", "settlement"]
+
+EVENT_CATEGORIES: dict[str, set[str]] = {
+    "birth": {"birth"},
+    "death": {"death", "predation", "cannibalism"},
+    "war": {"war", "conquest", "rivalry", "betrayal"},
+    "politics": {
+        "alliance", "rivalry", "coalition_formed", "coalition_joined",
+        "coalition_dissolved", "peace", "tribute", "betrayal", "defection",
+        "schism", "succession",
+    },
+    "settlement": {"settlement", "conquest", "culture", "disaster", "fire", "outbreak", "recovery"},
+}
+
 
 class Chronicle(RichLog):
     DEFAULT_CSS = """
@@ -24,12 +38,37 @@ class Chronicle(RichLog):
     def __init__(self, **kwargs) -> None:
         super().__init__(markup=True, highlight=False, wrap=True, max_lines=MAX_LOG, **kwargs)
         self._seen: set[tuple] = set()
+        self._all_events: list[tuple[HistoryEvent, dict]] = []
+        self.filter_category = "all"
 
     def on_mount(self) -> None:
-        self.border_title = "Chronicle"
+        self._update_title()
+
+    def _update_title(self) -> None:
+        self.border_title = f"Chronicle ({self.filter_category.upper()})"
+
+    def cycle_filter(self) -> str:
+        idx = CATEGORIES.index(self.filter_category)
+        self.filter_category = CATEGORIES[(idx + 1) % len(CATEGORIES)]
+        self._update_title()
+        self._rebuild()
+        return self.filter_category
+
+    def _rebuild(self) -> None:
+        self.clear()
+        for ev, clans in self._all_events:
+            if self._matches_filter(ev):
+                self.write(format_event(ev, clans))
+
+    def _matches_filter(self, ev: HistoryEvent) -> bool:
+        if self.filter_category == "all":
+            return True
+        types = EVENT_CATEGORIES.get(self.filter_category, set())
+        return ev.type in types
 
     def clear_events(self) -> None:
         self._seen.clear()
+        self._all_events.clear()
         self.clear()
 
     def add_from_state(self, st: StateMessage) -> None:
@@ -39,8 +78,11 @@ class Chronicle(RichLog):
         ]
         for ev in fresh:
             self._seen.add(ev.key)
-        for ev in reversed(fresh):  # newest at the bottom; log scrolls
-            self.write(format_event(ev, st.clans))
+            self._all_events.append((ev, st.clans or {}))
+            if len(self._all_events) > MAX_LOG:
+                self._all_events.pop(0)
+            if self._matches_filter(ev):
+                self.write(format_event(ev, st.clans))
 
     def add_fetched(self, events: list[dict], clans: dict | None = None) -> None:
         """Older events from GET /api/history (already oldest-first)."""
@@ -51,7 +93,9 @@ class Chronicle(RichLog):
             if ev.key in self._seen:
                 continue
             self._seen.add(ev.key)
-            self.write(format_event(ev, clans or {}))
+            self._all_events.insert(0, (ev, clans or {}))
+            if self._matches_filter(ev):
+                self.write(format_event(ev, clans or {}))
 
 
 def _clan_label(clans: dict, cid) -> str:

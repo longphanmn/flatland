@@ -58,6 +58,8 @@ class WorldView(Widget, can_focus=True):
         # ascii mode: one glyph per terminal cell (roguelike map). Off = the
         # half-block pixel renderer that stacks two world rows per cell.
         self.ascii_mode: bool = True
+        self.follow_selected: bool = False
+        self.selected_id: int | None = None
 
     def _row_factor(self) -> int:
         """Terminal rows per... rather, world sub-rows shown per terminal row."""
@@ -66,6 +68,11 @@ class WorldView(Widget, can_focus=True):
     # ------------------------------------------------------------- updates
     def set_state(self, st: StateMessage) -> None:
         self._state = st
+        if self.follow_selected and self.selected_id:
+            target = next((e for e in st.entities if e.id == self.selected_id), None)
+            if target:
+                self.cam_cx = target.x
+                self.cam_cy = target.y
         self._fit_once()
         self._repaint()
         self.refresh()
@@ -296,6 +303,10 @@ class WorldView(Widget, can_focus=True):
             dx, dy = x1, h.y + offset
         put(dx, dy, char=theme.GLYPH_HOUSE_DOOR, fg="#e6edf3", prio=3)
 
+        # Chieftain Main House crown mark
+        if getattr(h, "is_main", False) and not h.is_ruin:
+            put(h.x, h.y, char="★", fg="#ffd166", prio=4)
+
     def _paint_creature(self, put, e: EntityState) -> None:
         if e.is_predator:
             char, color = theme.GLYPH_PREDATOR, theme.CASTE_COLORS["Predator"]
@@ -313,6 +324,20 @@ class WorldView(Widget, can_focus=True):
             color = e.clan_color
         prio = 5
         put(e.x, e.y, char=char, fg=color if not dim_style else dim(color), prio=prio, eid=e.id)
+
+        # Emote thoughts above head
+        if e.emote and self.zoom <= 4.0:
+            emote_char = {
+                "hungry": "🍖",
+                "love": "♥",
+                "combat": "⚔",
+                "panic": "!",
+                "heal": "🌿",
+                "cheer": "★",
+                "sleep": "z",
+                "craft": "🧺",
+            }.get(e.emote, "·")
+            put(e.x, e.y - self.zoom * 0.8, char=emote_char, fg="#ffd166", prio=8)
 
     # ------------------------------------------------------------- picking
     def pick(self, sx: int, sy: int) -> EntityState | None:

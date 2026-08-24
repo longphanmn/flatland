@@ -70,10 +70,17 @@ class EntityState:
     glyph: Optional[str] = None
     chill: Optional[float] = None
     trait: Optional[str] = None
+    equipped_item: Optional[str] = None
+    food_basket: int = 0
+    personality: Optional[str] = None
+    skills: dict[str, float] = field(default_factory=dict)
+    title: Optional[str] = None
+    emote: Optional[str] = None
     door_width: Optional[float] = None
     door_offset: Optional[float] = None
     door_side: Optional[str] = None
     is_ruin: bool = False
+    is_main: bool = False
     abandoned_ticks: Optional[int] = None
 
     @classmethod
@@ -116,16 +123,25 @@ class EntityState:
             glyph=_o(d, "glyph"),
             chill=_o(d, "chill"),
             trait=_o(d, "trait"),
+            equipped_item=_o(d, "equipped_item"),
+            food_basket=_i(d, "food_basket", 0),
+            personality=_o(d, "personality"),
+            skills=dict(_o(d, "skills") or {}),
+            title=_o(d, "title"),
+            emote=_o(d, "emote"),
             door_width=_o(d, "door_width"),
             door_offset=_o(d, "door_offset"),
             door_side=_o(d, "door_side"),
             is_ruin=bool(_o(d, "is_ruin")),
+            is_main=bool(_o(d, "is_main")),
             abandoned_ticks=_o(d, "abandoned_ticks"),
         )
 
     @property
     def display_name(self) -> str:
         name = self.personal_name or self.caste or self.kind
+        if self.title:
+            return f"{name} {self.title} #{self.id}"
         return f"{name} #{self.id}"
 
 

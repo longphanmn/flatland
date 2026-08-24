@@ -337,14 +337,80 @@ interface Props {
   onClose: () => void
 }
 
-const PRESET_LIST = [
-  { key: 'sustainable', label: '🌿 Sustainable', color: '#3fb950', border: '#3fb950', bg: 'rgba(63, 185, 80, 0.2)', title: '1000-day gentle: 450 food, carrying 2200, rare war/predation, calm society' },
-  { key: 'chaos', label: '🔥 Chaos', color: '#f85149', border: '#f85149', bg: 'rgba(248, 81, 73, 0.2)', title: 'Chaos: famine, predators, wars, plagues, fires' },
-  { key: 'extinction', label: '💀 Extinction', color: '#d29922', border: '#d29922', bg: 'rgba(210, 153, 34, 0.2)', title: 'Extinction: 100 food, harsh winter 0.3, high decay' },
-  { key: 'boom', label: '🚀 Boom', color: '#79c0ff', border: '#79c0ff', bg: 'rgba(121, 192, 255, 0.2)', title: 'Boom: 650 food, carrying 3500, max 5000 — massive population scale test' },
-] as const
+interface PresetItem {
+  key: string
+  label: string
+  subtitle: string
+  badge?: string
+  color: string
+  border: string
+  bg: string
+  title: string
+  description: string
+  tags: string[]
+}
+
+const PRESET_LIST: PresetItem[] = [
+  {
+    key: 'balance',
+    label: '⚖️ Balance',
+    subtitle: 'Goldilocks World',
+    badge: 'DEFAULT',
+    color: '#e3b341',
+    border: '#d29922',
+    bg: 'rgba(227, 179, 65, 0.15)',
+    title: 'Goldilocks balance: all systems active in gentle harmony for maximal multi-generational survival',
+    description: 'All 15+ simulation mechanics active in gentle harmony: mild war, rare predation, mild plagues, gentle winters, and thriving multi-generational clans.',
+    tags: ['Everything Active', 'Longevity', 'Harmonious'],
+  },
+  {
+    key: 'sustainable',
+    label: '🌿 Sustainable',
+    subtitle: '1000-Day Peace',
+    color: '#3fb950',
+    border: '#2ea043',
+    bg: 'rgba(63, 185, 80, 0.15)',
+    title: '1000-day gentle: 450 food, carrying 2200, rare war/predation, calm society',
+    description: 'Plentiful food (450), calm diplomacy, rare conflict, and very gentle winter for flourishing multi-generational stability.',
+    tags: ['Abundant Food', 'Peaceful', 'Low Conflict'],
+  },
+  {
+    key: 'chaos',
+    label: '🔥 Chaos',
+    subtitle: 'Total Turmoil',
+    color: '#f85149',
+    border: '#da3633',
+    bg: 'rgba(248, 81, 73, 0.15)',
+    title: 'Chaos: famine, predators, wars, plagues, fires',
+    description: 'Brutal stress test: high predator ratio, lethal wars, frequent plagues, wildfires, and rapid seasonal turnover.',
+    tags: ['Deadly Wars', 'Wildfires', 'Frequent Plagues'],
+  },
+  {
+    key: 'extinction',
+    label: '💀 Extinction',
+    subtitle: 'Cataclysmic Collapse',
+    color: '#bc8cff',
+    border: '#8957e5',
+    bg: 'rgba(188, 140, 255, 0.15)',
+    title: 'Extinction: 100 food, harsh winter 0.3, high decay',
+    description: 'Extreme famine (100 food), harsh winter (0.3x), rampant disease, and rapid decay. Tests how fast societies collapse.',
+    tags: ['Famine', 'Harsh Winter', 'Extinction Risk'],
+  },
+  {
+    key: 'boom',
+    label: '🚀 Boom',
+    subtitle: 'High-Scale Growth',
+    color: '#79c0ff',
+    border: '#388bfd',
+    bg: 'rgba(121, 192, 255, 0.15)',
+    title: 'Boom: 650 food, carrying 3500, max 5000 — massive population scale test',
+    description: 'Massive population scale test: rapid reproduction, food abundance (650), peace, and carrying capacity up to 5,000.',
+    tags: ['5000+ Pop', 'Rapid Births', 'Zero War/Plague'],
+  },
+]
 
 function detectPreset(laws: GodLaws): string | null {
+  if (laws.food_count === 420 && laws.carrying_capacity === 2000) return 'balance'
   if (laws.food_count === 450 && laws.carrying_capacity === 2200) return 'sustainable'
   if (laws.food_count === 320 && laws.carrying_capacity === 800) return 'chaos'
   if (laws.food_count === 100 && laws.carrying_capacity === 250) return 'extinction'
@@ -358,7 +424,8 @@ export default function GodPanel({ open, onClose }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [currentPreset, setCurrentPreset] = useState<string | null>('sustainable')
+  const [currentPreset, setCurrentPreset] = useState<string | null>('balance')
+  const [expandedPreset, setExpandedPreset] = useState<string | null>('balance')
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768)
 
   useEffect(() => {
@@ -377,7 +444,9 @@ export default function GodPanel({ open, onClose }: Props) {
     ])
       .then(([lawsData, presetsData]) => {
         setLaws(lawsData)
-        setCurrentPreset(presetsData?.current || detectPreset(lawsData) || 'sustainable')
+        const detected = presetsData?.current || detectPreset(lawsData) || 'balance'
+        setCurrentPreset(detected)
+        setExpandedPreset(detected)
       })
       .catch(() => setError('failed to load laws'))
       .finally(() => setLoading(false))
@@ -466,6 +535,7 @@ export default function GodPanel({ open, onClose }: Props) {
       const data = await res.json()
       setLaws(data.laws)
       setCurrentPreset(name)
+      setExpandedPreset(name)
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch (e) {
@@ -505,87 +575,125 @@ export default function GodPanel({ open, onClose }: Props) {
         You are god: set the rules, never the fates. Creatures and the world obey
         the law; no single life may be touched.
       </p>
-      <div className="god-group" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div className="god-group" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 2 }}>
-          <span style={{ fontSize: 11, color: '#8b949e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Presets — one click worlds
+          <span style={{ fontSize: 12, color: '#8b949e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            World Presets
           </span>
           <span
             style={{
               fontSize: 11,
-              padding: '2px 8px',
+              padding: '2px 10px',
               borderRadius: 12,
               background: activePresetMeta ? activePresetMeta.bg : 'rgba(163, 113, 247, 0.15)',
               border: `1px solid ${activePresetMeta ? activePresetMeta.border : '#8b949e'}`,
               color: activePresetMeta ? activePresetMeta.color : '#d2a8ff',
-              fontWeight: 600,
+              fontWeight: 700,
             }}
           >
             {activePresetMeta ? `Active: ${activePresetMeta.label}` : 'Active: ⚙ Custom'}
           </span>
         </div>
 
-        {PRESET_LIST.map(({ key, label, title, color, border, bg }) => {
-          const isActive = currentPreset === key
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => applyPreset(key, false)}
-              title={title}
-              style={{
-                flex: '1 1 calc(50% - 4px)',
-                borderColor: isActive ? border : '#30363d',
-                background: isActive ? bg : '#161b22',
-                color: isActive ? color : '#c9d1d9',
-                fontWeight: isActive ? 700 : 500,
-                boxShadow: isActive ? `0 0 10px ${bg}` : 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                padding: '8px 10px',
-                minHeight: 38,
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <span>{label}</span>
-              {isActive && (
-                <span
-                  style={{
-                    fontSize: 9,
-                    padding: '1px 5px',
-                    borderRadius: 6,
-                    background: color,
-                    color: '#0d1117',
-                    fontWeight: 800,
-                    lineHeight: 1.2,
-                  }}
-                >
-                  ACTIVE
-                </span>
-              )}
-            </button>
-          )
-        })}
+        {/* Preset Cards Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
+          {PRESET_LIST.map(({ key, label, subtitle, badge, description, tags, color, border, bg }) => {
+            const isActive = currentPreset === key
+            const isExpanded = expandedPreset === key
+            return (
+              <div
+                key={key}
+                onClick={() => setExpandedPreset(key)}
+                style={{
+                  background: isActive ? bg : isExpanded ? '#1c2128' : '#161b22',
+                  border: `1.5px solid ${isActive ? border : isExpanded ? '#444c56' : '#30363d'}`,
+                  borderRadius: 8,
+                  padding: '10px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  cursor: 'pointer',
+                  boxShadow: isActive ? `0 0 14px ${bg}` : 'none',
+                  transition: 'all 0.15s ease-in-out',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: isActive ? color : '#e6edf3' }}>{label}</span>
+                    <span style={{ fontSize: 11, color: '#8b949e', fontStyle: 'italic' }}>({subtitle})</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {badge && (
+                      <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#d29922', color: '#0d1117', fontWeight: 800 }}>
+                        {badge}
+                      </span>
+                    )}
+                    {isActive && (
+                      <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: color, color: '#0d1117', fontWeight: 800 }}>
+                        ACTIVE
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-        <button
-          type="button"
-          onClick={() => applyPreset(currentPreset && currentPreset !== 'custom' ? currentPreset : 'sustainable', true)}
-          title={`Apply ${currentPreset || 'sustainable'} preset + reset world now`}
-          style={{
-            width: '100%',
-            marginTop: 4,
-            background: '#238636',
-            borderColor: '#2ea043',
-            color: '#fff',
-            fontWeight: 600,
-            padding: '8px 12px',
-            minHeight: 38,
-          }}
-        >
-          🔄 Apply {activePresetMeta?.label || '🌿 Sustainable'} + Reset
-        </button>
+                <p style={{ fontSize: 12, color: '#c9d1d9', margin: 0, lineHeight: 1.4 }}>
+                  {description}
+                </p>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+                  {tags.map((t) => (
+                    <span key={t} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}>
+                      {t}
+                    </span>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      applyPreset(key, false)
+                    }}
+                    title={`Apply ${label} laws to live world`}
+                    style={{
+                      flex: 1,
+                      padding: '5px 8px',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      background: isActive ? '#21262d' : '#21262d',
+                      borderColor: isActive ? border : '#30363d',
+                      color: isActive ? color : '#c9d1d9',
+                      borderRadius: 6,
+                    }}
+                  >
+                    ⚡ Apply Laws
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      applyPreset(key, true)
+                    }}
+                    title={`Apply ${label} + start fresh world`}
+                    style={{
+                      flex: 1,
+                      padding: '5px 8px',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      background: isActive ? '#238636' : '#238636',
+                      borderColor: '#2ea043',
+                      color: '#fff',
+                      borderRadius: 6,
+                    }}
+                  >
+                    🔄 Apply & Reset
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {loading ? (

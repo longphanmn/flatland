@@ -114,3 +114,18 @@ def test_deaths_appear_in_history_api(client):
     assert any(e.get("cause") == "starvation" and e.get("type") == "death" for e in hist["events"])
     ev = next(e for e in hist["events"] if e.get("cause") == "starvation")
     assert {"tick", "caste", "x", "y"} <= set(ev)
+
+
+def test_balance_preset_application_and_listing(client):
+    presets = client.get("/api/presets").json()
+    assert "balance" in presets["presets"]
+    r = client.post("/api/presets/balance?persist=true")
+    assert r.status_code == 200
+    laws = r.json()["laws"]
+    assert laws["food_count"] == 420
+    assert laws["carrying_capacity"] == 2000
+    assert laws["predation_enabled"] is True
+    assert laws["war_enabled"] is True
+    assert laws["disease_enabled"] is True
+    assert client.get("/api/presets").json()["current"] == "balance"
+

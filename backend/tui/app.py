@@ -8,6 +8,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Footer, Tab, Tabs
 
+from . import theme
 from .client import RESTClient, WSClient, http_base_for
 from .state import HelloMessage, StateMessage
 from .widgets import Chronicle, ClanPanel, Hud, Overview, PlotsPanel, WorldView
@@ -31,6 +32,8 @@ class FlatlandApp(App):
         ("s", "step", "Step"),
         ("r", "reset", "Reset"),
         ("f", "fit_view", "Fit"),
+        ("w", "toggle_follow", "Follow"),
+        ("t", "cycle_chronicle_filter", "Log Filter"),
         ("a", "toggle_ascii", "ASCII/blocks"),
         ("plus", "zoom_in", "Zoom in"),
         ("equals_sign", "zoom_in", "Zoom in"),
@@ -45,6 +48,7 @@ class FlatlandApp(App):
         ("up", "pan_up", None),
         ("down", "pan_down", None),
         ("enter", "inspect", "Inspect"),
+        ("i", "inspect", "Inspect"),
         ("c", "clan_of_selection", "Clan"),
         ("g", "laws", "God laws"),
         ("o", "load_older", "Older events"),
@@ -153,6 +157,7 @@ class FlatlandApp(App):
     def _sync_selection(self) -> None:
         """Keep HUD selection line in step with the latest snapshot."""
         view = self.query_one("#world", WorldView)
+        view.selected_id = self.selected_id
         if self.selected_id is None:
             view.select_entity(None)
             self.query_one("#hud", Hud).update_selection("")
@@ -168,9 +173,14 @@ class FlatlandApp(App):
         view.select_entity(ent)
         if ent is not None:
             name = ent.personal_name or ent.caste or ""
-            clan = f" · {ent.clan_name}" if ent.clan_name else ""
+            title = f" {ent.title}" if ent.title else ""
+            clan = f" · clan {ent.clan_name}" if ent.clan_name else ""
+            pers = f" · {theme.PERSONALITY_ICONS.get(ent.personality, ent.personality)}" if ent.personality else ""
+            tool = f" · {theme.ITEM_ICONS.get(ent.equipped_item, ent.equipped_item)}" if ent.equipped_item else ""
+            if ent.food_basket > 0:
+                tool += f" 🧺[{ent.food_basket}/3]"
             status = f" · {ent.status}" if ent.status else ""
-            line = f"selected {name} #{ent.id} ({ent.caste}{clan}{status})"
+            line = f"selected {name}{title} #{ent.id} ({ent.caste}{clan}{pers}{tool}{status})"
         else:
             line = f"selected #{self.selected_id} — fallen"
         self.query_one("#hud", Hud).update_selection(line)
@@ -290,6 +300,18 @@ class FlatlandApp(App):
         self._sync_selection()
         self.push_screen(InspectorScreen(creature_id))
 
+    def show_clan(self, clan_id: int) -> None:
+        self.push_screen(ClanDetailsScreen(clan_id))
+
+    def action_cycle_chronicle_filter(self) -> None:
+        cat = self.query_one("#chronicle", Chronicle).cycle_filter()
+        self.notify(f"Chronicle filter: {cat.upper()}")
+
+    def action_toggle_follow(self) -> None:
+        view = self.query_one("#world", WorldView)
+        view.follow_selected = not view.follow_selected
+        self.notify(f"Camera tracking: {'ON' if view.follow_selected else 'OFF'}")
+
     def action_clan_of_selection(self) -> None:
         cid: int | None = None
         if self.world_state:
@@ -301,7 +323,7 @@ class FlatlandApp(App):
             table = self.query_one("#clans-table", ClanPanel)
             cid = table.selected_clan_id
         if cid is not None:
-            self.push_screen(ClanDetailsScreen(cid))
+            self.show_clan(cid)
         else:
             self.notify("select a creature or a clan row first", severity="warning")
 

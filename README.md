@@ -32,9 +32,17 @@ starvation when deprived of food too long.
   (Nature's Law), fertility fades as the world crowds past carrying capacity,
   and births stop at the hard population cap. Parents pay energy and cooldown.
   Every birth/promotion lands in the Chronicle and the database.
-- **Houses:** square outlines with a doorway on the south wall; walls block
-  movement but the door is passable. Door width scales with the largest
-  creature's body size, so big castes need big doors.
+- **Autonomous Evolution:** 100% emergent, zero god intervention.
+  - **Personality archetypes:** `brave`, `cautious`, `altruistic`, `greedy`, `explorer`, `builder` with 65% genetic heritability. Altruistic beings feed starving kin with basket food.
+  - **Dynamic Tools & Equipment:** Spears (+20% war damage & reach for Soldiers/Predators), Baskets (carry up to 3 food units for field meals or clan larder deposits), Herb Poultices (+25 HP healing & infection cure for Priests), and Chieftain Crowns for clan leaders.
+  - **Skill Mastery & Titles:** 4 tracked skills (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿) unlock dynamic titles (*the Slayer*, *the Fearless Champion*, *the Grand Harvester*, *the Wise Shaman*, *the Pathfinder*).
+  - **Oral Lore in Houses:** Resting elders transmit mastery XP to sleeping infants and juveniles.
+  - **Animated Thought Bubbles:** Real-time floating mood balloons (`🍖`, `❤️`, `⚔️`, `🌿`, `🏆`, `💤`, `🧺`, `😱`) above creature heads.
+- **Energy & Stage Metabolism:**
+  - **Stage-aware metabolism:** Born infants burn 55% less energy per tick (`0.45x`), juveniles burn 25% less (`0.75x`), adults standard (`1.0x`), elders `0.85x`.
+  - **Combat stamina:** Clashing in battle drains stamina (winner -6, loser -10); creatures with <20% energy strike with 30% reduced damage.
+  - **Field food reserves:** Hungry creatures (<45 energy) carry food in baskets and eat autonomously while roaming. Full creatures (>85% energy) never eat or destroy food plants.
+- **Houses & Settlements:** Square outlines with creature-sized doorways; walls block movement. Clans expand across multiple houses, with the leader residing in the primary **Main House** marked by a golden crown.
 
 - **Backend:** Python 3.12 · FastAPI · deterministic fixed-tick loop over WebSocket
 - **Frontend:** React 18 + Vite + TypeScript · HTML5 Canvas renderer
@@ -49,6 +57,8 @@ starvation when deprived of food too long.
 
 - Frontend: http://localhost:5173 (open this)
 - Backend API: http://localhost:8000/docs
+- Living Guide: http://localhost:8000/guide
+- Living Wiki: http://localhost:8000/wiki
 
 The script installs dependencies on first run, starts both servers with live
 reload, and shuts them down cleanly on Ctrl-C.
@@ -90,12 +100,12 @@ uv run textual serve -m tui.serve                   # optional: TUI in the brows
 If the world is down the TUI keeps reconnecting until it's back.
 
 Half-block char-grid world renderer (creatures wear their soul-code glyph in
-caste colors, houses are clan-colored boxes with doors, plants/corpses/fires/
-signals all drawn), HUD, color-coded Chronicle, Clans table, Plots progress,
+caste colors with floating emote thoughts and tool marks, houses are clan-colored boxes with doors, plants/corpses/fires/
+signals all drawn), HUD with selection dossier, color-coded Chronicle with category filtering, Clans table, Plots progress,
 population sparkline — plus god-laws form (`g`) posting to `/api/laws`.
 
-Keys: `space` pause · `s` step · `r` reset · `f` fit · `+/-` zoom (wheel too) ·
-`hjkl`/arrows pan · click select · `enter` inspect · `c` clan · `g` god laws ·
+Keys: `space` pause · `s` step · `r` reset · `f` fit · `w` follow creature · `t` log filter · `+/-` zoom (wheel too) ·
+`hjkl`/arrows pan · click select · `enter`/`i` inspect · `c` clan · `g` god laws ·
 `o` older events · `1-9` speed · `?` help · `q` quit.
 
 ## Controls

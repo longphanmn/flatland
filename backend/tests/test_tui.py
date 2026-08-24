@@ -382,3 +382,28 @@ def test_zoom_and_fit_do_not_crash(zoom_key: str):
                 await pilot.pause()
 
     asyncio.run(scenario())
+
+
+def test_sync_selection_with_evolution_attributes():
+    async def scenario() -> None:
+        async with FakeWorldServer() as server:
+            async with run_app_with(server) as pilot:
+                await _wait_until(
+                    lambda: pilot.app.query_one("#world", WorldView)._state is not None
+                )
+                st = pilot.app.world_state
+                c = next(e for e in st.entities if e.id == 12)
+                c.personality = "brave"
+                c.equipped_item = "spear"
+                c.food_basket = 2
+                c.title = "the Slayer"
+                pilot.app.selected_id = 12
+                pilot.app._sync_selection()
+                hud_text = str(pilot.app.query_one("#hud", Hud).render())
+                assert "the Slayer" in hud_text
+                assert "🛡️ Brave" in hud_text
+                assert "🗡️ Spear" in hud_text
+                assert "🧺[2/3]" in hud_text
+
+    asyncio.run(scenario())
+

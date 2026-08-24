@@ -183,7 +183,9 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
     <aside className="inspector">
       <header className="god-head">
         <h2>
-          {e?.personal_name ?? `${e?.caste ?? 'Creature'} #${id}`} {e?.glyph ? <span title="soul-code glyph">{e.glyph}</span> : ''}
+          {e?.personal_name ?? `${e?.caste ?? 'Creature'} #${id}`}
+          {e?.title ? <span style={{ color: '#e3b341', fontSize: '0.85em', fontWeight: 600, marginLeft: 5 }}>{e.title}</span> : ''}
+          {e?.glyph ? <span title="soul-code glyph" style={{ marginLeft: 4 }}>{e.glyph}</span> : ''}
           {e && ` · ${e.shape === 'line' ? 'female' : 'male'}`}
         </h2>
         <button className="god-close" onClick={onClose} aria-label="close">
@@ -192,7 +194,7 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
       </header>
       {e && (
         <div className="chip" style={{ fontSize: 11, opacity: 0.8 }}>
-          {e.personal_name} · {e.caste} #{id} {e.glyph} · scale {(e.scale_jitter ?? 1).toFixed(2)} · hue {(e.hue_shift ?? 0) > 0 ? '+' : ''}{e.hue_shift ?? 0}°
+          {e.personal_name}{e.title ? ` ${e.title}` : ''} · {e.caste} #{id} {e.glyph} · scale {(e.scale_jitter ?? 1).toFixed(2)} · hue {(e.hue_shift ?? 0) > 0 ? '+' : ''}{e.hue_shift ?? 0}°
         </div>
       )}
       {e && <CreatureAvatar e={e} />}
@@ -214,6 +216,58 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
           {typeof e.chill === 'number' && e.chill > 0.5 && (
             <Bar label="chill" value={e.chill} max={24} color="#79c0ff" />
           )}
+
+          {/* Personality & Evolution Profile */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, margin: '8px 0' }}>
+            <div className="chip" style={{ background: '#161b22', border: '1px solid #30363d', padding: '6px 8px', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>Personality</span>
+              <span style={{ fontWeight: 600, color: '#58a6ff', textTransform: 'capitalize' }}>
+                {e.personality === 'brave' ? '🛡️ Brave' :
+                 e.personality === 'cautious' ? '🌾 Cautious' :
+                 e.personality === 'altruistic' ? '🤝 Altruistic' :
+                 e.personality === 'greedy' ? '💰 Greedy' :
+                 e.personality === 'explorer' ? '🧭 Explorer' :
+                 e.personality === 'builder' ? '🔨 Builder' : e.personality ?? 'Brave'}
+              </span>
+            </div>
+            <div className="chip" style={{ background: '#161b22', border: '1px solid #30363d', padding: '6px 8px', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>Equipped Tool</span>
+              <span style={{ fontWeight: 600, color: '#f2cc60' }}>
+                {e.equipped_item === 'spear' ? '🗡️ Spear' :
+                 e.equipped_item === 'crown' ? '👑 Crown' :
+                 e.equipped_item === 'basket' ? `🧺 Basket (${e.food_basket ?? 0}/3)` :
+                 e.equipped_item === 'herb_poultice' ? '🌿 Herb Poultice' : 'None'}
+              </span>
+            </div>
+          </div>
+
+          {/* Skill Mastery Matrix */}
+          <Collapsible id="inspector-skills" title={<h3 className="insp-h">Skill Mastery</h3>} defaultOpen={true}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, padding: '4px 0' }}>
+              {[
+                { name: 'Farming', key: 'farming', icon: '🌾', max: 30, color: '#3fb950' },
+                { name: 'Combat', key: 'combat', icon: '⚔️', max: 30, color: '#ff7b72' },
+                { name: 'Foraging', key: 'foraging', icon: '🦴', max: 30, color: '#d2a8ff' },
+                { name: 'Healing', key: 'healing', icon: '🌿', max: 30, color: '#79c0ff' },
+              ].map((sk) => {
+                const xp = (e.skills as any)?.[sk.key] ?? 0
+                const level = xp >= 30 ? 3 : xp >= 12 ? 2 : xp >= 4 ? 1 : 0
+                const lvlName = level === 3 ? 'Master' : level === 2 ? 'Adept' : level === 1 ? 'Novice' : 'Unranked'
+                return (
+                  <div key={sk.key} style={{ display: 'flex', flexDirection: 'column', gap: 2, background: 'rgba(22, 27, 34, 0.6)', padding: '4px 6px', borderRadius: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                      <span>{sk.icon} <b>{sk.name}</b> · {lvlName}</span>
+                      <span style={{ color: '#8b949e' }}>{xp.toFixed(1)} / {sk.max} XP</span>
+                    </div>
+                    <div className="insp-track" style={{ height: 4 }}>
+                      <div className="insp-fill" style={{ width: `${Math.min(100, (xp / sk.max) * 100)}%`, background: sk.color }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </Collapsible>
+
           <div className="insp-grid">
             <span className="chip">
               age <b>{e.age ?? 0}</b> / {Math.round(e.lifespan ?? 0)} · {e.stage}

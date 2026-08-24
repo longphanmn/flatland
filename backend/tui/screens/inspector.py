@@ -53,6 +53,7 @@ class InspectorScreen(ModalScreen):
             yield DataTable(id="inspector-family")
             yield RichLog(id="inspector-log", markup=True, wrap=True, max_lines=120)
         with Horizontal(classes="modal-actions"):
+            yield Button("View Clan", variant="default", id="btn-insp-clan")
             yield Button("Close", variant="primary", id="btn-insp-close")
 
     async def on_mount(self) -> None:
@@ -83,8 +84,11 @@ class InspectorScreen(ModalScreen):
         glyph = ent.get("glyph") or ""
         color = ent.get("clan_color") or theme.caste_color(ent.get("caste"))
         clan = ent.get("clan_name") or ""
+        title = ent.get("title")
         line = Text()
         line.append(f"{name} ", style=f"bold {color}")
+        if title:
+            line.append(f"{title} ", style="bold #ffd166")
         line.append(f"{glyph} ", style=color)
         line.append(f"#{self.creature_id}", style="dim")
         caste = ent.get("caste")
@@ -132,9 +136,21 @@ class InspectorScreen(ModalScreen):
             chips.append(("sick", "#3fb950"))
         if ent.get("sleeping"):
             chips.append(("asleep", "#79c0ff"))
+        emote = ent.get("emote")
+        if emote:
+            chips.append((theme.EMOTE_ICONS.get(emote, emote), "#ffd166"))
         for word, col in chips:
             stxt.append(f"{word} ", style=col)
         bits = []
+        pers = ent.get("personality")
+        if pers:
+            bits.append(theme.PERSONALITY_ICONS.get(pers, pers))
+        tool = ent.get("equipped_item")
+        if tool:
+            bits.append(theme.ITEM_ICONS.get(tool, tool))
+        fb = ent.get("food_basket", 0)
+        if fb:
+            bits.append(f"🧺 {fb}/3 food")
         if ent.get("stage"):
             bits.append(str(ent["stage"]))
         age = ent.get("age")
@@ -156,6 +172,18 @@ class InspectorScreen(ModalScreen):
         if born is not None:
             bits.append(f"born tick {born}")
         stxt.append(" · ".join(bits), style="dim")
+
+        # Skills Mastery Matrix
+        skills = ent.get("skills") or {}
+        if skills:
+            stxt.append("\nSkills: ", style="bold #79c0ff")
+            skill_bits = []
+            for sk_key, sk_name in (("farming", "🌾Farm"), ("combat", "⚔️War"), ("foraging", "🦴Forage"), ("healing", "🌿Heal")):
+                xp = float(skills.get(sk_key, 0.0))
+                rank = "Master" if xp >= 30 else ("Adept" if xp >= 10 else "Nov")
+                skill_bits.append(f"{sk_name}: {rank} ({xp:.1f}xp)")
+            stxt.append("  ".join(skill_bits), style="#bc8cff")
+
         stats.update(stxt)
 
         family = data.get("family") or {}
@@ -204,6 +232,12 @@ class InspectorScreen(ModalScreen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-insp-close":
             self.dismiss()
+        elif event.button.id == "btn-insp-clan":
+            ent = (self._data or {}).get("entity") or {}
+            clan_id = ent.get("clan_id")
+            if clan_id:
+                self.dismiss()
+                self.app.show_clan(clan_id)  # type: ignore[attr-defined]
 
     def action_close(self) -> None:
         self.dismiss()

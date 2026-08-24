@@ -140,6 +140,14 @@ class Creature(Entity):
     trait: str | None = None  # §S genetic trait: greedy/peaceful/paranoid/bold or None
     give_ups: dict = field(default_factory=dict)  # meal id -> tick abandoned (behind rock/wall)
     blocked_ticks: int = 0  # consecutive moves rebound by a house wall (wedge detector)
+    # Creature Evolution systems (autonomous tools, skills, personality & emotes)
+    equipped_item: str | None = None  # "spear" | "basket" | "torch" | "herb_poultice" | "crown" | None
+    food_basket: int = 0  # current count of food carried in basket (up to 3)
+    personality: str = "brave"  # "brave" | "cautious" | "altruistic" | "greedy" | "explorer" | "builder"
+    skills: dict = field(default_factory=lambda: {"farming": 0.0, "combat": 0.0, "foraging": 0.0, "healing": 0.0})
+    title: str | None = None  # earned dynamic epithet (e.g. "the Fearless", "the Harvester")
+    emote: str | None = None  # active emote: "hungry"|"love"|"combat"|"panic"|"heal"|"cheer"|"sleep"|"craft"
+    emote_ticks: int = 0  # remaining ticks for emote balloon
 
     def __post_init__(self) -> None:
         if not self.caste:

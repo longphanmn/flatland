@@ -36,16 +36,16 @@ class Config:
     house_density: float = 0.0002  # ~24 houses for 150+ pop
     spawn_variance: float = 0.25  # ±25% around the density target
 
-    food_count: int = 210  # was 70 on 200x200 — scales x3 with the 400x300 map (70 sustains ~52; tested 30d alive)
+    food_count: int = 210  # was 70 on 200x200 — scales x3 with the 400x300 map
     # Plants & nutrient cycle (§H) + biodiversity (§O)
-    plant_growth_rate: float = 0.05  # was 0.04 — a bit faster for winter
-    plant_spread_rate: float = 0.006  # was 0.005
-    nutrient_cycle_rate: float = 0.65  # was 0.6
+    plant_growth_rate: float = 0.05
+    plant_spread_rate: float = 0.006
+    nutrient_cycle_rate: float = 0.65
     plant_variants_enabled: bool = True
-    poison_rate: float = 0.01  # was 0.03 — 1% keeps 30d alive
+    poison_rate: float = 0.01
     beast_ratio: float = 0.0
     diet_strictness: float = 0.0
-    winter_food_mult: float = 0.5  # T: winter bounty mult (law, 0.5 harsh → 0.7 gentle)
+    winter_food_mult: float = 0.5
 
     # Territory & clan depth (§P)
     territory_enabled: bool = True  # §P: clans claim zone around house, trespass sours relations
@@ -61,8 +61,8 @@ class Config:
 
     # Schism — WorldBox rebellion (§S P1) — enabled but rare
     schism_enabled: bool = True  # rebellion enabled by default
-    schism_threshold: float = 0.5  # fraction unhappy to trigger — 0.5 rarer than 0.4
-    schism_min_pop: int = 6  # minimum clan pop — 6 rarer than 4
+    schism_threshold: float = 0.5  # fraction unhappy to trigger
+    schism_min_pop: int = 6  # minimum clan pop
 
     # Ages — super-seasons (§S)
     age_enabled: bool = True  # long era bending world: Ice/Chaos/Plague/Golden
@@ -104,11 +104,11 @@ class Config:
     food_lifespan_ticks: int = 9000  # ticks a mature plant lives (× variant mult)
 
     # Behaviour tuning
-    perceive_radius: float = 20.0  # was 18 — fog/night + variants (tested 20)
+    perceive_radius: float = 20.0
     eat_radius: float = 1.4
     energy_max: float = 100.0
     energy_start: float = 85.0
-    energy_decay_per_tick: float = 0.025  # was 0.05 — 0.025 sustains 30d (tested)
+    energy_decay_per_tick: float = 0.025
     energy_from_food: float = 32.0
     wander_turn: float = 0.35  # max heading change (rad) when wandering
     steer_turn: float = 0.45  # max heading change when steering to food
@@ -124,17 +124,17 @@ class Config:
 
     # Reproduction & inheritance (Nature's Law) — tuned for 30-day survival
     birth_enabled: bool = True
-    adult_age: float = 200.0  # ticks before a creature may mate (was 600)
-    mate_radius: float = 10.0  # max distance between parents (was 3.0)
-    mate_energy_min: float = 30.0  # both parents must hold this much energy (was 50)
-    birth_rate: float = 0.35  # chance per eligible pair per tick (× fertility) (was 0.15)
+    adult_age: float = 200.0  # ticks before a creature may mate
+    mate_radius: float = 10.0  # max distance between parents
+    mate_energy_min: float = 30.0  # both parents must hold this much energy
+    birth_rate: float = 0.35  # chance per eligible pair per tick (× fertility)
     sex_ratio: float = 0.5  # probability a child is a son
     mutation_rate: float = 0.05  # chance a son's side count deviates ±1
     max_sides: int = 24  # sons stop gaining sides here (= Circle)
-    birth_energy_cost: float = 20.0  # each parent pays (was 25)
-    reproduction_cooldown: int = 200  # ticks both parents wait after a birth (was 300)
-    carrying_capacity: int = -1  # soft cap: fertility fades above it; -1 => scale with map area (80 per 200x200)
-    max_population: int = -1  # hard cap: no births beyond it; -1 => scale with map area (140 per 200x200)
+    birth_energy_cost: float = 20.0  # each parent pays
+    reproduction_cooldown: int = 200  # ticks both parents wait after a birth
+    carrying_capacity: int = -1  # soft cap: fertility fades above it; -1 => scale with map area
+    max_population: int = -1  # hard cap: no births beyond it; -1 => scale with map area
     euthanasia_threshold: float = 0.7  # irregularity at/below -> demotion, above -> consumed
 
     # Health & disease
@@ -148,7 +148,7 @@ class Config:
 
     # Environment: day/night, seasons, weather
     day_length: int = 1200  # ticks per day cycle
-    season_length: int = 14400  # ticks per season; 12 days per season (48-day year) — tuned for 1000-day longevity; winter ×0.5 famine lasts 12 days so food/shelter must buffer
+    season_length: int = 14400  # ticks per season; 12 days per season (48-day year)
     night_sight_mult: float = 0.6  # sight scale during the night
     weather_enabled: bool = True
     weather_change_rate: float = 0.002  # chance/tick the weather turns
@@ -175,7 +175,7 @@ class Config:
     # Shelter — tuned for sustainability (exposure was 0.3, now 0.03)
     shelter_enabled: bool = True  # houses are scarce, contested and life-saving
     exposure_drain: float = 0.03  # extra energy/tick outdoors in rain/storm or at night (was 0.3)
-    house_capacity: int = 12  # beds in an 8×8 hall; scales with floor area (small hut < grand hall) — overflow spills to the nearest roof with space
+    house_capacity: int = 12  # beds in an 8×8 hall; scales with floor area
     house_claim_enabled: bool = True  # clans claim houses as settlements
     rest_recovery_mult: float = 2.0  # indoor sleeping health regen multiplier
     house_decay_ticks: int = 2400  # abandoned house stands this many ticks before crumbling to ruin
@@ -240,41 +240,41 @@ class Config:
 
     @classmethod
     def from_env(cls) -> "Config":
-        """Live runtime config: defaults to the Sustainable preset (450 food, carrying 2200, max 3000)."""
+        """Live runtime config: defaults to the Balance Goldilocks preset."""
         return cls(
             width=_env("FLATWORLD_WIDTH", float, 400.0),
             height=_env("FLATWORLD_HEIGHT", float, 300.0),
             boundary=_env("FLATWORLD_BOUNDARY", str, "wrap"),
             seed=_env("FLATWORLD_SEED", int, 42),
             tick_rate=_env("FLATWORLD_TICK_RATE", float, 10.0),
-            food_count=_env("FLATWORLD_FOOD_COUNT", int, 450),
-            plant_growth_rate=_env("FLATWORLD_PLANT_GROWTH_RATE", float, 0.06),
-            plant_spread_rate=_env("FLATWORLD_PLANT_SPREAD_RATE", float, 0.008),
+            food_count=_env("FLATWORLD_FOOD_COUNT", int, 420),
+            plant_growth_rate=_env("FLATWORLD_PLANT_GROWTH_RATE", float, 0.055),
+            plant_spread_rate=_env("FLATWORLD_PLANT_SPREAD_RATE", float, 0.007),
             winter_food_mult=_env("FLATWORLD_WINTER_FOOD_MULT", float, 0.75),
-            poison_rate=_env("FLATWORLD_POISON_RATE", float, 0.0),
+            poison_rate=_env("FLATWORLD_POISON_RATE", float, 0.008),
             perceive_radius=_env("FLATWORLD_PERCEIVE_RADIUS", float, 18.0),
             energy_decay_per_tick=_env("FLATWORLD_ENERGY_DECAY", float, 0.025),
-            carrying_capacity=_env("FLATWORLD_CARRYING_CAPACITY", int, 2200),
-            max_population=_env("FLATWORLD_MAX_POPULATION", int, 3000),
+            carrying_capacity=_env("FLATWORLD_CARRYING_CAPACITY", int, 2000),
+            max_population=_env("FLATWORLD_MAX_POPULATION", int, 2800),
             disease_enabled=_env("FLATWORLD_DISEASE_ENABLED", bool, True),
-            disease_outbreak_rate=_env("FLATWORLD_DISEASE_OUTBREAK_RATE", float, 0.0001),
-            disease_rate=_env("FLATWORLD_DISEASE_RATE", float, 0.05),
-            disease_energy_drain=_env("FLATWORLD_DISEASE_ENERGY_DRAIN", float, 0.08),
-            recovery_rate=_env("FLATWORLD_RECOVERY_RATE", float, 0.025),
-            disease_lethality=_env("FLATWORLD_DISEASE_LETHALITY", float, 0.25),
+            disease_outbreak_rate=_env("FLATWORLD_DISEASE_OUTBREAK_RATE", float, 0.00008),
+            disease_rate=_env("FLATWORLD_DISEASE_RATE", float, 0.04),
+            disease_energy_drain=_env("FLATWORLD_DISEASE_ENERGY_DRAIN", float, 0.06),
+            recovery_rate=_env("FLATWORLD_RECOVERY_RATE", float, 0.03),
+            disease_lethality=_env("FLATWORLD_DISEASE_LETHALITY", float, 0.2),
             predation_enabled=_env("FLATWORLD_PREDATION_ENABLED", bool, True),
-            predator_ratio=_env("FLATWORLD_PREDATOR_RATIO", float, 0.03),
-            bite_damage=_env("FLATWORLD_BITE_DAMAGE", float, 40.0),
-            bite_cooldown=_env("FLATWORLD_BITE_COOLDOWN", int, 12),
+            predator_ratio=_env("FLATWORLD_PREDATOR_RATIO", float, 0.02),
+            bite_damage=_env("FLATWORLD_BITE_DAMAGE", float, 30.0),
+            bite_cooldown=_env("FLATWORLD_BITE_COOLDOWN", int, 15),
             war_enabled=_env("FLATWORLD_WAR_ENABLED", bool, True),
-            attack_damage=_env("FLATWORLD_ATTACK_DAMAGE", float, 40.0),
-            relation_drift_rate=_env("FLATWORLD_RELATION_DRIFT", float, 2.8),
-            rivalry_threshold=_env("FLATWORLD_RIVALRY_THRESHOLD", int, -85),
-            trespass_decay=_env("FLATWORLD_TRESPASS_DECAY", float, 0.0),
-            house_capacity=_env("FLATWORLD_HOUSE_CAPACITY", int, 16),
+            attack_damage=_env("FLATWORLD_ATTACK_DAMAGE", float, 35.0),
+            relation_drift_rate=_env("FLATWORLD_RELATION_DRIFT", float, 2.5),
+            rivalry_threshold=_env("FLATWORLD_RIVALRY_THRESHOLD", int, -80),
+            trespass_decay=_env("FLATWORLD_TRESPASS_DECAY", float, 0.1),
+            house_capacity=_env("FLATWORLD_HOUSE_CAPACITY", int, 14),
             schism_enabled=_env("FLATWORLD_SCHISM_ENABLED", bool, True),
-            schism_threshold=_env("FLATWORLD_SCHISM_THRESHOLD", float, 0.55),
-            schism_min_pop=_env("FLATWORLD_SCHISM_MIN_POP", int, 7),
+            schism_threshold=_env("FLATWORLD_SCHISM_THRESHOLD", float, 0.6),
+            schism_min_pop=_env("FLATWORLD_SCHISM_MIN_POP", int, 8),
             communication_enabled=_env("FLATWORLD_COMMUNICATION_ENABLED", bool, True),
         )
 

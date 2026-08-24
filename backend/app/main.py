@@ -448,6 +448,66 @@ LAW_FIELDS = (
 # Recalculated for high-scale population on modern / low-end CPUs (e.g., Intel N150).
 # Area-tuned numbers support 2000-4000+ active inhabitants with 60 FPS batched rendering.
 PRESETS: dict[str, dict] = {
+    "balance": dict(
+        # The Goldilocks condition: all systems active in gentle, balanced proportions for maximal multi-generational flourishing.
+        food_count=420,
+        plant_growth_rate=0.055,
+        plant_spread_rate=0.007,
+        winter_food_mult=0.75,
+        poison_rate=0.008,
+        perceive_radius=18.0,
+        energy_decay_per_tick=0.025,
+        carrying_capacity=2000,
+        max_population=2800,
+        disease_enabled=True,
+        disease_outbreak_rate=0.00008,
+        disease_rate=0.04,
+        disease_energy_drain=0.06,
+        recovery_rate=0.03,
+        disease_lethality=0.2,
+        war_enabled=True,
+        attack_damage=35.0,
+        predation_enabled=True,
+        predator_ratio=0.02,
+        bite_damage=30.0,
+        bite_cooldown=15,
+        fear_radius=12.0,
+        relation_drift_rate=2.5,
+        rivalry_threshold=-80,
+        alliance_threshold=60,
+        trespass_decay=0.1,
+        house_capacity=14,
+        season_length=14400,
+        schism_enabled=True,
+        schism_threshold=0.6,
+        schism_min_pop=8,
+        communication_enabled=True,
+        knowledge_enabled=True,
+        help_call_enabled=True,
+        cannibalism_enabled=True,
+        cannibalism_hunger_ratio=0.12,
+        cannibalism_energy=40.0,
+        eat_enemy_enabled=True,
+        eat_kin_enabled=True,
+        kin_stigma=35,
+        exile_on_kin_eat=True,
+        food_decay_enabled=True,
+        food_lifespan_ticks=9000,
+        wildfire_enabled=True,
+        fire_rate=0.0001,
+        fire_spread_rate=0.04,
+        disaster_enabled=True,
+        disaster_rate=0.00005,
+        age_enabled=True,
+        culture_enabled=True,
+        shelter_enabled=True,
+        exposure_drain=0.025,
+        rest_recovery_mult=2.0,
+        adult_age=200.0,
+        birth_rate=0.32,
+        birth_energy_cost=18.0,
+        reproduction_cooldown=180,
+    ),
     "sustainable": dict(
         food_count=450,  # generous food for a thriving multi-generational civilization
         plant_growth_rate=0.06,
@@ -582,7 +642,7 @@ def detect_current_preset() -> str | None:
             and current_laws.get("max_population") == p_laws.get("max_population")
         ):
             return name
-    return getattr(RT, "current_preset", None)
+    return getattr(RT, "current_preset", "balance")
 
 
 def get_laws() -> dict:

@@ -90,6 +90,10 @@ VARIANT_SEASON_MULT = {
     "poisonous": {"spring": 1.0, "summer": 1.0, "autumn": 1.0, "winter": 1.0},
 }
 
+# Creature Evolution: Personality Archetypes & Metabolism
+PERSONALITIES = ("brave", "cautious", "altruistic", "greedy", "explorer", "builder")
+STAGE_ENERGY_MULT = {"infant": 0.45, "juvenile": 0.75, "adult": 1.0, "elder": 0.85}
+
 # Clan crest colors, assigned round-robin as clans are founded.
 CLAN_COLORS = (
     "#ffd166", "#06d6a0", "#118ab2", "#ef476f",
@@ -311,6 +315,42 @@ class Simulation:
         cfg = self.config
         return self.rng.uniform(0, cfg.width), self.rng.uniform(0, cfg.height)
 
+    def _init_creature_evolution(
+        self,
+        c: Creature,
+        parent_a: Creature | None = None,
+        parent_b: Creature | None = None,
+    ) -> None:
+        """Initialize autonomous personality, skills, tools, and emote states."""
+        # 1. Personality
+        if parent_a and parent_b and self.rng.random() < 0.65:
+            c.personality = self.rng.choice([parent_a.personality, parent_b.personality])
+        else:
+            c.personality = self.rng.choice(PERSONALITIES)
+
+        # 2. Skills
+        c.skills = {"farming": 0.0, "combat": 0.0, "foraging": 0.0, "healing": 0.0}
+        if parent_a and parent_b:
+            for k in c.skills:
+                pa_xp = parent_a.skills.get(k, 0.0) if hasattr(parent_a, "skills") and isinstance(parent_a.skills, dict) else 0.0
+                pb_xp = parent_b.skills.get(k, 0.0) if hasattr(parent_b, "skills") and isinstance(parent_b.skills, dict) else 0.0
+                c.skills[k] = round(max(pa_xp, pb_xp) * 0.15, 1)
+
+        # 3. Equipped item by caste/role
+        if c.caste == "Soldier" or c.is_predator:
+            c.equipped_item = "spear"
+        elif c.caste == "Priest":
+            c.equipped_item = "herb_poultice"
+        elif c.caste in ("Woman", "Artisan", "Gentleman", "Herbivore"):
+            c.equipped_item = "basket"
+        else:
+            c.equipped_item = None
+
+        c.food_basket = 0
+        c.title = None
+        c.emote = None
+        c.emote_ticks = 0
+
     def _spawn_creature(self, shape: str, sides: int) -> None:
         cfg = self.config
         x, y = self._rand_pos()
@@ -320,63 +360,63 @@ class Simulation:
             iso = self.rng.uniform(0.5, 59.5)
         caste = caste_name(sides, shape, iso)
         traits = traits_for(caste)
-        self.world.add(
-            Creature(
-                shape=shape,
-                sides=sides,
-                iso_angle=iso,
-                x=x,
-                y=y,
-                angle=self.rng.uniform(0, 2 * math.pi),
-                speed=traits.speed,
-                energy=cfg.energy_start,
-                lifespan=traits.lifespan * cfg.lifespan_mult,
-            )
+        c = Creature(
+            shape=shape,
+            sides=sides,
+            iso_angle=iso,
+            x=x,
+            y=y,
+            angle=self.rng.uniform(0, 2 * math.pi),
+            speed=traits.speed,
+            energy=cfg.energy_start,
+            lifespan=traits.lifespan * cfg.lifespan_mult,
         )
+        self._init_creature_evolution(c)
+        self.world.add(c)
 
     def _spawn_predator(self) -> None:
         """Spawn a Carnivore predator (§I) — fast, no clan, hunts prey."""
         cfg = self.config
         x, y = self._rand_pos()
         traits = traits_for("Predator")
-        self.world.add(
-            Creature(
-                shape="polygon",
-                sides=6,
-                iso_angle=60.0,
-                caste="Predator",
-                x=x,
-                y=y,
-                angle=self.rng.uniform(0, 2 * math.pi),
-                speed=traits.speed,
-                energy=cfg.energy_start,
-                lifespan=traits.lifespan * cfg.lifespan_mult,
-                is_predator=True,
-                clan_id=0,
-            )
+        c = Creature(
+            shape="polygon",
+            sides=6,
+            iso_angle=60.0,
+            caste="Predator",
+            x=x,
+            y=y,
+            angle=self.rng.uniform(0, 2 * math.pi),
+            speed=traits.speed,
+            energy=cfg.energy_start,
+            lifespan=traits.lifespan * cfg.lifespan_mult,
+            is_predator=True,
+            clan_id=0,
         )
+        self._init_creature_evolution(c)
+        self.world.add(c)
 
     def _spawn_herbivore(self) -> None:
         """Spawn a wild herbivore grazer (§O) — clanless, eats plants, hunted by predators."""
         cfg = self.config
         x, y = self._rand_pos()
         traits = traits_for("Herbivore")
-        self.world.add(
-            Creature(
-                shape="polygon",
-                sides=4,
-                iso_angle=60.0,
-                caste="Herbivore",
-                x=x,
-                y=y,
-                angle=self.rng.uniform(0, 2 * math.pi),
-                speed=traits.speed,
-                energy=cfg.energy_start,
-                lifespan=traits.lifespan * cfg.lifespan_mult,
-                is_herbivore=True,
-                clan_id=0,
-            )
+        c = Creature(
+            shape="polygon",
+            sides=4,
+            iso_angle=60.0,
+            caste="Herbivore",
+            x=x,
+            y=y,
+            angle=self.rng.uniform(0, 2 * math.pi),
+            speed=traits.speed,
+            energy=cfg.energy_start,
+            lifespan=traits.lifespan * cfg.lifespan_mult,
+            is_herbivore=True,
+            clan_id=0,
         )
+        self._init_creature_evolution(c)
+        self.world.add(c)
 
     def _spawn_initial(self) -> None:
         cfg = self.config
@@ -1419,6 +1459,8 @@ class Simulation:
                 if loser.trait == "paranoid":
                     # paranoid dodges? slight reduction
                     dmg *= 0.9
+                if winner.energy < 0.20 * cfg.energy_max:
+                    dmg *= 0.7  # exhaustion penalty
                 if self._totem_stat(loser, "defense"):
                     dmg *= 1.0 - self._totem_stat(loser, "defense")
                 # §X mobbing: a surrounded attacker hits softer
@@ -1431,6 +1473,13 @@ class Simulation:
         for loser, winner in to_kill:
             if loser.id not in self.world.entities:
                 continue
+            if hasattr(winner, "skills") and isinstance(winner.skills, dict):
+                winner.skills["combat"] = winner.skills.get("combat", 0.0) + 3.0
+            winner.energy = max(1.0, winner.energy - 6.0)
+            winner.emote = "combat"
+            winner.emote_ticks = 25
+            loser.emote = "panic"
+            loser.emote_ticks = 25
             self._emit_help(loser, winner)  # §X dying cry — the clan remembers
             self._learn_enemy(loser, winner.clan_id)
             self._learn_enemy(winner, loser.clan_id)
@@ -1472,6 +1521,14 @@ class Simulation:
         for loser, winner in to_wound:
             if loser.id not in self.world.entities:
                 continue
+            if hasattr(winner, "skills") and isinstance(winner.skills, dict):
+                winner.skills["combat"] = winner.skills.get("combat", 0.0) + 1.2
+            winner.energy = max(1.0, winner.energy - 6.0)
+            loser.energy = max(1.0, loser.energy - 10.0)
+            winner.emote = "combat"
+            winner.emote_ticks = 20
+            loser.emote = "panic"
+            loser.emote_ticks = 20
             self._emit_help(loser, winner)  # §X wounded cry — rally the clan
             self._learn_enemy(loser, winner.clan_id)
             self._learn_enemy(winner, loser.clan_id)
@@ -1481,6 +1538,10 @@ class Simulation:
                 trait_mult *= 1.25
             elif winner.trait == "peaceful":
                 trait_mult *= 0.65
+            if winner.equipped_item == "spear":
+                trait_mult *= 1.2
+            if winner.energy < 0.20 * cfg.energy_max:
+                trait_mult *= 0.7  # exhaustion penalty
             if loser.trait == "paranoid":
                 trait_mult *= 0.9
             dmg = cfg.attack_damage * (0.85 + w_spec2 * 0.45) * trait_mult * (1.0 - self._totem_stat(loser, "defense"))
@@ -2855,7 +2916,7 @@ class Simulation:
                 clan_id=0,
                 trait=ptrait,
             )
-            # Predators don't get clan or irregularity
+            self._init_creature_evolution(child, mother, father)
             self.world.add(child)
             event_payload = {
                 "mother": mother.id, "father": father.id,
@@ -2867,6 +2928,8 @@ class Simulation:
             for p in (mother, father):
                 p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
                 p.repro_cooldown = cfg.reproduction_cooldown
+                p.emote = "love"
+                p.emote_ticks = 25
             event = HistoryEvent(
                 type="birth", tick=tick, entity_id=child.id, caste=child.caste,
                 x=round(child.x, 2), y=round(child.y, 2),
@@ -2902,6 +2965,7 @@ class Simulation:
                 clan_id=0,
                 trait=htrait,
             )
+            self._init_creature_evolution(child, mother, father)
             self.world.add(child)
             event_payload = {
                 "mother": mother.id, "father": father.id,
@@ -2913,6 +2977,8 @@ class Simulation:
             for p in (mother, father):
                 p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
                 p.repro_cooldown = cfg.reproduction_cooldown
+                p.emote = "love"
+                p.emote_ticks = 25
             event = HistoryEvent(
                 type="birth", tick=tick, entity_id=child.id, caste=child.caste,
                 x=round(child.x, 2), y=round(child.y, 2),
@@ -2979,6 +3045,7 @@ class Simulation:
                 trait=dtrait,
             )
 
+        self._init_creature_evolution(child, mother, father)
         self.world.add(child)
         gift = self._totem_stat(child, "health")  # totem vitality: Bear/Shield cubs
         if gift:
@@ -3074,6 +3141,41 @@ class Simulation:
                 else:
                     clan["leader_id"] = None
 
+    def _update_creature_skills_and_titles(self, c: Creature) -> None:
+        """Evaluate dynamic titles and milestone level-ups."""
+        skills = getattr(c, "skills", None)
+        if not skills or not isinstance(skills, dict):
+            c.skills = {"farming": 0.0, "combat": 0.0, "foraging": 0.0, "healing": 0.0}
+            skills = c.skills
+
+        farm = skills.get("farming", 0.0)
+        combat = skills.get("combat", 0.0)
+        forage = skills.get("foraging", 0.0)
+        heal = skills.get("healing", 0.0)
+
+        new_title = None
+        if combat >= 30.0:
+            new_title = "the Fearless Champion"
+        elif combat >= 12.0:
+            new_title = "the Slayer"
+        elif farm >= 30.0:
+            new_title = "the Grand Harvester"
+        elif farm >= 12.0:
+            new_title = "the Harvester"
+        elif heal >= 30.0:
+            new_title = "the Wise Shaman"
+        elif heal >= 12.0:
+            new_title = "the Herbalist"
+        elif forage >= 30.0:
+            new_title = "the Pathfinder"
+        elif forage >= 12.0:
+            new_title = "the Gatherer"
+
+        if new_title and new_title != c.title:
+            c.title = new_title
+            c.emote = "cheer"
+            c.emote_ticks = 30
+
     def _update_creature(
         self,
         c: Creature,
@@ -3106,6 +3208,25 @@ class Simulation:
             c.bite_cooldown -= 1
         if c.cannibal_cooldown > 0:
             c.cannibal_cooldown -= 1
+
+        # Emote timer countdown
+        if c.emote_ticks > 0:
+            c.emote_ticks -= 1
+            if c.emote_ticks <= 0:
+                c.emote = None
+
+        # Hunger emote trigger
+        if c.energy < 25.0 and not c.sleeping and not c.emote:
+            c.emote = "hungry"
+            c.emote_ticks = 10
+
+        # Leader crown
+        if c.clan_id and self.clans.get(c.clan_id, {}).get("leader_id") == c.id:
+            c.equipped_item = "crown"
+
+        # Evaluate skills and dynamic epithets
+        if self.tick % 10 == 0:
+            self._update_creature_skills_and_titles(c)
 
         # 0. Night rest: after dark, creatures make for the nearest house and
         # those who win a bed sleep — half the hunger, multiplied healing.
@@ -3140,9 +3261,22 @@ class Simulation:
             if home is not None and self._claim_bed(home):
                 c.indoors = True
                 c.sleeping = True
+                if not c.emote:
+                    c.emote = "sleep"
+                    c.emote_ticks = 15
+                # Oral Lore transmission in houses: elders pass XP to sleeping youth
+                if c.stage == "elder" and c.clan_id and (self.tick + c.id) % 15 == 0:
+                    skills_dict = getattr(c, "skills", {})
+                    if skills_dict:
+                        best_skill = max(skills_dict, key=lambda k: skills_dict.get(k, 0.0))
+                        for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, 6.0):
+                            if isinstance(o, Creature) and o.clan_id == c.clan_id and o.stage in ("infant", "juvenile"):
+                                if hasattr(o, "skills") and isinstance(o.skills, dict):
+                                    o.skills[best_skill] = o.skills.get(best_skill, 0.0) + 0.15
                 if cfg.knowledge_enabled:
                     self._learn(c, "safe", home.x, home.y)  # §X: this roof is safe
-                c.energy -= cfg.energy_decay_per_tick * cfg.sleep_energy_mult
+                stage_mult = STAGE_ENERGY_MULT.get(c.stage, 1.0) if c.generation > 0 else 1.0
+                c.energy -= cfg.energy_decay_per_tick * cfg.sleep_energy_mult * stage_mult
                 if c.infected and cfg.disease_enabled:
                     c.energy -= cfg.disease_energy_drain
                     c.health -= 2.0 * cfg.disease_lethality
@@ -3159,6 +3293,50 @@ class Simulation:
                 # Asleep means STILL: no steering, no wandering, no fleeing —
                 # the body does not move again until dawn (or death).
                 return
+
+        # Field consumption: eat from personal reserve when hungry
+        if getattr(c, "food_basket", 0) > 0 and not c.sleeping and c.energy < 45.0:
+            c.food_basket -= 1
+            c.energy = min(cfg.energy_max, c.energy + cfg.energy_from_food * 0.9)
+            c.ticks_since_meal = 0
+            c.meals += 1
+            c.give_ups.clear()
+            c.emote = "craft"
+            c.emote_ticks = 15
+
+        # Priests heal injured / infected clanmates
+        if c.caste == "Priest" and not c.sleeping and (self.tick + c.id) % 8 == 0:
+            for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, 4.0):
+                if isinstance(o, Creature) and o.clan_id == c.clan_id and o.id != c.id:
+                    if (o.health < 80.0 or o.infected) and o.id in w.entities:
+                        o.health = min(100.0, o.health + 25.0)
+                        o.infected = False
+                        c.skills["healing"] = c.skills.get("healing", 0.0) + 1.5
+                        c.emote = "heal"
+                        c.emote_ticks = 20
+                        o.emote = "cheer"
+                        o.emote_ticks = 20
+                        break
+
+        # Altruistic feeding & basket hauling
+        if getattr(c, "food_basket", 0) > 0 and not c.sleeping:
+            if c.personality == "altruistic" and (self.tick + c.id) % 6 == 0:
+                for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, 5.0):
+                    if isinstance(o, Creature) and o.clan_id == c.clan_id and o.id != c.id:
+                        if (o.energy < 40.0 or o.stage in ("infant", "juvenile")) and o.id in w.entities:
+                            o.energy = min(cfg.energy_max, o.energy + 30.0)
+                            c.food_basket -= 1
+                            c.emote = "love"
+                            c.emote_ticks = 15
+                            o.emote = "cheer"
+                            o.emote_ticks = 15
+                            break
+            elif c.indoors or (c.clan_id and c.clan_id in clan_house_map and self.world.distance(c.x, c.y, clan_house_map[c.clan_id].x, clan_house_map[c.clan_id].y) <= 8.0):
+                if c.clan_id and c.clan_id in self.clans:
+                    clan_obj = self.clans[c.clan_id]
+                    curr = float(clan_obj.get("larder", 0.0))
+                    clan_obj["larder"] = min(cfg.larder_capacity, curr + c.food_basket * 18.0)
+                c.food_basket = 0
 
         # At adulthood the world judges the irregular: consumed if far from
         # regular, otherwise demoted to the lowest of the regular orders.
@@ -3642,8 +3820,11 @@ class Simulation:
             if c.id not in w.entities:  # a kin-eater may have been exiled (still alive)
                 return
 
-        # 5. Eat. Full creatures (>85% energy) don't consume food.
-        if target is not None and best_sq <= cfg.eat_radius * cfg.eat_radius and (c.is_predator or c.energy <= 0.85 * cfg.energy_max):
+        # 5. Eat or Harvest into basket / reserve. Full creatures (>85% energy) do not consume food.
+        can_eat = target is not None and best_sq <= cfg.eat_radius * cfg.eat_radius and (
+            c.is_predator or c.energy <= 0.85 * cfg.energy_max
+        )
+        if can_eat and target is not None:
             w.remove(target.id)
             self._eaten.add(target.id)
             c.ticks_since_meal = 0
@@ -3675,7 +3856,20 @@ class Simulation:
                     gain *= 1.0 + 0.4 * h
                 if scav:
                     gain *= (1.0 + scav * 0.35)
-            c.energy = min(cfg.energy_max, c.energy + gain)
+
+            # Store in food basket / reserve when well-fed, else eat
+            if isinstance(target, Food) and c.energy > 0.60 * cfg.energy_max and c.food_basket < 3:
+                c.food_basket += 1
+                c.skills["farming"] = c.skills.get("farming", 0.0) + 0.8
+                c.emote = "craft"
+                c.emote_ticks = 15
+            else:
+                c.energy = min(cfg.energy_max, c.energy + gain)
+                if isinstance(target, Food):
+                    c.skills["farming"] = c.skills.get("farming", 0.0) + 0.4
+                elif isinstance(target, Corpse):
+                    c.skills["foraging"] = c.skills.get("foraging", 0.0) + 0.6
+
             if health_delta != 0:
                 c.health = max(0.0, min(100.0, c.health + health_delta))
                 if c.health <= 0:
@@ -3700,7 +3894,8 @@ class Simulation:
                     self._learn(c, "safe", home.x, home.y)  # §X: shelter from the rain
 
         # 6. Metabolism, sickness and mortality. §R chill builds when cold & wet
-        c.energy -= cfg.energy_decay_per_tick
+        stage_mult = STAGE_ENERGY_MULT.get(c.stage, 1.0) if c.generation > 0 else 1.0
+        c.energy -= cfg.energy_decay_per_tick * stage_mult
         if (
             cfg.shelter_enabled
             and not c.indoors
@@ -3882,6 +4077,12 @@ class Simulation:
                 "angle_jitter": angle_jitter,
                 "chill": round(e.chill, 2),
                 "trait": e.trait,
+                "equipped_item": getattr(e, "equipped_item", None),
+                "food_basket": getattr(e, "food_basket", 0) or None,
+                "personality": getattr(e, "personality", "brave"),
+                "skills": getattr(e, "skills", None),
+                "title": getattr(e, "title", None),
+                "emote": getattr(e, "emote", None),
             }
         if isinstance(e, House):
             return {

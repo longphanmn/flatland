@@ -41,6 +41,12 @@ export interface EntityState {
   angle_jitter?: number
   chill?: number
   trait?: string | null
+  equipped_item?: 'spear' | 'basket' | 'torch' | 'herb_poultice' | 'crown' | null
+  food_basket?: number
+  personality?: 'brave' | 'cautious' | 'altruistic' | 'greedy' | 'explorer' | 'builder'
+  skills?: { farming?: number; combat?: number; foraging?: number; healing?: number }
+  title?: string | null
+  emote?: 'hungry' | 'love' | 'combat' | 'panic' | 'heal' | 'cheer' | 'sleep' | 'craft' | null
   door_width?: number
   door_offset?: number
   door_side?: 'north' | 'east' | 'south' | 'west'

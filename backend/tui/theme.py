@@ -94,8 +94,59 @@ WEATHER_ICONS = {"clear": "O", "rain": ",", "fog": "=", "storm": "/"}
 
 STATUS_COLORS = {"hungry": "#d29922", "starving": "#f85149"}
 
+# Creature Evolution Icons & Badges
+PERSONALITY_ICONS: dict[str, str] = {
+    "brave": "🛡️ Brave",
+    "cautious": "🌾 Cautious",
+    "altruistic": "🤝 Altruistic",
+    "greedy": "💰 Greedy",
+    "explorer": "🧭 Explorer",
+    "builder": "🔨 Builder",
+}
+
+ITEM_ICONS: dict[str, str] = {
+    "spear": "🗡️ Spear",
+    "basket": "🧺 Basket",
+    "crown": "👑 Crown",
+    "herb_poultice": "🌿 Herb Poultice",
+}
+
+EMOTE_ICONS: dict[str, str] = {
+    "hungry": "🍖 Hungry",
+    "love": "❤️ Love",
+    "combat": "⚔️ Combat",
+    "panic": "😱 Panic",
+    "heal": "🌿 Healing",
+    "cheer": "🏆 Cheer",
+    "sleep": "💤 Asleep",
+    "craft": "🧺 Harvest",
+}
+
+TOTEM_ICONS: dict[str, str] = {
+    "Sun": "☀️ Sun",
+    "Shield": "🛡️ Shield",
+    "Harvest": "🌾 Harvest",
+    "Moon": "🌙 Moon",
+    "Eye": "👁️ Eye",
+    "Tree": "🌳 Tree",
+    "Fire": "🔥 Fire",
+    "Serpent": "🐍 Serpent",
+}
+
+SKILL_ICONS: dict[str, str] = {
+    "farming": "🌾 Farming",
+    "combat": "⚔️ Combat",
+    "foraging": "🦴 Foraging",
+    "healing": "🌿 Healing",
+}
+
 
 def caste_color(caste: str | None) -> str:
     if caste is None:
         return DEFAULT_CREATURE_COLOR
     return CASTE_COLORS.get(caste, DEFAULT_CREATURE_COLOR)
+
+
+def dim(color: str) -> str:
+    # Quick terminal dim color
+    return f"dim {color}"

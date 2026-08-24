@@ -23,6 +23,17 @@ export const CASTE_COLORS: Record<string, string> = {
   Herbivore: '#90be6d',
 }
 
+export const EMOTE_ICONS: Record<string, string> = {
+  hungry: '🍖',
+  love: '❤️',
+  combat: '⚔️',
+  panic: '😱',
+  heal: '🌿',
+  cheer: '🏆',
+  sleep: '💤',
+  craft: '🧺',
+}
+
 /** Rain streaks and fog veil, drawn in screen space. */
 function drawWeather(
   ctx: CanvasRenderingContext2D,
@@ -370,6 +381,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, selectedClanRef,
       const infectedCreatures: EntityState[] = []
       const chilledCreatures: EntityState[] = []
       const glyphCreatures: EntityState[] = []
+      const visibleCreatures: EntityState[] = []
 
       for (const e of entities) {
         const rad = (e as any).radius ?? (e as any).size ?? 1.5
@@ -395,6 +407,7 @@ export default function CanvasRenderer({ stateRef, selectedRef, selectedClanRef,
         }
 
         // Creature
+        visibleCreatures.push(e)
         if (e.shape === 'line') {
           women.push(e)
         } else {
@@ -699,6 +712,90 @@ export default function CanvasRenderer({ stateRef, selectedRef, selectedClanRef,
           ctx.fillText(c.glyph!, c.x, c.y + 0.15)
         }
         ctx.globalAlpha = 1
+      }
+
+      // 11. Held Equipment & Tools (LOD-managed)
+      if (!isVeryZoomedOut) {
+        for (const c of visibleCreatures) {
+          if (!c.equipped_item) continue
+          const r = c.radius ?? 1.2
+          const ang = c.angle + (c.angle_jitter ?? 0)
+
+          if (c.equipped_item === 'spear') {
+            const tipX = c.x + Math.cos(ang) * (r + 1.8)
+            const tipY = c.y + Math.sin(ang) * (r + 1.8)
+            const baseX = c.x + Math.cos(ang) * (r - 0.4)
+            const baseY = c.y + Math.sin(ang) * (r - 0.4)
+            ctx.strokeStyle = '#d29922'
+            ctx.lineWidth = 0.35
+            ctx.beginPath()
+            ctx.moveTo(baseX, baseY)
+            ctx.lineTo(tipX, tipY)
+            ctx.stroke()
+            // spearhead
+            ctx.fillStyle = '#ff7b72'
+            ctx.beginPath()
+            ctx.arc(tipX, tipY, 0.4, 0, TAU)
+            ctx.fill()
+          } else if (c.equipped_item === 'crown') {
+            ctx.font = '1.7px ui-monospace, monospace'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'bottom'
+            ctx.fillText('👑', c.x, c.y - r - 0.3)
+          } else if (c.equipped_item === 'basket') {
+            const bx = c.x + Math.cos(ang + Math.PI / 2) * (r + 0.6)
+            const by = c.y + Math.sin(ang + Math.PI / 2) * (r + 0.6)
+            ctx.font = '1.3px ui-monospace, monospace'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText('🧺', bx, by)
+            if ((c.food_basket ?? 0) > 0) {
+              ctx.fillStyle = '#3fb950'
+              ctx.beginPath()
+              ctx.arc(bx + 0.5, by - 0.5, 0.3, 0, TAU)
+              ctx.fill()
+            }
+          } else if (c.equipped_item === 'herb_poultice') {
+            const hx = c.x + Math.cos(ang - Math.PI / 2) * (r + 0.6)
+            const hy = c.y + Math.sin(ang - Math.PI / 2) * (r + 0.6)
+            ctx.font = '1.3px ui-monospace, monospace'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText('🌿', hx, hy)
+          }
+        }
+      }
+
+      // 12. Floating Emote Bubbles
+      const nowTime = performance.now() / 1000
+      for (const c of visibleCreatures) {
+        if (!c.emote && !c.sleeping) continue
+        const emoteKey = c.emote ?? (c.sleeping ? 'sleep' : null)
+        if (!emoteKey) continue
+        const icon = EMOTE_ICONS[emoteKey]
+        if (!icon) continue
+
+        const r = c.radius ?? 1.2
+        const bob = Math.sin(nowTime * 4.5 + c.id * 0.7) * 0.3
+        const bx = c.x
+        const by = c.y - r - 2.2 + bob
+
+        // speech bubble background
+        ctx.fillStyle = 'rgba(13, 17, 23, 0.88)'
+        ctx.strokeStyle = '#58a6ff'
+        ctx.lineWidth = 0.25
+        const bw = 2.8
+        const bh = 2.4
+        ctx.beginPath()
+        ctx.roundRect(bx - bw / 2, by - bh / 2, bw, bh, 0.8)
+        ctx.fill()
+        ctx.stroke()
+
+        // emoji text
+        ctx.font = '1.6px ui-monospace, monospace'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(icon, bx, by + 0.1)
       }
 
       return houses
@@ -1006,7 +1103,8 @@ export default function CanvasRenderer({ stateRef, selectedRef, selectedClanRef,
             ctx.font = '2px ui-monospace, monospace'
             ctx.textAlign = 'center'
             ctx.textBaseline = 'bottom'
-            const label = `${(selEnt as any).personal_name} ${(selEnt as any).glyph ?? ''}`
+            const titleSuffix = (selEnt as any).title ? ` ${(selEnt as any).title}` : ''
+            const label = `${(selEnt as any).personal_name}${titleSuffix} ${(selEnt as any).glyph ?? ''}`
             ctx.strokeStyle = 'rgba(11,15,20,0.85)'
             ctx.lineWidth = 0.4
             ctx.strokeText(label, selEnt.x, selEnt.y - (selEnt.radius ?? 1.2) - 2.5)

@@ -17,21 +17,17 @@ from .guide import _api_table, _god_laws_table, _md_to_html, CODEBASE_MAP_MD, CO
 SUSTAINABILITY_MD = """
 # Sustainability — the 1000-day world
 
-The world self-balances for 1000+ days at 400–500 head when tuned gentle.
-
-## Defaults vs Presets
-
-- **Defaults** (what you get on fresh boot): 400×300 map, `food_count=210`, `season_length=14400` (12 days), `house_capacity=12`, `winter_food_mult=0.5` (harsh). Survives ~48 days deterministic seed 42.
-- **Sustainable preset** (`POST /api/presets/sustainable?reset=true`): `food 450`, `winter 0.75` (soft lean), `carrying 2200`/`max 3000` (plateau not churn), `predation`/`war`/`disease` ON but gentle (bite/attack 40 wound not kill, pred ratio 0.03, outbreak 0.0001, recovery 0.025, poison 0), `drift 2.8`/`rivalry -85`/`trespass 0` (calm society). Apply via God panel → Presets.
+The world self-balances for 1000+ days at 400–2000 head when tuned to Goldilocks balance.
 
 ## Presets
 
-- **sustainable** 🌿 — 1000-day gentle: 450 food, carrying 2200, rare war, wound not kill. Multi-generational flourishing.
+- **balance** ⚖️ (Default) — The Goldilocks condition: all 15+ simulation mechanics active in gentle, harmonious proportions (mild war, rare predation, mild plagues, gentle winters, and thriving multi-generational clans).
+- **sustainable** 🌿 — 1000-day gentle: 450 food, carrying 2200, rare war/predation, calm society. Multi-generational flourishing.
 - **chaos** 🔥 — 320 food, carrying 800, max 1200: famine, predators, wars, plagues, fires, schism. Stress test.
 - **extinction** 💀 — 100 food, carrying 250, max 400: 0.3 winter, high decay. Extinction in days.
 - **boom** 🚀 — 650 food, carrying 3500, max 5000: massive population boom scale test for low-end hardware (e.g. Intel N150).
 
-Use: `curl -X POST localhost:8000/api/presets/sustainable?reset=true` or God panel buttons.
+Use: `curl -X POST localhost:8000/api/presets/balance?reset=true` or God panel buttons.
 """
 
 PERFORMANCE_MD = """
@@ -52,7 +48,11 @@ WIKI_OVERVIEW_MD = """
 
 A 2D world of geometric castes (Soldier, Artisan, Gentleman, Professional, Noble, Priest, Woman) plus predators/herbivores. Creatures wander, eat, shelter, age, mate, and die. God sets **laws**, never touches a life — everything else emerges.
 
+- **Autonomous Evolution**: 6 personality archetypes (brave, cautious, altruistic, greedy, explorer, builder), tools (spears, baskets, herb poultices, crowns), skill progression matrix (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿), dynamic titles, oral lore, and live emote balloons.
+- **Realistic Energy & Metabolism**: Infant low metabolism (45% decay), combat stamina drain, and field food reserve hauling/eating.
+- **Multi-House Clan Settlements**: Clans expand across houses with primary Chieftain residences.
 - **Live world**: `GET /api/state` + WebSocket `/ws` (`hello` → `state` every tick, throttled ~30 Hz)
+- **Terminal UI**: Textual TUI (`cd backend && uv run python -m tui`) with camera tracking and filterable chronicle.
 - **God laws**: `GET /api/laws` / `POST /api/laws?persist` — see God laws table
 - **Presets**: `GET /api/presets` / `POST /api/presets/{sustainable|chaos|extinction}?reset`
 - **History**: `GET /api/history?since&limit`, `GET /api/worlds`, `GET /api/clans`, `GET /api/plots`

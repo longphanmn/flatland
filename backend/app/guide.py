@@ -211,8 +211,28 @@ Only the desperate eat the living: below `cannibalism_hunger_ratio` energy a cre
 ## Food decay (§AE)
 Nothing lasts forever: a mature plant lives `food_lifespan_ticks` × its variant's pace (mushroom 0.4×, grass ×1, berry 1.5×, poisonous 3×) before it withers — sprouts and growing plants never rot. Withered plants fade brown in the renderer, release half a corpse's nutrient boost to nearby plants (§H death feeds life), then vanish (`wither` events stay in-memory like blooms, never the DB). The bounty law respawns replacement growth, so plant counts now churn instead of freezing.
 
-## Shelter (§L/N)
-Houses (`entities.py:184`) squares with doorway; walls block except door — doorway too small for Carnivore predators (§L refuge, `simulation.py:1178` `predator_blocked`) so houses are the only safe haven once predators hunt; any predator that spawns inside is ejected to the doorstep. Exposure `exposure_drain` outdoors in rain/storm or night unless `indoors`. Beds scale with floor area: `house_capacity` counts beds in an average 8×8 hall (`HOUSE_REF_AREA`), so a cramped hut holds fewer and a grand hall more — a whole clan can never cram into one shelter. Beds re-contest every tick in id order; when the clan's roof is full the overflow spills to the NEAREST roof with space (`_house_for`), queueing at a door only when every roof in the village is full. A bed grants sleep; no bed means no rest — and a resting body is perfectly still until dawn. `sleep_enabled` night → seek house (`_house_for` prefers own clan's settlement if `house_claim_enabled`; predators never seek shelter), `sleeping` halves hunger `sleep_energy_mult` + health `+0.15×rest_recovery_mult`. Clan claim: each clan's settlement house shows crest (`House.clan_color`). Settlement economy (§L): target houses `area×house_density×carrying/80` vs `0.6×carrying/house_capacity` (`simulation.py:356` `_target_house_count`), growth via `_spawn_settlement_house` (`simulation.py:373`) and `_update_settlements` (`simulation.py:390`) after corpses each tick; abandoned houses (unclaimed or clan extinct) idle `house_decay_ticks` (`config.py:113`) then crumble to `is_ruin` (`entities.py:192`) → `ruin` event, walls no longer block (`simulation.py:1507`); new clans found a new settlement if no free house (`simulation.py:311`); pinned `num_houses` (`simulation.py:423`) still wins for tests/scenarios.
+## Shelter & Settlements (§L/N)
+Houses (`entities.py:184`) squares with doorway; walls block except door — doorway too small for Carnivore predators (§L refuge) so houses are safe havens. Exposure `exposure_drain` outdoors in rain/storm or night unless `indoors`. Beds scale with floor area: `house_capacity` counts beds in an average 8×8 hall (`HOUSE_REF_AREA`). Clans can settle across multiple houses, with the leader residing in the primary **Main House** marked with a golden crown. Abandoned houses decay to ruins (`is_ruin`).
+
+## Autonomous Evolution & Tools (§AG)
+Evolution emerges 100% autonomously without god interventions:
+- **Personality Archetypes**: `brave`, `cautious`, `altruistic`, `greedy`, `explorer`, `builder` (65% heritability). Altruistic creatures feed starving kin with basket food.
+- **Dynamic Equipment & Tools**: Soldiers/Predators wield Spears (+20% combat damage & reach); Farmers/Artisans/Herbivores carry Baskets (haul up to 3 food units for field snacks or clan larder deposits); Priests carry Herb Poultices (+25 HP healing & infection cure); Chieftains wear the golden Crown.
+- **Skill Mastery & Dynamic Titles**: 4 skills (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿) progress from Novice to Master, unlocking titles (*the Slayer*, *the Fearless Champion*, *the Grand Harvester*, *the Wise Shaman*, *the Pathfinder*).
+- **Oral Lore**: Elders sleeping in houses transmit their highest skill mastery XP to resting youth.
+- **Floating Emote Thoughts**: Real-time mood balloons (`🍖`, `❤️`, `⚔️`, `🌿`, `🏆`, `💤`, `🧺`, `😱`) above creature heads.
+
+## Energy Dynamics & Stage Metabolism (§AH)
+- **Stage-Aware Metabolism**: Born infants burn 55% less energy per tick (`0.45x`), juveniles burn 25% less (`0.75x`), adults standard (`1.0x`), elders `0.85x`.
+- **Combat Stamina**: Duels and war clashes expend energy (winner -6, loser -10); low energy (<20%) causes an exhaustion penalty (30% less damage).
+- **Food Reserves & Field Eating**: Roaming creatures with <45 energy autonomously eat carried food from their basket. Full creatures (>85% energy) never eat or destroy food plants.
+
+## Terminal User Interface (§AI)
+A complete Textual terminal interface (`backend/tui/`) attaches to running worlds with:
+- Camera follow mode (`w`) tracking moving creatures.
+- Category-filtered Chronicle (`t`) (All, Birth, Death, War, Politics, Settlement).
+- Full creature dossier inspector (`enter` / `i`) and clan details modal (`c`).
+- God laws manager (`g`) and ASCII/half-block renderer (`a` / `f`).
 """
 
 CODEBASE_MAP_MD = """

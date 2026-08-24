@@ -1047,3 +1047,48 @@ Scale the simulation and rendering pipeline to maximize active population capaci
       boundary wrap/clamp integrity, mate discovery, terrain caching, and high-scale population throughput.
 - [x] [P0] Update documentation in `backend/app/wiki.py` and ensure type-safety across TypeScript and Python protocol schemas.
 
+## AG. Autonomous Creature Evolution (No God Interventions)  [P0] — ✅ implemented
+100% autonomous, emergent creature evolution driven entirely by in-simulation experience and inherited behavioral archetypes:
+
+### Personality Archetypes & Inheritance
+- [x] [P0] 6 Core Archetypes — `brave`, `cautious`, `altruistic`, `greedy`, `explorer`, `builder`.
+- [x] [P0] Genetics & Heritability — 65% chance to inherit personality from mother/father; 35% chance to mutate on birth.
+- [x] [P1] Altruistic Kin Feeding — altruistic creatures share carried food with hungry kin and infants.
+- [x] [P1] Cautious Survival — cautious creatures seek shelter early and avoid dangerous zones.
+
+### Dynamic Tools & Equipment (Caste Synergy)
+- [x] [P0] Spears (`spear`) — Soldiers and Predators wield spears for extended reach and +20% combat damage.
+- [x] [P0] Baskets (`basket`) — Farmers, Artisans, and Herbivores carry woven baskets hauling up to 3 food units back to clan larders.
+- [x] [P0] Herb Poultices (`herb_poultice`) — Priests carry herbal remedies, autonomously healing injured kin (+25 HP) and curing infections.
+- [x] [P1] Chieftain Crown (`crown`) — Clan leaders wear the golden crown.
+
+### Dynamic Skill Mastery, Oral Lore & Milestone Titles
+- [x] [P0] 4 Core Skills — Farming 🌾, Combat ⚔️, Foraging 🦴, and Healing 🌿 earn XP through actions.
+- [x] [P0] Milestone Titles — Unlocking skill ranks awards dynamic titles (*the Slayer*, *the Fearless Champion*, *the Grand Harvester*, *the Wise Shaman*, *the Pathfinder*).
+- [x] [P1] Oral Tradition in Houses — Resting elders pass their highest skill mastery XP to resting younglings.
+
+### Expressive Emotes & Thought Bubbles
+- [x] [P0] Real-time Animated Emotes — Floating thought balloons (`🍖`, `❤️`, `⚔️`, `🌿`, `🏆`, `💤`, `🧺`, `😱`) with physics above creatures in canvas and terminal.
+
+## AH. Energy Dynamics & Stage-Aware Metabolism  [P0] — ✅ implemented
+Realistic biological metabolism, fatigue, and food carrying:
+
+### Stage-Aware Metabolism
+- [x] [P0] Infant Metabolic Discount — Infants burn 55% less energy per tick (`0.45x`), juveniles burn 25% less (`0.75x`), adults standard (`1.0x`), elders `0.85x`.
+- [x] [P0] Strict Sated Law — Full creatures (>85% energy / 100 energy) never consume food plants.
+
+### Combat Stamina & Fatigue
+- [x] [P0] Battle Energy Drain — Winner loses 6 energy, loser loses 10 energy in clashes.
+- [x] [P1] Exhaustion Penalty — Combatants with <20% energy strike with 30% reduced damage.
+
+### Autonomous Food Reserves
+- [x] [P0] Field Reserve Consumption — Creatures can carry extra food and consume it autonomously when energy <45 far from food plants.
+
+## AI. Terminal User Interface (TUI) Feature Parity  [P1] — ✅ implemented
+Full terminal feature parity with web frontend:
+- [x] [P1] Evolution Dossier in Inspector (`enter` / `i`) — Displays dynamic titles, personality badges, tool/basket inventory, and skill matrix.
+- [x] [P1] Clan Details Screen (`c`) — Displays totem emblems, main house coordinates, larder, and full member table.
+- [x] [P1] Category-Filtered Chronicle (`t`) — Cycle filters (All, Birth, Death, War, Politics, Settlement).
+- [x] [P1] Camera Follow Mode (`w`) — Auto-track moving selected creature.
+
+
