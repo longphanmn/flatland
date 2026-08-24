@@ -7,7 +7,7 @@ import PlotsPanel from './render/PlotsPanel'
 import Collapsible from './render/Collapsible'
 import ChronicleFeed from './render/ChronicleFeed'
 import GodPanel from './god/GodPanel'
-import { AuthModal, ensureGodKey, forgetKey } from './god/auth'
+import { AuthModal, ensureGodKey, forgetKey, getCachedKey } from './god/auth'
 import Wiki from './wiki/Wiki'
 import ClanDetails from './clan/ClanDetails'
 import WorldEndSummary from './summary/WorldEndSummary'
@@ -434,13 +434,16 @@ export default function App() {
   }, [mergeFetched])
 
   const selectRun = useCallback(
-    (raw: string) => {
+    async (raw: string) => {
+      const key = await ensureGodKey()
+      if (!key) return
       const id = Number(raw)
       // Picking the live run canonicalizes back to follow-live mode.
       setSelectedRunId(id === liveWorldId ? null : id)
     },
     [liveWorldId],
   )
+
 
   const populationEntries = state
     ? Object.entries(state.population).sort(([a], [b]) => a.localeCompare(b))
@@ -589,11 +592,17 @@ export default function App() {
           </div>
           {worlds.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, paddingTop: 6, borderTop: '1px solid #21262d' }}>
-              <span style={{ fontSize: 12, color: '#8b949e', flex: 'none' }}>History Run:</span>
+              <span style={{ fontSize: 12, color: '#8b949e', flex: 'none' }}>⚖ History Run (God only):</span>
               <select
                 className="run-select"
                 value={String(selectedRunId ?? liveWorldId ?? '')}
-                onChange={(e) => selectRun(e.target.value)}
+                onPointerDown={async (e) => {
+                  if (!getCachedKey()) {
+                    e.preventDefault()
+                    await ensureGodKey()
+                  }
+                }}
+                onChange={(e) => void selectRun(e.target.value)}
                 style={{ flex: 1, minHeight: 32, fontSize: 12 }}
               >
                 {worlds.map((w) => (
@@ -776,13 +785,19 @@ export default function App() {
             </select>
             {worlds.length > 0 && (
               <div className="run-switcher">
-                <label className="chip run-label" htmlFor="run-bottom" title="Select world run" data-hint="Select world run">
-                  run
+                <label className="chip run-label" htmlFor="run-bottom" title="Select world run (God only)" data-hint="Select world run (God only)">
+                  ⚖ run
                   <select
                     id="run-bottom"
                     className="run-select"
                     value={String(selectedRunId ?? liveWorldId ?? '')}
-                    onChange={(e) => selectRun(e.target.value)}
+                    onPointerDown={async (e) => {
+                      if (!getCachedKey()) {
+                        e.preventDefault()
+                        await ensureGodKey()
+                      }
+                    }}
+                    onChange={(e) => void selectRun(e.target.value)}
                   >
                     {worlds.map((w) => (
                       <option key={w.id} value={String(w.id)}>
@@ -794,6 +809,7 @@ export default function App() {
                 </label>
               </div>
             )}
+
           </footer>
 
           <p className="key-hints">space pause · S step · R reset · F fit · +/− zoom</p>
