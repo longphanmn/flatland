@@ -2253,14 +2253,34 @@ class Simulation:
                         break
             if acted:
                 continue
-            # War: declare on a remembered enemy (bold hands, then any).
-            if trait == "bold" or trait is None:
+            # War: declare on an enemy with specific calculated Casus Belli (§AL)
+            if trait == "bold" or trait is None or info.get("governance") == "junta":
                 enemy = self._remembered_enemy(cid)
+                casus_belli = "blood_feud"
+                if enemy is None:
+                    # Check for famine raid or territory dispute
+                    own_larder = float(info.get("larder", 0.0))
+                    for pair, score in sorted(self.relations.items()):
+                        if cid not in pair:
+                            continue
+                        rival = pair[1] if pair[0] == cid else pair[0]
+                        rival_info = self.clans.get(rival, {})
+                        if own_larder < 20.0 and float(rival_info.get("larder", 0.0)) > 60.0:
+                            enemy = rival
+                            casus_belli = "famine_raid"
+                            break
                 if enemy is not None and self._zone_of(
                     self.relations.get(self._relation_pair(cid, enemy), 0)
                 ) != -1:
                     self._bump_relation(cid, enemy, -50)
+                    enemy_name = self.clans.get(enemy, {}).get("name", f"Clan {enemy}")
+                    self._log_clan_history(
+                        cid,
+                        "war_declared",
+                        f"Declared war on {enemy_name} (Casus Belli: {casus_belli.replace('_', ' ').capitalize()}, Day {self.day})",
+                    )
                     acted = True
+
             if acted:
                 continue
             # Tribute: a strong clan demands protection money from a weak neighbour.
@@ -2453,13 +2473,86 @@ class Simulation:
                 bylaws["martial_law"] = False
                 task_board["guard_weight"] = 1.0
 
+    def _update_trade_caravans(self) -> None:
+        """§AL Inter-Clan Trade Caravans & Economic Specialization Barter."""
+        if not self.config.resource_sharing_enabled or self.tick % 80 != 0:
+            return
+        # Find agricultural clans with surplus and warrior clans
+        for cid, info in self.clans.items():
+            if not isinstance(info, dict):
+                continue
+            spec = info.get("specialization", {})
+            farmer_ratio = spec.get("farmer", 0.33)
+            larder = float(info.get("larder", 0.0))
+            if farmer_ratio > 0.35 and larder >= 40.0:
+                # Seek a trading partner with neutral or positive relations
+                for other_cid, other_info in self.clans.items():
+                    if other_cid == cid or not isinstance(other_info, dict):
+                        continue
+                    pair = self._relation_pair(cid, other_cid)
+                    if self._zone_of(self.relations.get(pair, 0)) >= 0:
+                        other_spec = other_info.get("specialization", {})
+                        if other_spec.get("warrior", 0.33) > 0.35:
+                            # Trade: 12 food for combat martial lore
+                            trade_amount = 12.0
+                            info["larder"] = max(0.0, larder - trade_amount)
+                            other_info["larder"] = min(self.config.larder_capacity, float(other_info.get("larder", 0.0)) + trade_amount)
+                            self._bump_relation(cid, other_cid, 12)
+                            # Boost farmer clan combat training
+                            clan_members = self._clan_members.get(cid) or [cc for cc in self._get_creatures() if cc.clan_id == cid]
+                            for c in clan_members:
+                                if hasattr(c, "skills") and isinstance(c.skills, dict):
+                                    c.skills["combat"] = c.skills.get("combat", 0.0) + 1.0
+                            break
+
+    def _update_festivals_and_traditions(self) -> None:
+        """§AL Tribal Traditions & Autumn Harvest Festival."""
+        season_len = max(1, self.config.season_length)
+        if self._season() == "autumn" and (self.tick % season_len == season_len - 1):
+            houses_by_clan = {}
+            for h in (self._cached_houses if self._cached_houses else self._functional_houses()):
+                if isinstance(h, House) and h.clan_id and getattr(h, "is_main", False) and not getattr(h, "is_ruin", False):
+                    houses_by_clan[h.clan_id] = h
+
+            for cid, clan in self.clans.items():
+                if not isinstance(clan, dict):
+                    continue
+                main_h = houses_by_clan.get(cid)
+                if not main_h:
+                    continue
+                # All clan members near Main House celebrate
+                members = self._clan_members.get(cid) or [cc for cc in self._get_creatures() if cc.clan_id == cid]
+                for c in members:
+                    if self.world.distance(c.x, c.y, main_h.x, main_h.y) <= 18.0:
+                        c.energy = min(self.config.energy_max, c.energy + 25.0)
+                        c.emote = "cheer"
+                        c.emote_ticks = 30
+                        lid = clan.get("leader_id")
+                        if lid and lid != c.id:
+                            if not hasattr(c, "trust") or c.trust is None:
+                                c.trust = {}
+                            c.trust[lid] = min(100.0, c.trust.get(lid, 0.0) + 10.0)
+                        if c.stage in ("infant", "juvenile"):
+                            if hasattr(c, "skills") and isinstance(c.skills, dict):
+                                c.skills["farming"] = c.skills.get("farming", 0.0) + 2.0
+
+
+                self._log_clan_history(
+                    cid,
+                    "festival",
+                    f"Celebrated the Annual Autumn Harvest Festival (Day {self.day})",
+                )
+
     def _update_politics(self) -> None:
         """§AB orchestrator — fixed order keeps the rng stream deterministic."""
         self._update_coalitions()
         self._update_leader_decisions()
         self._update_larders()
+        self._update_trade_caravans()
+        self._update_festivals_and_traditions()
         self._update_defection()
         self._update_clan_task_boards_and_bylaws()
+
 
 
     # ------------------------------------------------- §AC desperation cannibalism

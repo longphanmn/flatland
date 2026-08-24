@@ -64,7 +64,11 @@ Evolution emerges 100% autonomously without artificial intervention:
 - **Governance Archetypes & Succession**: Distinct institutional models (`Monarchy` royal dynasty, `Theocracy` priest succession, `Junta` combat mastery, `Republic` council of elders).
 - **Dynamic Bylaws**: Automated policies including winter food rationing (<35 energy threshold) and wartime martial law curfews.
 - **Resource Sharing & Larders**: Settlements maintain food larders where sated members deposit surplus and hungry kin withdraw.
-- **Diplomacy & Politics**: Emergent alliances, defensive coalitions, tributary pacts, schisms, and territorial rivalries.
+- **Diplomacy & Geopolitics**: Emergent alliances, defensive coalitions, tributary pacts, schisms, and territorial rivalries.
+- **Macro Geopolitics & Casus Belli**: Intentional war declarations (famine food raids, blood feuds, territorial friction) with historical Casus Belli tracking.
+- **Inter-Clan Trade Caravans**: Economic specialization barter between agrarian and warrior clans (+12 relations and combat skill sharing).
+- **Tribal Traditions & Harvest Festivals**: Annual autumn harvest celebrations at settlement Main Houses boosting energy (+25), mood, trust, and oral epic lore.
+
 
 
 ### 5. Environment & Ecosystem

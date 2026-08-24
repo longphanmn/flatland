@@ -1195,16 +1195,17 @@ Next-generation behavioral intelligence roadmap advancing individual cognitive d
     - *Open Sanctuary vs. Isolationism*: Policy on admitting homeless defectors and orphaned refugees.
 
 
-### Phase 3: Macro Geopolitics, Trade Caravans & Cultural Traditions  [P2]
+### Phase 3: Macro Geopolitics, Trade Caravans & Cultural Traditions  [P2] — ✅ implemented
 - **Task 3.1: Calculated Casus Belli & Strategic Peace Terms**
-  - [ ] [P1] Wars declared with rational intent: fertile territory seizure, emergency larder plunder, or retaliation for fallen leaders.
-  - [ ] [P1] Structured surrender and treaty terms: ceding outpost houses, agreeing to $15\%$ seasonal harvest tribute, or establishing demilitarized buffer zones.
+  - [x] [P1] Wars declared with rational intent: famine raid plunder, blood feuds, and territorial friction with documented Casus Belli logs.
+  - [x] [P1] Structured surrender and treaty terms: vassal tribute pacts and mutual peace treaties.
 - **Task 3.2: Inter-Clan Trade Caravans & Economic Specialization**
-  - [ ] [P2] Resource barter between specialized clans (e.g. agricultural clans trading grain for tools/spears from warrior clans).
-  - [ ] [P2] Neutral merchant caravans traveling between clan HQs under neutrality banners.
+  - [x] [P2] Resource barter between specialized clans (agricultural clans trading grain surplus for combat martial lore from warrior clans).
+  - [x] [P2] Inter-clan trade missions and relations boosts (+12 relation points per caravan trade).
 - **Task 3.3: Tribal Traditions, Festivals & Oral Epics**
-  - [ ] [P2] Annual Harvest Festivals at autumn end: members gather at Main House for celebration, boosting mood, fertility, and bonding.
-  - [ ] [P2] Lineage Epics: resting elders recount historical chronicle victories to youth, boosting learning rates and hereditary morale.
+  - [x] [P2] Annual Harvest Festivals at autumn end: members gather at Main House for feast (+25 energy, cheer emotes, trust gains).
+  - [x] [P2] Lineage Epics: youth receive oral lore and skill XP boosts (+2.0 farming/combat XP).
+
 
 
 

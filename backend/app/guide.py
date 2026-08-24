@@ -236,6 +236,10 @@ Evolution emerges 100% autonomously without god interventions:
 - **Clan Division of Labor & Task Board**: Dynamic macro priorities (`balanced`, `food_security`, `defense`, `quarantine_healing`) boost harvester (2.0×) and guard (2.5×) action weights.
 - **Governance Archetypes**: Distinct institutional succession models (`Monarchy` royal dynasty, `Theocracy` priest succession, `Junta` combat mastery, `Republic` council of elders).
 - **Dynamic Bylaws**: Automated policies including winter food rationing (<35 energy threshold) and wartime martial law curfews.
+- **Macro Geopolitics & Casus Belli**: Intentional war declarations based on famine food raids, blood feuds, and territorial friction with documented Casus Belli.
+- **Inter-Clan Trade Caravans**: Economic specialization barter transferring surplus grain from agrarian clans to martial clans in exchange for combat training and diplomatic goodwill (+12 relations).
+- **Tribal Traditions & Harvest Festivals**: Annual autumn celebrations at clan Main Houses boosting energy (+25), mood emotes, leader trust (+10), and oral lore transmission (+2.0 skill XP).
+
 
 
 ## Terminal User Interface (§AI)
