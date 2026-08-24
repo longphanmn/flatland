@@ -139,9 +139,9 @@ body {
   overflow-y: auto;
   pointer-events: auto;
   flex: none;
-  height: 360px;
-  min-height: 360px;
-  max-height: 360px;
+  height: 460px;
+  min-height: 460px;
+  max-height: 460px;
 }
 
 .clan-panel-box {

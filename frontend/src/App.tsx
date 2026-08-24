@@ -843,7 +843,7 @@ export default function App() {
                 </span>
               )}
             </h3>
-            <Collapsible id="overview-caste" title="Caste population" hint="Stacked per-caste population over recent ticks">
+            <Collapsible id="overview-caste" title="Caste population" hint="Stacked per-caste population over recent ticks" defaultOpen={true}>
               <CasteChart history={popHist} showLegend={false} />
             </Collapsible>
             <div className="info-spark" title="alive creatures, recent ticks (was at bottom left, now in info box)">
@@ -867,6 +867,7 @@ export default function App() {
               id="overview-trophic"
               title={<>Trophic pyramid — Food · Herbivore · Predator <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span></>}
               hint="Trophic pyramid: stacked history of Food (plants, variant colors) → Herbivore (wild grazers, beast_ratio) → Predator (carnivores). Shows Lotka-Volterra oscillation."
+              defaultOpen={true}
             >
               <TrophicChart history={popHist} showLegend={false} />
             </Collapsible>
