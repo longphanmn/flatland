@@ -400,6 +400,8 @@ LAW_HINTS_MD = {
     "rivers_enabled": "horizontal channels cross the land: fords cost energy, the current sweeps infants and the wounded downstream, rain floods the banks and leaves fertile silt; builders span planks and raise dams",
     "river_count": "channel bands across the map at world creation (2) — applies to new worlds",
     "relief_enabled": "the land has height: uphill travel burns energy and slows the stride, cliffs deal fall damage, rain can slide steep slopes, and well-walked ground packs into fast roads that grow nothing",
+    "structural_enabled": "storms and floodwater wear buildings down; builders near a roof mend it; a spent roof collapses to ruin",
+    "rubble_blocking_enabled": "collapsed ruins leave rubble that bars the ground until builders clear the lot",
 }
 
 def get_wiki_json(app: Any) -> dict:

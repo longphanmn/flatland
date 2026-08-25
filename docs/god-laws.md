@@ -117,6 +117,8 @@ In Flatland, God sets **laws**, never touches individual lives. Every law has a 
 | `rivers_enabled` | Boolean | **true** | Horizontal channels: fords cost energy, the current sweeps the weak, rain floods banks and leaves silt; builders raise planks & dams (§AQ PH-3). |
 | `river_count` | 0–8 | **2** | Channel bands across the map at world creation (applies to new worlds). |
 | `relief_enabled` | Boolean | **true** | Height field: grades tax energy & speed, cliffs deal fall damage, landslides in rain, emergent roads speed travel but bar growth (§AQ PH-4). |
+| `structural_enabled` | Boolean | **true** | Storms & floods wear buildings down; builders mend; spent roofs collapse to ruin. Materials: straw 120 HP / wood 260 / clay 320 / stone 480 (§AQ PH-6). |
+| `rubble_blocking_enabled` | Boolean | **true** | Collapsed ruins block their lot with rubble until builders clear it. |
 
 ---
 

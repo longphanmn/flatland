@@ -57,6 +57,8 @@ export interface EntityState {
   takeover_age?: number | null
   material?: 'straw' | 'wood' | 'stone'
   hearth_lit?: boolean | null
+  hp_frac?: number | null
+  rubble?: boolean | null
   murals?: number
   growth?: number
   variant?: 'grass' | 'grain' | 'berry' | 'medicinal_herb' | 'mushroom' | 'poisonous'
@@ -353,6 +355,8 @@ export interface GodLaws {
   rivers_enabled?: boolean
   river_count?: number
   relief_enabled?: boolean
+  structural_enabled?: boolean
+  rubble_blocking_enabled?: boolean
   exposure_drain?: number
   house_capacity?: number
   house_claim_enabled?: boolean

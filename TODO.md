@@ -1458,15 +1458,11 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [x] [P1] **Composting** — §AM farmers already compost: `_sow_and_tend` buries corpses into farm soil (compost event) and the living soil rewards it. Covered.
 - [x] [P2] **Plant symbiosis & parasitism** — mushrooms fruit on decay (×1.6 near corpses), medicinal herbs shelter in berry thickets (×1.35), poisonous plants stunt all neighbours (×0.55). (`simulation.py:_update_plants`, tests `tests/test_hearth.py`)
 
-### Phase PH-6: Material Physics & Building  [P1]
-- [ ] [P1] **Material types** — four materials with distinct stats:
-  - *Straw*: very low durability, low insulation, cheapest (gathered grass)
-  - *Wood*: medium durability/insulation (forage + build time)
-  - *Stone*: high durability/insulation (mined from rock entities)
-  - *Clay*: medium durability, very high insulation (river bank deposits)
-- [ ] [P1] **Structural integrity / HP** — buildings degrade in storms, floods, and attacks; builders must repair or buildings decay to ruin.
-- [ ] [P2] **Rubble blocking** — ruined structures leave rubble tiles that block movement until cleared by builders.
-- [ ] [P2] **Weight & load-bearing** (Planiverse constraint) — beams support weight at one point from each side; creatures cannot climb over walls, only pass through doors or ramps.
+### Phase PH-6: Material Physics & Building  [P1] — ✅ implemented
+- [x] [P1] **Material types** — four materials with distinct stats (`MATERIAL_STATS`): *straw* 120 HP / 0.15 insulation, *wood* 260 / 0.35, *stone* 480 / 0.55, and new *clay* 320 / **0.70** — riverbank brick that settlements beside a channel dig (`_pick_house_material` picks clay 55% of the time within silt reach). On the wire as `material`, tinted on the map. (tests `tests/test_materials.py`)
+- [x] [P1] **Structural integrity / HP** — storms wear `STORM_WEAR` 0.15/tick, floodwater `FLOOD_WEAR` 0.6/tick; builders near a roof mend `REPAIR_RATE` 1.5/tick; a spent roof collapses to ruin (chronicle `collapse`), integrity rides the wire as `hp_frac` with crack overlay under 70%. (`simulation.py:_update_structures`)
+- [x] [P2] **Rubble blocking** — collapsed lots pile `rubble` that blocks movement like rock (`RUBBLE_RADIUS_FRAC` 0.35 of the floor) until a builder clears it (0.10/tick), which removes the ruin entirely; `rubble_blocking_enabled` law.
+- [ ] [P2] **Weight & load-bearing** — *deferred*: Planiverse beam mechanics (one-point supports, wall-climbing rules) need a structural graph the flat-point body model doesn't have; walls already block except doors.
 
 ### Phase PH-7: Metabolic & Biological Extremes  [P2]
 - [ ] [P2] **Torpor / hibernation** — at very low energy + very cold ambient, creatures enter torpor (0.05× energy burn/tick), unconscious and vulnerable to predators; exit when temperature rises.

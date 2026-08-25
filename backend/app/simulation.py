@@ -216,8 +216,20 @@ CHILL_FROM_COLD_RATE = 0.06
 HYPERTHERMIA_TEMP = 36.0  # above this the body cooks
 HYPERTHERMIA_DRAIN = 0.15  # health per degree of excess per tick
 HOUSE_COMFORT_TEMP = 18.0  # what insulation pulls the indoors toward
-INSULATION_BY_MATERIAL = {"straw": 0.15, "wood": 0.35, "stone": 0.55}
+# §AQ PH-6 — material physics: four build materials with distinct stats.
+MATERIAL_STATS = {
+    #            durability (structural HP)   insulation
+    "straw": {"durability": 120.0, "insulation": 0.15},
+    "wood":  {"durability": 260.0, "insulation": 0.35},
+    "stone": {"durability": 480.0, "insulation": 0.55},
+    "clay":  {"durability": 320.0, "insulation": 0.70},  # riverbank brick
+}
+INSULATION_BY_MATERIAL = {m: s["insulation"] for m, s in MATERIAL_STATS.items()}
 HOUSE_REF_SIDE = 8.0      # a reference hall; bigger houses shed heat faster
+STORM_WEAR = 0.15         # structural HP lost per storm tick
+FLOOD_WEAR = 0.60         # structural HP lost per flood tick in the water
+REPAIR_RATE = 1.5         # HP a builder restores per tick of masonry work
+RUBBLE_RADIUS_FRAC = 0.35  # a collapsed ruin blocks this fraction of its floor
 
 # §AQ PH-2 — the wind: a vector over the land that bends flame and seed.
 WIND_CALM_SPEED = 0.25
@@ -751,10 +763,18 @@ class Simulation:
         return METABOLIC_COST.get(c.caste, DEFAULT_METABOLIC_COST)
 
     # -------------------------------------------------- §AQ PH-1 thermodynamics
-    def _pick_house_material(self) -> str:
+    def _pick_house_material(self, x: float | None = None, y: float | None = None) -> str:
         """Seeded material mix: straw common, stone rare (insulation: straw <
-        wood < stone). Consumes the rng only at house creation."""
+        wood < stone). §AQ PH-6: settlements beside a river dig clay — riverbank
+        brick insulates better than anything but stays middling in durability.
+        Consumes the rng only at house creation."""
         r = self.rng.random()
+        if (
+            x is not None and y is not None and self.rivers
+            and self._in_river_band(x, y, pad=RIVER_SILT_RADIUS + 4.0)
+            and r < 0.55
+        ):
+            return "clay"
         if r < 0.20:
             return "stone"
         if r < 0.55:
@@ -1144,6 +1164,72 @@ class Simulation:
             else:
                 c.health -= dmg
 
+    def _update_structures(self) -> None:
+        """§AQ PH-6: material physics — storms and floodwater wear buildings
+        down, builders mend what still stands, collapsed roofs leave rubble
+        that blocks the lot until it is cleared."""
+        cfg = self.config
+        houses = self._cached_houses or self._functional_houses()
+        # wear
+        for h in houses:
+            if h.is_ruin:
+                continue
+            if h.hp < 0:
+                h.hp = MATERIAL_STATS.get(h.material, MATERIAL_STATS["wood"])["durability"]
+            if not cfg.structural_enabled:
+                continue
+            wear = 0.0
+            if self.weather == "storm":
+                wear += STORM_WEAR
+            for r in self.rivers:
+                if (
+                    r["flood_ticks"] > 0
+                    and self._river_dy(h.y, r["cy"]) <= r["hw"] + h.size * 0.5 + 2.0
+                ):
+                    wear += FLOOD_WEAR
+            if wear > 0:
+                h.hp -= wear
+                if h.hp <= 0:
+                    self._collapse_house(h)
+        # repair & rubble clearing — builders within reach of a roof work it
+        if cfg.structural_enabled or cfg.rubble_blocking_enabled:
+            builders = [c for c in self._cached_creatures
+                        if getattr(c, "personality", "") == "builder"]
+            for c in builders:
+                for h in houses:
+                    dx, dy = self.world.delta(c.x, c.y, h.x, h.y)
+                    reach = h.size * 0.5 + 3.0
+                    if dx * dx + dy * dy > reach * reach:
+                        continue
+                    if h.is_ruin:
+                        if cfg.rubble_blocking_enabled and h.rubble > 0:
+                            h.rubble = max(0.0, h.rubble - 0.10)
+                            c.energy = max(0.0, c.energy - 0.05)
+                            if h.rubble == 0.0:
+                                self.world.remove(h.id)  # lot cleared
+                        break
+                    if cfg.structural_enabled:
+                        max_hp = MATERIAL_STATS.get(h.material, MATERIAL_STATS["wood"])["durability"]
+                        if h.hp < max_hp:
+                            h.hp = min(max_hp, h.hp + REPAIR_RATE)
+                            c.energy = max(0.0, c.energy - 0.05)
+                            break
+
+    def _collapse_house(self, h: House) -> None:
+        """A building whose structural HP is gone falls in (§AQ PH-6)."""
+        h.is_ruin = True
+        h.clan_id = 0
+        h.clan_color = None
+        h.hearth_lit = False
+        h.hearth_fuel = 0.0
+        if self.config.rubble_blocking_enabled:
+            h.rubble = round(h.size, 2)  # blocks the lot until builders clear it
+        self._emit(HistoryEvent(
+            type="ruin", tick=self.tick + 1, entity_id=h.id,
+            x=round(h.x, 2), y=round(h.y, 2),
+            payload={"kind": "collapse", "material": h.material},
+        ))
+
     def _update_builders(self) -> None:
         """§AQ PH-3: builder-personality creatures span the channels they live
         beside — planks first, dams when the water starts to rise."""
@@ -1429,7 +1515,7 @@ class Simulation:
                     size=size,
                     door_width=door_width,
                     door_side=self.rng.choice(("north", "east", "south", "west")),
-                    material=self._pick_house_material(),
+                    material=self._pick_house_material(x, y),
                 )
             )
         self._found_founding_clans()
@@ -1811,7 +1897,7 @@ class Simulation:
         house = House(
             x=x, y=y, size=size, door_width=door_width,
             door_side=self.rng.choice(("north", "east", "south", "west")),
-            material=self._pick_house_material(),
+            material=self._pick_house_material(x, y),
         )
         if clan_id is not None and self.config.house_claim_enabled:
             house.clan_id = clan_id
@@ -2276,12 +2362,21 @@ class Simulation:
         return Food(x=x, y=y, growth=growth, variant=variant)
 
     def _resolve_rock_collision(self, c: Creature) -> dict | None:
-        """Push a creature out of any rock it has wandered into; return the rock."""
+        """Push a creature out of any rock it has wandered into; return the rock.
+        §AQ PH-6: collapsed ruins with uncleared rubble block the same way."""
         w, h = self.config.width, self.config.height
         is_wrap = self.config.boundary == "wrap"
         half_w = w * 0.5
         half_h = h * 0.5
-        for rock in self.rocks:
+        solids = list(self.rocks)
+        if self.config.rubble_blocking_enabled:
+            for rh in self._cached_houses:
+                if rh.is_ruin and rh.rubble > 0:
+                    solids.append({
+                        "x": rh.x, "y": rh.y,
+                        "r": rh.size * RUBBLE_RADIUS_FRAC, "_house_id": rh.id,
+                    })
+        for rock in solids:
             min_d = rock["r"] + c.radius
             rx, ry = rock["x"], rock["y"]
             dx = abs(c.x - rx)
@@ -2686,6 +2781,7 @@ class Simulation:
         self._update_corpses()
         self._update_settlements()
         self._update_builders()  # §AQ PH-3: planks & dams rise where builders wade
+        self._update_structures()  # §AQ PH-6: storms wear, builders mend
         self._update_hearths()  # §AQ PH-1 hearths burn & take fuel
         self._update_agriculture()  # §AM sowing, tending, granary feasts
         self._update_faith()  # §AP unified theology
@@ -7233,7 +7329,8 @@ class Simulation:
                 is_withering = True
             return (1, round(e.x, 1), round(e.y, 1), round(e.growth, 1), is_withering)
         if isinstance(e, House):
-            return (2, round(e.x, 1), round(e.y, 1), e.clan_id, bool(getattr(e, "is_ruin", False)), e.hearth_lit)
+            return (2, round(e.x, 1), round(e.y, 1), e.clan_id, bool(getattr(e, "is_ruin", False)),
+                    e.hearth_lit, int(max(0.0, min(1.0, e.hp / 480.0)) * 20) if e.hp >= 0 else -1, e.rubble > 0)
         if isinstance(e, Corpse):
             return (3, round(e.x, 1), round(e.y, 1), e.ttl // 30)
         return (4, round(e.x, 1), round(e.y, 1))
@@ -7303,6 +7400,13 @@ class Simulation:
                 # §AQ PH-1: the hearth's state rides the delta so the flame
                 # lights and gutters without a keyframe
                 "hearth_lit": e.hearth_lit or None,
+                # §AQ PH-6: integrity & rubble ride when they matter
+                "hp_frac": (
+                    round(max(0.0, e.hp) / MATERIAL_STATS.get(e.material, MATERIAL_STATS["wood"])["durability"], 2)
+                    if e.hp >= 0 and e.hp < MATERIAL_STATS.get(e.material, MATERIAL_STATS["wood"])["durability"] * 0.98
+                    else (None if not e.is_ruin else 0.0)
+                ),
+                "rubble": bool(e.rubble > 0) or None,
             }
         return {
             "id": e.id,
@@ -7595,6 +7699,12 @@ class Simulation:
                 "murals": e.murals or None,
                 # §AQ PH-1: fire burns on this hearth
                 "hearth_lit": e.hearth_lit or None,
+                # §AQ PH-6: structural integrity & rubble state
+                "hp_frac": (
+                    round(max(0.0, e.hp) / MATERIAL_STATS.get(e.material, MATERIAL_STATS["wood"])["durability"], 2)
+                    if e.hp >= 0 else None
+                ),
+                "rubble": bool(e.rubble > 0) or None,
             }
         if isinstance(e, Food):
             is_withering = False

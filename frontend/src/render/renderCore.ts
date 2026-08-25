@@ -187,6 +187,25 @@ export function drawBatchedEntities(
         ctx.lineTo(bx, by)
       }
       ctx.stroke()
+      // §AQ PH-6: material reads at a glance; worn walls show cracks
+      const matTint: Record<string, string> = {
+        straw: 'rgba(214,177,94,0.10)',
+        wood: 'rgba(150,111,64,0.12)',
+        stone: 'rgba(140,150,160,0.14)',
+        clay: 'rgba(190,106,66,0.16)',
+      }
+      const tint = h.material ? matTint[h.material] : undefined
+      if (tint) {
+        ctx.fillStyle = tint
+        ctx.fillRect(h.x - size / 2, h.y - size / 2, size, size)
+      }
+      if (h.hp_frac != null && h.hp_frac < 0.7) {
+        ctx.strokeStyle = `rgba(20,24,28,${0.5 * (1 - h.hp_frac)})`
+        ctx.lineWidth = 0.2
+        ctx.setLineDash([1.2, 0.9])
+        ctx.strokeRect(h.x - size / 2, h.y - size / 2, size, size)
+        ctx.setLineDash([])
+      }
       if (h.clan_color) {
         ctx.fillStyle = h.clan_color
         ctx.globalAlpha = 0.18

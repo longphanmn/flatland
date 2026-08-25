@@ -216,6 +216,10 @@ class Config:
     # Relief (§AQ PH-4) — the height of the land: grades, cliffs & roads
     relief_enabled: bool = True  # elevation field bends energy, speed & growth
 
+    # Materials (§AQ PH-6) — structural integrity & the rubble of collapses
+    structural_enabled: bool = True  # storms & floods wear buildings; builders mend
+    rubble_blocking_enabled: bool = True  # collapsed ruins block lots until cleared
+
     # Society — interaction & clan relations — war rare tuning
     cohesion_weight: float = 0.0  # pull toward same-clan flock centre
     alignment_weight: float = 0.0  # match neighbours' heading

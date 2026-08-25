@@ -76,9 +76,11 @@ class EntityState(BaseModel):
     is_ruin: Optional[bool] = None
     abandoned_ticks: Optional[int] = None
     takeover_age: Optional[int] = None  # §AT-3: ticks since last hostile takeover
-    material: Optional[Literal["straw", "wood", "stone"]] = None  # §AQ PH-1
+    material: Optional[Literal["straw", "wood", "stone", "clay"]] = None  # §AQ PH-1/6
     murals: Optional[int] = None  # §AN: painted chronicle inscribed on the walls
     hearth_lit: Optional[bool] = None  # §AQ PH-1: fire burns on this hearth
+    hp_frac: Optional[float] = None  # §AQ PH-6: structural integrity remaining
+    rubble: Optional[bool] = None  # §AQ PH-6: collapsed lot, uncleared rubble
 
 
 class StateMessage(BaseModel):
@@ -384,6 +386,10 @@ class GodLaws(BaseModel):
 
     # Relief (§AQ PH-4) — elevation, cliffs & roads
     relief_enabled: Optional[bool] = None
+
+    # Materials (§AQ PH-6)
+    structural_enabled: Optional[bool] = None
+    rubble_blocking_enabled: Optional[bool] = None
 
     # T: soften winter
     winter_food_mult: Optional[float] = Field(None, ge=0.1, le=2)

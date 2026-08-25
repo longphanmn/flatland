@@ -190,6 +190,7 @@ const GROUP_ORDER = [
   'Bodies & Houses',
   'Rivers',
   'Terrain',
+  'Materials',
 ]
 
 // Backend Config defaults — switches render these until laws load.
@@ -240,6 +241,8 @@ const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
   dialect_drift_enabled: true,
   rivers_enabled: true,
   relief_enabled: true,
+  structural_enabled: true,
+  rubble_blocking_enabled: true,
 }
 
 const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
@@ -806,6 +809,12 @@ export default function GodPanel({ open, onClose }: Props) {
                 )}
                 {group === 'Terrain' && (
                   <ToggleRow k="relief_enabled" label="Relief (height field)" title="the land has height: uphill burns energy, cliffs deal fall damage, rain slides steep slopes, feet pack fast roads that grow nothing (§AQ PH-4)" />
+                )}
+                {group === 'Materials' && (
+                  <>
+                    <ToggleRow k="structural_enabled" label="Structural integrity" title="storms & floodwater wear buildings down; builders mend what still stands; a spent roof collapses to ruin (§AQ PH-6)" />
+                    <ToggleRow k="rubble_blocking_enabled" label="Rubble blocks lots" title="collapsed ruins leave rubble that bars the ground until builders clear it" />
+                  </>
                 )}
                 {group === 'Culture' && (
                   <ToggleRow k="culture_enabled" label="Culture" title="culture spreads to allied neighbours, can split into rival traditions; grants small collective bonus" />

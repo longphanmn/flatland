@@ -280,3 +280,6 @@ class House(Entity):
     # clan larder and burns down every tick — an unfed hearth goes dark.
     hearth_lit: bool = False
     hearth_fuel: float = 0.0  # ticks of burn remaining
+    # §AQ PH-6 materials: structural integrity and the rubble of a collapse
+    hp: float = -1.0  # -1 = untouched (full durability of its material)
+    rubble: float = 0.0  # >0 while a collapsed ruin still blocks the lot
