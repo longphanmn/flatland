@@ -136,6 +136,15 @@ HOUSE_COMFORT_TEMP = 18.0  # what insulation pulls the indoors toward
 INSULATION_BY_MATERIAL = {"straw": 0.15, "wood": 0.35, "stone": 0.55}
 HOUSE_REF_SIDE = 8.0      # a reference hall; bigger houses shed heat faster
 
+# §AQ PH-2 — the wind: a vector over the land that bends flame and seed.
+WIND_CALM_SPEED = 0.25
+WIND_RAIN_SPEED = 0.55
+WIND_STORM_SPEED = 1.0    # magnitude scales with storm severity
+WIND_RATE = 0.05          # relaxation toward the weather's target speed
+# prevailing direction by season (radians); re-rolls land near these
+WIND_SEASON_BIAS = {"spring": 0.0, "summer": 1.3, "autumn": 2.5, "winter": 4.0}
+WIND_FIRE_MULT = 0.8      # extra spread chance per unit of tailwind speed
+
 # §AE food decay — nothing lasts forever: variant lifespan multipliers (§AM)
 FOOD_LIFESPAN_MULT = {
     "grass": 1.0,
@@ -345,6 +354,8 @@ class Simulation:
         self._temp_rows = max(1, math.ceil(self.config.height / TEMP_CELL))
         base0 = SEASON_BASE_TEMP[SEASONS[0]]
         self.temperature_grid = [base0] * (self._temp_cols * self._temp_rows)
+        self.wind_angle = (self.config.seed % 6283) / 1000.0  # §AQ PH-2, rng-free init
+        self.wind_speed = WIND_CALM_SPEED
         # AJ: Delta compression tracking (Phase 1)
         self._last_broadcast_state: dict[int, tuple] = {}
         self._last_broadcast_entities: set[int] = set()
@@ -397,6 +408,20 @@ class Simulation:
             return
         others = [w for w in WEATHER_STATES if w != self.weather]
         self.weather = self.rng.choice(others)
+        # §AQ PH-2: a new sky brings a new wind — direction re-rolls near the
+        # season's prevailing bearing.
+        self.wind_angle = (
+            WIND_SEASON_BIAS[self._season()] + self.rng.uniform(-1.0, 1.0)
+        ) % (2 * math.pi)
+
+    def _update_wind(self) -> None:
+        """§AQ PH-2: the wind's strength follows the sky — storms howl, calm
+        days barely stir the grass."""
+        target = {
+            "storm": WIND_STORM_SPEED,
+            "rain": WIND_RAIN_SPEED,
+        }.get(self.weather, WIND_CALM_SPEED)
+        self.wind_speed += (target - self.wind_speed) * WIND_RATE
 
     def env_sight_mult(self) -> float:
         """Night and fog dim every eye (Sight Recognition suffers)."""
@@ -1285,34 +1310,33 @@ class Simulation:
         def dist_sq(h: House) -> float:
             return self.world.distance_sq(c.x, c.y, h.x, h.y)
 
+        c_sleeping = getattr(c, "sleeping", False)
+        occ_map = getattr(self, "_house_occupants", {})
+        beds_map = getattr(self, "_house_beds_map", {})
+        beds_taken = self._beds
+
         def has_room(h: House) -> bool:
-            occ = max(getattr(self, "_house_occupants", {}).get(h.id, 0), self._beds.get(h.id, 0))
-            if self._inside_house(c, h):
+            occ = max(occ_map.get(h.id, 0), beds_taken.get(h.id, 0))
+            if c_sleeping and self._inside_house(c, h):
                 occ = max(0, occ - 1)
-            return occ < self._house_beds(h)
+            return occ < beds_map.get(h.id, 2)
 
         def allowed(h: House) -> bool:
             # §AT-3 strict single-clan ownership: own clan or neutral roofs only.
             return h.clan_id == 0 or h.clan_id == c.clan_id
 
-
-
         if getattr(c, "waypoints", None) and "home" in c.waypoints:
             hx, hy = c.waypoints["home"]
-            prev_home = next((h for h in houses if isinstance(h, House) and round(h.x, 2) == hx and round(h.y, 2) == hy and not h.is_ruin), None)
+            prev_home = getattr(self, "_house_pos_map", {}).get((hx, hy))
             if prev_home and allowed(prev_home) and has_room(prev_home):
                 return prev_home
 
         if self.config.house_claim_enabled and c.clan_id:
-
             clan_info = self.clans.get(c.clan_id, {})
             leader_id = clan_info.get("leader_id")
             main_hid = clan_info.get("main_house_id")
 
-            own_houses = [
-                h for h in houses
-                if isinstance(h, House) and h.clan_id == c.clan_id and not h.is_ruin
-            ]
+            own_houses = getattr(self, "_clan_houses", {}).get(c.clan_id, [])
 
             if own_houses:
                 # Leader prioritizes living in the main house
@@ -1328,10 +1352,8 @@ class Simulation:
 
             # All own roofs full (or none): spill to the nearest UNCLAIMED roof
             # with space — never into another clan's house (§AT-2/AT-3).
-            free = [
-                h for h in houses
-                if isinstance(h, House) and not h.is_ruin and h.clan_id == 0 and has_room(h)
-            ]
+            unclaimed = getattr(self, "_unclaimed_houses", [])
+            free = [h for h in unclaimed if has_room(h)]
             if free:
                 return min(free, key=dist_sq)
 
@@ -1343,11 +1365,11 @@ class Simulation:
             return None
 
         # Clanless creature (or claims disabled): only neutral roofs count.
-        free = [
-            h for h in houses
-            if isinstance(h, House) and not h.is_ruin and h.clan_id == 0 and has_room(h)
-        ]
-        return min(free, key=dist_sq) if free else None
+        unclaimed = getattr(self, "_unclaimed_houses", [])
+        free = [h for h in unclaimed if has_room(h)]
+        if free:
+            return min(free, key=dist_sq)
+        return min(unclaimed, key=dist_sq) if unclaimed else None
 
 
 
@@ -1763,6 +1785,10 @@ class Simulation:
         houses: list = []
         corpses: list = []
         m: dict[int, list[Creature]] = {}
+        clan_houses: dict[int, list[House]] = {}
+        unclaimed_houses: list[House] = []
+        beds_map: dict[int, int] = {}
+        house_pos_map: dict[tuple[float, float], House] = {}
         for e in self.world.entities.values():
             t = type(e)
             if t is Creature:
@@ -1773,6 +1799,12 @@ class Simulation:
             elif t is House:
                 if not e.is_ruin:  # type: ignore[union-attr]
                     houses.append(e)
+                    beds_map[e.id] = self._house_beds(e)  # type: ignore[arg-type]
+                    house_pos_map[(round(e.x, 2), round(e.y, 2))] = e  # type: ignore[assignment]
+                    if e.clan_id:  # type: ignore[union-attr]
+                        clan_houses.setdefault(e.clan_id, []).append(e)  # type: ignore[union-attr]
+                    else:
+                        unclaimed_houses.append(e)  # type: ignore[arg-type]
             elif t is Corpse:
                 corpses.append(e)
         self._cached_creatures = creatures
@@ -1781,6 +1813,10 @@ class Simulation:
         self._cached_foods = foods
         self._cached_houses = sorted(houses, key=lambda h: h.id)
         self._cached_corpses = corpses
+        self._clan_houses = clan_houses
+        self._unclaimed_houses = unclaimed_houses
+        self._house_beds_map = beds_map
+        self._house_pos_map = house_pos_map
 
         # Compute sleeping house occupancy cache in single pass O(N)
         house_occ: dict[int, int] = {}
@@ -1790,7 +1826,7 @@ class Simulation:
                 if hid is not None:
                     house_occ[hid] = house_occ.get(hid, 0) + 1
                 else:
-                    for h in houses:
+                    for h in (clan_houses.get(c.clan_id, []) + unclaimed_houses):
                         if self._inside_house(c, h):
                             house_occ[h.id] = house_occ.get(h.id, 0) + 1
                             break
@@ -1798,11 +1834,11 @@ class Simulation:
 
         # §AS L-0: living leader positions per clan (for the morale aura)
         leader_pos: dict[int, tuple[float, float]] = {}
-        for cid, info in self.clans.items():
-            lid = info.get("leader_id")
+        for cid, members in m.items():
+            lid = self.clans.get(cid, {}).get("leader_id")
             if not lid:
                 continue
-            for c in m.get(cid, ()):
+            for c in members:
                 if c.id == lid:
                     leader_pos[cid] = (c.x, c.y)
                     break
@@ -1824,6 +1860,7 @@ class Simulation:
         self._events_this_tick = []
         self._eaters_this_tick = []
         self._update_weather()
+        self._update_wind()  # §AQ PH-2: the sky's breath follows the weather
         # §Q signals decay (ripples fade)
         self.signals = [sg for sg in self.signals if sg["ttl"] > 1]
         for sg in self.signals:
@@ -1837,14 +1874,16 @@ class Simulation:
 
         # Leaderless-clan repair: catch clans whose leader_id points to a dead or
         # missing creature (e.g. loaded from old state, or succession_enabled=False).
-        # Runs every 30 ticks so the cost is negligible.
-        if self.tick % 30 == 0 and self.clans:
+        # Runs every 30 ticks for active clans so the cost is negligible.
+        if self.tick % 30 == 0 and self._clan_members:
             live_ids: set[int] = {c.id for c in self._cached_creatures}
-            for cid, clan in self.clans.items():
+            for cid, members in self._clan_members.items():
+                clan = self.clans.get(cid)
+                if not clan:
+                    continue
                 lid = clan.get("leader_id")
                 if lid is not None and lid not in live_ids:
                     # Leader is dead or missing — elect a replacement immediately.
-                    members = [c for c in self._cached_creatures if c.clan_id == cid]
                     if members:
                         gov = clan.get("governance", "republic")
                         if gov == "monarchy":
@@ -2023,6 +2062,9 @@ class Simulation:
         cfg = self.config
         if not cfg.war_enabled:
             return
+        war_clans = {cid for pair, score in self.relations.items() if self._zone_of(score) == -1 for cid in pair}
+        if not war_clans:
+            return
         # AF: pre-sorted in _refresh_cache; fallback if called outside step()
         creatures = self._cached_creatures_sorted if self._cached_creatures_sorted else sorted(self.world.creatures(), key=lambda c: c.id)
         to_kill: list[tuple[Creature, Creature]] = []
@@ -2032,7 +2074,7 @@ class Simulation:
         dist_sq = self.world.distance_sq
         w = self.world
         for a in creatures:
-            if a.id not in w.entities or a.id in fallen or a.is_predator or a.is_herbivore or not a.clan_id:
+            if a.id not in w.entities or a.id in fallen or a.is_predator or a.is_herbivore or a.clan_id not in war_clans:
                 continue
             neighbours = [
                 b
@@ -2368,10 +2410,12 @@ class Simulation:
                 if c.clan_id:
                     members_by_clan.setdefault(c.clan_id, []).append(c)
         claimed_houses = {h.clan_id for h in (self._cached_houses if self._cached_houses else self._functional_houses()) if h.clan_id}
-        for cid, info in list(self.clans.items()):
-            members = members_by_clan.get(cid, [])
+        for cid, members in list(members_by_clan.items()):
             pop = len(members)
             if pop < cfg.schism_min_pop:
+                continue
+            info = self.clans.get(cid)
+            if not isinstance(info, dict):
                 continue
             # Unhappy: starving or homeless (no house)
             has_house = cid in claimed_houses
@@ -2630,7 +2674,7 @@ class Simulation:
         if not cfg.leader_decisions_enabled:
             return
         pops = {cid: len(m) for cid, m in self._clan_members.items()}
-        for cid in sorted(self.clans.keys()):
+        for cid in sorted(self._clan_members.keys()):
             info = self.clans[cid]
             lid = info.get("leader_id")
             leader = self.world.entities.get(lid) if lid is not None else None
@@ -2662,7 +2706,7 @@ class Simulation:
                         )
                     )
                     # Treason: sow false knowledge so third clans distrust the victim too.
-                    for other in sorted(self.clans.keys()):
+                    for other in sorted(self._clan_members.keys()):
                         if other in (cid, victim):
                             continue
                         mates = self._clan_members.get(other, ())
@@ -2740,7 +2784,7 @@ class Simulation:
                 my_pop = pops.get(cid, 0)
                 if my_pop < 2:
                     continue
-                for other in sorted(self.clans.keys()):
+                for other in sorted(self._clan_members.keys()):
                     if other == cid or self._clan_coalition.get(other) == self._clan_coalition.get(cid):
                         continue
                     oinfo = self.clans[other]
@@ -2893,12 +2937,15 @@ class Simulation:
 
     def _update_clan_task_boards_and_bylaws(self) -> None:
         """§AL Clan Division of Labor & Dynamic Bylaws."""
-        if not self.clans:
+        if not self._clan_members:
             return
         is_winter = self._season() == "winter"
+        rivalry_threshold = self.config.rivalry_threshold
+        war_clans = {cid for pair, score in self.relations.items() if score <= rivalry_threshold for cid in pair}
 
-        for cid, clan in self.clans.items():
-            if not isinstance(clan, dict):
+        for cid, members in self._clan_members.items():
+            clan = self.clans.get(cid)
+            if not isinstance(clan, dict) or not members:
                 continue
             bylaws = clan.setdefault("bylaws", {"rationing": False, "martial_law": False, "sanctuary": "open"})
             task_board = clan.setdefault("task_board", {"priority": "balanced", "harvester_weight": 1.0, "guard_weight": 1.0})
@@ -2914,13 +2961,7 @@ class Simulation:
                 task_board["harvester_weight"] = 1.0
 
             # 2. Wartime martial law
-            is_at_war = False
-            for pair, score in self.relations.items():
-                if cid in pair and score <= self.config.rivalry_threshold:
-                    is_at_war = True
-                    break
-
-            if is_at_war:
+            if cid in war_clans:
                 bylaws["martial_law"] = True
                 task_board["priority"] = "defense"
                 task_board["guard_weight"] = 2.5
@@ -3135,24 +3176,40 @@ class Simulation:
                     if isinstance(e, Food):
                         e.growth = min(1.0, e.growth + 0.15)
         self.fires = new_fires
-        # Ignition: storm lightning or random fire_rate
+        # Ignition: storm lightning or random fire_rate — §AQ PH-2: buildings
+        # and groves DOWNWIND of the flames catch first.
         ignite_chance = cfg.fire_rate
         if self.weather == "storm":
             ignite_chance = max(ignite_chance, 0.002)  # lightning
         if self.rng.random() < ignite_chance:
             foods = [e for e in (self._cached_foods or self.world.entities.values()) if isinstance(e, Food) and e.growth > 0.5]
             if foods:
-                victim = self.rng.choice(foods)
+                wx, wy = math.cos(self.wind_angle), math.sin(self.wind_angle)
+                f0 = max(self.fires, key=lambda f: f["r"]) if self.fires else None
+
+                def tailwind(e: Entity) -> float:
+                    if f0 is None:
+                        return 1.0
+                    d = self.world.distance(f0["x"], f0["y"], e.x, e.y) or 1.0
+                    return 1.0 + WIND_FIRE_MULT * self.wind_speed * max(
+                        0.0, ((e.x - f0["x"]) / d) * wx + ((e.y - f0["y"]) / d) * wy
+                    )
+
+                victim = max(foods, key=lambda e: (self.rng.random() ** (1.0 / tailwind(e)), -e.id))
                 self.fires.append({"x": victim.x, "y": victim.y, "r": 3.0, "ttl": 28})
                 self.world.remove(victim.id)
                 self._emit(HistoryEvent(type="fire", tick=self.tick+1, entity_id=0, x=round(victim.x,2), y=round(victim.y,2), payload={"kind": "ignite", "r": 3.0}))
-        # Spread to neighboring plants
+        # Spread to neighboring plants — faster downwind (§AQ PH-2)
         if self.fires and self.rng.random() < cfg.fire_spread_rate * len(self.fires):
+            wx, wy = math.cos(self.wind_angle), math.sin(self.wind_angle)
             for f in list(self.fires):
                 for e in self.world.query_radius(f["x"], f["y"], 6.0):
                     if not isinstance(e, Food):
                         continue
-                    if self.rng.random() < 0.35:
+                    d = self.world.distance(f["x"], f["y"], e.x, e.y) or 1.0
+                    tailwind = max(0.0, ((e.x - f["x"]) / d) * wx + ((e.y - f["y"]) / d) * wy)
+                    chance = 0.35 * (1.0 + WIND_FIRE_MULT * self.wind_speed * tailwind)
+                    if self.rng.random() < min(0.9, chance):
                         self.fires.append({"x": e.x, "y": e.y, "r": 2.5, "ttl": 22})
                         self.world.remove(e.id)
                         break
@@ -5292,6 +5349,7 @@ class Simulation:
             "events": self._events_this_tick,  # AA: pre-dumped in _emit() — zero work here
             "signals": [dict(sg) for sg in self.signals],
             "fires": [dict(f) for f in self.fires],
+            "wind": {"angle": round(self.wind_angle, 3), "speed": round(self.wind_speed, 3)},
             "age": self._age(),
             "age_tick": self._age_tick(),
             "age_day": self._age_day(),
@@ -5378,6 +5436,7 @@ class Simulation:
             "events": self._events_this_tick,
             "signals": [dict(sg) for sg in self.signals],
             "fires": [dict(f) for f in self.fires],
+            "wind": {"angle": round(self.wind_angle, 3), "speed": round(self.wind_speed, 3)},
             "age": self._age(),
             "age_tick": self._age_tick(),
             "age_day": self._age_day(),

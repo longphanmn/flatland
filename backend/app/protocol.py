@@ -101,6 +101,7 @@ class StateMessage(BaseModel):
     events: list["HistoryEvent"] = Field(default_factory=list)
     signals: list[dict[str, Any]] = Field(default_factory=list)
     fires: list[dict[str, Any]] = Field(default_factory=list)
+    wind: dict[str, float] = Field(default_factory=dict)  # §AQ PH-2 {angle,speed}
     age: Optional[str] = None
     age_tick: int = 0
     age_day: int = 1
@@ -128,6 +129,7 @@ class DeltaStateMessage(BaseModel):
     events: list["HistoryEvent"] = Field(default_factory=list)
     signals: list[dict[str, Any]] = Field(default_factory=list)
     fires: list[dict[str, Any]] = Field(default_factory=list)
+    wind: dict[str, float] = Field(default_factory=dict)  # §AQ PH-2 {angle,speed}
     age: Optional[str] = None
     age_tick: int = 0
     age_day: int = 1

@@ -113,6 +113,7 @@ export interface StateMessage {
   events: HistoryEvent[]
   signals: { x: number; y: number; kind: 'food' | 'alarm'; sender: number; clan_id: number | null; ttl: number }[]
   fires: { x: number; y: number; r: number; ttl: number }[]
+  wind?: { angle: number; speed: number }
   age: string | null
   age_tick: number
   age_day?: number
@@ -140,6 +141,7 @@ export interface DeltaStateMessage {
   events: HistoryEvent[]
   signals: { x: number; y: number; kind: 'food' | 'alarm'; sender: number; clan_id: number | null; ttl: number }[]
   fires: { x: number; y: number; r: number; ttl: number }[]
+  wind?: { angle: number; speed: number }
   age: string | null
   age_tick: number
   age_day?: number

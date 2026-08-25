@@ -1411,9 +1411,9 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [ ] [P1] **Hearths** — permanent fire installations inside houses that warm all occupants; require fuel (food/wood); extinguish if unfed; critical winter survival infrastructure.
 - [ ] [P1] **Heat radiation from fire** — fire emits a 2D radial heat field; creatures near fire take heat damage; fire also provides warmth in winter (double-edged tool).
 
-### Phase PH-2: Atmospheric Physics & Wind  [P0]
-- [ ] [P0] **Wind vector field** — wind has direction + magnitude changed by weather events and seasons; direction randomised on weather transition, magnitude scales with storm severity.
-- [ ] [P0] **Wind affects fire spread** — fire propagates faster downwind; firebreaks (bare earth strips) stop propagation; buildings downwind ignite first.
+### Phase PH-2: Atmospheric Physics & Wind  [P0 items done]
+- [x] [P0] **Wind vector field** — `wind_angle`/`wind_speed` on the snapshot; magnitude follows weather severity (calm 0.25 / rain 0.55 / storm 1.0, relaxed per tick), direction re-rolls near the season's prevailing bearing (`WIND_SEASON_BIAS`) on every weather transition. (`simulation.py` `_update_weather`/`_update_wind`, payload, types.ts; tests `tests/test_wind.py`)
+- [x] [P0] **Wind affects fire spread** — random ignition and plant-to-plant spread both multiply by a tailwind factor (`WIND_FIRE_MULT` 0.8 × speed × downwind alignment): flame propagates faster downwind and downwind groves ignite first.
 - [ ] [P1] **Wind affects seed dispersal** — food plants spread seeds farther downwind; creates natural forest clustering with prevailing wind patterns.
 - [ ] [P1] **Scent signals on wind** — olfactory signals travel downwind (predators scent prey downwind; prey detects predators upwind); directional stealth layer.
 - [ ] [P2] **Wind affects thrown weapon range** — spears/tools thrown downwind travel farther; upwind throws fall short.
