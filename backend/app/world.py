@@ -154,12 +154,12 @@ class World:
                             if e.id in seen:
                                 continue
                             seen.add(e.id)
-                            edx = abs(x - e.x)
-                            if edx > half_w:
-                                edx -= w
-                            edy = abs(y - e.y)
-                            if edy > half_h:
-                                edy -= h
+                            edx = x - e.x
+                            if edx < 0: edx = -edx
+                            if edx > half_w: edx -= w
+                            edy = y - e.y
+                            if edy < 0: edy = -edy
+                            if edy > half_h: edy -= h
                             if edx * edx + edy * edy <= r2:
                                 res.append(e)
                 return res
@@ -168,12 +168,12 @@ class World:
                 for dy_grid in range(-ry, ry + 1):
                     cy = (cy_center + dy_grid) % rows
                     for e in buckets[cy * cols + cx]:
-                        edx = abs(x - e.x)
-                        if edx > half_w:
-                            edx -= w
-                        edy = abs(y - e.y)
-                        if edy > half_h:
-                            edy -= h
+                        edx = x - e.x
+                        if edx < 0: edx = -edx
+                        if edx > half_w: edx -= w
+                        edy = y - e.y
+                        if edy < 0: edy = -edy
+                        if edy > half_h: edy -= h
                         if edx * edx + edy * edy <= r2:
                             res.append(e)
             return res
@@ -223,12 +223,12 @@ class World:
                             if e.id in seen:
                                 continue
                             seen.add(e.id)
-                            edx = abs(x - e.x)
-                            if edx > half_w:
-                                edx -= w
-                            edy = abs(y - e.y)
-                            if edy > half_h:
-                                edy -= h
+                            edx = x - e.x
+                            if edx < 0: edx = -edx
+                            if edx > half_w: edx -= w
+                            edy = y - e.y
+                            if edy < 0: edy = -edy
+                            if edy > half_h: edy -= h
                             d2 = edx * edx + edy * edy
                             if d2 <= r2:
                                 res.append((e, d2))
@@ -238,12 +238,12 @@ class World:
                 for dy_grid in range(-ry, ry + 1):
                     cy = (cy_center + dy_grid) % rows
                     for e in buckets[cy * cols + cx]:
-                        edx = abs(x - e.x)
-                        if edx > half_w:
-                            edx -= w
-                        edy = abs(y - e.y)
-                        if edy > half_h:
-                            edy -= h
+                        edx = x - e.x
+                        if edx < 0: edx = -edx
+                        if edx > half_w: edx -= w
+                        edy = y - e.y
+                        if edy < 0: edy = -edy
+                        if edy > half_h: edy -= h
                         d2 = edx * edx + edy * edy
                         if d2 <= r2:
                             res.append((e, d2))
