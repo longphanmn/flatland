@@ -1613,5 +1613,18 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [x] [P0] **Replace $O(N)$ full-world scans in `_kill()` with spatial query** — replace `for other in self._get_creatures():` in `_kill()` with `self.world.query_radius(c.x, c.y, pr)` or `self._clan_members.get(c.clan_id)`, eliminating two redundant all-creature scans on every death event.
 - [x] [P0] **Extract inner closure `_assassin_priority` out of `_update_war` loop** — move `def _assassin_priority(cc)` outside the `for a in creatures:` loop in `_update_war` (or use a tuple key function) to avoid allocating closures for every creature on every tick.
 
+---
 
+## AX. High-Density (800+ Creatures) 20 TPS Scaling & Lock/IO Decoupling  [P0–P1]
+> Live server profiling at tick ~40,000 (800 creatures, 1,114 entities) measured 5.17 TPS with step time at ~167ms. CPU cycles are bottlenecked by WebSocket frame zlib compression (33.3%), REST endpoint lock contention (35.8%), spatial query generator overhead (34.7k calls/tick), and triplicate cache refreshes.
 
+### Phase S-1: Lock Freeing, IO & Compression Offloading  [P0]
+- [ ] [P0] **Disable WebSocket `permessage_deflate` compression on LAN/server** — launch uvicorn without `--ws-per-message-deflate` (or pass `ws_per_message_deflate=False`); eliminate Python synchronous zlib compression on every frame (instantly frees 33.3% of total single-core CPU budget).
+- [ ] [P0] **Lockless snapshot-cached REST endpoints** — decouple `GET /api/clans`, `GET /api/plots`, and `GET /api/history` from acquiring `RT.lock`; serve pre-serialized immutable dictionary snapshots generated at tick completion, preventing client polling from stalling the `tick-engine` thread.
+- [ ] [P0] **Single-pass snapshot serialization** — serialize tick snapshot payload once on the `tick-engine` thread and hand off immutable raw bytes or string to asyncio hub, eliminating JSON re-dumps on concurrent WebSocket fan-outs.
+
+### Phase S-2: High-Density Spatial Hash & Hot Loop Optimization  [P0]
+- [ ] [P0] **Spatial Hash Fast List Queries (`query_radius_list` / `query_radius_with_dist_sq_list`)** — provide direct list-returning spatial query methods that bypass Python generator frame instantiation (`yield`), eliminating overhead across ~34,700 spatial queries per tick.
+- [ ] [P0] **Eliminate triplicate `_refresh_cache` and lambda Timsort** — reduce `_refresh_cache` from 3 calls per tick to a single consolidated call, and replace `sorted(creatures, key=lambda c: c.id)` with natural array ordering or `operator.attrgetter('id')` (reduces cache refresh from 25.0ms to <3.0ms per tick).
+- [ ] [P0] **Early rival rejection in `_update_war`** — filter out kin and non-rival neighbours before executing assassin checks and neighbour list sorting for 800 creatures (reduces war step from 15.6ms to <2.0ms).
+- [ ] [P1] **Batch spatial queries in `_update_creature`** — combine food perception, predator awareness, and kin interaction into a single multi-target spatial radius sweep per creature rather than 6+ separate `query_radius` calls per creature.
