@@ -48,6 +48,9 @@ class Hub:
     the broadcast await while HTTP stayed fine (world frozen, ok:true,
     nothing logged). Now every send gets a timeout; wedged clients are
     dropped and the world keeps ticking.
+
+    §AX P0: permessage-deflate disabled on LAN — synchronous zlib on every
+    frame cost 33% CPU. See run.sh --ws-per-message-deflate.
     """
 
     SEND_TIMEOUT = 5.0  # seconds a client may take per frame before we cut it
@@ -78,6 +81,16 @@ class Hub:
             return_exceptions=True,
         )
 
+    async def broadcast_text(self, text: str) -> None:
+        """§AX P0: single-pass serialization — tick-engine thread already did
+        _dumps; event loop just fans out the immutable bytes."""
+        if not self.clients or not text:
+            return
+        await asyncio.gather(
+            *(self._send(ws, text) for ws in list(self.clients)),
+            return_exceptions=True,
+        )
+
 
 class RuntimeState:
     """Shared mutable runtime: current simulation, pause flag, ticks/sec.
@@ -101,6 +114,11 @@ class RuntimeState:
         self.saved_config = self.config
         self.current_preset: str | None = "sustainable"
         self.lock = threading.RLock()
+        # §AX P0: lockless snapshot caches — tick-engine thread publishes
+        # immutable payloads; REST handlers read without acquiring RT.lock.
+        self._cached_clans_payload: dict | None = None
+        self._cached_plots_payload: dict | None = None
+        self._cached_state_text: str | None = None
         # Tick timing ring buffer for /healthz diagnostics (true rate vs target)
         self._tick_times: list[float] = []  # monotonic timestamps of last 50 ticks
         self._tick_durs: list[float] = []  # durations (ms) of last 50 steps
@@ -245,10 +263,32 @@ class SimEngine:
             interval = 1.0 / max(self.rt.speed, MIN_SPEED)
             started = time.monotonic()
             payload = None
+            text: str | None = None
             with self.rt.lock:
                 if not self.rt.paused:
                     payload = advance_world(self.rt, self.hub)
-            if payload is not None:
+                    if payload is not None:
+                        # §AX P0: single-pass serialization on tick thread — hub
+                        # just fans out immutable bytes, no per-client JSON re-dumps
+                        # and no zlib on the event loop (permessage-deflate off).
+                        try:
+                            text = _dumps(payload)
+                            self.rt._cached_state_text = text  # type: ignore[attr-defined]
+                        except Exception:
+                            text = None
+                        # §AX P0: lockless snapshot caches for REST — publish
+                        # immutable payloads so polling never stalls the tick thread.
+                        try:
+                            self.rt._cached_clans_payload = _clans_payload()  # type: ignore[attr-defined]
+                            self.rt._cached_plots_payload = {"plots": self.rt.sim.get_plots(), "tick": self.rt.sim.tick}  # type: ignore[attr-defined]
+                        except Exception:
+                            pass
+            if text is not None:
+                asyncio.run_coroutine_threadsafe(
+                    self.hub.broadcast_text(text), self._loop
+                )
+            elif payload is not None:
+                # Fallback if dumps failed — broadcast dict the old way
                 asyncio.run_coroutine_threadsafe(
                     self.hub.broadcast(payload), self._loop
                 )
@@ -1873,6 +1913,10 @@ def _clan_details(clan_id: int) -> dict:
 @app.get("/api/clans")
 async def get_clans() -> dict:
     """Clan roster with lineage, territory and war record."""
+    # §AX P0: lockless snapshot — tick thread publishes immutable payloads
+    cached = getattr(RT, "_cached_clans_payload", None)
+    if cached is not None:
+        return cached
     with RT.lock:
         return _clans_payload()
 
@@ -1956,6 +2000,10 @@ def _clans_payload() -> dict:
 @app.get("/api/plots")
 async def get_plots() -> dict:
     """Upcoming war/schism as progress — god's foreshadowing."""
+    # §AX P0: lockless snapshot
+    cached = getattr(RT, "_cached_plots_payload", None)
+    if cached is not None:
+        return cached
     with RT.lock:
         return {"plots": RT.sim.get_plots(), "tick": RT.sim.tick}
 

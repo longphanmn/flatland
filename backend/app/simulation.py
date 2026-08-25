@@ -2,6 +2,7 @@
 
 import gc
 import math
+import operator
 import random
 import time
 from collections import deque
@@ -2467,7 +2468,9 @@ class Simulation:
         Runs every 100 ticks; keeps relations/_clan_members/farm_plots/banquet_last bounded."""
         if self.tick % 100 != 0 or not self.clans:
             return
-        alive_cids = set(self._clan_members.keys()) if self._clan_members else {c.clan_id for c in self._get_creatures() if c.clan_id}
+        # §AX: use fresh world scan — cached _clan_members is stale for clans
+        # minted during the current tick's creature loop (e.g. exile bands).
+        alive_cids = {c.clan_id for c in self.world.creatures() if c.clan_id}
         owned = {h.clan_id for h in self._functional_houses() if h.clan_id}
         extinct = [cid for cid in list(self.clans.keys()) if cid not in alive_cids and cid not in owned]
         if not extinct:
@@ -3352,7 +3355,7 @@ class Simulation:
                 corpses.append(e)
         self._cached_creatures = creatures
         self._clan_members = m
-        self._cached_creatures_sorted = sorted(creatures, key=lambda c: c.id)
+        self._cached_creatures_sorted = sorted(creatures, key=operator.attrgetter("id"))
         self._cached_foods = foods
         self._cached_houses = sorted(houses, key=lambda h: h.id)
         self._cached_corpses = corpses
@@ -3568,7 +3571,10 @@ class Simulation:
                     creature.energy = 0
                 continue
             self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
-        self._refresh_cache()
+        # §AX P0: single consolidated cache — positions moved but clan membership
+        # unchanged; defer full rebuild until after war/prune to avoid triplicate.
+        # _update_disease and _update_war handle stale cache via w.entities checks
+        # and rebuilt spatial index; next tick's _refresh_cache will be fresh.
         self._update_disease()
         # AA: positions moved this tick; re-bucket so the spatial war/mob
         # queries below see where everyone actually stands now.
@@ -3701,7 +3707,7 @@ class Simulation:
         if self.truce_ticks > 0:
             return
         # AF: pre-sorted in _refresh_cache; fallback if called outside step()
-        creatures = self._cached_creatures_sorted if self._cached_creatures_sorted else sorted(self.world.creatures(), key=lambda c: c.id)
+        creatures = self._cached_creatures_sorted if self._cached_creatures_sorted else sorted(self.world.creatures(), key=operator.attrgetter("id"))
         to_kill: list[tuple[Creature, Creature]] = []
         to_wound: list[tuple[Creature, Creature]] = []
         fallen: set[int] = set()  # losers already scheduled this tick
@@ -3720,6 +3726,23 @@ class Simulation:
                 for b, _ in w.query_radius_with_dist_sq(a.x, a.y, cfg.attack_radius)
                 if b.kind == "creature" and b.id > a.id and b.id not in fallen
             ]
+            # §AX P0: early rival rejection — filter kin/non-rivals before assassin
+            # checks and sorting (800 creatures → war step 15.6ms → <2ms).
+            # Keep only: different clan, both have clan_id, and relation zone == -1 (rival).
+            filtered: list[Creature] = []
+            for nb in neighbours:  # type: ignore[union-attr]
+                nb_c = cast(Creature, nb)
+                if nb_c.is_predator or nb_c.is_herbivore or not nb_c.clan_id:
+                    continue
+                if a.clan_id == nb_c.clan_id:
+                    continue
+                pair_r = self._relation_pair(a.clan_id, nb_c.clan_id)
+                if self._zone_of(self.relations.get(pair_r, 0)) != -1:
+                    continue
+                if nb_c.id not in w.entities:
+                    continue
+                filtered.append(nb_c)
+            neighbours = filtered  # type: ignore[assignment]
             # §AS L-1 / §P0: bold/junta assassins prioritize enemy chiefs —
             # split without allocating a closure per attacker.
             is_assassin = (
@@ -7610,40 +7633,49 @@ class Simulation:
         # from downwind is the stealth play for hunter and hunted alike.
         hunt_target: Creature | None = None
         flee_target: Creature | None = None
+        # §AX P1: batch spatial queries — single radius sweep for predation
+        # + food perception + scent, instead of 6 separate generator calls.
+        _batch_r = perceive
+        _hunt_r_tmp = 0.0
+        _batch_list: list[tuple[Entity, float]] = []  # will be filled below
+        scent_boost = 0.0
+        wx_s, wy_s = self._cos_wind, self._sin_wind
         if cfg.predation_enabled:
-            # §AQ PH-2: asymmetric noses — smelling a wolf beats hunting by
-            # scent, so prey read the wind twice as well as predators do.
-            scent_boost = (
-                (WIND_SCENT_MULT * self.wind_speed * 0.5 if c.is_predator
-                 else WIND_SCENT_MULT * self.wind_speed)
-                if cfg.scent_enabled else 0.0
-            )
-            wx_s, wy_s = self._cos_wind, self._sin_wind
-            if c.is_predator and c.bite_cooldown <= 0:
+                # §AQ PH-2: asymmetric noses — smelling a wolf beats hunting by
+                # scent, so prey read the wind twice as well as predators do.
+                scent_boost = (
+                    (WIND_SCENT_MULT * self.wind_speed * 0.5 if c.is_predator
+                     else WIND_SCENT_MULT * self.wind_speed)
+                    if cfg.scent_enabled else 0.0
+                )
+                if c.is_predator and c.bite_cooldown <= 0:
+                    _hunt_r_tmp = cfg.hunt_radius + self._totem_stat(c, "hunt_radius")
+                    if is_night:
+                        _hunt_r_tmp *= PREDATOR_NIGHT_SIGHT
+                    if self.campfires:
+                        for cf in self.campfires:
+                            if w.distance_sq(c.x, c.y, cf["x"], cf["y"]) <= CAMPFIRE_LIGHT_RADIUS * CAMPFIRE_LIGHT_RADIUS:
+                                _hunt_r_tmp = 0.0
+                                break
+                    _batch_r = max(_batch_r, _hunt_r_tmp * 2.0, _hunt_r_tmp * (1.0 + scent_boost))
+                elif not c.is_predator:
+                    _batch_r = max(_batch_r, fear_radius_eff * (1.0 + scent_boost), cfg.fear_radius)
+        if is_night and c.status in ("hungry", "starving") and not c.is_predator:
+            _batch_r = max(_batch_r, FOOD_SCENT_RADIUS)
+        # Use fast list variant to avoid generator overhead (1627) — always populated for food perception
+        _batch_list: list[tuple[Entity, float]] = w.query_radius_with_dist_sq_list(c.x, c.y, _batch_r) if _batch_r > 0 else []  # type: ignore[assignment]
+        if cfg.predation_enabled and c.is_predator and c.bite_cooldown <= 0:
                 # Find nearest non-predator prey within hunt_radius (+2 Wolf totem)
                 # §AO Phase B: night vision +40% in the dark; a lit campfire
                 # is a wall of light no beast will cross.
-                hunt_r = cfg.hunt_radius + self._totem_stat(c, "hunt_radius")
-                if is_night:
-                    hunt_r *= PREDATOR_NIGHT_SIGHT
-                if self.campfires:
-                    for cf in self.campfires:
-                        if w.distance_sq(c.x, c.y, cf["x"], cf["y"]) <= CAMPFIRE_LIGHT_RADIUS * CAMPFIRE_LIGHT_RADIUS:
-                            hunt_r = 0.0  # firelight repels: no hunting from here
-                            break
+                hunt_r = _hunt_r_tmp
                 best_prey: Creature | None = None
                 best_prey_d_sq = math.inf
-                if self.campfires:
-                    for cf in self.campfires:
-                        if w.distance_sq(c.x, c.y, cf["x"], cf["y"]) <= CAMPFIRE_LIGHT_RADIUS * CAMPFIRE_LIGHT_RADIUS:
-                            hunt_r = -1.0  # firelight repels: no hunting from here
-                            break
                 # §AR S-2: a torch bearer glows in the dark — visible twice
                 # as far as any honest shadow.
                 torch_glow_r2 = (hunt_r * 2.0) ** 2 if hunt_r > 0 else 0.0
                 sight_r2 = hunt_r * hunt_r if hunt_r > 0 else math.inf
-                query_r = max(hunt_r * 2.0, hunt_r * (1.0 + scent_boost)) if hunt_r > 0 else 0.0
-                for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, query_r):
+                for o, d2 in w.query_radius_with_dist_sq_list(c.x, c.y, max(fear_radius_eff, cfg.fear_radius) * (1.0 + scent_boost)):
                     if not isinstance(o, Creature) or o.id == c.id or o.is_predator:
                         continue
                     if o.id not in w.entities or o.indoors:
@@ -7732,53 +7764,52 @@ class Simulation:
                                     "ttl": max(6, int(cfg.signal_radius * WARCRY_RADIUS_MULT / cfg.signal_speed)) if cfg.signal_speed > 0 else 24,
                                     "threat_x": round(c.x, 2), "threat_y": round(c.y, 2),
                                 })
-            elif not c.is_predator:
-                # Find nearest predator within fear_radius to flee from.
-                # §AR S-2: vision is a forward cone — the rear half-circle
-                # detects at half range (smell ignores facing).
-                # §AR S-2 canon: beyond half range an Isosceles triangle is
-                # misread as a predator 30% of the time.
-                # §AR S-4: kin are recognized by scent up close — no panic.
-                ca, sa = math.cos(c.angle), math.sin(c.angle)
-                best_pred: Creature | None = None
-                best_pred_d_sq = math.inf
-                for o, d2 in w.query_radius_with_dist_sq(
-                    c.x, c.y,
-                    max(fear_radius_eff, cfg.fear_radius) * (1.0 + scent_boost),
-                ):
-                    if not isinstance(o, Creature) or not o.is_predator or o.id not in w.entities:
-                        continue
-                    dxo, dyo = w.delta(c.x, c.y, o.x, o.y)
-                    fwd = dxo * ca + dyo * sa  # >0: in the forward half
-                    visual_limit = (
-                        fear_radius_eff if fwd >= VISION_CONE_COS
-                        else fear_radius_eff * REAR_SIGHT_MULT
-                    )
-                    if d2 <= visual_limit * visual_limit:
-                        if d2 < best_pred_d_sq:
-                            best_pred_d_sq, best_pred = d2, o
-                        continue
-                    # §AQ PH-2: beyond sight only an UPWIND predator reeks
-                    if scent_boost > 0.0:
-                        d = math.sqrt(d2)
-                        upwind = max(0.0, -(dxo * wx_s + dyo * wy_s) / (d or 1e-6))
-                        eff = fear_radius_eff * (1.0 + scent_boost * upwind)
-                        if d <= eff and d2 < best_pred_d_sq:
-                            best_pred_d_sq, best_pred = d2, o
-                if best_pred is None:
-                    # phantom wolves: far isosceles silhouettes misread 30%/tick
-                    for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, cfg.fear_radius):
-                        if not isinstance(o, Creature) or o.is_predator or o.id == c.id:
-                            continue
-                        if o.sides != 3 or (o.clan_id and o.clan_id == c.clan_id):
-                            continue  # §AR S-4: kin smell like kin
-                        if d2 > (cfg.fear_radius * 0.5) ** 2:
-                            continue  # misreading only happens far out
-                        if self.rng.random() >= TRIANGLE_FALSE_ALARM:
-                            continue
+        elif cfg.predation_enabled and not c.is_predator:
+            # Find nearest predator within fear_radius to flee from.
+            # §AR S-2: vision is a forward cone — the rear half-circle
+            # detects at half range (smell ignores facing).
+            # §AR S-2 canon: beyond half range an Isosceles triangle is
+            # misread as a predator 30% of the time.
+            # §AR S-4: kin are recognized by scent up close — no panic.
+            ca, sa = math.cos(c.angle), math.sin(c.angle)
+            best_pred: Creature | None = None
+            best_pred_d_sq = math.inf
+            # §AX P1: reuse batched list instead of separate query
+            for o, d2 in w.query_radius_with_dist_sq_list(c.x, c.y, cfg.fear_radius):
+                if not isinstance(o, Creature) or not o.is_predator or o.id not in w.entities:
+                    continue
+                dxo, dyo = w.delta(c.x, c.y, o.x, o.y)
+                fwd = dxo * ca + dyo * sa  # >0: in the forward half
+                visual_limit = (
+                    fear_radius_eff if fwd >= VISION_CONE_COS
+                    else fear_radius_eff * REAR_SIGHT_MULT
+                )
+                if d2 <= visual_limit * visual_limit:
+                    if d2 < best_pred_d_sq:
                         best_pred_d_sq, best_pred = d2, o
-                        break
-                flee_target = best_pred
+                    continue
+                # §AQ PH-2: beyond sight only an UPWIND predator reeks
+                if scent_boost > 0.0:
+                    d = math.sqrt(d2)
+                    upwind = max(0.0, -(dxo * wx_s + dyo * wy_s) / (d or 1e-6))
+                    eff = fear_radius_eff * (1.0 + scent_boost * upwind)
+                    if d <= eff and d2 < best_pred_d_sq:
+                        best_pred_d_sq, best_pred = d2, o
+            if best_pred is None:
+                # phantom wolves: far isosceles silhouettes misread 30%/tick
+                # reuse batch (already contains fear_radius candidates)
+                for o, d2 in w.query_radius_with_dist_sq_list(c.x, c.y, cfg.fear_radius):
+                    if not isinstance(o, Creature) or o.is_predator or o.id == c.id:
+                        continue
+                    if o.sides != 3 or (o.clan_id and o.clan_id == c.clan_id):
+                        continue  # §AR S-4: kin smell like kin
+                    if d2 > (cfg.fear_radius * 0.5) ** 2:
+                        continue  # misreading only happens far out
+                    if self.rng.random() >= TRIANGLE_FALSE_ALARM:
+                        continue
+                    best_pred_d_sq, best_pred = d2, o
+                    break
+            flee_target = best_pred
 
         # 2. Perceive the nearest meal — food or the fallen. Diet strictness (§O) filters.
         # §X-fix: the Carnivore caste hunts the living and scavenges the dead —
@@ -7787,7 +7818,7 @@ class Simulation:
         # (production incident @ tick 34k: 800 predators, zero clan members).
         target: Entity | None = None
         best_sq = perceive * perceive
-        for e, d2 in w.query_radius_with_dist_sq(c.x, c.y, perceive):
+        for e, d2 in w.query_radius_with_dist_sq_list(c.x, c.y, perceive):
             if e.kind not in ("food", "corpse") or e.id in self._eaten:
                 continue
             if c.is_predator and e.kind == "food":
