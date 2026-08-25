@@ -124,6 +124,52 @@ WOUND_REGEN_DIV = {1: 2.0, 2: 4.0}
 # desperation dulls fear.
 FOOD_SCENT_RADIUS = 8.0  # mature plants are detectable by smell within this range
 
+# §AM Food & Agriculture — seed & furrow, granary & soil, feast & famine raid.
+SEED_SKILL_MIN = 6.0        # farming XP before hands gather/sow seed
+TEND_SKILL_MIN = 6.0        # farming XP before a creature tends crops
+FARM_PLOTS_PER_CLAN = 3     # tilled plots ring each settlement
+CULTIVATED_GROWTH_MULT = 2.0   # sown crops grow this much faster than weeds
+CULTIVATED_YIELD_MULT = 2.5    # ...and feed this much better
+IRRIGATED_GROWTH_MULT = 1.15   # furrows keep the soil moist through drought
+TEND_REGRESS_TICKS = 60     # weeding rolls back the wither clock this far
+WINTER_FROST_CHANCE = 0.004 # frost bites exposed (un-cultivated) winter crops
+GRANARY_DEPOSIT_SHARE = 0.35   # fraction of a sated grain/berry harvest stored
+GRANARY_WITHDRAW_RATE = 3.0    # energy/tick a starving member draws from store
+BANQUET_FILL_FRACTION = 0.8   # feast fires when the granary is this full
+BANQUET_COST_FRACTION = 0.25  # of the granary consumed by one feast
+BANQUET_MIN_GAP = 1200        # ticks between banquets
+BANQUET_FEAST_TICKS = 600     # morale window after a feast
+BANQUET_FERTILITY_MULT = 1.3  # birth-rate boost while the feast lasts
+SOIL_CELL = 25.0              # grid units per soil-fertility cell
+SOIL_MIN, SOIL_MAX = 0.3, 1.6
+SOIL_DEPLETION_PER_GROWTH = 0.01  # fertility burned per point of growth grown
+COMPOST_INTERVAL = 900        # ticks between a farmer's compost rounds
+COMPOST_NUTRIENT = 0.4        # soil fertility granted per compost heap
+RAID_GRANARY_MAX = 40.0       # most a war party can haul from a rival granary
+HOSPITALITY_GAP = 180         # min ticks between sacred-hospitality chronicles
+
+# §AN Communication, language & diplomacy — every caste has a voice.
+CHANT_CHANCE = 0.02           # priest liturgy per tick when idle-voiced
+HUM_CHANCE = 0.05             # woman's peace-hum while moving
+WARCHIRP_CHANCE = 0.15        # soldier's rallying signal on contact
+GREET_CHANCE = 0.35           # tactile greeting on close vertex contact
+GREET_TRUST = 2.0             # trust gained by touching vertices in peace
+ELDER_TOUCH_XP = 0.1          # skill XP passed by an elder's blessing touch
+ARTISAN_GIFT_ENERGY = 25.0    # a barter chime's gift from the basket
+SCENT_TTL = 220               # forager trail markers fade after this long
+DANGER_SCENT_TTL = 300        # death/ruin scent lingers longer
+TRAIL_DROP_CHANCE = 0.06      # well-fed finder of rich food leaves a marker
+SIGNALS_MAX = 400             # hard cap on live ripples (bounds memory)
+ENVOY_MISSION_TICKS = 1200    # an emissary abandons a failed mission after this
+ENVOY_RELATION_BOOST = 15     # a delivered peace treaty warms relations this much
+MARKET_CHECK_INTERVAL = 480   # allied neighbours found trading posts this often
+MARKET_BARTER_INTERVAL = 240  # barter cadence at a standing market
+CARAVAN_INTERVAL = 2400       # wandering peddlers set out this often
+OMEN_SIGNAL_TTL = 90          # prophetic ripples linger over the shrine
+PREPARED_TICKS = 400          # worshippers heed the omen this long
+STONE_CHIME_GAP = 90          # min ticks between warning chimes per clan
+DIALECT_STEP = 0.02           # per-season drift quantum for isolated clans
+
 # §AS L-0 — the leader is a single point of leverage: an aura when present,
 # a crisis when dead.
 LEADER_AURA_RADIUS = 15.0
@@ -334,6 +380,16 @@ TOTEM_SPEC = {
     "Eternal Hearth": {"warrior": 0.35, "farmer": 0.40, "scavenger": 0.25},
 }
 
+# §AM E.1 — geometric gastronomy: each caste keeps a table of its own.
+# Priests and nobles demand refined grain and fruit; soldiers crave meat.
+CASTE_DIET_WEIGHTS: dict[str, dict[str, float]] = {
+    # variant -> effective-distance multiplier (lower = more desirable)
+    "Priest": {"grain": 0.5, "berry": 0.5, "medicinal_herb": 0.5},
+    "Noble": {"grain": 0.5, "berry": 0.6},
+    "Soldier": {},       # soldiers favour meat — handled via corpse weighting
+    "Artisan": {"grain": 0.8},
+}
+
 # Personal identity — seeded adjective+noun table (§Q), deterministic id+seed
 PERSONAL_FIRSTS = (
     "Alen", "Bran", "Cora", "Dell", "Ember", "Finn", "Galen", "Hala", "Iris", "Joren",
@@ -361,6 +417,8 @@ def _clan_sig(info: dict) -> tuple:
         info.get("culture"), info.get("leader_id"), info.get("main_house_id"),
         info.get("tribute_to"),
         round(float(info.get("faith", 0.0)) / 25.0), int(info.get("shrine_level", 0)),
+        round(float(info.get("granary", 0.0)) / 25.0),  # §AM granary fill (bucketed)
+        round(float(info.get("dialect", 0.0)) * 20.0) / 20.0,  # §AN dialect drift
     )
 
 
@@ -444,8 +502,22 @@ class Simulation:
         self._temp_rows = max(1, math.ceil(self.config.height / TEMP_CELL))
         base0 = SEASON_BASE_TEMP[SEASONS[0]]
         self.temperature_grid = [base0] * (self._temp_cols * self._temp_rows)
+        # §AM: living soil — a fertility grid the harvests draw upon
+        self._soil_cols = self._temp_cols
+        self._soil_rows = self._temp_rows
+        self.soil_grid = [1.0] * (self._soil_cols * self._soil_rows)
         self.wind_angle = (self.config.seed % 6283) / 1000.0  # §AQ PH-2, rng-free init
         self.wind_speed = WIND_CALM_SPEED
+        # §AM agriculture: tilled plots per clan + feast pacing
+        self.farm_plots: dict[int, list[dict]] = {}  # clan id -> [{x,y,irrigated}]
+        self._banquet_last: dict[int, int] = {}  # clan id -> tick of last feast
+        self._last_hospitality_tick = -10 * HOSPITALITY_GAP
+        # §AN diplomacy: boundary stones, markets & omen bookkeeping
+        self.boundary_stones: list[dict] = []  # {x,y,clan_id}
+        self.markets: dict[tuple[int, int], dict] = {}  # pair -> {x,y,born_tick}
+        self._stone_chime_last: dict[int, int] = {}  # clan id -> last chime tick
+        self._omen_season: str | None = None
+        self._caravan_last: dict[tuple[int, int], int] = {}  # pair -> last caravan
         # AJ: Delta compression tracking (Phase 1)
         self._last_broadcast_state: dict[int, tuple] = {}
         self._last_broadcast_entities: set[int] = set()
@@ -581,6 +653,9 @@ class Simulation:
             r *= 0.5
         if is_night:
             r = max(2.0, r - self._totem_stat(c, "calm"))
+        # §AN: the priest's liturgy calms the panicked heart for a while
+        if c.calm_ticks > 0:
+            r = max(1.0, r - 2.0)
         return r
 
     def _sun_factor(self) -> float:
@@ -666,6 +741,37 @@ class Simulation:
         size_factor = max(0.4, min(1.0, HOUSE_REF_SIDE / max(1.0, house.size)))
         amb = self.ambient_at(house.x, house.y)
         return amb + (HOUSE_COMFORT_TEMP - amb) * ins * size_factor
+
+    # ------------------------------------------------ §AM living soil grid
+    def _soil_index(self, x: float, y: float) -> int:
+        col = min(self._soil_cols - 1, max(0, int(x / self.config.width * self._soil_cols)))
+        row = min(self._soil_rows - 1, max(0, int(y / self.config.height * self._soil_rows)))
+        return row * self._soil_cols + col
+
+    def _soil_at(self, x: float, y: float) -> float:
+        return self.soil_grid[self._soil_index(x, y)]
+
+    def _deplete_soil(self, x: float, y: float, growth_gained: float) -> None:
+        """Monocropping draws down the local fertility cell (§AM D.1)."""
+        if not self.config.soil_depletion_enabled or growth_gained <= 0:
+            return
+        i = self._soil_index(x, y)
+        self.soil_grid[i] = max(SOIL_MIN, self.soil_grid[i] - SOIL_DEPLETION_PER_GROWTH * growth_gained)
+
+    def _fertilize_soil(self, x: float, y: float, radius: float, amount: float) -> None:
+        """Compost, ash and the dead enrich every cell within radius (§AM D.2)."""
+        cw = self.config.width / self._soil_cols
+        ch = self.config.height / self._soil_rows
+        c0 = max(0, int((x - radius) / cw)); c1 = min(self._soil_cols - 1, int((x + radius) / cw))
+        r0 = max(0, int((y - radius) / ch)); r1 = min(self._soil_rows - 1, int((y + radius) / ch))
+        for row in range(r0, r1 + 1):
+            for col in range(c0, c1 + 1):
+                qx = min(max(x, col * cw), (col + 1) * cw)
+                qy = min(max(y, row * ch), (row + 1) * ch)
+                if math.hypot(qx - x, qy - y) <= radius:
+                    i = row * self._soil_cols + col
+                    self.soil_grid[i] = min(SOIL_MAX, self.soil_grid[i] + amount)
+
 
     def distance(self, ax: float, ay: float, bx: float, by: float) -> float:
         """Proxy to world distance (convenience for tests)."""
@@ -951,6 +1057,12 @@ class Simulation:
             "culture_id": cid,
             "coalition_id": None,
             "larder": 0.0,
+            # §AM: the clan granary — grain & cured rations kept against winter
+            "granary": 0.0,
+            "harvest_total": 0.0,
+            "feast_until": 0,
+            # §AN: acoustic dialect — drifts apart for isolated clans
+            "dialect": 0.0,
             "tribute_to": None,
             "main_house_id": None,
             # §AP theology: clan faith pool + shrine level (0 none, 1 shrine, 2 temple)
@@ -969,7 +1081,11 @@ class Simulation:
 
 
     def _log_clan_history(self, cid: int, event_type: str, desc: str) -> None:
-        """AK: Record major historical milestones for a clan."""
+        """AK: Record major historical milestones for a clan.
+
+        §AN: the great days are also painted on the main house walls by
+        the clan's artisans — a mural per milestone, visible to god.
+        """
         clan = self.clans.get(cid)
         if not clan:
             return
@@ -983,6 +1099,13 @@ class Simulation:
         })
         if len(clan["history"]) > 30:
             clan["history"].pop(0)
+        # §AN murals — succession, conquest, feasts & temples earn a painting
+        if event_type in ("leader_change", "hq_relocated", "takeover",
+                          "war_declared", "festival", "banquet", "temple"):
+            hid = clan.get("main_house_id")
+            house = self.world.entities.get(hid) if hid is not None else None
+            if isinstance(house, House):
+                house.murals += 1
 
     def _set_main_house_for_clan(self, cid: int, house: House) -> None:
         """AK: Ensure strictly ONE main house per clan across entities and metadata."""
@@ -993,6 +1116,16 @@ class Simulation:
         for e in self.world.entities.values():
             if isinstance(e, House) and e.clan_id == cid and not e.is_ruin:
                 e.is_main = (e.id == house.id)
+        # §AN: the clan raises a boundary stone on its border — trespassers ring it.
+        if self.config.envoys_enabled and not any(s["clan_id"] == cid for s in self.boundary_stones):
+            r = self.config.territory_radius
+            for k in range(3):  # deterministic angles; first clear spot wins
+                ang = (cid * 2.399 + k * 2.094) % (2 * math.pi)
+                sx, sy = self.world.normalize(house.x + math.cos(ang) * r,
+                                              house.y + math.sin(ang) * r)
+                if not self._is_in_rock(sx, sy):
+                    self.boundary_stones.append({"x": round(sx, 2), "y": round(sy, 2), "clan_id": cid})
+                    break
         if prev_hid != house.id:
             self._log_clan_history(
                 cid,
@@ -1387,6 +1520,13 @@ class Simulation:
                 h.clan_id = 0
                 h.clan_color = None
                 h.is_main = False
+                # §AN B.3: ruins exhale an old danger — keep the young away,
+                # and let explorers dig lost knowledge from the stones.
+                if cfg.scent_enabled and len(self.signals) < SIGNALS_MAX:
+                    self.signals.append({
+                        "x": round(h.x, 2), "y": round(h.y, 2), "kind": "danger_scent",
+                        "sender": h.id, "clan_id": None, "ttl": DANGER_SCENT_TTL * 3,
+                    })
                 self._emit(
                     HistoryEvent(
                         type="ruin", tick=self.tick + 1, entity_id=h.id,
@@ -2094,6 +2234,7 @@ class Simulation:
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
+        self._update_agriculture()  # §AM sowing, tending, granary feasts
         self._update_faith()  # §AP unified theology
         # Manual GC every 200 ticks to avoid stop-the-world at 1300c
         if self.tick % 200 == 0:
@@ -2310,6 +2451,8 @@ class Simulation:
                         payload={"winner_clan": winner.clan_id, "loser_clan": loser_cid, "house_id": loser_house.id, "winner": winner.id, "loser": loser.id},
                     )
                 )
+            # §AM E.2 famine raid — a starving war party carries off the granary
+            self._try_granary_raid(winner, loser)
         for loser, winner in to_wound:
             if loser.id not in self.world.entities:
                 continue
@@ -2362,6 +2505,50 @@ class Simulation:
             self._bump_relation(loser.clan_id, winner.clan_id, -3)
             # §AB mutual defence on the wound path too
             self._mobilise_coalition(winner.clan_id, loser.clan_id)
+            # §AM E.2 famine raid — hunger follows the war band home
+            self._try_granary_raid(winner, loser)
+
+    def _try_granary_raid(self, winner: Creature, loser: Creature) -> None:
+        """§AM E.2: a martial clan fighting beside a rival's granary hauls away
+        what it can when its own stores run empty. Breadbasket clans learn why
+        the neighbours build walls."""
+        cfg = self.config
+        if not (cfg.granaries_enabled and cfg.war_enabled):
+            return
+        raider_info = self.clans.get(winner.clan_id)
+        victim_info = self.clans.get(loser.clan_id)
+        if not raider_info or not victim_info or not loser.clan_id:
+            return
+        # famine condition: the raider's own stores are empty
+        if float(raider_info.get("granary", 0.0)) + float(raider_info.get("larder", 0.0)) > 40.0:
+            return
+        hid = victim_info.get("main_house_id")
+        granary_house = self.world.entities.get(hid) if hid is not None else None
+        if not isinstance(granary_house, House) or granary_house.is_ruin:
+            return
+        if self.world.distance(winner.x, winner.y, granary_house.x, granary_house.y) > cfg.territory_radius:
+            return  # too far from the store to carry anything off
+        loot = min(RAID_GRANARY_MAX, float(victim_info.get("granary", 0.0)))
+        if loot < 1.0:
+            return
+        victim_info["granary"] = float(victim_info.get("granary", 0.0)) - loot
+        room = max(0.0, cfg.granary_capacity - float(raider_info.get("granary", 0.0)))
+        raider_info["granary"] = float(raider_info.get("granary", 0.0)) + min(loot, room)
+        self._bump_relation(loser.clan_id, winner.clan_id, -8)
+        self._emit(
+            HistoryEvent(
+                type="raid",
+                tick=self.tick + 1,
+                entity_id=winner.id,
+                caste=winner.caste,
+                x=round(granary_house.x, 2), y=round(granary_house.y, 2),
+                payload={
+                    "a": winner.clan_id, "b": loser.clan_id,
+                    "a_name": raider_info.get("name"), "b_name": victim_info.get("name"),
+                    "loot": round(loot, 1),
+                },
+            )
+        )
 
     def _update_relations(self) -> None:
         """Clan scores rise when strangers feast together and drift toward peace.
@@ -2539,6 +2726,26 @@ class Simulation:
                     else:
                         if self.rng.random() < cfg.trespass_decay:
                             self._bump_relation(c.clan_id, h.clan_id, -1)
+                    # §AN C.3: the boundary stone rings — sentries walk the line
+                    if (
+                        cfg.envoys_enabled
+                        and self.tick - self._stone_chime_last.get(h.clan_id, -STONE_CHIME_GAP) >= STONE_CHIME_GAP
+                        and len(self.signals) < SIGNALS_MAX
+                    ):
+                        stone = next(
+                            (s for s in self.boundary_stones if s["clan_id"] == h.clan_id
+                             and dist_sq(s["x"], s["y"], c.x, c.y) <= 36.0),
+                            None,
+                        )
+                        if stone is not None:
+                            self._stone_chime_last[h.clan_id] = self.tick
+                            self.signals.append({
+                                "x": round(stone["x"], 2), "y": round(stone["y"], 2),
+                                "kind": "chime", "sender": 0,
+                                "clan_id": h.clan_id or None, "ttl": 12,
+                                "stone_x": stone["x"], "stone_y": stone["y"],
+                                "trespasser_x": round(c.x, 2), "trespasser_y": round(c.y, 2),
+                            })
 
     def _update_schism(self) -> None:
         """§S Schism — unhappy members split off as new clan and war parent."""
@@ -2905,6 +3112,38 @@ class Simulation:
                         break
             if acted:
                 continue
+            # §AN C.1 — a peaceful (or deliberative) leader commissions an
+            # emissary: a healthy adult carries treaty terms to a rival's
+            # main house. God sees the banner; no veto exists.
+            if cfg.envoys_enabled and (trait == "peaceful" or info.get("governance") == "republic"):
+                for pair, score in sorted(self.relations.items()):
+                    if cid not in pair or self._zone_of(score) == 1:
+                        continue
+                    rival = pair[1] if pair[0] == cid else pair[0]
+                    if rival not in self.clans:
+                        continue
+                    rinfo = self.clans[rival]
+                    rhid = rinfo.get("main_house_id")
+                    rhouse = self.world.entities.get(rhid) if rhid is not None else None
+                    if not isinstance(rhouse, House):
+                        continue
+                    # pick the healthiest adult non-soldier as herald
+                    candidates_m = [
+                        m for m in self._clan_members.get(cid, ())
+                        if m.stage == "adult" and not m.is_predator and not m.is_herbivore and m.health > 60.0 and getattr(m, "mission", None) is None
+                    ]
+                    if not candidates_m:
+                        break
+                    herald = max(candidates_m, key=lambda m: (m.health, -m.id))
+                    herald.mission = {
+                        "type": "peace", "target_clan": rival,
+                        "x": round(rhouse.x, 2), "y": round(rhouse.y, 2),
+                        "deadline": self.tick + ENVOY_MISSION_TICKS,
+                    }
+                    acted = True
+                    break
+            if acted:
+                continue
             # War: declare on an enemy with specific calculated Casus Belli (§AL)
             if trait == "bold" or trait is None or info.get("governance") == "junta":
                 enemy = self._remembered_enemy(cid)
@@ -2998,6 +3237,13 @@ class Simulation:
                     take = min(3.0, stored)
                     clan["larder"] = stored - take
                     c.energy += take
+                # §AM C: the dry, roofed granary feeds its own through famine
+                if cfg.granaries_enabled:
+                    gstored = float(clan.get("granary", 0.0))
+                    if gstored > 0:
+                        gtake = min(GRANARY_WITHDRAW_RATE, gstored)
+                        clan["granary"] = gstored - gtake
+                        c.energy = min(cfg.energy_max, c.energy + gtake)
                 starving_by_clan[c.clan_id] = starving_by_clan.get(c.clan_id, 0) + 1
         # Tribute: vassals pay their protector on the interval.
         if cfg.tribute_enabled and self.tick % TRIBUTE_INTERVAL == 0:
@@ -3014,6 +3260,21 @@ class Simulation:
                 pinfo = self.clans[protector]
                 room = max(0.0, cfg.larder_capacity - float(pinfo.get("larder", 0.0)))
                 pinfo["larder"] = float(pinfo.get("larder", 0.0)) + min(amount, room)
+                # §AN C.2: the tribute rides in a courier's panniers — grain and
+                # herbs carried to the suzerain granary to keep the peace.
+                if cfg.granaries_enabled:
+                    gpay = min(15.0, float(info.get("granary", 0.0)))
+                    if gpay > 0:
+                        info["granary"] = float(info.get("granary", 0.0)) - gpay
+                        proom = max(0.0, cfg.granary_capacity - float(pinfo.get("granary", 0.0)))
+                        pinfo["granary"] = float(pinfo.get("granary", 0.0)) + min(gpay, proom)
+                        payer_house = self.world.entities.get(info.get("main_house_id")) if info.get("main_house_id") is not None else None
+                        if isinstance(payer_house, House) and len(self.signals) < SIGNALS_MAX:
+                            self.signals.append({
+                                "x": round(payer_house.x, 2), "y": round(payer_house.y, 2),
+                                "kind": "courier", "sender": 0,
+                                "clan_id": cid or None, "ttl": 20,
+                            })
                 self._emit(
                     HistoryEvent(
                         type="tribute",
@@ -3099,6 +3360,189 @@ class Simulation:
                 )
             )
             break  # one defection per tick keeps the world calm
+
+    def _update_diplomacy(self) -> None:
+        """§AN orchestrator — envoys, boundary chimes, markets, caravans,
+        dialect drift and omens. Fixed order keeps the rng stream stable."""
+        cfg = self.config
+        # — envoy arrival & mission hygiene (every tick, cheap scan) —
+        if cfg.envoys_enabled:
+            for c in self._get_creatures():
+                mission = getattr(c, "mission", None)
+                if not isinstance(mission, dict) or mission.get("type") != "peace":
+                    continue
+                expired = self.tick >= int(mission.get("deadline", 0))
+                target_clan = int(mission.get("target_clan", 0))
+                arrived = (
+                    not expired
+                    and self.world.distance_sq(c.x, c.y, float(mission.get("x", 0.0)), float(mission.get("y", 0.0)))
+                    <= max(4.0, cfg.territory_radius * 0.5) ** 2
+                )
+                if not (arrived or expired or target_clan not in self.clans or c.id not in self.world.entities):
+                    continue
+                c.mission = None
+                if arrived and c.id in self.world.entities and target_clan in self.clans:
+                    self._bump_relation(c.clan_id, target_clan, ENVOY_RELATION_BOOST)
+                    self._emit(
+                        HistoryEvent(
+                            type="peace_envoy",
+                            tick=self.tick + 1,
+                            entity_id=c.id,
+                            caste=c.caste,
+                            x=round(c.x, 2), y=round(c.y, 2),
+                            payload={"a": c.clan_id, "b": target_clan,
+                                     "a_name": self.clans.get(c.clan_id, {}).get("name"),
+                                     "b_name": self.clans.get(target_clan, {}).get("name"),
+                                     "banner": "📜"},
+                        )
+                    )
+        # — prune stones & markets of dead clans —
+        live = set(self.clans.keys())
+        self.boundary_stones = [s for s in self.boundary_stones if s["clan_id"] in live]
+        for pair in list(self.markets.keys()):
+            a, b = pair
+            zone = self._zone_of(self.relations.get(pair, 0))
+            if a not in live or b not in live or zone != 1:
+                del self.markets[pair]
+        # — markets: allied neighbours found neutral trading posts & barter —
+        if cfg.markets_enabled and self.tick % MARKET_CHECK_INTERVAL == 0:
+            houses_by_clan: dict[int, House] = {}
+            for h in (self._cached_houses if self._cached_houses else self._functional_houses()):
+                if isinstance(h, House) and h.clan_id and not h.is_ruin:
+                    houses_by_clan.setdefault(h.clan_id, h)
+            reach = cfg.territory_radius * 3.0
+            for pair, score in sorted(self.relations.items()):
+                if self._zone_of(score) != 1 or pair in self.markets:
+                    continue
+                ha, hb = houses_by_clan.get(pair[0]), houses_by_clan.get(pair[1])
+                if ha is None or hb is None or self.world.distance(ha.x, ha.y, hb.x, hb.y) > reach:
+                    continue
+                mx = round((ha.x + hb.x) / 2.0, 2)
+                my = round((ha.y + hb.y) / 2.0, 2)
+                if self._is_in_rock(mx, my):
+                    continue
+                self.markets[pair] = {"x": mx, "y": my, "born_tick": self.tick}
+                self._emit(
+                    HistoryEvent(
+                        type="market",
+                        tick=self.tick + 1,
+                        entity_id=0,
+                        x=mx, y=my,
+                        payload={"a": pair[0], "b": pair[1],
+                                 "a_name": self.clans.get(pair[0], {}).get("name"),
+                                 "b_name": self.clans.get(pair[1], {}).get("name")},
+                    )
+                )
+        if cfg.markets_enabled and self.markets and self.tick % MARKET_BARTER_INTERVAL == 0:
+            for pair in sorted(self.markets.keys()):
+                ia, ib = self.clans.get(pair[0]), self.clans.get(pair[1])
+                if not ia or not ib:
+                    continue
+                ga, gb = float(ia.get("granary", 0.0)), float(ib.get("granary", 0.0))
+                donor, recv = (ia, ib) if ga > gb else (ib, ia)
+                surplus = max(ga, gb) - min(ga, gb)
+                swap = min(20.0, surplus / 2.0)
+                if swap < 2.0:
+                    continue
+                donor["granary"] = max(0.0, float(donor.get("granary", 0.0)) - swap)
+                cap_room = max(0.0, cfg.granary_capacity - float(recv.get("granary", 0.0)))
+                recv["granary"] = float(recv.get("granary", 0.0)) + min(swap, cap_room)
+                self._bump_relation(pair[0], pair[1], 1)
+        # — travelling peddler caravans: news and rare goods between distant clans —
+        if cfg.markets_enabled and self.tick % CARAVAN_INTERVAL == 0 and len(self.clans) >= 2:
+            ids = sorted(cid for cid in self.clans if any(m.stage == "adult" for m in self._clan_members.get(cid, ())))
+            for i, a in enumerate(ids):
+                for b in ids[i + 1:]:
+                    pair = self._relation_pair(a, b)
+                    if self._zone_of(self.relations.get(pair, 0)) == -1:
+                        continue
+                    last = self._caravan_last.get(pair, -CARAVAN_INTERVAL)
+                    if self.tick - last < CARAVAN_INTERVAL:
+                        continue
+                    ia, ib = self.clans[a], self.clans[b]
+                    # goods flow to the leaner store; the chronicle carries the news
+                    donor, recv = (ia, ib) if float(ia.get("granary", 0.0)) >= float(ib.get("granary", 0.0)) else (ib, ia)
+                    gift = min(10.0, float(donor.get("granary", 0.0)))
+                    if gift > 0:
+                        donor["granary"] = float(donor.get("granary", 0.0)) - gift
+                        room_c = max(0.0, cfg.granary_capacity - float(recv.get("granary", 0.0)))
+                        recv["granary"] = float(recv.get("granary", 0.0)) + min(gift, room_c)
+                    self._bump_relation(a, b, 2)
+                    self._caravan_last[pair] = self.tick
+                    self._emit(
+                        HistoryEvent(
+                            type="caravan",
+                            tick=self.tick + 1,
+                            entity_id=0,
+                            payload={"a": a, "b": b,
+                                     "a_name": ia.get("name"), "b_name": ib.get("name"),
+                                     "news": True},
+                        )
+                    )
+                    break
+                else:
+                    continue
+                break
+        # — season turn: omens from the shrine & dialect drift —
+        season = self._season()
+        if self._omen_season != season:
+            first_turn = self._omen_season is None
+            self._omen_season = season
+            next_season = SEASONS[(SEASONS.index(season) + 1) % 4]
+            if cfg.omens_enabled and not first_turn:
+                for cid in sorted(self.clans.keys()):
+                    info = self.clans[cid]
+                    if int(info.get("shrine_level", 0)) < 1:
+                        continue
+                    priest = next(
+                        (m for m in self._clan_members.get(cid, ()) if m.caste == "Priest" and m.id in self.world.entities),
+                        None,
+                    )
+                    if priest is None:
+                        continue
+                    shrine = self._shrine_pos(cid)
+                    sx, sy = shrine if shrine else (priest.x, priest.y)
+                    if len(self.signals) < SIGNALS_MAX:
+                        self.signals.append({
+                            "x": round(sx, 2), "y": round(sy, 2), "kind": "omen",
+                            "sender": priest.id, "clan_id": cid or None,
+                            "ttl": OMEN_SIGNAL_TTL, "season": next_season,
+                        })
+                    self._log_clan_history(
+                        cid, "omen",
+                        f"A priest beheld an omen: the {next_season} approaches (Day {self.day})",
+                    )
+                    self._emit(
+                        HistoryEvent(
+                            type="omen",
+                            tick=self.tick + 1,
+                            entity_id=priest.id,
+                            caste=priest.caste,
+                            x=round(sx, 2), y=round(sy, 2),
+                            payload={"clan_id": cid, "season": next_season,
+                                     "clan_name": info.get("name")},
+                        )
+                    )
+            # §AN E.2 linguistic drift — isolated clans grow apart in speech;
+            # allies converge toward a shared tongue.
+            if cfg.dialect_drift_enabled and not first_turn:
+                s_idx = SEASONS.index(season)
+                ally_map: dict[int, list[int]] = {}
+                for (a, b), score in self.relations.items():
+                    if self._zone_of(score) == 1:
+                        ally_map.setdefault(a, []).append(b)
+                        ally_map.setdefault(b, []).append(a)
+                for cid in sorted(self.clans.keys()):
+                    info = self.clans[cid]
+                    d = float(info.get("dialect", 0.0))
+                    mates = ally_map.get(cid)
+                    if mates:
+                        mean_ally = sum(float(self.clans[m].get("dialect", 0.0)) for m in mates) / len(mates)
+                        d += (mean_ally - d) * 0.25
+                    else:
+                        wobble = ((cid * 31 + s_idx * 7 + cfg.seed) % 9 - 4) * DIALECT_STEP
+                        d += wobble
+                    info["dialect"] = round(max(-1.0, min(1.0, d)), 4)
 
     def _update_clan_task_boards_and_bylaws(self) -> None:
         """§AL Clan Division of Labor & Dynamic Bylaws."""
@@ -3495,6 +3939,7 @@ class Simulation:
         self._update_festivals_and_traditions()
         self._update_defection()
         self._update_clan_task_boards_and_bylaws()
+        self._update_diplomacy()  # §AN envoys, markets, dialects & omens
 
 
 
@@ -3897,11 +4342,14 @@ class Simulation:
         cfg = self.config
         sun = self._sun_factor()
         if cfg.plant_growth_rate > 0 and sun > 0.0:
+            season = self._season()
+            summer_drought = season == "summer"
+            winter = season == "winter"
             for e in self.world.entities.values():
                 if isinstance(e, Food) and e.growth < 1.0:
                     if cfg.plant_variants_enabled:
                         vm = VARIANT_GROWTH_MULT.get(e.variant, 1.0)
-                        sm = VARIANT_SEASON_MULT.get(e.variant, {}).get(self._season(), 1.0)
+                        sm = VARIANT_SEASON_MULT.get(e.variant, {}).get(season, 1.0)
                     else:
                         vm, sm = 1.0, 1.0
                     wm = 1.0
@@ -3909,9 +4357,36 @@ class Simulation:
                         wm = cfg.rain_growth_mult
                     elif self.weather == "fog" and e.variant == "mushroom":
                         wm = cfg.fog_mushroom_mult
-                    e.growth = min(1.0, e.growth + cfg.plant_growth_rate * vm * sm * wm * sun)
+                    # §AM B: sown crops outrun the wild weeds; furrows hold moisture
+                    if e.cultivated:
+                        vm *= CULTIVATED_GROWTH_MULT
+                        if e.irrigated:
+                            vm *= IRRIGATED_GROWTH_MULT
+                            wm = max(wm, 1.0)  # drought-proof through the dry heat
+                    # §AM D: the soil gives what the soil has
+                    soil = self._soil_at(e.x, e.y)
+                    soil_f = max(0.5, min(1.4, 0.55 + 0.45 * soil))
+                    gained = min(1.0 - e.growth, cfg.plant_growth_rate * vm * sm * wm * sun * soil_f)
+                    e.growth += gained
+                    self._deplete_soil(e.x, e.y, gained)  # the harvest draws on the land
                     if e.growth >= 1.0:
                         self._emit_bloom(e)
+        # §AM C.2: winter frost bites exposed crops — cultivated beds & irrigated
+        # furrows shrug it off; everything else in the open fields suffers.
+        if (
+            cfg.agriculture_enabled
+            and self._season() == "winter"
+            and WINTER_FROST_CHANCE > 0
+        ):
+            for e in list(self.world.entities.values()):
+                if not isinstance(e, Food) or e.cultivated or e.irrigated:
+                    continue
+                if e.growth < 0.3:
+                    continue  # sprouts sleep under the snow
+                if self.rng.random() < WINTER_FROST_CHANCE:
+                    e.growth = max(0.0, e.growth - self.rng.uniform(0.15, 0.4))
+                    if e.growth <= 0.05:
+                        self.world.remove(e.id)
         # §AE Food decay — a mature plant lives food_lifespan_ticks × its
         # variant's pace, wilts near the end, fertilises, then vanishes.
         # Sprouts and growing plants don't rot; only the harvest does.
@@ -3934,10 +4409,11 @@ class Simulation:
                             payload={"variant": e.variant, "age": e.mature_ticks},
                         )
                     )
-        # Storm damage: exposed plants stripped, occasionally uprooted (§R)
+        # Storm damage: exposed plants stripped, occasionally uprooted (§R);
+        # §AM: furrowed beds hold their soil — irrigation shelters them.
         if self.weather == "storm" and cfg.storm_plant_damage > 0:
             for e in list(self.world.entities.values()):
-                if not isinstance(e, Food):
+                if not isinstance(e, Food) or e.irrigated:
                     continue
                 if self.rng.random() < cfg.storm_plant_damage:
                     e.growth = max(0.0, e.growth - self.rng.uniform(0.2, 0.5))
@@ -3987,11 +4463,171 @@ class Simulation:
                 self._release_nutrients(e)
                 self.world.remove(e.id)
 
+    # ------------------------------------------------------------ §AM agriculture
+    def _ensure_farm_plots(self) -> None:
+        """§AM B.1: settled clans till FARM_PLOTS_PER_CLAN plots around their
+        main house. Plots near a fertile grove are furrow-irrigated (drought-
+        and frost-proof). Deterministic ring angles; never touches the rng."""
+        if not self.config.agriculture_enabled or self.tick % 120 != 0:
+            return
+        living = {c.clan_id for c in self._get_creatures() if c.clan_id}
+        # prune plots of dead clans
+        self.farm_plots = {cid: p for cid, p in self.farm_plots.items() if cid in living}
+        r = max(6.0, self.config.territory_radius * 0.55)
+        for cid in sorted(self.clans.keys()):
+            hid = self.clans[cid].get("main_house_id")
+            house = self.world.entities.get(hid) if hid is not None else None
+            if not isinstance(house, House):
+                continue
+            plots = self.farm_plots.setdefault(cid, [])
+            k = len(plots)
+            while k < FARM_PLOTS_PER_CLAN:
+                ang = (cid * 2.399 + k * 2.094) % (2 * math.pi)
+                px, py = self.world.normalize(
+                    house.x + math.cos(ang) * r, house.y + math.sin(ang) * r
+                )
+                if not self._is_in_rock(px, py):
+                    irrigated = any(
+                        self.world.distance(px, py, f["x"], f["y"]) <= f["r"] + 3.0
+                        for f in self.fertile
+                    )
+                    plots.append({"x": round(px, 2), "y": round(py, 2), "irrigated": irrigated})
+                k += 1
+
+    def _sow_and_tend(self) -> None:
+        """§AM B: farmers sow seed pouches into empty clan plots; skilled hands
+        weed toxic sprouts, tend the beds against premature withering, and
+        compost near the settlement to revive exhausted soil."""
+        if not self.config.agriculture_enabled:
+            return
+        main_houses: dict[int, House] = {}
+        for h in self._cached_houses:
+            if isinstance(h, House) and h.clan_id and not h.is_ruin:
+                main_houses.setdefault(h.clan_id, h)
+        for c in self._get_creatures():
+            if c.is_predator or c.is_herbivore or c.sleeping:
+                continue
+            farm_xp = float(getattr(c, "skills", {}).get("farming", 0.0))
+            # — sowing —
+            if (
+                c.seeds > 0
+                and c.clan_id
+                and farm_xp >= SEED_SKILL_MIN
+                and self.rng.random() < 0.5
+            ):
+                plot = next(
+                    (
+                        p for p in self.farm_plots.get(c.clan_id, ())
+                        if self.world.distance_sq(c.x, c.y, p["x"], p["y"]) <= 9.0
+                        and not any(
+                            isinstance(f, Food)
+                            and self.world.distance_sq(f.x, f.y, p["x"], p["y"]) <= 1.0
+                            for f in self._cached_foods
+                        )
+                    ),
+                    None,
+                )
+                if plot is not None:
+                    c.seeds -= 1
+                    variant = "grain" if self.rng.random() < 0.7 else "grass"
+                    crop = Food(x=plot["x"], y=plot["y"], growth=SPROUT_GROWTH,
+                                variant=variant, cultivated=True,
+                                irrigated=bool(plot.get("irrigated")))
+                    self.world.add(crop)
+                    c.skills["farming"] = farm_xp + 1.0
+            # — tending & weeding & compost (staggered per creature) —
+            if farm_xp < TEND_SKILL_MIN or (self.tick + c.id) % 9 != 0:
+                continue
+            for e, _ in self.world.query_radius_with_dist_sq(c.x, c.y, 4.0):
+                if isinstance(e, Food):
+                    if e.variant == "poisonous" and e.growth < 0.5:
+                        self.world.remove(e.id)  # weeded out before it can harm
+                    elif e.cultivated:
+                        e.mature_ticks = max(0, e.mature_ticks - TEND_REGRESS_TICKS)
+            # composting: master farmers refresh the home soil on a long cadence
+            if (
+                farm_xp >= 12.0
+                and c.clan_id in main_houses
+                and COMPOST_INTERVAL > 0
+                and (self.tick + c.id * 7) % COMPOST_INTERVAL == 0
+            ):
+                mh = main_houses[c.clan_id]
+                if self.world.distance(c.x, c.y, mh.x, mh.y) <= self.config.territory_radius:
+                    self._fertilize_soil(mh.x, mh.y, 10.0, COMPOST_NUTRIENT)
+                    self._emit(
+                        HistoryEvent(
+                            type="compost",
+                            tick=self.tick + 1,
+                            entity_id=c.id,
+                            caste=c.caste,
+                            x=round(mh.x, 2), y=round(mh.y, 2),
+                            payload={"clan_id": c.clan_id,
+                                     "clan_name": self.clans.get(c.clan_id, {}).get("name")},
+                        )
+                    )
+
+    def _update_agriculture(self) -> None:
+        """§AM orchestrator — fixed order keeps the rng stream deterministic."""
+        self._ensure_farm_plots()
+        self._sow_and_tend()
+        self._update_banquets()
+
+    def _update_banquets(self) -> None:
+        """§AM E.2: an overflowing granary feeds a clan feast — morale, bonds
+        and a baby boom while the mead lasts."""
+        if not (self.config.banquets_enabled and self.config.granaries_enabled):
+            return
+        if self.tick % 60 != 0:
+            return
+        houses_by_clan: dict[int, House] = {}
+        for h in self._cached_houses:
+            if isinstance(h, House) and h.clan_id and not h.is_ruin:
+                houses_by_clan.setdefault(h.clan_id, h)
+        for cid in sorted(self.clans.keys()):
+            info = self.clans[cid]
+            granary = float(info.get("granary", 0.0))
+            cap = max(1.0, self.config.granary_capacity)
+            if granary < cap * BANQUET_FILL_FRACTION:
+                continue
+            if self.tick - int(self._banquet_last.get(cid, -BANQUET_MIN_GAP)) < BANQUET_MIN_GAP:
+                continue
+            house = houses_by_clan.get(cid)
+            if house is None:
+                continue
+            cost = granary * BANQUET_COST_FRACTION
+            info["granary"] = granary - cost
+            info["feast_until"] = self.tick + BANQUET_FEAST_TICKS
+            self._banquet_last[cid] = self.tick
+            guests: set[int] = set()  # clans present at the table (incl. cid)
+            for m in self._clan_members.get(cid, ()):
+                if self.world.distance(m.x, m.y, house.x, house.y) <= self.config.territory_radius:
+                    guests.add(m.clan_id)
+                    m.energy = min(self.config.energy_max, m.energy + 12.0)
+                    m.emote = "cheer"
+                    m.emote_ticks = 40
+            for other_cid in sorted(guests):
+                if other_cid != cid:
+                    self._bump_relation(other_cid, cid, 4)
+            self._emit(
+                HistoryEvent(
+                    type="banquet",
+                    tick=self.tick + 1,
+                    entity_id=house.id,
+                    x=round(house.x, 2), y=round(house.y, 2),
+                    payload={"clan_id": cid, "clan_name": info.get("name"),
+                             "spent": round(cost, 1)},
+                )
+            )
+
+
     def _release_nutrients(self, corpse: Entity, mult: float = 1.0) -> None:
         """A fully decayed corpse (or withered plant, §AE) boosts nearby plant growth."""
         boost = NUTRIENT_BOOST * self.config.nutrient_cycle_rate * mult
         if boost <= 0:
             return
+        # §AM D.2: death also refills the living soil grid — the field remembers.
+        if self.config.soil_depletion_enabled:
+            self._fertilize_soil(corpse.x, corpse.y, NUTRIENT_RADIUS, boost * 0.1)
         # §AP: a Sacred Spiral shrine composts what dies beside it — death is
         # folded back into life faster within the aura.
         for cid, info in self.clans.items():
@@ -4156,6 +4792,10 @@ class Simulation:
                 rate = min(1.0, rate * AGE_BIRTH_MULT.get(age2, 1.0))
             if self._season() == "spring":
                 rate = min(1.0, rate * SPRING_BIRTH_MULT)  # spring quickens the blood
+            # §AM E.2: a clan at its feast is generous with more than bread
+            mother_clan = self.clans.get(mother.clan_id) if mother.clan_id else None
+            if mother_clan and self.tick < int(mother_clan.get("feast_until", 0)):
+                rate = min(1.0, rate * BANQUET_FERTILITY_MULT)
             rate *= 1.0 + self._totem_stat(mother, "birth")  # Stag/Rabbit fecundity
             if self.rng.random() >= min(rate * fert, 1.0):
                 continue
@@ -4405,6 +5045,17 @@ class Simulation:
         self._events_this_tick.append(event.model_dump(mode="json"))
         if self.on_event is not None:
             self.on_event(event)
+        # §AN B.3: a violent end leaves a danger scent that steers the
+        # young and the vulnerable away from ambush grounds.
+        if (
+            self.config.scent_enabled
+            and cause in ("predation", "war")
+            and len(self.signals) < SIGNALS_MAX
+        ):
+            self.signals.append({
+                "x": round(c.x, 2), "y": round(c.y, 2), "kind": "danger_scent",
+                "sender": c.id, "clan_id": c.clan_id or None, "ttl": DANGER_SCENT_TTL,
+            })
         # Leadership succession (§P) — always runs; succession_enabled only gates the chronicle event.
         if c.clan_id:
             clan = self.clans.get(c.clan_id)
@@ -4541,6 +5192,12 @@ class Simulation:
             c.cannibal_cooldown -= 1
         if c.panic_ticks > 0:
             c.panic_ticks -= 1
+        if c.calm_ticks > 0:
+            c.calm_ticks -= 1
+        if c.prepared_ticks > 0:
+            c.prepared_ticks -= 1
+        if c.greet_cooldown > 0:
+            c.greet_cooldown -= 1
 
         # Emote timer countdown
         if c.emote_ticks > 0:
@@ -4721,21 +5378,55 @@ class Simulation:
         if getattr(c, "food_basket", 0) > 0 and not c.sleeping:
             if c.personality == "altruistic" and (self.tick + c.id) % 6 == 0:
                 for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, 5.0):
-                    if isinstance(o, Creature) and o.clan_id == c.clan_id and o.id != c.id:
-                        if (o.energy < 40.0 or o.stage in ("infant", "juvenile")) and o.id in w.entities:
-                            o.energy = min(cfg.energy_max, o.energy + 30.0)
-                            c.food_basket -= 1
-                            c.emote = "love"
-                            c.emote_ticks = 15
-                            o.emote = "cheer"
-                            o.emote_ticks = 15
-                            if not hasattr(o, "trust") or o.trust is None:
-                                o.trust = {}
-                            o.trust[c.id] = min(100.0, o.trust.get(c.id, 0.0) + 20.0)
-                            if not hasattr(c, "trust") or c.trust is None:
-                                c.trust = {}
-                            c.trust[o.id] = min(100.0, c.trust.get(o.id, 0.0) + 10.0)
-                            break
+                    if not isinstance(o, Creature) or o.id == c.id:
+                        continue
+                    kin = o.clan_id == c.clan_id
+                    if not (o.energy < 40.0 or o.stage in ("infant", "juvenile")) or o.id not in w.entities:
+                        continue
+                    # §AM E.1 sacred hospitality — bread broken with a stranger
+                    # buys mutual non-aggression; rivals at open feud refuse it.
+                    if o.clan_id and c.clan_id and o.clan_id != c.clan_id:
+                        pair = self._relation_pair(c.clan_id, o.clan_id)
+                        if self.relations.get(pair, 0) <= cfg.rivalry_threshold // 2:
+                            continue
+                        c.food_basket -= 1
+                        o.energy = min(cfg.energy_max, o.energy + 30.0)
+                        c.emote = "love"
+                        c.emote_ticks = 15
+                        o.emote = "cheer"
+                        o.emote_ticks = 15
+                        self._bump_relation(c.clan_id, o.clan_id, 3)
+                        o.trust[c.id] = min(100.0, o.trust.get(c.id, 0.0) + 20.0) if isinstance(o.trust, dict) else o.trust
+                        c.trust[o.id] = min(100.0, c.trust.get(o.id, 0.0) + 10.0) if isinstance(c.trust, dict) else c.trust
+                        if self.tick - self._last_hospitality_tick >= HOSPITALITY_GAP:
+                            self._last_hospitality_tick = self.tick
+                            self._emit(
+                                HistoryEvent(
+                                    type="hospitality",
+                                    tick=self.tick + 1,
+                                    entity_id=c.id,
+                                    caste=c.caste,
+                                    x=round(c.x, 2), y=round(c.y, 2),
+                                    payload={"a": c.clan_id, "b": o.clan_id,
+                                             "a_name": self.clans.get(c.clan_id, {}).get("name"),
+                                             "b_name": self.clans.get(o.clan_id, {}).get("name")},
+                                )
+                            )
+                        break
+                    if kin and o.clan_id == c.clan_id:
+                        o.energy = min(cfg.energy_max, o.energy + 30.0)
+                        c.food_basket -= 1
+                        c.emote = "love"
+                        c.emote_ticks = 15
+                        o.emote = "cheer"
+                        o.emote_ticks = 15
+                        if not hasattr(o, "trust") or o.trust is None:
+                            o.trust = {}
+                        o.trust[c.id] = min(100.0, o.trust.get(c.id, 0.0) + 20.0)
+                        if not hasattr(c, "trust") or c.trust is None:
+                            c.trust = {}
+                        c.trust[o.id] = min(100.0, c.trust.get(o.id, 0.0) + 10.0)
+                        break
 
             elif c.indoors or (c.clan_id and c.clan_id in clan_house_map and self.world.distance(c.x, c.y, clan_house_map[c.clan_id].x, clan_house_map[c.clan_id].y) <= 8.0):
                 if c.clan_id and c.clan_id in self.clans:
@@ -4875,8 +5566,8 @@ class Simulation:
 
         # 2. Perceive the nearest meal — food or the fallen. Diet strictness (§O) filters.
         # §X-fix: the Carnivore caste hunts the living and scavenges the dead —
-        # it never grazes fields. A predator that eats plants out-competes every
-        # caste for the bounty and the world dies into a wolf monoculture
+        # it never grazes fields. A predator that could eat plants out-competes
+        # every caste for the bounty and the world dies into a wolf monoculture
         # (production incident @ tick 34k: 800 predators, zero clan members).
         target: Entity | None = None
         best_sq = perceive * perceive
@@ -4922,6 +5613,13 @@ class Simulation:
                     effective_d2 *= 0.2  # high attraction to healing herbs
                 elif c.status == "starving" and e.variant == "grain":
                     effective_d2 *= 0.4  # high attraction to calorie-dense grain
+                else:
+                    # §AM E.1 geometric gastronomy — castes keep their own table
+                    weight = CASTE_DIET_WEIGHTS.get(c.caste, {}).get(e.variant)
+                    if weight is not None:
+                        effective_d2 *= weight
+            elif e.kind == "corpse" and c.caste == "Soldier":
+                effective_d2 *= 0.6  # soldiers crave high-protein rations
 
             if effective_d2 < best_sq:
                 best_sq, target = effective_d2, e
@@ -4952,6 +5650,26 @@ class Simulation:
                     scent_sq = d2
                     target = e
                     best_sq = d2
+        # §AN A.3 war-chirp targeting — a soldier facing a rival marks the
+        # nearest open-feud enemy as the rally target (one gated query).
+        enemy_target: Creature | None = None
+        if (
+            cfg.vocalizations_enabled
+            and c.caste == "Soldier"
+            and c.clan_id
+            and hunt_target is None
+            and flee_target is None
+        ):
+            er2 = max(8.0, cfg.fear_radius)
+            best_enemy_d = er2 * er2 + 1e-9
+            for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, er2):
+                if not isinstance(o, Creature) or o.clan_id == c.clan_id or not o.clan_id:
+                    continue
+                pair_z = self.relations.get(self._relation_pair(c.clan_id, o.clan_id), 0)
+                if self._zone_of(pair_z) != -1 or d2 >= best_enemy_d:
+                    continue
+                best_enemy_d, enemy_target = d2, o
+
         # §AC Desperation: the starving may hunt the living. Sated/hungry
         # creatures never do; a cooldown separates desperate kills.
         prey_target: Creature | None = None
@@ -4983,6 +5701,19 @@ class Simulation:
                 if self.rng.random() < cfg.food_call_rate:
                     self.signals.append({"x": c.x, "y": c.y, "kind": "food", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 15, "food_x": target.x, "food_y": target.y})
                     c.signal_cooldown = 8
+                # §AN B.2 forager scent trails — rich finds leave a breadcrumb
+                # line home for hungry kin to follow (rain washes scent faster)
+                elif (
+                    isinstance(target, Food)
+                    and target.variant in ("grain", "berry", "medicinal_herb")
+                    and len(self.signals) < SIGNALS_MAX
+                    and self.rng.random() < TRAIL_DROP_CHANCE * (2.0 if self.weather == "clear" else 1.0)
+                ):
+                    self.signals.append({
+                        "x": round(c.x, 2), "y": round(c.y, 2), "kind": "trail",
+                        "sender": c.id, "clan_id": c.clan_id or None,
+                        "ttl": SCENT_TTL, "food_x": round(target.x, 2), "food_y": round(target.y, 2),
+                    })
             # Alarm call: sees predator → alarm; teeth-close → a cry for help (§X)
             if flee_target is not None and c.signal_cooldown == 0:
                 close = (
@@ -5019,33 +5750,152 @@ class Simulation:
                         c.signal_cooldown = 12
                         break
 
+        # §AN Phase A — every caste has a voice: the priest's liturgy, the
+        # woman's peace-hum, the soldier's war-chirp.
+        if cfg.vocalizations_enabled and c.signal_cooldown == 0 and not c.is_predator and not c.is_herbivore:
+            if c.caste == "Priest" and self.rng.random() < CHANT_CHANCE:
+                # Sonorous liturgy — calm flows outward through the clan
+                self.signals.append({"x": round(c.x, 2), "y": round(c.y, 2), "kind": "chant", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 10})
+                c.signal_cooldown = 16
+            elif c.shape == "line" and self.rng.random() < HUM_CHANCE:
+                # Peace-hum — polygons step aside; corridors stay walkable (§C law)
+                self.signals.append({"x": round(c.x, 2), "y": round(c.y, 2), "kind": "hum", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 8})
+                c.signal_cooldown = 14
+            elif (
+                c.caste == "Soldier"
+                and (hunt_target is not None or flee_target is not None
+                     or prey_target is not None or enemy_target is not None)
+                and self.rng.random() < WARCHIRP_CHANCE
+            ):
+                # War-chirp — allied soldiers rally onto the flagged target
+                threat = hunt_target or flee_target or prey_target or enemy_target
+                self.signals.append({
+                    "x": round(c.x, 2), "y": round(c.y, 2), "kind": "war",
+                    "sender": c.id, "clan_id": c.clan_id or None, "ttl": 10,
+                    "threat_x": round(threat.x, 2), "threat_y": round(threat.y, 2),
+                })
+                c.signal_cooldown = 12
+
+        # §AN B — tactile recognition: touching vertices in peace builds trust;
+        # an elder's blessing touch passes a sliver of skill to the young; a
+        # friendly artisan's chime opens the basket for a gift.
+        if (
+            cfg.vocalizations_enabled
+            and c.greet_cooldown <= 0
+            and not c.sleeping
+            and not c.is_predator
+            and not c.is_herbivore
+            and (self.tick + c.id) % 29 == 0
+        ):
+            for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, 1.2):
+                if not isinstance(o, Creature) or o.id == c.id or o.sleeping:
+                    continue
+                if o.is_predator or o.is_herbivore:
+                    continue
+                kin = o.clan_id and o.clan_id == c.clan_id
+                if not kin:
+                    pair = self._relation_pair(c.clan_id, o.clan_id) if c.clan_id and o.clan_id else None
+                    if pair is None or self.relations.get(pair, 0) <= cfg.rivalry_threshold // 2:
+                        continue  # no greetings across open feuds
+                c.greet_cooldown = 60
+                o.trust[c.id] = min(100.0, o.trust.get(c.id, 0.0) + GREET_TRUST) if isinstance(o.trust, dict) else o.trust
+                c.trust[o.id] = min(100.0, c.trust.get(o.id, 0.0) + GREET_TRUST) if isinstance(c.trust, dict) else c.trust
+                # Elder blessing touch — skill flows to the next generation
+                if c.stage == "elder" and o.stage in ("infant", "juvenile"):
+                    skills_d = getattr(c, "skills", {})
+                    if skills_d:
+                        best_skill = max(skills_d, key=lambda k: skills_d.get(k, 0.0))
+                        o.skills[best_skill] = o.skills.get(best_skill, 0.0) + ELDER_TOUCH_XP
+                        o.emote = "cheer"
+                        o.emote_ticks = 10
+                # Artisan trade chime — greeting gifts from the basket
+                if c.caste == "Artisan" and c.food_basket > 0 and o.energy < 65.0:
+                    c.food_basket -= 1
+                    o.energy = min(cfg.energy_max, o.energy + ARTISAN_GIFT_ENERGY)
+                    o.emote = "cheer"
+                    o.emote_ticks = 12
+                    self.signals.append({"x": round(c.x, 2), "y": round(c.y, 2), "kind": "chime", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 8})
+                    if not kin and c.clan_id and o.clan_id:
+                        self._bump_relation(c.clan_id, o.clan_id, 1)
+                break
+
+        # §AN E.1 ruin archaeology — explorers reading old walls recover lost
+        # technique: farming & foraging insight, vague lore of the old farms.
+        if cfg.knowledge_enabled and (self.tick + c.id) % 23 == 7 and c.personality == "explorer":
+            for e in w.query_radius(c.x, c.y, 4.0):
+                if e.kind == "house" and getattr(e, "is_ruin", False):
+                    c.skills["farming"] = c.skills.get("farming", 0.0) + 0.06
+                    c.skills["foraging"] = c.skills.get("foraging", 0.0) + 0.04
+                    self._learn(c, "food", e.x + 2.0, e.y - 2.0, conf=0.4)  # old farms fed these walls
+                    break
+
         # 3. Steer — priority: flee > hunt > home for night > food > wander
         # §Q Hearing signals — clan-mates respond strongly; §X knowledge & help
         signal_food_target = None
         signal_alarm_target = None
         signal_help_target = None
+        signal_hum_source = None  # §AN woman's peace-hum — corridor clearing
         best_help_d_sq = math.inf
         if cfg.communication_enabled and self.signals:
             sig_r2 = cfg.signal_radius * cfg.signal_radius
             best_food_sq = math.inf
             best_alarm_sq = math.inf
+            my_dialect = float(self.clans.get(c.clan_id, {}).get("dialect", 0.0)) if c.clan_id else 0.0
             for sg in self.signals:
                 d2 = w.distance_sq(c.x, c.y, sg["x"], sg["y"])
                 if d2 > sig_r2:
                     continue
-                # clan weighting: clan-mates 1.0, strangers 0.35
+                # clan weighting: clan-mates always hear; strangers hear less,
+                # the less our dialects agree (§AN E.2 linguistic drift)
                 is_kin = sg.get("clan_id") and sg.get("clan_id") == c.clan_id
-                if not is_kin and self.rng.random() < 0.65:
-                    continue
-                if sg["kind"] == "food" and c.status in ("hungry", "starving"):
-                    # food signal points to food_x/food_y if present, else sender pos
+                if not is_kin:
+                    if cfg.dialect_drift_enabled:
+                        sender_dialect = float(self.clans.get(sg.get("clan_id") or -1, {}).get("dialect", 0.0))
+                        ignore_p = max(0.45, min(0.95, 0.45 + abs(my_dialect - sender_dialect) * 0.5))
+                    else:
+                        ignore_p = 0.65
+                    if self.rng.random() < ignore_p:
+                        continue
+                kind = sg["kind"]
+                if (kind == "food" or kind == "trail") and c.status in ("hungry", "starving"):
+                    # §AN B.2: scent trails point at the patch like a food call;
+                    # food signals point to food_x/food_y if present, else sender pos
                     fx = sg.get("food_x", sg["x"])
                     fy = sg.get("food_y", sg["y"])
                     df2 = w.distance_sq(c.x, c.y, fx, fy)
                     if df2 < best_food_sq:
                         best_food_sq = df2
                         signal_food_target = (fx, fy)
-                elif sg["kind"] == "knowledge" and cfg.knowledge_enabled:
+                elif kind == "chant" and cfg.vocalizations_enabled and is_kin:
+                    # §AN A.1 liturgy: panic drains away; the starving find heart
+                    c.panic_ticks = 0
+                    c.calm_ticks = max(c.calm_ticks, 20)
+                elif kind == "hum" and cfg.vocalizations_enabled and c.shape != "line":
+                    # §AN A.2 peace-hum: polygons yield the corridor
+                    if signal_hum_source is None or d2 < w.distance_sq(c.x, c.y, *signal_hum_source):
+                        signal_hum_source = (sg["x"], sg["y"])
+                elif kind == "war" and cfg.vocalizations_enabled and c.caste == "Soldier" and is_kin:
+                    # §AN A.3 war-chirp: allied soldiers converge on the flagged target
+                    tx, ty = sg.get("threat_x", sg["x"]), sg.get("threat_y", sg["y"])
+                    td2 = w.distance_sq(c.x, c.y, tx, ty)
+                    if td2 < best_help_d_sq:
+                        best_help_d_sq = td2
+                        signal_help_target = (tx, ty)
+                elif kind == "chime" and cfg.envoys_enabled and c.caste == "Soldier" and is_kin:
+                    # §AN C.3 boundary stone rings — sentries walk the border
+                    tx, ty = sg.get("stone_x", sg["x"]), sg.get("stone_y", sg["y"])
+                    td2 = w.distance_sq(c.x, c.y, tx, ty)
+                    if td2 < best_help_d_sq:
+                        best_help_d_sq = td2
+                        signal_help_target = (tx, ty)
+                elif kind == "omen" and cfg.omens_enabled and is_kin:
+                    # §AN E.3 the priest has seen the turning of the season
+                    c.prepared_ticks = PREPARED_TICKS
+                elif kind == "danger_scent" and cfg.scent_enabled:
+                    # §AN B.3: the young and vulnerable learn to shun death sites
+                    if c.stage in ("infant", "juvenile") or c.health < 50.0:
+                        self._learn(c, "danger", sg["x"], sg["y"], conf=0.6)
+                elif kind == "knowledge" and cfg.knowledge_enabled:
                     self._hear_fact(c, sg.get("fact"))
                     f = (sg.get("fact") or {})
                     if (
@@ -5116,6 +5966,9 @@ class Simulation:
                 u_shelter = 0.85
             elif c.personality == "cautious" and (c.energy < 40.0 or c.health < 50.0):
                 u_shelter = 0.7
+            # §AN E.3: the omen was heeded — worshippers drift home early
+            if u_shelter < 1.5 and c.prepared_ticks > 0:
+                u_shelter += 0.4
 
         # §AT-4 H-1: a wounded creature seeks herbs even on a full stomach.
         herb_need = (
@@ -5144,7 +5997,16 @@ class Simulation:
         waypoint_target = None
         u_waypoint = 0.0
         if not c.is_predator and not c.is_herbivore:
-            if getattr(c, "waypoints", None) and isinstance(c.waypoints, dict):
+            # §AN C.1: an emissary walks a diplomatic mission above all else
+            mission = getattr(c, "mission", None)
+            if isinstance(mission, dict) and mission.get("type") == "peace":
+                ex_, ey_ = mission.get("x", 0.0), mission.get("y", 0.0)
+                if w.distance_sq(c.x, c.y, ex_, ey_) > 4.0:
+                    waypoint_target = (ex_, ey_)
+                    u_waypoint = 1.1
+                elif getattr(c, "waypoints", None) is not None:
+                    c.waypoints["rich_food"] = (round(ex_, 2), round(ey_, 2))
+            elif getattr(c, "waypoints", None) and isinstance(c.waypoints, dict):
                 if c.status in ("hungry", "starving") and target is None and "rich_food" in c.waypoints:
                     rx, ry = c.waypoints["rich_food"]
                     if w.distance_sq(c.x, c.y, rx, ry) > 4.0:
@@ -5299,6 +6161,15 @@ class Simulation:
                     diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
                     c.angle += max(-cfg.steer_turn * 0.8, min(cfg.steer_turn * 0.8, diff))
             else:
+                # §AN A.2: a woman's peace-hum parts the crowd — polygons
+                # drift aside so her corridor stays walkable.
+                if signal_hum_source is not None:
+                    hx_, hy_ = signal_hum_source
+                    dx, dy = w.delta(c.x, c.y, hx_, hy_)  # away from the hum
+                    desired = math.atan2(dy, dx)
+                    diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                    cap = cfg.steer_turn * 0.4
+                    c.angle += max(-cap, min(cap, diff))
                 # High-trust buddy attraction (§AL): steer towards trusted kin when idle
                 buddy_found = False
                 if getattr(c, "trust", None) and isinstance(c.trust, dict) and not c.is_predator and not c.is_herbivore:
@@ -5485,6 +6356,9 @@ class Simulation:
                     health_delta = VARIANT_HEALTH.get(target.variant, 0.0)
                 else:
                     gain = cfg.energy_from_food * target.growth
+                # §AM B: the sown harvest feeds far better than wild weeds
+                if target.cultivated:
+                    gain *= CULTIVATED_YIELD_MULT
                 # Totem harvest (§P); farmer specialization adds harvest (§P specialization)
                 farmer = self.clans.get(c.clan_id, {}).get("specialization", {}).get("farmer", 0.33) if c.clan_id else 0.0
                 h = self._totem_stat(c, "harvest")
@@ -5541,6 +6415,34 @@ class Simulation:
                         c.emote_ticks = 20
                 elif isinstance(target, Corpse):
                     c.skills["foraging"] = c.skills.get("foraging", 0.0) + 0.6
+
+            # §AM B: skilled hands glean seed from a wild mature harvest
+            if (
+                cfg.agriculture_enabled
+                and isinstance(target, Food)
+                and not target.cultivated
+                and target.growth >= 1.0
+                and c.seeds < 3
+                and c.skills.get("farming", 0.0) >= SEED_SKILL_MIN
+            ):
+                c.seeds += 1
+
+            # §AM C: the granary — sated harvesters lay grain & cured berries by
+            # against winter; the store is dry, roofed and safe from beasts.
+            if (
+                cfg.granaries_enabled
+                and c.clan_id
+                and c.clan_id in self.clans
+                and isinstance(target, Food)
+                and target.variant in ("grain", "berry")
+                and c.energy > 0.6 * cfg.energy_max
+            ):
+                clan_store = self.clans[c.clan_id]
+                room = max(0.0, cfg.granary_capacity - float(clan_store.get("granary", 0.0)))
+                put = min(gain * GRANARY_DEPOSIT_SHARE, room)
+                if put > 0:
+                    clan_store["granary"] = float(clan_store.get("granary", 0.0)) + put
+                    clan_store["harvest_total"] = float(clan_store.get("harvest_total", 0.0)) + put
 
             if health_delta != 0:
                 c.health = max(0.0, min(c.max_health, c.health + health_delta))
@@ -5896,6 +6798,8 @@ class Simulation:
             "events": self._events_this_tick,  # AA: pre-dumped in _emit() — zero work here
             "signals": [dict(sg) for sg in self.signals],
             "fires": [dict(f) for f in self.fires],
+            "boundary_stones": [dict(s) for s in self.boundary_stones],
+            "markets": [dict(m, a=pair[0], b=pair[1]) for pair, m in self.markets.items()],
             "wind": {"angle": round(self.wind_angle, 3), "speed": round(self.wind_speed, 3)},
             "age": self._age(),
             "age_tick": self._age_tick(),
@@ -5983,13 +6887,14 @@ class Simulation:
             "events": self._events_this_tick,
             "signals": [dict(sg) for sg in self.signals],
             "fires": [dict(f) for f in self.fires],
+            "boundary_stones": [dict(s) for s in self.boundary_stones],
+            "markets": [dict(m, a=pair[0], b=pair[1]) for pair, m in self.markets.items()],
             "wind": {"angle": round(self.wind_angle, 3), "speed": round(self.wind_speed, 3)},
             "age": self._age(),
             "age_tick": self._age_tick(),
             "age_day": self._age_day(),
             "age_total_days": self._age_total_days(),
         }
-
 
 
 
@@ -6071,6 +6976,8 @@ class Simulation:
                 "material": e.material,  # §AQ PH-1 insulation tier
                 # §AT-3: recent hostile takeover — renderer flashes the crest
                 "takeover_age": (self.tick - e.takeover_tick) if getattr(e, "takeover_tick", -1) >= 0 else None,
+                # §AN: painted chronicle of great days on the walls
+                "murals": e.murals or None,
             }
         if isinstance(e, Food):
             is_withering = False
@@ -6093,6 +7000,11 @@ class Simulation:
             }
             if is_withering:
                 d["withering"] = True
+            # §AM: sown & furrowed crops read differently on the field
+            if e.cultivated:
+                d["cultivated"] = True
+            if e.irrigated:
+                d["irrigated"] = True
             return d
         return {
             "id": e.id,

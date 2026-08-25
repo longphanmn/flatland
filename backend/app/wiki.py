@@ -382,6 +382,19 @@ LAW_HINTS_MD = {
     "cannibalism_hunger_ratio": "only creatures below this energy fraction may eat the living (0.15) — sated/hungry never do",
     "cannibalism_energy": "energy gained per desperate kill (45) — the victim leaves a partial corpse",
     "kin_stigma": "relation hit between a kin-eater's outcast band and their former clan (40) — they become rivals",
+    # §AM agriculture
+    "agriculture_enabled": "seed pouches from wild harvests, cultivated farm plots near the settlement (2× growth, 2.5× yield), weeding & tending, irrigation furrows by fertile groves",
+    "granaries_enabled": "a dry roofed store: sated harvesters lay grain & cured berries by (35%), starving members withdraw, feasts burn a quarter",
+    "granary_capacity": "units one clan granary holds (400) — feasts fire at ≥80% fill; raids & markets & caravans move it",
+    "soil_depletion_enabled": "monocropping exhausts the living soil grid; corpses, withered plants and farmer compost restore it",
+    "banquets_enabled": "granary ≥80% feeds a feast: energy, cheer, warmer relations and +30% fertility while it lasts",
+    # §AN communication, language & diplomacy
+    "vocalizations_enabled": "priest liturgy calms panic, women's peace-hum parts crowds, soldiers' war-chirps rally allies onto flagged targets, artisan chimes gift basket food, touching vertices builds trust",
+    "scent_enabled": "foragers drop scent trails home from rich finds; violent deaths and ruins leave danger scent the young learn to avoid",
+    "envoys_enabled": "peaceful leaders send banner-carrying emissaries to rival houses (+15 relations on delivery); clans raise boundary stones that ring warning chimes at trespassers",
+    "markets_enabled": "allied neighbours found neutral trading posts at shared borders and barter surplus every 240 ticks; peddler caravans carry goods and news between distant settlements",
+    "omens_enabled": "at each season turn a shrine priest proclaims what comes; worshippers who hear it head home prepared",
+    "dialect_drift_enabled": "isolated clans drift apart in speech — strangers understand each other less the further their dialects split; allies converge on a shared tongue",
 }
 
 def get_wiki_json(app: Any) -> dict:

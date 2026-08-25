@@ -624,6 +624,17 @@ LAW_FIELDS = (
     "theology_enabled",
     "tithe_rate",
     "temple_faith_cost",
+    "agriculture_enabled",
+    "granaries_enabled",
+    "granary_capacity",
+    "soil_depletion_enabled",
+    "banquets_enabled",
+    "vocalizations_enabled",
+    "scent_enabled",
+    "envoys_enabled",
+    "markets_enabled",
+    "omens_enabled",
+    "dialect_drift_enabled",
 )
 
 
@@ -1297,6 +1308,10 @@ def _clans_payload() -> dict:
             "knowledge": knowledge_by_clan.get(cid),
             "coalition_id": info.get("coalition_id"),  # §AB
             "larder": round(float(info.get("larder", 0.0)), 1),  # §AB clan store
+            "granary": round(float(info.get("granary", 0.0)), 1),  # §AM grain store
+            "harvest_total": round(float(info.get("harvest_total", 0.0)), 1),  # §AM
+            "feast": RT.sim.tick < int(info.get("feast_until", 0)),  # §AM banqueting
+            "dialect": round(float(info.get("dialect", 0.0)), 3),  # §AN speech drift
             "tribute_to": info.get("tribute_to"),  # §AB subjugation
             "faith": round(float(info.get("faith", 0.0)), 1),  # §AP clan faith pool
             "shrine_level": int(info.get("shrine_level", 0)),  # §AP shrine/temple

@@ -37,10 +37,12 @@ function matchesCategory(ev: HistoryEvent, category: EventCategory): boolean {
       'schism',
       'conquest',
       'takeover',
+      'raid',
       'coalition_formed',
       'coalition_joined',
       'coalition_dissolved',
       'peace',
+      'peace_envoy',
       'defection',
       'cannibalism',
       'exile',
@@ -64,6 +66,11 @@ function matchesCategory(ev: HistoryEvent, category: EventCategory): boolean {
       'temple',
       'epiphany',
       'resonance',
+      'hospitality',
+      'banquet',
+      'market',
+      'caravan',
+      'omen',
     ].includes(ev.type)
   }
   if (category === 'deaths') {
@@ -73,7 +80,7 @@ function matchesCategory(ev: HistoryEvent, category: EventCategory): boolean {
     return ev.type === 'outbreak' || ev.type === 'recovery' || (ev.type === 'death' && ev.cause === 'disease')
   }
   if (category === 'nature') {
-    return ['bloom', 'wither', 'ruin', 'fire', 'disaster'].includes(ev.type)
+    return ['bloom', 'wither', 'ruin', 'fire', 'disaster', 'compost'].includes(ev.type)
   }
   return true
 }
@@ -685,6 +692,89 @@ export default function ChronicleFeed({
                     <b>{nm}{gl}</b> #{ev.entity_id}
                   </button>{' '}
                   {ev.type} at tick {ev.tick}
+                </li>
+              )
+            }
+
+            if (ev.type === 'raid') {
+              return (
+                <li key={key} style={{ color: '#f85149' }}>
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.a)} title="show clan"><b>{p.a_name ?? `Clan ${p.a}`}</b></button>
+                  {' '}raided the granary of{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.b)} title="show clan"><b>{p.b_name ?? `Clan ${p.b}`}</b></button>
+                  {' '}(−{p.loot} grain) at tick {ev.tick}
+                </li>
+              )
+            }
+            if (ev.type === 'banquet') {
+              return (
+                <li key={key} style={{ color: '#e3b341' }}>
+                  🍞 <button className="chronicle-name" onClick={() => onSelectClan(p.clan_id)} title="show clan"><b>{p.clan_name ?? `Clan ${p.clan_id}`}</b></button>
+                  {' '}feasted on their overflowing granary at tick {ev.tick}
+                </li>
+              )
+            }
+            if (ev.type === 'compost') {
+              const nm = p.personal_name ?? ev.caste
+              return (
+                <li key={key} style={{ color: '#3fb950' }}>
+                  ♻️ <b>{nm}</b> #{ev.entity_id} composted the fields of{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.clan_id)} title="show clan">{p.clan_name ?? `Clan ${p.clan_id}`}</button>
+                  {' '}at tick {ev.tick}
+                </li>
+              )
+            }
+            if (ev.type === 'hospitality') {
+              return (
+                <li key={key} style={{ color: '#79c0ff' }}>
+                  🍞 bread broken between{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.a)} title="show clan"><b>{p.a_name ?? `Clan ${p.a}`}</b></button>
+                  {' '}and{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.b)} title="show clan"><b>{p.b_name ?? `Clan ${p.b}`}</b></button>
+                  {' '}at tick {ev.tick}
+                </li>
+              )
+            }
+            if (ev.type === 'peace_envoy') {
+              return (
+                <li key={key} style={{ color: '#d2a8ff' }}>
+                  📜 an emissary of{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.a)} title="show clan"><b>{p.a_name ?? `Clan ${p.a}`}</b></button>
+                  {' '}delivered treaty terms to{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.b)} title="show clan"><b>{p.b_name ?? `Clan ${p.b}`}</b></button>
+                  {' '}at tick {ev.tick}
+                </li>
+              )
+            }
+            if (ev.type === 'market') {
+              return (
+                <li key={key} style={{ color: '#e3b341' }}>
+                  ⚖️ a neutral market opened between{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.a)} title="show clan"><b>{p.a_name ?? `Clan ${p.a}`}</b></button>
+                  {' '}and{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.b)} title="show clan"><b>{p.b_name ?? `Clan ${p.b}`}</b></button>
+                  {' '}at tick {ev.tick}
+                </li>
+              )
+            }
+            if (ev.type === 'caravan') {
+              return (
+                <li key={key} style={{ color: '#8b949e' }}>
+                  🐫 a trade caravan travelled between{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.a)} title="show clan"><b>{p.a_name ?? `Clan ${p.a}`}</b></button>
+                  {' '}and{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.b)} title="show clan"><b>{p.b_name ?? `Clan ${p.b}`}</b></button>
+                  {' '}at tick {ev.tick}
+                </li>
+              )
+            }
+            if (ev.type === 'omen') {
+              const nm = p.personal_name ?? ev.caste
+              return (
+                <li key={key} style={{ color: '#e3b341' }}>
+                  🔮 <b>{nm}</b> beheld an omen for{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.clan_id)} title="show clan">{p.clan_name ?? `Clan ${p.clan_id}`}</button>
+                  {': the '}{String(p.season)}{' '}approaches (tick {ev.tick})
                 </li>
               )
             }

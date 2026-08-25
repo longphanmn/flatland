@@ -154,6 +154,10 @@ NUMBER_LAWS: dict[str, list[tuple[str, str]]] = {
     "Food Decay": [
         ("food_lifespan_ticks", "Food lifespan (ticks)"),
     ],
+    "Agriculture": [
+        ("granary_capacity", "Granary capacity"),
+    ],
+    "Language & Diplomacy": [],
     "Theology": [
         ("tithe_rate", "Tithe rate"),
         ("temple_faith_cost", "Temple faith cost"),
@@ -229,6 +233,20 @@ BOOL_LAWS: dict[str, list[tuple[str, str]]] = {
     ],
     "Food Decay": [("food_decay_enabled", "Food decay")],
     "Theology": [("theology_enabled", "Theology of the Sphere")],
+    "Agriculture": [
+        ("agriculture_enabled", "Agriculture"),
+        ("granaries_enabled", "Granaries"),
+        ("soil_depletion_enabled", "Living soil"),
+        ("banquets_enabled", "Banquets"),
+    ],
+    "Language & Diplomacy": [
+        ("vocalizations_enabled", "Caste voices & rituals"),
+        ("scent_enabled", "Scent trails & markers"),
+        ("envoys_enabled", "Envoys & boundary stones"),
+        ("markets_enabled", "Markets & caravans"),
+        ("omens_enabled", "Season omens"),
+        ("dialect_drift_enabled", "Dialect drift"),
+    ],
 }
 
 GROUP_ORDER = list(NUMBER_LAWS.keys())

@@ -180,6 +180,13 @@ def test_flocking_is_double_edged():
         disease_enabled=True, disease_rate=0.3, disease_radius=4.0, recovery_rate=0.0, disease_outbreak_rate=0.0,
         energy_decay_per_tick=0.02,
         knowledge_enabled=False, help_call_enabled=False,  # §X avoidance would change these trajectories
+        # §AM/§AN systems off — orthogonal to flocking/disease trajectories and
+        # their extra rng draws would shift this seed-pinned scenario
+        agriculture_enabled=False, granaries_enabled=False,
+        soil_depletion_enabled=False, banquets_enabled=False,
+        vocalizations_enabled=False, scent_enabled=False,
+        envoys_enabled=False, markets_enabled=False,
+        omens_enabled=False, dialect_drift_enabled=False,
     )
     # Two worlds: one flocking, one not — same seed, same initial positions
     def world(flock: bool):

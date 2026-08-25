@@ -103,6 +103,21 @@ class Config:
     food_decay_enabled: bool = True  # mature plants wither, fertilise, vanish
     food_lifespan_ticks: int = 9000  # ticks a mature plant lives (× variant mult)
 
+    # Agriculture (§AM) — sowing, farm plots, granaries, soil & feasts
+    agriculture_enabled: bool = True  # seeds, farm plots, tending & irrigation furrows
+    granaries_enabled: bool = True  # clan granaries store grain & cured rations
+    granary_capacity: float = 400.0  # units one clan granary holds
+    soil_depletion_enabled: bool = True  # monocropping exhausts the living soil
+    banquets_enabled: bool = True  # overflowing granaries feed a clan feast
+
+    # Communication, language & diplomacy (§AN)
+    vocalizations_enabled: bool = True  # caste chants, peace-hums, war-chirps & chimes
+    scent_enabled: bool = True  # forager scent trails and danger scent markers
+    envoys_enabled: bool = True  # peace emissaries & boundary stones
+    markets_enabled: bool = True  # neutral trading posts & travelling caravans
+    omens_enabled: bool = True  # priests foresee the turning of the season
+    dialect_drift_enabled: bool = True  # isolated clans drift apart in speech
+
     # Unified Theology (§AP) — the 8 Sacred Avatars of the Sphere, shrines,
     # dawn & dusk tithes, seasonal miracles, law resonance and temples
     theology_enabled: bool = True  # shrines/tithes/miracles/sermons/synods

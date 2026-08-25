@@ -81,6 +81,7 @@ export function drawBatchedEntities(
   const herbPlants: EntityState[] = []
   const mushroomPlants: EntityState[] = []
   const poisonPlants: EntityState[] = []
+  const cultivatedPlants: EntityState[] = []
   const corpses: EntityState[] = []
   const houses: EntityState[] = []
   const women: EntityState[] = []
@@ -99,6 +100,10 @@ export function drawBatchedEntities(
     if (!visible(e.x, e.y, rad)) continue
 
     if (e.kind === 'food') {
+      if ((e as any).cultivated) {
+        cultivatedPlants.push(e) // §AM sown fields read as wheat-gold
+        continue
+      }
       const v = e.variant ?? 'grass'
       if (v === 'grain') grainPlants.push(e)
       else if (v === 'berry') berryPlants.push(e)
@@ -223,6 +228,7 @@ export function drawBatchedEntities(
   drawPlantBatch(herbPlants, '#2ea043')
   drawPlantBatch(mushroomPlants, '#a67c52')
   drawPlantBatch(poisonPlants, '#8957e5')
+  drawPlantBatch(cultivatedPlants, '#d8c341')
 
 
   if (poisonPlants.length > 0) {
@@ -624,7 +630,14 @@ export function renderWorldFrame(
       help: '#ffd166',
       knowledge: '#79c0ff',
       grief: '#8b949e',
-      chime: '#e3b341', // §AP divine law resonance
+      chime: '#e3b341', // §AP divine law resonance + §AN boundary stones
+      chant: '#b392f0', // §AN priest liturgy
+      hum: '#ff9ecd',   // §AN woman's peace-hum
+      war: '#ff7b72',   // §AN soldier war-chirp
+      trail: '#d2a8ff', // §AN forager scent trail
+      danger_scent: '#6e7681', // §AN death-site marker
+      courier: '#e3b341',      // §AN tribute courier
+      omen: '#e3b341',         // §AN season omen
     }
     for (const sg of state.signals) {
       if (!visible0(sg.x, sg.y, 5)) continue
@@ -659,6 +672,42 @@ export function renderWorldFrame(
   const vB = (ch - cam.oy) / cam.scale + pad
   const visible = (x: number, y: number, r = pad) =>
     x + r >= vL && x - r <= vR && y + r >= vT && y - r <= vB
+
+  // §AN boundary stones — clan-colored diamonds on the border
+  if (state.boundary_stones) {
+    for (const st of state.boundary_stones) {
+      if (!visible(st.x, st.y, 2)) continue
+      const color = state.clans?.[String(st.clan_id)]?.color ?? '#8b949e'
+      ctx.globalAlpha = 0.9
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.moveTo(st.x, st.y - 1.2)
+      ctx.lineTo(st.x + 1.2, st.y)
+      ctx.lineTo(st.x, st.y + 1.2)
+      ctx.lineTo(st.x - 1.2, st.y)
+      ctx.closePath()
+      ctx.fill()
+      ctx.globalAlpha = 1
+    }
+  }
+
+  // §AN neutral trading posts
+  if (state.markets) {
+    for (const m of state.markets) {
+      if (!visible(m.x, m.y, 2)) continue
+      ctx.globalAlpha = 0.85
+      ctx.strokeStyle = '#e3b341'
+      ctx.lineWidth = 0.4
+      ctx.beginPath()
+      ctx.arc(m.x, m.y, 1.6, 0, TAU)
+      ctx.stroke()
+      ctx.fillStyle = '#e3b341'
+      ctx.beginPath()
+      ctx.arc(m.x, m.y, 0.45, 0, TAU)
+      ctx.fill()
+      ctx.globalAlpha = 1
+    }
+  }
 
   // Fires
   if (state.fires) {

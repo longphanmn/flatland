@@ -181,6 +181,14 @@ class Creature(Entity):
     wound_severity: int = 0  # 0 none | 1 wound | 2 grievous (no combat)
     heal_bonus_amount: float = 0.0  # extra health per tick from rich food
     heal_bonus_ticks: int = 0  # countdown for the bonus above
+    # §AM agriculture: seed pouches gathered from wild harvests, sown at farm plots
+    seeds: int = 0
+    # §AN voice & ritual: chant-calm window, omen preparation, greeting pacing,
+    # and an active diplomatic mission (emissary)
+    calm_ticks: int = 0
+    prepared_ticks: int = 0
+    greet_cooldown: int = 0
+    mission: dict | None = None
 
     @property
     def max_health(self) -> float:
@@ -239,6 +247,8 @@ class Food(Entity):
     variant: str = "grass"  # grass | grain | berry | medicinal_herb | mushroom | poisonous
     # poisonous plants sicken; mushrooms are decomposers; herbs cure; grain is calorie-dense
     mature_ticks: int = 0  # §AE: ticks lived since reaching maturity (decay clock)
+    cultivated: bool = False  # §AM: sown by farmers — grows faster, feeds better
+    irrigated: bool = False  # §AM: furrow-watered — rides out drought, frost & storm
 
 
 
@@ -265,3 +275,4 @@ class House(Entity):
     is_ruin: bool = False  # crumbled — no shelter, visually distinct
     takeover_tick: int = -1  # §AT-3: tick of the last hostile takeover (render flash)
     material: str = "wood"  # §AQ PH-1: straw | wood | stone — sets the insulation
+    murals: int = 0  # §AN: painted chronicle of the clan's great days

@@ -140,8 +140,12 @@ def test_corpse_decay_boosts_nearby_plant_growth():
         day_step(s)
     assert not any(e.kind == "corpse" for e in s.world.entities.values())
     grown = NUTRIENT_BOOST * s.config.nutrient_cycle_rate
-    assert near.growth == pytest.approx(0.2 + 3 * s.config.plant_growth_rate + grown)  # fertilised
-    assert far.growth == pytest.approx(0.2 + 3 * s.config.plant_growth_rate)  # too far to feel it
+    # §AM: the dead also enrich the soil grid, so the near plant grows at
+    # least bare sun+water plus the direct nutrient gift; the far one,
+    # whose own cell only depletes as it grows, never beats bare growth.
+    assert near.growth >= 0.2 + 3 * s.config.plant_growth_rate + grown  # fertilised
+    assert far.growth <= 0.2 + 3 * s.config.plant_growth_rate  # too far to feel it
+    assert near.growth > far.growth
 
 
 def test_winter_dieback_removes_youngest_first():

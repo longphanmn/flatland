@@ -15,7 +15,7 @@ MAX_LOG = 400
 # blooms and withers churn by the tick, ruins are just old age for houses.
 HIDDEN_EVENTS = {"bloom", "wither", "ruin"}
 
-CATEGORIES = ["all", "birth", "death", "war", "politics", "settlement", "faith"]
+CATEGORIES = ["all", "birth", "death", "war", "politics", "settlement", "faith", "trade"]
 
 EVENT_CATEGORIES: dict[str, set[str]] = {
     "birth": {"birth"},
@@ -28,7 +28,10 @@ EVENT_CATEGORIES: dict[str, set[str]] = {
     },
     "settlement": {"settlement", "conquest", "takeover", "culture", "disaster", "fire", "outbreak", "recovery"},
     # §AP unified theology
-    "faith": {"miracle", "sermon", "synod", "temple", "epiphany", "resonance"},
+    "faith": {"miracle", "sermon", "synod", "temple", "epiphany", "resonance", "omen"},
+    # §AM agriculture + §AN trade & diplomacy
+    "trade": {"raid", "hospitality", "peace_envoy", "market", "caravan",
+              "banquet", "compost"},
 }
 
 
@@ -245,6 +248,22 @@ def format_event(ev: HistoryEvent, clans: dict | None = None) -> Text:
         laws = p.get("laws") or []
         line.append("resonance: shrines chime for ", style=color)
         line.append(", ".join(map(str, laws[:3])) or "the laws")
+    elif t == "raid":
+        line.append(f"raid: {p.get('a_name')} hauled {p.get('loot')} grain from {p.get('b_name')}", style="bold " + color)
+    elif t == "banquet":
+        line.append(f"banquet: {p.get('clan_name')} feasts on the overflowing granary", style=color)
+    elif t == "compost":
+        line.append(f"compost: #{ev.entity_id} enriched the fields", style=color)
+    elif t == "hospitality":
+        line.append(f"hospitality: bread broken between {p.get('a_name')} and {p.get('b_name')}", style=color)
+    elif t == "peace_envoy":
+        line.append(f"📜 envoy: {p.get('a_name')} delivered terms to {p.get('b_name')}", style=color)
+    elif t == "market":
+        line.append(f"market: neutral post between {p.get('a_name')} and {p.get('b_name')}", style=color)
+    elif t == "caravan":
+        line.append(f"🐫 caravan: {p.get('a_name')} ⇄ {p.get('b_name')}", style=color)
+    elif t == "omen":
+        line.append(f"omen: a priest foresees the {p.get('season')} for {p.get('clan_name')}", style="bold " + color)
     elif t == "outbreak":
         line.append(f"{mark} outbreak", style=color)
     elif t == "recovery":

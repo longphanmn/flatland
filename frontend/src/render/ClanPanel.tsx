@@ -27,6 +27,10 @@ interface ClanInfo {
   knowledge?: ClanKnowledge | null
   coalition_id?: number | null
   larder?: number
+  granary?: number
+  harvest_total?: number
+  feast?: boolean
+  dialect?: number
   tribute_to?: number | null
   faith?: number
   shrine_level?: number
@@ -116,6 +120,11 @@ export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelect
                 🏺 larder {Math.round(c.larder)}
               </div>
             )}
+            {typeof c.granary === 'number' && (c.granary > 0 || c.feast) ? (
+              <div className="chip" title="§AM Granary — dry roofed grain & cured rations; sated harvests fill it, famine draws it, feasts burn a quarter">
+                🌾 granary {Math.round(c.granary)}{c.feast ? ' · 🍞 feasting' : ''}
+              </div>
+            ) : null}
             {(typeof c.faith === 'number' && c.faith > 0) || (c.shrine_level ?? 0) >= 1 ? (
               <div className="chip" title="§AP Theology — the clan faith pool filled by dawn & dusk tithes; the shrine beside the main house mends the faithful, and high faith raises a Temple of the Sphere">
                 {(c.shrine_level ?? 0) >= 2 ? '⛪ temple' : '🕯️ shrine'}{typeof c.faith === 'number' ? ` · ⛲ faith ${Math.round(c.faith)}` : ''}

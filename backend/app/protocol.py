@@ -37,6 +37,8 @@ class EntityState(BaseModel):
     growth: Optional[float] = None  # plants: 0..1 maturity (renderer scales size)
     variant: Optional[Literal["grass", "grain", "berry", "medicinal_herb", "mushroom", "poisonous"]] = None
     withering: Optional[bool] = None  # §AE: mature plant past its wilt threshold
+    cultivated: Optional[bool] = None  # §AM: sown crop — grows faster, feeds better
+    irrigated: Optional[bool] = None  # §AM: furrow-watered crop
 
     size: Optional[float] = None
     status: Optional[Literal["", "hungry", "starving"]] = None
@@ -75,6 +77,7 @@ class EntityState(BaseModel):
     abandoned_ticks: Optional[int] = None
     takeover_age: Optional[int] = None  # §AT-3: ticks since last hostile takeover
     material: Optional[Literal["straw", "wood", "stone"]] = None  # §AQ PH-1
+    murals: Optional[int] = None  # §AN: painted chronicle inscribed on the walls
 
 
 class StateMessage(BaseModel):
@@ -101,6 +104,8 @@ class StateMessage(BaseModel):
     events: list["HistoryEvent"] = Field(default_factory=list)
     signals: list[dict[str, Any]] = Field(default_factory=list)
     fires: list[dict[str, Any]] = Field(default_factory=list)
+    boundary_stones: list[dict[str, Any]] = Field(default_factory=list)  # §AN
+    markets: list[dict[str, Any]] = Field(default_factory=list)  # §AN trading posts
     wind: dict[str, float] = Field(default_factory=dict)  # §AQ PH-2 {angle,speed}
     age: Optional[str] = None
     age_tick: int = 0
@@ -129,6 +134,8 @@ class DeltaStateMessage(BaseModel):
     events: list["HistoryEvent"] = Field(default_factory=list)
     signals: list[dict[str, Any]] = Field(default_factory=list)
     fires: list[dict[str, Any]] = Field(default_factory=list)
+    boundary_stones: list[dict[str, Any]] = Field(default_factory=list)  # §AN
+    markets: list[dict[str, Any]] = Field(default_factory=list)  # §AN trading posts
     wind: dict[str, float] = Field(default_factory=dict)  # §AQ PH-2 {angle,speed}
     age: Optional[str] = None
     age_tick: int = 0
@@ -146,6 +153,8 @@ class HistoryEvent(BaseModel):
         "peace", "tribute", "betrayal", "defection", "cannibalism", "exile",
         "wither", "takeover",
         "miracle", "sermon", "synod", "temple", "epiphany", "resonance",
+        "compost", "banquet", "raid", "hospitality",
+        "peace_envoy", "market", "caravan", "omen",
     ] = ("death")
     tick: int
     entity_id: int
@@ -341,6 +350,21 @@ class GodLaws(BaseModel):
     theology_enabled: Optional[bool] = None
     tithe_rate: Optional[float] = Field(None, ge=0, le=1)
     temple_faith_cost: Optional[float] = Field(None, ge=0, le=100000)
+
+    # Agriculture (§AM) — sowing, farm plots, granaries, soil & feasts
+    agriculture_enabled: Optional[bool] = None
+    granaries_enabled: Optional[bool] = None
+    granary_capacity: Optional[float] = Field(None, ge=0, le=100000)
+    soil_depletion_enabled: Optional[bool] = None
+    banquets_enabled: Optional[bool] = None
+
+    # Communication, language & diplomacy (§AN)
+    vocalizations_enabled: Optional[bool] = None
+    scent_enabled: Optional[bool] = None
+    envoys_enabled: Optional[bool] = None
+    markets_enabled: Optional[bool] = None
+    omens_enabled: Optional[bool] = None
+    dialect_drift_enabled: Optional[bool] = None
 
     # T: soften winter
     winter_food_mult: Optional[float] = Field(None, ge=0.1, le=2)

@@ -156,4 +156,62 @@ In Flatland, God sets **laws**, never touches individual lives. Every law has a 
 
 ---
 
+## 10. Unified Theology of the Sphere
+
+Each clan bears one of the **8 Sacred Avatars** — 2D projections of the One True God, each with a distinct divine aspect:
+
+| Avatar | Aspect | Blessing |
+|---|---|---|
+| ⭕ Radiant Circle | Abundance | +30% harvest, +20% fertility |
+| ⚡ Celestial Strike | Wrath & Justice | +25% warrior damage |
+| 👁️ All-Seeing Vertex | Omniscience | +40% sight, nocturnal clarity |
+| 🛡️ Indomitable Monolith | Permanence | −30% damage, resists the cold |
+| 🌿 Sacred Spiral | Renewal | herbs heal ×2, faster plague recovery, composts the dead |
+| ⚖️ Cosmic Scales | Equilibrium | reliable peace; keeps the law even while starving |
+| 🌀 Dimensional Rift | Ascent | rapid Isosceles promotion, adaptive mutations, elder lore |
+| 🕯️ Eternal Hearth | Sanctuary | calm through the night |
+
+Settled clans consecrate a **shrine** beside their main house; its aura mends the faithful while faith holds out.
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `theology_enabled` | Boolean | **true** | Master switch for shrines, tithes, miracles, law resonance, sermons and synods. |
+| `tithe_rate` | 0–1.0 | **0.04** | Fraction of max energy offered at the shrine at dawn & dusk (priests tithe double); fills the clan faith pool. |
+| `temple_faith_cost` | 0–100000 | **400.0** | Faith spent to raise the shrine into a glowing Temple whose blessing aura extends across all territory. |
+
+Faith overflowing at the turn of a season works a **miracle** (food blooms around the shrine, the flock is mended). When God adjusts any law, every shrine emits harmonic **chimes** and priests deliver doctrinal **sermons** interpreting the change per their avatar's dogma. During crisis ages (Ice, Plague) priests convene in the **Great Synod**, warming relations between all clans under a sacred truce; and once in an age an elder priest may receive the **3D Epiphany** — beholding the true nature of the Sphere.
+
+---
+
+## 11. Food & Agriculture Ecosystem
+
+Farmers glean **seed** from wild harvests and sow **cultivated plots** near the settlement — sown crops grow $2\times$ faster and yield $2.5\times$ more than wild weeds. Skilled hands weed toxic sprouts, tend beds against premature withering, and dig **irrigation furrows** beside fertile groves (frost- and storm-proof). Sated grain & berry harvests are laid by in a dry roofed **granary**; famine draws it down, an overflowing store feeds a **banquet** (morale, bonds, +30% fertility), starving war parties **raid** rival stores, and allied clans barter at neutral **markets**. Monocropping exhausts the living **soil grid**; corpses, withered plants, wildfire ash and farmer **compost** restore it.
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `agriculture_enabled` | Boolean | **true** | Seeds, farm plots, tending, weeding & irrigation furrows. |
+| `granaries_enabled` | Boolean | **true** | Clan granaries storing grain & cured rations against winter. |
+| `granary_capacity` | 0–100000 | **400.0** | Units one clan granary holds (feasts fire at ≥80% fill). |
+| `soil_depletion_enabled` | Boolean | **true** | The soil fertility grid: monocropping exhausts it, death refills it. |
+| `banquets_enabled` | Boolean | **true** | Overflowing granaries feed a feast — morale, bonds and babies. |
+
+Caste gastronomy is Nature's table, not a law: priests and nobles demand refined grain and fruit, soldiers crave high-protein rations, and bread broken with strangers buys mutual non-aggression (**sacred hospitality**).
+
+---
+
+## 12. Communication, Language & Diplomacy
+
+Every caste has a voice: the priest's sonorous **liturgy** calms panic; moving women hum the law-mandated **peace-hum** that parts crowds; engaging soldiers blow **war-chirps** that rally allies onto the flagged target; artisans chime **greeting gifts** from their baskets; touching vertices in peace builds trust, and an elder's blessing touch passes skill to the young. Foragers drop **scent trails** home from rich finds; violent deaths and ruins leave **danger scent** the young learn to shun. Peaceful leaders commission banner-carrying **emissaries** (+15 relations on delivery); clans raise **boundary stones** that ring warning chimes at trespassers; tribute rides to suzerain granaries in **couriers' panniers**; allied neighbours found **markets** at shared borders while peddler **caravans** carry goods and news between distant settlements; isolated clans drift apart in **dialect** (strangers understand each other less); and at each season turn a shrine priest proclaims the coming season — worshippers who heed the **omen** head home prepared.
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `vocalizations_enabled` | Boolean | **true** | Caste chants, peace-hums, war-chirps, chimes & tactile greetings. |
+| `scent_enabled` | Boolean | **true** | Forager scent trails home + danger scent markers at violent ends and ruins. |
+| `envoys_enabled` | Boolean | **true** | Peace emissaries to rival houses + boundary stones ringing at trespass. |
+| `markets_enabled` | Boolean | **true** | Neutral trading posts between allies + travelling caravans. |
+| `omens_enabled` | Boolean | **true** | Priests proclaim the turning season; hearers prepare. |
+| `dialect_drift_enabled` | Boolean | **true** | Isolated clans drift apart in speech; cross-clan signals fade with distance. |
+
+---
+
 *Maintained and developed by **Long Phan** ([long@minhnhan.in](mailto:long@minhnhan.in)) · [https://minhnhan.in](https://minhnhan.in) · World [https://world.minhnhan.in](https://world.minhnhan.in)*

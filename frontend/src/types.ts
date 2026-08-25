@@ -56,9 +56,12 @@ export interface EntityState {
   abandoned_ticks?: number
   takeover_age?: number | null
   material?: 'straw' | 'wood' | 'stone'
+  murals?: number
   growth?: number
   variant?: 'grass' | 'grain' | 'berry' | 'medicinal_herb' | 'mushroom' | 'poisonous'
   withering?: boolean
+  cultivated?: boolean
+  irrigated?: boolean
 
   sex?: 'male' | 'female'
   mother_id?: number
@@ -84,6 +87,10 @@ export interface ClanInfo {
   main_house_id?: number | null
   coalition_id?: number | null
   larder?: number
+  granary?: number
+  harvest_total?: number
+  feast?: boolean
+  dialect?: number
   tribute_to?: number | null
   faith?: number
   shrine_level?: number
@@ -115,6 +122,8 @@ export interface StateMessage {
   events: HistoryEvent[]
   signals: { x: number; y: number; kind: 'food' | 'alarm'; sender: number; clan_id: number | null; ttl: number }[]
   fires: { x: number; y: number; r: number; ttl: number }[]
+  boundary_stones?: { x: number; y: number; clan_id: number }[]
+  markets?: { x: number; y: number; a: number; b: number }[]
   wind?: { angle: number; speed: number }
   age: string | null
   age_tick: number
@@ -143,6 +152,8 @@ export interface DeltaStateMessage {
   events: HistoryEvent[]
   signals: { x: number; y: number; kind: 'food' | 'alarm'; sender: number; clan_id: number | null; ttl: number }[]
   fires: { x: number; y: number; r: number; ttl: number }[]
+  boundary_stones?: { x: number; y: number; clan_id: number }[]
+  markets?: { x: number; y: number; a: number; b: number }[]
   wind?: { angle: number; speed: number }
   age: string | null
   age_tick: number
@@ -157,6 +168,8 @@ export interface HistoryEvent {
   type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war' | 'ruin' | 'settlement' | 'succession' | 'schism' | 'fire' | 'disaster' | 'conquest' | 'culture' | 'takeover' | 'coalition_formed' | 'coalition_joined' | 'coalition_dissolved' | 'peace' | 'tribute' | 'betrayal' | 'defection' | 'cannibalism' | 'exile' | 'wither'
     | 'coalition_formed' | 'coalition_joined' | 'coalition_dissolved' | 'peace' | 'tribute' | 'betrayal' | 'defection' | 'cannibalism' | 'exile' | 'wither'
     | 'miracle' | 'sermon' | 'synod' | 'temple' | 'epiphany' | 'resonance'
+    | 'compost' | 'banquet' | 'raid' | 'hospitality'
+    | 'peace_envoy' | 'market' | 'caravan' | 'omen'
   tick: number
   entity_id: number
   caste?: string | null
@@ -389,6 +402,21 @@ export interface GodLaws {
   theology_enabled?: boolean
   tithe_rate?: number
   temple_faith_cost?: number
+
+  // Agriculture (§AM) — sowing, farm plots, granaries, soil & feasts
+  agriculture_enabled?: boolean
+  granaries_enabled?: boolean
+  granary_capacity?: number
+  soil_depletion_enabled?: boolean
+  banquets_enabled?: boolean
+
+  // Communication, language & diplomacy (§AN)
+  vocalizations_enabled?: boolean
+  scent_enabled?: boolean
+  envoys_enabled?: boolean
+  markets_enabled?: boolean
+  omens_enabled?: boolean
+  dialect_drift_enabled?: boolean
 
   door_clearance?: number
   house_min_size?: number

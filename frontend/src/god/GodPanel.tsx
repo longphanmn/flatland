@@ -147,6 +147,8 @@ const NUMBER_LAWS: LawSpec[] = [
   // Unified Theology — shrines, tithes & faith (§AP)
   { key: 'tithe_rate', label: 'Tithe rate', min: 0, max: 0.5, step: 0.01, group: 'Theology', gate: 'theology_enabled' },
   { key: 'temple_faith_cost', label: 'Temple faith cost', min: 50, max: 5000, step: 50, group: 'Theology', gate: 'theology_enabled' },
+  // Agriculture — sowing, granaries & the living soil (§AM)
+  { key: 'granary_capacity', label: 'Granary capacity', min: 0, max: 2000, step: 25, group: 'Agriculture', gate: 'granaries_enabled' },
   // Bodies & Houses — geometry of the flat world
   { key: 'door_clearance', label: 'Door clearance ×', min: 1, max: 4, step: 0.1, group: 'Bodies & Houses' },
   { key: 'house_min_size', label: 'House min size', min: 4, max: 30, step: 1, group: 'Bodies & Houses' },
@@ -173,6 +175,7 @@ const GROUP_ORDER = [
   'Clan',
   'Communication',
   'Communication II',
+  'Language & Diplomacy',
   'Rebellion',
   'Interaction',
   'Predation',
@@ -180,6 +183,7 @@ const GROUP_ORDER = [
   'Politics',
   'Desperation',
   'Food Decay',
+  'Agriculture',
   'Theology',
   'Bodies & Houses',
 ]
@@ -219,6 +223,16 @@ const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
   exile_on_kin_eat: true,
   food_decay_enabled: true,
   theology_enabled: true,
+  agriculture_enabled: true,
+  granaries_enabled: true,
+  soil_depletion_enabled: true,
+  banquets_enabled: true,
+  vocalizations_enabled: true,
+  scent_enabled: true,
+  envoys_enabled: true,
+  markets_enabled: true,
+  omens_enabled: true,
+  dialect_drift_enabled: true,
 }
 
 const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
@@ -287,6 +301,17 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   cannibalism_hunger_ratio: 'only creatures below this energy fraction may eat the living (0.15)',
   cannibalism_energy: 'energy gained per desperate kill (45) — the victim leaves a partial corpse',
   kin_stigma: 'relation hit between a kin-eater\'s outcast band and their former clan (40) — they become rivals',
+  granary_capacity: 'units one clan granary holds (400) — sated harvesters lay grain & cured berries by; famine and feasts draw it down',
+  agriculture_enabled: 'farmers glean seed from wild harvests, sow cultivated plots near the settlement (2× growth, 2.5× yield), weed toxic sprouts, tend beds against withering, and dig irrigation furrows near fertile groves',
+  granaries_enabled: 'a dry roofed store at each settlement: sated grain/berry harvests are laid by (35%), starving members withdraw, raids & markets & caravans move it',
+  soil_depletion_enabled: 'monocropping exhausts the living soil grid; corpses, ash and farmer compost restore it',
+  banquets_enabled: 'a granary at ≥80% feeds a clan feast: morale, bonds and a fertility boost while the mead lasts',
+  vocalizations_enabled: 'every caste has a voice: priests chant away panic, women hum peace corridors, soldiers chirp rally signals at enemies, artisans chime gifts from baskets, touching vertices in peace builds trust',
+  scent_enabled: 'foragers drop scent trails home from rich finds; violent deaths and ruins leave danger scent the young learn to shun',
+  envoys_enabled: 'peaceful leaders commission banner-carrying emissaries to rival houses (+15 relations on delivery); clans raise boundary stones that ring warning chimes at trespassers',
+  markets_enabled: 'allied neighbours found neutral trading posts at shared borders and barter surplus every few minutes; peddler caravans carry goods and news between distant settlements',
+  omens_enabled: 'at each season turn a shrine priest proclaims what comes; worshippers who hear it drift home prepared',
+  dialect_drift_enabled: 'isolated clans drift apart in speech — strangers understand each other less the further their dialects split; allies converge on a shared tongue',
 }
 
 function Switch({
@@ -814,6 +839,24 @@ export default function GodPanel({ open, onClose }: Props) {
                 )}
                 {group === 'Food Decay' && (
                   <ToggleRow k="food_decay_enabled" label="Food decay" title="mature plants wither after their lifespan (× variant pace), fertilise nearby soil, then vanish — nothing lasts forever" />
+                )}
+                {group === 'Agriculture' && (
+                  <>
+                    <ToggleRow k="agriculture_enabled" label="Agriculture" title="seed pouches from wild harvests, cultivated farm plots near the settlement (2× growth, 2.5× yield), weeding & tending, irrigation furrows by fertile groves" />
+                    <ToggleRow k="granaries_enabled" label="Granaries" title="a dry roofed store: sated harvesters lay grain & cured berries by (35%), starving members withdraw, feasts burn it" hideIfOff="agriculture_enabled" />
+                    <ToggleRow k="soil_depletion_enabled" label="Living soil" title="monocropping exhausts the soil grid and slows regrowth; corpses, withered plants and farmer compost restore it" hideIfOff="agriculture_enabled" />
+                    <ToggleRow k="banquets_enabled" label="Banquets" title="granary ≥80% feeds a feast: energy, cheer, warmer relations and +30% fertility while it lasts" hideIfOff="granaries_enabled" />
+                  </>
+                )}
+                {group === 'Language & Diplomacy' && (
+                  <>
+                    <ToggleRow k="vocalizations_enabled" label="Caste voices & rituals" title="priest liturgy calms panic, women's peace-hum parts crowds, soldiers' war-chirps rally allies, artisan chimes gift basket food, touching vertices builds trust" />
+                    <ToggleRow k="scent_enabled" label="Scent trails & markers" title="foragers drop breadcrumb trails home from rich finds; violent deaths and ruins leave danger scent the young learn to avoid" />
+                    <ToggleRow k="envoys_enabled" label="Envoys & boundary stones" title="peaceful leaders send banner-carrying emissaries to rival houses; clans raise boundary stones that ring warning chimes at trespassers" />
+                    <ToggleRow k="markets_enabled" label="Markets & caravans" title="allied neighbours found neutral trading posts at shared borders and barter surplus; peddler caravans carry goods and news between distant settlements" />
+                    <ToggleRow k="omens_enabled" label="Season omens" title="at each season turn a shrine priest proclaims what comes; worshippers who hear it head home prepared" hideIfOff="theology_enabled" />
+                    <ToggleRow k="dialect_drift_enabled" label="Dialect drift" title="isolated clans drift apart in speech; strangers understand each other less the further dialects split, allies converge on a shared tongue" />
+                  </>
                 )}
                 {group === 'Theology' && (
                   <>

@@ -1217,7 +1217,7 @@ Next-generation behavioral intelligence roadmap advancing individual cognitive d
 
 ---
 
-## AM. Food & Agriculture Ecosystem Roadmap  [P1]
+## AM. Food & Agriculture Ecosystem Roadmap  [P1] — ✅ implemented
 Next-generation botanical, agricultural, and culinary simulation advancing crop diversity, intentional clan farming, granaries, soil nutrient dynamics, and caste food culture.
 
 ### Phase A: Crop Diversity & Functional Nutrition  [P1] — ✅ implemented
@@ -1225,93 +1225,88 @@ Next-generation botanical, agricultural, and culinary simulation advancing crop 
   - [x] [P1] Expand `Food.variant` with `grain` (dense calories, slow decay) and `medicinal_herb` (infection cure & healing).
   - [x] [P1] Configure variant-specific growth speeds, seasonal growth multipliers, and lifespan timers in `backend/app/simulation.py`.
 - **Task A.2: Functional Dietary Effects & Nutritional Metabolics**
-  - [x] [P1] Implement distinct physiological effects upon consumption:
-    - *Grain*: Yields $+45$ energy baseline with high storage stability and craft emote.
-    - *Berry*: Yields $+48$ energy and $+15\%$ movement speed boost with cheer emote.
-    - *Medicinal Herb*: Yields $+18$ energy, heals $+30\text{ HP}$, cures active infections, and grants heal emote.
-    - *Mushroom*: Yields $+24$ energy and decomposer nutrient recycling.
+  - [x] [P1] Distinct effects on consumption: grain +45 & craft emote · berry +48 & speed boost · herb +18/+30HP cures infection · mushroom recycles.
 - **Task A.3: Foraging Preference & Health-Based Dietary Selection**
-  - [x] [P1] Injured or infected creatures prioritize seeking `medicinal_herb` over standard grass (0.2x effective distance weighting).
-  - [x] [P1] Starving creatures prioritize high-calorie `grain` (0.4x effective distance weighting).
+  - [x] [P1] Injured/infected creatures weight herbs ×0.2, starving weight grain ×0.4 (`simulation.py` perception loop).
 
-
-### Phase B: Clan Agriculture, Sowing & Farm Plots  [P2]
-- **Task B.1: Seed Harvesting & Sowing Mechanics**
-  - [ ] [P2] High-farming creatures gather seed pouches from mature crops and sow them in farm plots near clan houses.
-  - [ ] [P2] Cultivated crops grow $2.0\times$ faster and yield $2.5\times$ more energy than wild weeds.
+### Phase B: Clan Agriculture, Sowing & Farm Plots  [P2] — ✅ implemented
+- **Task B.1: Seed Harvesting & Sowing Mechanics** (`simulation.py` `_ensure_farm_plots`/`_sow_and_tend`, seed gleaning at harvest)
+  - [x] [P2] Skilled farmers (farming ≥6) glean seed from wild mature harvests (≤3 pouches) and sow empty clan plots ringed round the main house; plots by fertile groves are furrow-irrigated.
+  - [x] [P2] Cultivated crops grow 2.0× faster (`CULTIVATED_GROWTH_MULT`) and yield 2.5× more energy (`CULTIVATED_YIELD_MULT`).
 - **Task B.2: Crop Tending & Weeding**
-  - [ ] [P2] Farmers tend nearby crops, eliminating toxic sprouts and preventing premature withering.
-  - [ ] [P2] Irrigation furrows constructed near water groves to maintain soil moisture during summer droughts.
+  - [x] [P2] Farmers weed toxic sprouts within reach and roll back the wither clock on tended beds (`TEND_REGRESS_TICKS`).
+  - [x] [P2] Irrigated plots ride out summer drought, winter frost and storms (`IRRIGATED_GROWTH_MULT`; frost/storm blocks skip irrigated crops).
 
-### Phase C: Granaries, Food Preservation & Winter Spoilage  [P2]
-- **Task C.1: Settlement Granaries & Physical Storage**
-  - [ ] [P2] Physical granaries in clan houses storing harvested grains and cured rations securely from rain and wild beasts.
-  - [ ] [P2] Granary visual fill levels and historical harvest capacity tracking.
+### Phase C: Granaries, Food Preservation & Winter Spoilage  [P2] — ✅ implemented
+- **Task C.1: Settlement Granaries & Physical Storage** (`clan["granary"]`, deposit at harvest, withdrawal in `_update_larders`)
+  - [x] [P2] Sated grain/berry harvests lay 35% by in a dry roofed store safe from rain and beasts; starving members withdraw 3/tick.
+  - [x] [P2] `/api/clans` exposes `granary` fill + `harvest_total`; ClanPanel 🌾 chip (🍞 feasting when live).
 - **Task C.2: Food Preservation & Spoilage Dynamics**
-  - [ ] [P2] Sun-drying and curing techniques to convert perishable berries into long-lasting field rations.
-  - [ ] [P2] Winter frost spoilage for unharvested/exposed field crops.
+  - [x] [P2] Cured rations: berry harvests deposit into the granary like grain — preserved stores never rot.
+  - [x] [P2] Winter frost bites exposed wild crops (`WINTER_FROST_CHANCE`); cultivated beds & irrigated furrows are immune.
 
-### Phase D: Dynamic Soil Ecology, Composting & Crop Rotation  [P2]
-- **Task D.1: Soil Nutrient Depletion Grid**
-  - [ ] [P2] Dynamic soil fertility grid where repeated monocropping exhausts local nitrogen/nutrients.
+### Phase D: Dynamic Soil Ecology, Composting & Crop Rotation  [P2] — ✅ implemented
+- **Task D.1: Soil Nutrient Depletion Grid** (`soil_grid`, `_deplete_soil`/`_soil_at` in `_update_plants`)
+  - [x] [P2] Coarse fertility grid: every point of growth draws its cell down (growth scaled ×0.5–1.4 by local soil).
 - **Task D.2: Composting, Ash & Corpse Decomposition**
-  - [ ] [P2] Corpse decomposition and wildfire ash replenish soil fertility ($+0.4$ nutrient boost).
-  - [ ] [P2] Farmers build compost heaps near houses to revitalize depleted soil.
+  - [x] [P2] Corpse decay, wildfire ash and withered plants refill the grid (`_release_nutrients` → `_fertilize_soil`); master-farmer compost heaps add +0.4 near the settlement (`compost` event).
+  - [x] [P2] Farmers build compost heaps near houses on a long cadence to revitalize depleted soil.
 
-### Phase E: Food Culture, Feasting & Breadbasket Geopolitics  [P2]
-- **Task E.1: Caste Gastronomy & Dietary Taboos**
-  - [ ] [P2] Geometric caste dietary privileges: Priests/Nobles demand refined grain/fruit; Isosceles soldiers eat meat/high-protein rations.
-  - [ ] [P2] Sacred hospitality laws (sharing food with foreigners grants mutual non-aggression).
+### Phase E: Food Culture, Feasting & Breadbasket Geopolitics  [P2] — ✅ implemented
+- **Task E.1: Caste Gastronomy & Dietary Taboos** (`CASTE_DIET_WEIGHTS`)
+  - [x] [P2] Priests/Nobles demand refined grain/fruit/herbs; Soldiers crave meat (corpses weighted ×0.6).
+  - [x] [P2] Sacred hospitality: altruistic bread shared with non-rival strangers bumps relations +3 (`hospitality` event).
 - **Task E.2: Clan Banquets & Famine Wars**
-  - [ ] [P2] Clan banquets triggered at $>80\%$ granary capacity boosting morale, bonding, and fertility.
-  - [ ] [P2] Famine raids and food blockades between agrarian breadbasket clans and martial clans.
+  - [x] [P2] Banquets fire at ≥80% granary: burn a quarter, cheer + energy for guests, relations +4, `feast_until` window gives +30% fertility (`banquet` event).
+  - [x] [P2] Famine raids: a war win beside a rival's main house hauls up to 40 granary units when the raider's own stores are empty (`raid` event, `_try_granary_raid`). Markets & caravans move surplus peacefully (§AN D).
+- Laws: agriculture_enabled, granaries_enabled, granary_capacity, soil_depletion_enabled, banquets_enabled ("Agriculture" group). Tests: `tests/test_agriculture.py`.
 
 ---
 
-## AN. Communication, Language & Diplomatic Ecosystem Roadmap  [P1]
+## AN. Communication, Language & Diplomatic Ecosystem Roadmap  [P1] — ✅ implemented
 Next-generation multi-tiered communication ecosystem spanning caste acoustic vocalizations, tactile greeting rituals, forager scent breadcrumbs, inter-clan diplomatic emissaries, boundary stones, trade barter, settlement history glyphs, and divine omens.
 
-### Phase A: Caste Vocalizations & Acoustic Calls  [P1]
+### Phase A: Caste Vocalizations & Acoustic Calls  [P1] — ✅ implemented
 - **Task A.1: Priest Sonorous Liturgy & Morale Chant**
-  - [ ] [P1] High priests emit soothing low-frequency chants that calm panicked/starving clan members, reduce stress/fear, and boost clan cohesion.
+  - [x] [P1] Priests chant on a gated cadence; hearing kin lose panic and gain a calm window (fear −2 for 20 ticks).
 - **Task A.2: Woman's Peace-Hum & Safety Corridor**
-  - [ ] [P1] In accordance with Flatland law, moving women emit a rhythmic peace-hum, causing nearby polygons to socially yield and clear collision-safe walking corridors.
+  - [x] [P1] Moving women emit the peace-hum; idle polygons deflect from the source — corridors stay walkable.
 - **Task A.3: Soldier Phalanx War-Chirp & Battle Rally**
-  - [ ] [P1] Isosceles soldiers blow piercing war signals when engaging threats, rallying allied soldiers into aligned combat formations focusing on the flagged target.
+  - [x] [P1] Soldiers facing a threat (predator, desperate prey or open-feud enemy) blow the war signal; allied soldiers converge on the flagged coordinates.
 - **Task A.4: Artisan Trade & Barter Chimes**
-  - [ ] [P1] Friendly artisans emit greeting chimes when encountering neighbors, triggering mutual gift-sharing from baskets.
+  - [x] [P1] Artisans meeting hungry neighbours chime and gift basket food (+25 energy); cross-clan gifts warm relations.
 
-### Phase B: Tactile Recognition & Scent Breadcrumbs  [P2]
+### Phase B: Tactile Recognition & Scent Breadcrumbs  [P2] — ✅ implemented
 - **Task B.1: Mutual Angle Feeling & Greeting Rituals**
-  - [ ] [P2] Non-hostile creatures touching vertices at close range ($\le 1.2$ units) perform tactile caste verification, boosting trust ($+2.0$) and mutual bonding.
-  - [ ] [P2] Elder blessing touch transfers skill XP to infants and juveniles.
+  - [x] [P2] Non-hostile creatures within 1.2u exchange trust +2 on a slow cadence; elder blessing touch passes best-skill XP to infants/juveniles.
 - **Task B.2: Forager Harvest Scent Trails**
-  - [ ] [P2] Foragers discovering rich crop patches (`grain`, `berry`, `medicinal_herb`) leave temporary scent trails leading back to settlement for kin to follow.
+  - [x] [P2] Well-fed finders of grain/berry/herb drop trail markers (ttl 220); hungry clan-mates steer to the marked patch.
 - **Task B.3: Danger & Predator Scent Markers**
-  - [ ] [P2] Death sites, predator ambush zones, and ruins emit danger scent markers that steer young and vulnerable creatures away.
+  - [x] [P2] Predation/war deaths and crumbling ruins leave danger scent (ttl up to 900); juveniles and the wounded learn danger facts and shun the ground.
 
-### Phase C: Diplomatic Envoys & Territorial Monoliths  [P2]
+### Phase C: Diplomatic Envoys & Territorial Monoliths  [P2] — ✅ implemented
 - **Task C.1: Diplomatic Emissaries & Peace Missions**
-  - [ ] [P2] Clans commission designated Emissaries (carrying diplomatic banner emotes 📜) to deliver peace treaties, non-aggression pacts, or tribute terms to rival Main Houses.
+  - [x] [P2] Peaceful/republic leaders commission banner-carrying emissaries; arrival at the rival seat warms relations +15 (`peace_envoy` event), failed missions time out.
 - **Task C.2: Tribute Couriers & Vassalage Logistics**
-  - [ ] [P2] Subjugated clans send periodic tribute couriers carrying grain/herbs to suzerain granaries to prevent punitive raids.
+  - [x] [P2] Tribute payments now also haul up to 15 granary units to the suzerain store under a courier ripple.
 - **Task C.3: Clan Boundary Stones & Border Heralds**
-  - [ ] [P2] Clans construct boundary markers at territory borders that ring warning chimes and alert clan sentries when outsiders trespass.
+  - [x] [P2] Settled clans raise a boundary stone on their border (clan-colored diamond on canvas); trespassers near it ring warning chimes that sentry soldiers walk to (throttled per clan).
 
-### Phase D: Trade Caravans & Granary Barter  [P2]
+### Phase D: Trade Caravans & Granary Barter  [P2] — ✅ implemented
 - **Task D.1: Neutral Trading Posts & Markets**
-  - [ ] [P2] Clans establish neutral trading posts at shared borders during spring/autumn to barter surplus goods (e.g. grain for berries/herbs/stone).
+  - [x] [P2] Allied neighbours within reach found a neutral market at the midpoint (`market` event, drawn as gold posts); every 240 ticks surplus flows to the leaner granary (+1 relation).
 - **Task D.2: Traveling Peddlers & Trade Caravans**
-  - [ ] [P2] Wandering merchant caravans traveling between settlements to exchange rare items and cultural news.
+  - [x] [P2] Every 2400 ticks a caravan travels between two non-rival settlements: goods flow toward the leaner store, relations +2 (`caravan` event).
 
-### Phase E: Settlement Glyphs, Linguistic Drift & Divine Revelations  [P2]
+### Phase E: Settlement Glyphs, Linguistic Drift & Divine Revelations  [P2] — ✅ implemented
 - **Task E.1: House Murals & Settlement Chronicle Inscriptions**
-  - [ ] [P2] Artisans and Priests inscribe historical murals on Main House walls celebrating founder lineages, winter survivals, and battle victories.
-  - [ ] [P2] Ruin archaeology: exploring ancient ruined house glyphs unlocks lost knowledge and farming techniques.
+  - [x] [P2] Major clan milestones paint murals on the main house walls (`House.murals` on the wire); explorer archaeology at ruins recovers farming/foraging skill + vague food lore.
 - **Task E.2: Linguistic Drift & Clan Dialects**
-  - [ ] [P2] Isolated clans develop acoustic dialect drift over generations, altering cross-clan communication ease and diplomatic fidelity.
+  - [x] [P2] Each clan carries a dialect value: allies converge per season, isolated clans drift by a deterministic wobble; strangers ignore signals more the further dialects split (0.45–0.95).
 - **Task E.3: Prophetic Omens & Revelations from the Sphere**
-  - [ ] [P2] Priests receive divine prophetic visions from the 3D Sphere (predicting oncoming winters/storms and preaching to worshippers).
+  - [x] [P2] At each season turn a shrine priest proclaims the coming season (omen ripple + chronicle event); hearing kin gain `prepared_ticks` and drift home early.
+- Laws: vocalizations_enabled, scent_enabled, envoys_enabled, markets_enabled, omens_enabled, dialect_drift_enabled ("Language & Diplomacy" group). Tests:
+      `tests/test_diplomacy.py` (chant calm, peace-hum, chirp rally, greeting+elder touch, trail drop & follow, death scent learning, envoy delivery & steering, stone chime throttle, tribute courier, market founding & barter, caravan, omen preparation, dialect drift/convergence, murals, ruin archaeology, laws roundtrip).
 
 ---
 
