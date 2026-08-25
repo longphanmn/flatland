@@ -152,20 +152,39 @@ def test_traffic_packs_roads_and_chokes_plants():
 
 
 def test_landslides_sweep_the_steep_wet_ground():
-    s = ramp_sim()
+    # terraced cliff world: the boundary underfoot is a genuine escarpment
+    s = Simulation(relief_cfg())
+    cols, rows = s._elev_cols, s._elev_rows
+    s.elev_grid = [
+        (1.0 if col < cols // 2 else 0.0)
+        for _ in range(rows)
+        for col in range(cols)
+    ]
+    boundary_x = (cols // 2) * (s.config.width / cols)
     s.weather = "storm"
-    climber = s.world.add(Creature(x=300.0, y=150.0, energy=90.0,
+    climber = s.world.add(Creature(x=boundary_x + 1.0, y=150.0, energy=90.0,
                                    lifespan=100000.0, health=60.0, speed=0.2))
     slid = False
     for i in range(4000):
         if climber.id not in s.world.entities:
             slid = True
             break
-        base_x = 300.0 + (i % 3) * 0.5
-        climber.x, climber.y = base_x, 150.0
-        # just climbed two units east up the west→east ramp: steep wet grade
-        s._terrain_effects(climber, base_x - 2.0, 150.0)
-        if abs(climber.x - base_x) > 2.0 or climber.health < 60.0:
+        climber.x, climber.y = boundary_x + 1.0, 150.0
+        s._terrain_effects(climber, boundary_x - 1.0, 150.0)
+        if abs(climber.x - (boundary_x + 1.0)) > 2.0 or climber.health < 60.0:
             slid = True
             break
     assert slid, "a storm on a steep slope never slid anyone"
+
+
+def test_ordinary_terrain_never_deals_fall_damage():
+    """Regression (prod extinction @12k): the smooth field must not act like
+    invisible cliff walls — a population walking real ground takes no falls."""
+    s = Simulation(relief_cfg(
+        num_women=8, num_triangles=6,
+        food_count=40, house_density=0.0, num_houses=0,
+        weather_enabled=True, day_length=1200,
+    ))
+    for _ in range(400):
+        s.step()
+    assert s._death_counts.get("fall", 0) == 0, s._death_counts

@@ -336,8 +336,8 @@ ELEV_CELL = 25.0            # grid units per elevation sample
 ELEV_MAX_HEIGHT = 60.0      # world-units between the lowest and highest ground
 SLOPE_ENERGY_COST = 0.05    # extra energy/tick per unit of uphill grade
 SLOPE_SPEED_MULT = 0.35     # speed lost at the steepest climb
-CLIFF_DROP_UNITS = 9.0      # a descent steeper than this per tick is a fall
-FALL_DAMAGE_PER_UNIT = 1.2  # health lost per unit fallen past the threshold
+CLIFF_DROP_UNITS = 14.0     # a terraced cell-boundary drop this steep is a cliff
+FALL_DAMAGE_PER_UNIT = 1.0  # health lost per unit fallen past the threshold
 TRAFFIC_DECAY = 0.995       # per-tick fade of packed earth
 TRAFFIC_PER_PASS = 1.0      # traffic earned per body-tick on a cell
 ROAD_SPEED_PER_TRAFFIC = 0.03  # speed bonus per traffic level (packed earth)
@@ -959,6 +959,11 @@ class Simulation:
             clan = self.clans.get(h.clan_id)
             if clan is None:
                 continue
+            # people eat before fire burns: a clan with starving members
+            # never feeds the hearth (the Ice age taught this the hard way)
+            emax = self.config.energy_max or 1.0
+            if any(k.energy / emax <= self.config.starving_ratio for k in kin):
+                continue
             stored = float(clan.get("larder", 0.0))
             if stored < HEARTH_REFUEL_CHUNK:
                 continue  # the larder is bare — the hearth dies tonight
@@ -1001,12 +1006,33 @@ class Simulation:
         self.elev_grid = [round((v - lo) / span, 4) for v in vals]
 
     def _elev_at(self, x: float, y: float) -> float:
-        """Normalised ground height (0..1) under a point; 0.5 flat worlds."""
+        """Normalised ground height (0..1) under a point; 0.5 flat worlds.
+        Bilinear between cell centres — the land is smooth, so ordinary travel
+        never trips the cliff threshold (only true escarpments do)."""
         if not self.config.relief_enabled:
             return 0.5
+        gx = x / self.config.width * self._elev_cols - 0.5
+        gy = y / self.config.height * self._elev_rows - 0.5
+        c0 = math.floor(gx)
+        r0 = math.floor(gy)
+        fx = gx - c0
+        fy = gy - r0
+
+        def h(cc: int, rr: int) -> float:
+            cc = min(self._elev_cols - 1, max(0, cc))
+            rr = min(self._elev_rows - 1, max(0, rr))
+            return self.elev_grid[rr * self._elev_cols + cc]
+
+        top = h(c0, r0) * (1.0 - fx) + h(c0 + 1, r0) * fx
+        bot = h(c0, r0 + 1) * (1.0 - fx) + h(c0 + 1, r0 + 1) * fx
+        return top * (1.0 - fy) + bot * fy
+
+    def _elev_cell_units(self, x: float, y: float) -> float:
+        """Nearest-cell height in world-units — the RAW terraced field, used
+        only for cliff detection: a cell-boundary drop this steep is a cliff."""
         col = min(self._elev_cols - 1, max(0, int(x / self.config.width * self._elev_cols)))
         row = min(self._elev_rows - 1, max(0, int(y / self.config.height * self._elev_rows)))
-        return self.elev_grid[row * self._elev_cols + col]
+        return self.elev_grid[row * self._elev_cols + col] * ELEV_MAX_HEIGHT
 
     def _elev_units(self, x: float, y: float) -> float:
         """Ground height in world-units (bodies and water care about these)."""
@@ -1024,7 +1050,8 @@ class Simulation:
         trow = min(self._temp_rows - 1, max(0, int(c.y / cfg.height * self._temp_rows)))
         ti = trow * self._temp_cols + tcol
         self.traffic_grid[ti] += TRAFFIC_PER_PASS
-        # grade along the step just taken
+        # grade along the step just taken — smooth bilinear field: ordinary
+        # ground never trips the cliff; only terraced cell drops do
         dxg, dyg = self.world.delta(px, py, c.x, c.y)
         dist = math.hypot(dxg, dyg)
         if dist < 1e-6:
@@ -1033,28 +1060,45 @@ class Simulation:
         grade = rise / dist  # >0 climbing
         if grade > 0:
             c.energy = max(0.0, c.energy - SLOPE_ENERGY_COST * grade)
-        elif rise <= -CLIFF_DROP_UNITS:
-            # walked off a sharp edge: fall damage scales with the drop
-            excess = -rise - CLIFF_DROP_UNITS
-            dmg = FALL_DAMAGE_PER_UNIT * (excess + CLIFF_DROP_UNITS * 0.5)
-            if c.health - dmg <= 0:
-                self._kill(c, "fall")
-            else:
-                c.health -= dmg
-                c.angle += math.pi  # stunned, turn around
-        # avalanche: rain loosens steep ground underfoot
-        if (
-            self.weather in ("rain", "storm")
-            and grade > AVALANCHE_SLOPE
-            and self.rng.random() < AVALANCHE_CHANCE
-        ):
-            slide_x = c.x - math.copysign(dist, dxg) * 8.0  # back down the slope
-            c.x, c.y = self.world.normalize(slide_x, c.y)
-            dmg = self.rng.uniform(8.0, 20.0)
-            if c.health - dmg <= 0:
-                self._kill(c, "landslide")
-            else:
-                c.health -= dmg
+        else:
+            # cliff check uses the RAW terraced field: a descent across one
+            # cell boundary that drops ≥ CLIFF_DROP_UNITS is a real cliff
+            cell_drop = (
+                self._elev_cell_units(px, py) - self._elev_cell_units(c.x, c.y)
+            )
+            if cell_drop >= CLIFF_DROP_UNITS:
+                excess = cell_drop - CLIFF_DROP_UNITS
+                dmg = FALL_DAMAGE_PER_UNIT * (excess + CLIFF_DROP_UNITS * 0.5)
+                if c.health - dmg <= 0:
+                    self._kill(c, "fall")
+                else:
+                    c.health -= dmg
+                    c.angle += math.pi  # stunned, turn around
+        # avalanche: rain loosens genuinely steep ground underfoot — measured
+        # from the terraced field's local cell grade, not the step just taken
+        if self.weather in ("rain", "storm") and self.rng.random() < AVALANCHE_CHANCE:
+            ecol = min(self._elev_cols - 1, max(0, int(c.x / cfg.width * self._elev_cols)))
+            erow = min(self._elev_rows - 1, max(0, int(c.y / cfg.height * self._elev_rows)))
+            here = self.elev_grid[erow * self._elev_cols + ecol]
+            best_drop = 0.0
+            slide_dx = slide_dy = 0.0
+            for ddc, ddr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nc = min(self._elev_cols - 1, max(0, ecol + ddc))
+                nr = min(self._elev_rows - 1, max(0, erow + ddr))
+                drop = here - self.elev_grid[nr * self._elev_cols + nc]  # >0 downhill
+                if drop > best_drop:
+                    best_drop = drop
+                    slide_dx, slide_dy = float(ddc), float(ddr)
+            if best_drop * ELEV_MAX_HEIGHT / ELEV_CELL >= AVALANCHE_SLOPE:
+                push = 8.0
+                c.x, c.y = self.world.normalize(
+                    c.x + slide_dx * push, c.y + slide_dy * push
+                )
+                dmg = self.rng.uniform(8.0, 20.0)
+                if c.health - dmg <= 0:
+                    self._kill(c, "landslide")
+                else:
+                    c.health -= dmg
 
     def _road_speed_mult(self, x: float, y: float) -> float:
         """Packed earth is fast going (§AQ PH-4 emergent roads)."""
