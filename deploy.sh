@@ -58,13 +58,17 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude 'backend/flatworld.db' \
     --exclude 'backend/flatworld.db-*' \
     --exclude '**/flatworld.db*' \
+    --exclude 'backend/app/_flatland_core.so' \
+    --exclude 'backend/app/_flatland_core.dylib' \
+    --exclude '*.so' \
+    --exclude '*.dylib' \
     "$LOCAL_DIR"/ "$SERVER:$REMOTE_DIR"/
 else
   echo "[deploy] rsync not found, using tar+scp"
   tar -czf /tmp/fl-deploy.tgz \
     --exclude='.git' --exclude='.venv' --exclude='node_modules' \
     --exclude='__pycache__' --exclude='.pytest_cache' --exclude='dist' \
-    --exclude='*.log' \
+    --exclude='*.log' --exclude='*.so' --exclude='*.dylib' \
     -C "$LOCAL_DIR" backend frontend run.sh README.md TODO.md
   scp /tmp/fl-deploy.tgz "$SERVER:/tmp/"
   ssh "$SERVER" "mkdir -p $REMOTE_DIR && tar -xzf /tmp/fl-deploy.tgz -C $REMOTE_DIR --strip-components=1 2>/dev/null || tar -xzf /tmp/fl-deploy.tgz -C $REMOTE_DIR && rm /tmp/fl-deploy.tgz"
