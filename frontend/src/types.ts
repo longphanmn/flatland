@@ -133,6 +133,9 @@ export interface StateMessage {
   bridges?: { x: number; cy: number }[]
   dams?: { x: number; cy: number; hp_frac: number }[]
   elevation?: { cell: number; cols: number; rows: number; h: number[] }
+  lightning?: { x: number; y: number; ttl: number }[]
+  anomalies?: { x: number; y: number; kind: string }[]
+  law_wave?: { born_tick: number; ticks: number }
   age: string | null
   age_tick: number
   age_day?: number
@@ -167,6 +170,9 @@ export interface DeltaStateMessage {
   bridges?: { x: number; cy: number }[]
   dams?: { x: number; cy: number; hp_frac: number }[]
   elevation?: { cell: number; cols: number; rows: number; h: number[] }
+  lightning?: { x: number; y: number; ttl: number }[]
+  anomalies?: { x: number; y: number; kind: string }[]
+  law_wave?: { born_tick: number; ticks: number }
   age: string | null
   age_tick: number
   age_day?: number
@@ -358,6 +364,12 @@ export interface GodLaws {
   relief_enabled?: boolean
   structural_enabled?: boolean
   rubble_blocking_enabled?: boolean
+  earthquake_enabled?: boolean
+  earthquake_rate?: number
+  signal_speed?: number
+  lightning_enabled?: boolean
+  lightning_strike_rate?: number
+  anomaly_count?: number
   exposure_drain?: number
   house_capacity?: number
   house_claim_enabled?: boolean

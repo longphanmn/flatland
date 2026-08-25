@@ -27,6 +27,7 @@ from app.simulation import (
 
 
 def ag_cfg(**kw) -> Config:
+    kw.setdefault("anomaly_count", 0)  # fertile zones would skew growth ratios
     kw.setdefault("relief_enabled", False)
     zeros = dict(
         seed=7, width=80.0, height=80.0,

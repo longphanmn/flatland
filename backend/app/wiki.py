@@ -397,6 +397,12 @@ LAW_HINTS_MD = {
     "dialect_drift_enabled": "isolated clans drift apart in speech — strangers understand each other less the further their dialects split; allies converge on a shared tongue",
     # §AQ physics ecosystem
     "hearths_enabled": "kin buy hearth fuel from the clan larder; a lit hearth warms its roof past comfort through winter and night — unfed, the fire goes dark",
+    "earthquake_enabled": "rare quakes: the ground throws bodies, drops weakened roofs and cracks stone; Pentagons+ feel the deep hum three ticks early",
+    "earthquake_rate": "chance/tick an earthquake begins (0.00008)",
+    "signal_speed": "wavefront speed of news in units/tick (8) — distant ears hear the alarm later; 0 = instant",
+    "lightning_enabled": "storms strike real bolts: instant death under the arc, fire where the ground burns, a briefly electrostatic rock",
+    "lightning_strike_rate": "chance/tick of a bolt during a storm (0.0015)",
+    "anomaly_count": "hidden zones of altered physics (3) — fertile ground, heavy gravity, calm air; skilled foragers discover them",
     "rivers_enabled": "horizontal channels cross the land: fords cost energy, the current sweeps infants and the wounded downstream, rain floods the banks and leaves fertile silt; builders span planks and raise dams",
     "river_count": "channel bands across the map at world creation (2) — applies to new worlds",
     "relief_enabled": "the land has height: uphill travel burns energy and slows the stride, cliffs deal fall damage, rain can slide steep slopes, and well-walked ground packs into fast roads that grow nothing",

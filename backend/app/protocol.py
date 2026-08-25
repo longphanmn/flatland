@@ -115,6 +115,9 @@ class StateMessage(BaseModel):
     bridges: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 planks
     dams: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 masonry
     elevation: dict[str, Any] = Field(default_factory=dict)  # §AQ PH-4 static height field
+    lightning: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-9 bolts
+    anomalies: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-10 discovered zones
+    law_wave: dict[str, Any] = Field(default_factory=dict)  # §AQ PH-10 shimmer front
     age: Optional[str] = None
     age_tick: int = 0
     age_day: int = 1
@@ -149,6 +152,9 @@ class DeltaStateMessage(BaseModel):
     bridges: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 planks
     dams: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 masonry
     elevation: dict[str, Any] = Field(default_factory=dict)  # §AQ PH-4 static height field
+    lightning: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-9 bolts
+    anomalies: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-10 discovered zones
+    law_wave: dict[str, Any] = Field(default_factory=dict)  # §AQ PH-10 shimmer front
     age: Optional[str] = None
     age_tick: int = 0
     age_day: int = 1
@@ -167,6 +173,7 @@ class HistoryEvent(BaseModel):
         "miracle", "sermon", "synod", "temple", "epiphany", "resonance",
         "compost", "banquet", "raid", "hospitality",
         "peace_envoy", "market", "caravan", "omen",
+        "anomaly",
     ] = ("death")
     tick: int
     entity_id: int
@@ -391,6 +398,18 @@ class GodLaws(BaseModel):
     # Materials (§AQ PH-6)
     structural_enabled: Optional[bool] = None
     rubble_blocking_enabled: Optional[bool] = None
+
+    # Seismic & wave physics (§AQ PH-8)
+    earthquake_enabled: Optional[bool] = None
+    earthquake_rate: Optional[float] = Field(None, ge=0, le=0.01)
+    signal_speed: Optional[float] = Field(None, ge=0, le=40)
+
+    # Electrostatics (§AQ PH-9)
+    lightning_enabled: Optional[bool] = None
+    lightning_strike_rate: Optional[float] = Field(None, ge=0, le=0.05)
+
+    # Cosmological (§AQ PH-10)
+    anomaly_count: Optional[int] = Field(None, ge=0, le=8)
 
     # T: soften winter
     winter_food_mult: Optional[float] = Field(None, ge=0.1, le=2)

@@ -119,6 +119,12 @@ In Flatland, God sets **laws**, never touches individual lives. Every law has a 
 | `relief_enabled` | Boolean | **true** | Height field: grades tax energy & speed, cliffs deal fall damage, landslides in rain, emergent roads speed travel but bar growth (§AQ PH-4). |
 | `structural_enabled` | Boolean | **true** | Storms & floods wear buildings down; builders mend; spent roofs collapse to ruin. Materials: straw 120 HP / wood 260 / clay 320 / stone 480 (§AQ PH-6). |
 | `rubble_blocking_enabled` | Boolean | **true** | Collapsed ruins block their lot with rubble until builders clear it. |
+| `earthquake_enabled` | Boolean | **false** | Rare quakes throw bodies, collapse weakened roofs, crack or raise stone; high castes get 3 ticks of warning (§AQ PH-8). |
+| `earthquake_rate` | 0–0.01 | **0.00008** | Chance per tick an earthquake begins. |
+| `signal_speed` | 0–40 | **8.0** | News wavefront speed (units/tick) — distant ears hear alarms later; wind carries sound faster downwind. 0 = instant. |
+| `lightning_enabled` | Boolean | **true** | Storms strike real bolts: instant death under the arc, ignition, fused electrostatic rock (§AQ PH-9). |
+| `lightning_strike_rate` | 0–0.05 | **0.0015** | Chance per storm tick of a bolt. |
+| `anomaly_count` | 0–8 | **3** | Hidden zones of altered physics; discovered by skilled foragers, empowering nearby shrines. |
 
 ---
 

@@ -155,6 +155,13 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'house_max_size', label: 'House max size', min: 6, max: 60, step: 1, group: 'Bodies & Houses' },
   // Rivers — channels, floods & crossings (§AQ PH-3)
   { key: 'river_count', label: 'River count', min: 0, max: 8, step: 1, group: 'Rivers', gate: 'rivers_enabled' },
+  // Seismic & waves (§AQ PH-8)
+  { key: 'earthquake_rate', label: 'Quake rate / tick', min: 0, max: 0.001, step: 0.00001, group: 'Seismic & Waves', gate: 'earthquake_enabled' },
+  { key: 'signal_speed', label: 'News speed', min: 0, max: 40, step: 1, group: 'Seismic & Waves' },
+  // Electrostatics (§AQ PH-9)
+  { key: 'lightning_strike_rate', label: 'Bolt rate / storm tick', min: 0, max: 0.02, step: 0.0005, group: 'Electrostatics', gate: 'lightning_enabled' },
+  // Cosmology (§AQ PH-10)
+  { key: 'anomaly_count', label: 'Anomaly zones', min: 0, max: 8, step: 1, group: 'Cosmology' },
 ]
 
 const GROUP_ORDER = [
@@ -191,6 +198,9 @@ const GROUP_ORDER = [
   'Rivers',
   'Terrain',
   'Materials',
+  'Seismic & Waves',
+  'Electrostatics',
+  'Cosmology',
 ]
 
 // Backend Config defaults — switches render these until laws load.
@@ -243,6 +253,8 @@ const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
   relief_enabled: true,
   structural_enabled: true,
   rubble_blocking_enabled: true,
+  earthquake_enabled: false,
+  lightning_enabled: true,
 }
 
 const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
@@ -289,6 +301,10 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   trait_mutation_rate: 'chance mutation adds heritable trait greedy/peaceful/paranoid/bold (0.02) — bold war, paranoid flee, greedy food',
   fire_rate: 'chance a random mature plant ignites each tick (0.0005) — storm lightning raises to 0.002',
   river_count: 'channel bands across the map at world creation (2) — fords, floods, bridges & dams (§AQ PH-3)',
+  signal_speed: 'news wavefront speed in units/tick (8) — distant ears hear the alarm later; wind carries sound faster downwind; 0 = instant',
+  earthquake_rate: 'chance/tick an earthquake begins (0.00008)',
+  lightning_strike_rate: 'chance/tick of a bolt during a storm (0.0015)',
+  anomaly_count: 'hidden zones of altered physics at world creation (3)',
   fire_spread_rate: 'spread to neighboring plants within 6 (0.08) — kills creatures/plants, ash fertilizes',
   disaster_rate: 'meteor/flood stochastic gated by this per tick (0.0003) — crater/water reshapes terrain',
   signal_radius: 'heard within this range (12) — clan-mates respond strongly, strangers weakly',
@@ -809,6 +825,15 @@ export default function GodPanel({ open, onClose }: Props) {
                 )}
                 {group === 'Terrain' && (
                   <ToggleRow k="relief_enabled" label="Relief (height field)" title="the land has height: uphill burns energy, cliffs deal fall damage, rain slides steep slopes, feet pack fast roads that grow nothing (§AQ PH-4)" />
+                )}
+                {group === 'Seismic & Waves' && (
+                  <ToggleRow k="earthquake_enabled" label="Earthquakes" title="rare quakes throw bodies, drop weakened roofs and crack stone; Pentagons+ feel the deep hum three ticks early (§AQ PH-8)" />
+                )}
+                {group === 'Electrostatics' && (
+                  <ToggleRow k="lightning_enabled" label="Storm lightning" title="bolts kill under the arc, ignite the ground and fuse electrostatic rock (§AQ PH-9)" />
+                )}
+                {group === 'Cosmology' && (
+                  <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>Hidden zones of altered physics — fertile ground, heavy gravity, calm air. Skilled foragers discover them; shrines beside one draw extra power. Law changes sweep a shimmer wave across the land (§AQ PH-10).</div>
                 )}
                 {group === 'Materials' && (
                   <>

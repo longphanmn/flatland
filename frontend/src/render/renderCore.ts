@@ -651,6 +651,70 @@ export function renderWorldFrame(
     }
   }
 
+  // §AQ PH-9: lightning bolts — a white jagged flash with a hot core
+  for (const b of state.lightning ?? []) {
+    const px = cam.ox + b.x * cam.scale
+    const py = cam.oy + b.y * cam.scale
+    const a = Math.max(0, (b.ttl ?? 0) / 6)
+    ctx.globalAlpha = 0.85 * a
+    ctx.strokeStyle = '#e3b341'
+    ctx.lineWidth = 0.9
+    ctx.beginPath()
+    ctx.moveTo(px, cam.oy)
+    let seg = 0
+    let sy = cam.oy
+    while (sy < py - 4) {
+      sy += (py - cam.oy) / 7
+      seg = Math.sin(b.x * 13.7 + sy * 3.1) * 3.0
+      ctx.lineTo(px + seg, sy)
+    }
+    ctx.lineTo(px, py)
+    ctx.stroke()
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 0.3
+    ctx.stroke()
+    ctx.globalAlpha = 0.5 * a
+    ctx.fillStyle = '#fff8d0'
+    ctx.beginPath()
+    ctx.arc(px, py, 2.2 * a + 0.4, 0, TAU)
+    ctx.fill()
+    ctx.globalAlpha = 1
+  }
+
+  // §AQ PH-10: discovered anomaly zones — faint pulsing wrong-colour ground
+  for (const a of state.anomalies ?? []) {
+    const px = cam.ox + a.x * cam.scale
+    const py = cam.oy + a.y * cam.scale
+    const pulse = 0.5 + 0.2 * Math.sin(state.tick * 0.05 + a.x)
+    const tint =
+      a.kind === 'fertile' ? 'rgba(80,220,120,' :
+      a.kind === 'heavy' ? 'rgba(130,90,200,' : 'rgba(120,190,230,'
+    ctx.fillStyle = `${tint}${0.10 * pulse})`
+    ctx.beginPath()
+    ctx.arc(px, py, 9 * cam.scale, 0, TAU)
+    ctx.fill()
+    ctx.strokeStyle = `${tint}${0.35 * pulse})`
+    ctx.lineWidth = 0.3
+    ctx.setLineDash([1.5, 1.2])
+    ctx.stroke()
+    ctx.setLineDash([])
+  }
+
+  // §AQ PH-10: the law-change shimmer wave sweeping west → east
+  const lw = state.law_wave
+  if (lw && lw.born_tick != null) {
+    const p = Math.min(1, Math.max(0, (state.tick - lw.born_tick) / (lw.ticks || 30)))
+    if (p < 1) {
+      const fx = cam.ox + p * state.width * cam.scale
+      const grad = ctx.createLinearGradient(fx - 30, 0, fx + 30, 0)
+      grad.addColorStop(0, 'rgba(210,168,255,0)')
+      grad.addColorStop(0.5, `rgba(210,168,255,${0.35 * (1 - p)})`)
+      grad.addColorStop(1, 'rgba(210,168,255,0)')
+      ctx.fillStyle = grad
+      ctx.fillRect(fx - 30, cam.oy, 60, state.height * cam.scale)
+    }
+  }
+
   // Fertile grounds & Rocks
   for (const p of state.terrain_fertile ?? []) {
     ctx.fillStyle = 'rgba(80,160,90,0.10)'

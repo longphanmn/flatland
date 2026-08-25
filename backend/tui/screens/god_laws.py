@@ -181,6 +181,16 @@ NUMBER_LAWS: dict[str, list[tuple[str, str]]] = {
     ],
     "Terrain": [],
     "Materials": [],
+    "Seismic & Waves": [
+        ("earthquake_rate", "Quake rate / tick"),
+        ("signal_speed", "News speed (units/tick)"),
+    ],
+    "Electrostatics": [
+        ("lightning_strike_rate", "Bolt rate / storm tick"),
+    ],
+    "Cosmology": [
+        ("anomaly_count", "Anomaly zones"),
+    ],
     "Bodies & Houses": [
         ("door_clearance", "Door clearance ×"),
         ("house_min_size", "House min size"),
@@ -223,6 +233,8 @@ BOOL_LAWS: dict[str, list[tuple[str, str]]] = {
         ("structural_enabled", "Structural integrity"),
         ("rubble_blocking_enabled", "Rubble blocks lots"),
     ],
+    "Seismic & Waves": [("earthquake_enabled", "Earthquakes")],
+    "Electrostatics": [("lightning_enabled", "Storm lightning")],
     "Ecosystem": [
         ("plant_variants_enabled", "Plant variants"),
     ],

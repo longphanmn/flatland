@@ -11,6 +11,7 @@ from app.simulation import Simulation
 
 def zeros(**kw) -> Config:
     kw.setdefault("relief_enabled", False)
+    kw.setdefault("anomaly_count", 0)  # hidden zones skew tiny-world dynamics
     base = dict(
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,
         num_priests=0, num_women=0, num_houses=0,
@@ -66,6 +67,7 @@ def test_high_mutation_triggers_irregularity_purge():
         energy_decay_per_tick=0.0, food_count=0, age_enabled=False,
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,
         num_priests=0, num_women=1, num_houses=0,
+        rivers_enabled=False, anomaly_count=0, signal_speed=0.0,
     )
     s = Simulation(cfg)
     father = s.world.add(Creature(x=20.0, y=20.0, sides=4, energy=10000.0,
@@ -143,7 +145,7 @@ def test_predator_prey_oscillation():
         food_count=25, plant_growth_rate=0.05, plant_spread_rate=0.02,
         plant_variants_enabled=False,
         energy_decay_per_tick=0.02, energy_from_food=30,
-        predation_enabled=True, predator_ratio=0.0,
+        predation_enabled=True, predator_ratio=0.0, signal_speed=0.0,
         hunt_radius=20, fear_radius=15, bite_cooldown=5, energy_from_prey=40,
         war_enabled=False,
         birth_rate=0.5, adult_age=50, mate_radius=15, mate_energy_min=15,

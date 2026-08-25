@@ -99,7 +99,7 @@ def test_teaching_shares_food_fact_at_half_confidence():
 
 
 def test_rumor_confidence_halves_each_hop():
-    s = Simulation(know_cfg(perceive_radius=8.0, signal_radius=14.0))
+    s = Simulation(know_cfg(perceive_radius=8.0, signal_radius=14.0, signal_speed=0.0))
     a = s.world.add(Creature(x=10.0, y=30.0, angle=0.0, energy=100.0, age=1000, lifespan=10000.0))
     b = s.world.add(Creature(x=18.0, y=30.0, shape="line", sides=2, angle=0.0,
                              energy=100.0, age=1000, lifespan=10000.0))

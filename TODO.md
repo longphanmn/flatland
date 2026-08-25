@@ -1468,21 +1468,21 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [x] [P2] **Torpor / hibernation** — a body below `TORPOR_ENERGY_RATIO` 10% energy in air under `HYPOTHERMIA_TEMP` 2° shuts down where it stands: `TORPOR_BURN_MULT` 0.05× burn, no movement, no perception — unconscious and defenceless until the air warms or starvation wins; on the wire as `torpid` (frost halo in the renderer). (`simulation.py:_update_creature`, tests `tests/test_metabolism.py`)
 - [x] [P2] **Heat exhaustion** — every tick spent above 36° builds `heat_stroke_ticks`; at `HEAT_STROKE_TICKS` 60 the body drops into heat prostration (stride zeroed, sleep emote) and keeps cooking until ambient falls 4° below threshold — fatal if shade never comes, exactly as before but now the victim stops sprinting through the fire.
 
-### Phase PH-8: Seismic & Wave Physics  [P2]
-- [ ] [P2] **Earthquake events** — rare seismic events displace entities, collapse weakened structures, crack rock formations opening or blocking paths.
-- [ ] [P2] **Seismic early warning** — Pentagons/Hexagons detect vibration before the quake, triggering evacuation behaviour.
-- [ ] [P2] **Information propagation delay** — signals (sound alarms, pheromone calls) travel at finite speed; distant clans receive news N ticks later proportional to distance; creates tactical asymmetry in war and disaster response.
+### Phase PH-8: Seismic & Wave Physics  [P2] — ✅ implemented
+- [x] [P2] **Earthquake events** — `earthquake_enabled` (off by default) at `earthquake_rate`: magnitude 4–8 quake throws bodies (`QUAKE_DISPLACEMENT` 3.5 × mag falloff), wounds them (`QUAKE_DAMAGE` 16, cause `earthquake`), drops weakened roofs through the §PH-6 structural path, and stone either cracks open (35%) or thrusts up new rock (15%). Chronicle `earthquake` + boom wave. (`simulation.py:_update_seismic/_do_earthquake`, tests `tests/test_cosmos.py`)
+- [x] [P2] **Seismic early warning** — `QUAKE_WARN_TICKS` 3 before the shock, Professionals/Nobles/Priests within 30 of the coming epicentre panic and raise the alarm; the low castes feel nothing until the ground moves.
+- [x] [P2] **Information propagation delay** — every signal carries `born_tick`; a listener hears it only when the wavefront `(tick − born) × signal_speed` (default 8 units/tick, law `signal_speed`, 0 = instant) reaches them, ×1.4 downwind. Distant clans get the news N ticks late — tactical asymmetry at last.
 
-### Phase PH-9: Electrostatics & Bio-electric Fields  [P2]
-- [ ] [P2] **Lightning physics** — during storms, lightning strikes random tiles: instant kill at strike point, ignites fire, creates briefly electrostatic rock entities.
-- [ ] [P2] **Priestly bio-electric aura** — Priests (Pentagon+) emit a bio-electric field; nearby creatures feel calm/fear depending on the priest's energy and faith state.
-- [ ] [P2] **Totem resonance zones** — multiple totems of the same god create resonance (aura radius multiplied); competing clan totems interfere destructively, weakening both auras in contested territory.
+### Phase PH-9: Electrostatics & Bio-electric Fields  [P2] — ✅ implemented
+- [x] [P2] **Lightning physics** — storms strike real bolts at `lightning_strike_rate` (law): instant death within `LIGHTNING_KILL_RADIUS` 1.6 (cause `lightning`), 60% ignition when wildfire burns, else a fused electrostatic rock that decays after `LIGHTNING_ROCK_TTL` 240. Bolts render as jagged flashes. (`simulation.py:_update_lightning`)
+- [x] [P2] **Priestly bio-electric aura** — a living clan priest within `PRIEST_AURA_RADIUS` 6 soothes fear by `PRIEST_CALM` 1.5 × faith (clan faith pool scales 0.6–1.6); folded into `_effective_fear_radius` so it composes with leader calm, traits and starvation.
+- [x] [P2] **Totem resonance zones** — allied shrines bearing the SAME totem within 22 units amplify every totem buff ×(1 + 0.25 each, cap 2.0); rival shrines that close dim BOTH ×0.75; shrines beside an anomaly draw ×1.25. Applied centrally in `_totem_stat`.
 
-### Phase PH-10: Cosmological & Metaphysical  [P2–P3]
-- [ ] [P2] **Law-change physical wave** — when The Sphere modifies a law, a shimmer wave sweeps across the map; old and new law coexist in a 10–30 tick transition window at different x-positions (creatures feel the boundary moving through them).
-- [ ] [P2] **Anomaly zones** — fixed-position tiles where physics differs (stronger gravity, faster plant growth, slower energy decay); discoverable only by exploration (high foraging skill); totems placed near anomalies gain bonus power.
-- [ ] [P3] **Shadow tiles** — tall structures cast shadows (tiles behind receive less light → slower plant growth, colder temperature); light is a 2D ray quantity visible to God from above.
-- [ ] [P3] **Sunlight edge** — day cycle simulated as illumination sweeping from one map edge; creatures at the illuminated edge get a warmth bonus; shadow behind large structures is a resource and strategic asset.
+### Phase PH-10: Cosmological & Metaphysical  [P2–P3] — ✅ implemented
+- [x] [P2] **Law-change physical wave** — every law change spawns a shimmer front that sweeps west→east over `LAW_WAVE_TICKS` 30 (rendered as a violet band); bodies inside the ±4 band feel the boundary pass through them (heading jitter). Deviation: laws flip globally at t₀ — per-x law interpolation would fork every multiplier; the wave is felt, not simulated. (`simulation.py:on_law_change/_update_law_wave`)
+- [x] [P2] **Anomaly zones** — `anomaly_count` 3 hidden zones (fertile ×1.6 growth / heavy ×0.7 speed +10% burn / calm ×0.8 decay) seeded at world creation from the geography rng; invisible on the wire until a forager with skill ≥ 3 (or an explorer) walks in — discovery emits an `anomaly` chronicle event and reveals the zone; shrines beside one gain ×1.25 totem power.
+- [x] [P3] **Shadow tiles** — roofs cast a shadow rectangle `SHADOW_LENGTH` 1.4 × size toward the west (the sun stands east): shade-starved sprouts grow ×`SHADOW_GROWTH_MULT` 0.7. Temperature shading skipped — the heat field already sweeps fronts from the edges.
+- [x] [P3] **Sunlight edge** — dawn light sweeps in from the east rim (0.22–0.30 of the day), dusk from the west rim (0.70–0.78): plants in the `SUN_EDGE_BAND` 18 grow ×1.15 during the sweep.
 
 ---
 

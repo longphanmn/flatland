@@ -26,7 +26,7 @@ EVENT_CATEGORIES: dict[str, set[str]] = {
         "coalition_dissolved", "peace", "tribute", "betrayal", "defection",
         "schism", "succession",
     },
-    "settlement": {"settlement", "conquest", "takeover", "culture", "disaster", "fire", "outbreak", "recovery"},
+    "settlement": {"settlement", "conquest", "takeover", "culture", "disaster", "fire", "outbreak", "recovery", "anomaly"},
     # §AP unified theology
     "faith": {"miracle", "sermon", "synod", "temple", "epiphany", "resonance", "omen"},
     # §AM agriculture + §AN trade & diplomacy

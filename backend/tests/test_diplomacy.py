@@ -22,6 +22,7 @@ from app.simulation import (
 
 
 def dip_cfg(**kw) -> Config:
+    kw.setdefault("signal_speed", 0.0)  # rally tests assume instant chirps
     kw.setdefault("rivers_enabled", False)
     zeros = dict(
         seed=11, width=90.0, height=90.0,

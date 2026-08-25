@@ -80,7 +80,7 @@ function matchesCategory(ev: HistoryEvent, category: EventCategory): boolean {
     return ev.type === 'outbreak' || ev.type === 'recovery' || (ev.type === 'death' && ev.cause === 'disease')
   }
   if (category === 'nature') {
-    return ['bloom', 'wither', 'ruin', 'fire', 'disaster', 'compost'].includes(ev.type)
+    return ['bloom', 'wither', 'ruin', 'fire', 'disaster', 'compost', 'anomaly'].includes(ev.type)
   }
   return true
 }

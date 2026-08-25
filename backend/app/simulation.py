@@ -222,6 +222,38 @@ TORPOR_ENERGY_RATIO = 0.10  # energy fraction below which the cold can claim a b
 TORPOR_BURN_MULT = 0.05     # torpid metabolism: 5% of the awake burn
 HEAT_STROKE_TICKS = 60      # ticks of cooking before the body gives out
 HEAT_STROKE_HYST = 4.0      # degrees of cooling before the body rises again
+
+# §AQ PH-8 — seismic & wave physics: the ground sometimes moves, the tall
+# castes feel it coming, and no news travels faster than the air carries it.
+QUAKE_WARN_TICKS = 3        # high castes feel the deep hum this long ahead
+QUAKE_WARN_RADIUS = 30.0    # ...within this range of the coming epicentre
+QUAKE_DISPLACEMENT = 3.5    # max shove per body at the epicentre (mag 8)
+QUAKE_DAMAGE = 16.0         # health lost at the epicentre, fading outward
+QUAKE_ROCK_CRACK_CHANCE = 0.35  # a rock inside the blast may split open
+QUAKE_ROCK_SPAWN_CHANCE = 0.15  # ...or the ground may thrust new stone up
+# §AQ PH-9 — electrostatics & bio-electric fields
+LIGHTNING_KILL_RADIUS = 1.6  # instant death under the strike
+LIGHTNING_ROCK_TTL = 240     # a fused, electrostatic rock lingers briefly
+LIGHTNING_BOLT_TTL = 6       # the visible bolt fades fast
+PRIEST_CALM = 1.5            # fear-radius soothed near a living priest
+PRIEST_AURA_RADIUS = 6.0
+TOTEM_RESONANCE_BONUS = 0.25  # aura power per same-totem allied shrine nearby
+TOTEM_RESONANCE_CAP = 2.0
+TOTEM_RIVAL_DIM = 0.75       # rival shrines too close weaken both auras
+TOTEM_RIVAL_RADIUS = 22.0
+ANOMALY_TOTEM_BONUS = 1.25   # shrines beside an anomaly draw extra power
+# §AQ PH-10 — cosmological & metaphysical
+LAW_WAVE_TICKS = 30          # the law-change shimmer sweeps the map this long
+LAW_WAVE_BAND = 4.0          # half-width of the felt wavefront
+ANOMALY_RADIUS = 9.0         # a zone of altered physics
+ANOMALY_DISCOVER_SKILL = 3.0  # foraging skill needed to notice one
+ANOMALY_GROWTH_MULT = 1.6    # fertile anomaly
+ANOMALY_HEAVY_SPEED = 0.7    # heavy anomaly drags the stride
+ANOMALY_CALM_DECAY = 0.8     # calm anomaly eases the burn
+SHADOW_LENGTH = 1.4          # a roof shadows the ground this far × size
+SHADOW_GROWTH_MULT = 0.7     # shade-starved plants grow slower
+SUN_EDGE_BAND = 18.0         # dawn/dusk illumination sweeps in from the edges
+SUN_EDGE_GROWTH_MULT = 1.15
 HOUSE_COMFORT_TEMP = 18.0  # what insulation pulls the indoors toward
 # §AQ PH-6 — material physics: four build materials with distinct stats.
 MATERIAL_STATS = {
@@ -588,6 +620,12 @@ class Simulation:
         self._elev_cols = max(1, math.ceil(self.config.width / ELEV_CELL))
         self._elev_rows = max(1, math.ceil(self.config.height / ELEV_CELL))
         self.elev_grid: list[float] = [0.5] * (self._elev_cols * self._elev_rows)  # 0..1
+        # §AQ PH-8/9/10: quakes, bolts, shimmer fronts & hidden zones
+        self.pending_quake: dict | None = None  # {x,y,mag,hit_tick,warned}
+        self.lightning: list[dict] = []  # {x,y,ttl} visible bolts
+        self.law_wave: dict | None = None  # {born_tick}
+        self.anomalies: list[dict] = []  # {x,y,kind,discovered}
+        self._totem_mult_cache: dict[int, float] = {}
         self.signals: list[dict] = []  # §Q: {x,y,kind,sender,clan_id,ttl}
         self.fires: list[dict] = []  # §S wildfire: {x,y,r,ttl}
         # §AQ PH-1: coarse ambient heat field (row-major, top-left origin)
@@ -618,6 +656,7 @@ class Simulation:
         self._last_broadcast_entities: set[int] = set()
         self._generate_elevation()  # §AQ PH-4: the shape of the land comes first
         self._generate_rivers()  # §AQ PH-3: channels follow the slope
+        self._generate_anomalies()  # §AQ PH-10: hidden zones of strange physics
         self._spawn_initial()
         self._generate_terrain()
         self._consecrate_initial_shrines()
@@ -753,8 +792,16 @@ class Simulation:
         # §AN: the priest's liturgy calms the panicked heart for a while
         if c.calm_ticks > 0:
             r = max(1.0, r - 2.0)
+        # §AQ PH-9: a living priest's bio-electric field quiets the nerves —
+        # stronger the richer the clan's faith pool runs.
+        ppos = self._priest_pos_for(c.clan_id)
+        if ppos is not None:
+            d2p = self.world.distance_sq(c.x, c.y, ppos[0], ppos[1])
+            if d2p <= PRIEST_AURA_RADIUS * PRIEST_AURA_RADIUS:
+                faith = float(self.clans.get(c.clan_id, {}).get("faith", 0.0))
+                calm = PRIEST_CALM * max(0.6, min(1.6, 0.7 + faith / 200.0))
+                r = max(1.0, r - calm)
         return r
-
     def _sun_factor(self) -> float:
         """§AQ PH-0: sunlight is the world's only income — no free growth at
         night. Zero through the dark, a low arc at the edges of day, full
@@ -1197,7 +1244,7 @@ class Simulation:
         if len(self.signals) < SIGNALS_MAX:
             self.signals.append({
                 "x": round(x, 2), "y": round(y, 2),
-                "kind": "boom", "sender": 0, "clan_id": None, "ttl": 10,
+                "kind": "boom", "sender": 0, "clan_id": None, "born_tick": self.tick, "ttl": 10,
             })
 
     def _update_structures(self) -> None:
@@ -1266,6 +1313,248 @@ class Simulation:
             x=round(h.x, 2), y=round(h.y, 2),
             payload={"kind": "collapse", "material": h.material},
         ))
+
+    # ------------------------------------------------- §AQ PH-8/9/10
+    def _generate_anomalies(self) -> None:
+        """§AQ PH-10: seed hidden zones where physics runs differently —
+        fertile ground, heavy gravity, or calm air. Drawn from the dedicated
+        geography rng; undiscovered until a skilled forager stumbles in."""
+        count = max(0, int(self.config.anomaly_count))
+        if count == 0:
+            return
+        geo_rng = random.Random((self.config.seed * 8191) ^ 0xA11A)
+        kinds = ("fertile", "heavy", "calm")
+        margin = 25.0
+        for i in range(count):
+            self.anomalies.append({
+                "x": round(geo_rng.uniform(margin, self.config.width - margin), 2),
+                "y": round(geo_rng.uniform(margin, self.config.height - margin), 2),
+                "kind": kinds[i % len(kinds)],
+                "discovered": False,
+            })
+
+    def _anomaly_at(self, x: float, y: float, kind: str | None = None) -> dict | None:
+        for a in self.anomalies:
+            if kind is not None and a["kind"] != kind:
+                continue
+            if self.world.distance_sq(x, y, a["x"], a["y"]) <= ANOMALY_RADIUS * ANOMALY_RADIUS:
+                return a
+        return None
+
+    def _update_seismic(self) -> None:
+        """§AQ PH-8: rare earthquakes — the tall castes feel the deep hum a
+        few ticks early, then the ground moves: bodies are thrown, weakened
+        roofs fall, and stone cracks open or thrusts up from below."""
+        cfg = self.config
+        if cfg.earthquake_enabled and self.pending_quake is None:
+            if self.rng.random() < cfg.earthquake_rate:
+                self.pending_quake = {
+                    "x": self._rand_pos()[0],
+                    "y": self._rand_pos()[1],
+                    "mag": self.rng.uniform(4.0, 8.0),
+                    "hit_tick": self.tick + QUAKE_WARN_TICKS + 1,
+                    "warned": False,
+                }
+        q = self.pending_quake
+        if q is None:
+            return
+        if not q["warned"] and self.tick >= q["hit_tick"] - QUAKE_WARN_TICKS:
+            # Seismic early warning: Pentagons+ feel the vibration first and
+            # raise the alarm — the clan heads for shelter before the shock.
+            q["warned"] = True
+            high_caste = ("Professional", "Noble", "Priest")
+            for c in self._cached_creatures:
+                if c.caste in high_caste and self.world.distance(
+                    c.x, c.y, q["x"], q["y"]
+                ) <= QUAKE_WARN_RADIUS:
+                    c.panic_ticks = max(c.panic_ticks, 15)
+                    if not c.emote:
+                        c.emote = "panic"
+                        c.emote_ticks = 12
+            if len(self.signals) < SIGNALS_MAX:
+                self.signals.append({
+                    "x": round(q["x"], 2), "y": round(q["y"], 2),
+                    "kind": "alarm", "sender": 0, "clan_id": None,
+                    "ttl": 12, "born_tick": self.tick,
+                })
+            return
+        if self.tick < q["hit_tick"]:
+            return
+        # The quake hits.
+        self.pending_quake = None
+        self._do_earthquake(q["x"], q["y"], q["mag"])
+
+    def _do_earthquake(self, x: float, y: float, mag: float) -> None:
+        radius = 12.0 + mag * 2.5
+        for e in list(self.world.entities.values()):
+            d = self.world.distance(e.x, e.y, x, y)
+            if d > radius:
+                continue
+            falloff = 1.0 - d / radius
+            if isinstance(e, Creature):
+                ang = self.rng.uniform(0, 2 * math.pi)
+                shove = QUAKE_DISPLACEMENT * (mag / 8.0) * falloff
+                e.x, e.y = self.world.normalize(
+                    e.x + math.cos(ang) * shove, e.y + math.sin(ang) * shove
+                )
+                dmg = QUAKE_DAMAGE * (mag / 8.0) * falloff
+                if e.health - dmg <= 0:
+                    self._kill(e, "earthquake")
+                else:
+                    e.health -= dmg
+                    if not e.emote:
+                        e.emote = "panic"
+                        e.emote_ticks = 12
+            elif isinstance(e, House) and not e.is_ruin:
+                if self.config.structural_enabled:
+                    if e.hp < 0:
+                        e.hp = MATERIAL_STATS.get(e.material, MATERIAL_STATS["wood"])["durability"]
+                    e.hp -= mag * 12.0 * falloff
+                    if e.hp <= 0:
+                        self._collapse_house(e)
+                elif self.rng.random() < 0.25 * falloff:
+                    self._collapse_house(e)
+        # stone cracks open — or the ground thrusts new rock up
+        for rock in list(self.rocks):
+            if self.world.distance(rock["x"], rock["y"], x, y) > radius:
+                continue
+            roll = self.rng.random()
+            if roll < QUAKE_ROCK_CRACK_CHANCE:
+                self.rocks.remove(rock)  # a path opens
+            elif roll < QUAKE_ROCK_CRACK_CHANCE + QUAKE_ROCK_SPAWN_CHANCE:
+                if len(self.rocks) < 400:
+                    ang = self.rng.uniform(0, 2 * math.pi)
+                    self.rocks.append({
+                        "x": self.world.normalize(
+                            rock["x"] + math.cos(ang) * rock["r"] * 2.0, rock["y"]
+                        )[0],
+                        "y": rock["y"],
+                        "r": max(1.5, rock["r"] * 0.7),
+                    })
+        self._cached_terrain_rocks = [dict(r) for r in self.rocks]
+        self._emit_boom(x, y)
+        self._emit(HistoryEvent(
+            type="disaster", tick=self.tick + 1, entity_id=0,
+            x=round(x, 2), y=round(y, 2),
+            payload={"kind": "earthquake", "mag": round(mag, 1)},
+        ))
+
+    def _update_lightning(self) -> None:
+        """§AQ PH-9: storms strike real bolts — instant death under the arc,
+        fire where the ground burns, a briefly electrostatic fused rock."""
+        cfg = self.config
+        self.lightning = [b for b in self.lightning if b["ttl"] > 1]
+        for b in self.lightning:
+            b["ttl"] -= 1
+        # electrostatic rocks decay back to plain stone
+        for rock in [r for r in self.rocks if r.get("ttl") is not None]:
+            rock["ttl"] -= 1
+            if rock["ttl"] <= 0:
+                self.rocks.remove(rock)
+                self._cached_terrain_rocks = [dict(r) for r in self.rocks]
+        if not (cfg.lightning_enabled and self.weather == "storm"):
+            return
+        if self.rng.random() >= cfg.lightning_strike_rate:
+            return
+        x, y = self._rand_pos()
+        self.lightning.append({"x": round(x, 2), "y": round(y, 2), "ttl": LIGHTNING_BOLT_TTL})
+        for e in self.world.query_radius(x, y, LIGHTNING_KILL_RADIUS):
+            if isinstance(e, Creature) and e.id in self.world.entities:
+                self._kill(e, "lightning")
+            elif isinstance(e, Food) and e.id in self.world.entities:
+                self.world.remove(e.id)
+        if cfg.wildfire_enabled and self.rng.random() < 0.6:
+            self.fires.append({"x": x, "y": y, "r": 2.5, "ttl": 24})
+        elif not self._is_in_rock(x, y):
+            self.rocks.append({"x": round(x, 2), "y": round(y, 2),
+                               "r": 1.1, "ttl": LIGHTNING_ROCK_TTL})
+            self._cached_terrain_rocks = [dict(r) for r in self.rocks]
+        self._emit_boom(x, y)
+        self._emit(HistoryEvent(
+            type="disaster", tick=self.tick + 1, entity_id=0,
+            x=round(x, 2), y=round(y, 2), payload={"kind": "lightning"},
+        ))
+
+    def _priest_pos_for(self, cid: int | None) -> tuple[float, float] | None:
+        """The clan's living priest, for the bio-electric calm aura (§AQ PH-9)."""
+        if not cid:
+            return None
+        cached = getattr(self, "_priest_pos", None)
+        if cached is None:
+            return None
+        return cached.get(cid)
+
+    def _totem_mult(self, cid: int | None) -> float:
+        """§AQ PH-9: totem resonance — same-god allied shrines nearby amplify
+        the aura, rival shrines too close interfere, anomalies empower."""
+        if not cid:
+            return 1.0
+        cached = self._totem_mult_cache.get(cid)
+        if cached is not None:
+            return cached
+        mult = 1.0
+        shrine = self._shrine_pos(cid)
+        my_totem = self.clans.get(cid, {}).get("totem")
+        if shrine is not None:
+            for other_id, info in self.clans.items():
+                if other_id == cid:
+                    continue
+                other_shrine = self._shrine_pos(other_id)
+                if other_shrine is None:
+                    continue
+                d = self.world.distance(shrine[0], shrine[1], other_shrine[0], other_shrine[1])
+                if d > TOTEM_RIVAL_RADIUS:
+                    continue
+                score = self.relations.get(self._relation_pair(cid, other_id), 0)
+                if info.get("totem") == my_totem and score >= self.config.alliance_threshold:
+                    mult += TOTEM_RESONANCE_BONUS
+                elif score <= self.config.rivalry_threshold:
+                    mult *= TOTEM_RIVAL_DIM  # contested ground dims both
+            # anomalies empower nearby shrines (known or not)
+            for a in self.anomalies:
+                if self.world.distance(shrine[0], shrine[1], a["x"], a["y"]) <= ANOMALY_RADIUS + 6.0:
+                    mult *= ANOMALY_TOTEM_BONUS
+                    break
+        mult = min(TOTEM_RESONANCE_CAP, mult)
+        self._totem_mult_cache[cid] = mult
+        return mult
+
+    def _update_anomaly_discovery(self) -> None:
+        """§AQ PH-10: only exploration reveals an anomaly — a creature with
+        sharp foraging senses (or an explorer's nose) who walks into one."""
+        if not self.anomalies:
+            return
+        for c in self._cached_creatures:
+            skill = c.skills.get("foraging", 0.0)
+            if skill < ANOMALY_DISCOVER_SKILL and c.personality != "explorer":
+                continue
+            for a in self.anomalies:
+                if a["discovered"]:
+                    continue
+                if self.world.distance_sq(c.x, c.y, a["x"], a["y"]) <= ANOMALY_RADIUS ** 2:
+                    a["discovered"] = True
+                    self._learn(c, "safe", a["x"], a["y"], conf=0.9)
+                    self._emit(HistoryEvent(
+                        type="anomaly", tick=self.tick + 1, entity_id=c.id,
+                        caste=c.caste, x=round(a["x"], 2), y=round(a["y"], 2),
+                        payload={"kind": a["kind"], "clan_id": c.clan_id},
+                    ))
+
+    def _update_law_wave(self) -> None:
+        """§AQ PH-10: a law change sends a shimmer wave across the land; the
+        old and the new law hang in the air for a transition window while the
+        front sweeps west→east, and bodies inside the band feel the boundary
+        pass through them (disorientation)."""
+        if self.law_wave is None:
+            return
+        if self.tick - self.law_wave["born_tick"] > LAW_WAVE_TICKS:
+            self.law_wave = None
+
+    def _law_wave_front(self) -> float | None:
+        if self.law_wave is None:
+            return None
+        p = (self.tick - self.law_wave["born_tick"]) / LAW_WAVE_TICKS
+        return p * self.config.width
 
     def _update_builders(self) -> None:
         """§AQ PH-3: builder-personality creatures span the channels they live
@@ -1731,8 +2020,10 @@ class Simulation:
         return self.clans.get(c.clan_id, {}).get("totem")
 
     def _totem_stat(self, c: Creature, key: str) -> float:
-        """Generic totem-buff lookup (see TOTEM_BUFF vocabulary)."""
-        return float(TOTEM_BUFF.get(self._totem_of(c), {}).get(key, 0.0))
+        """Generic totem-buff lookup (see TOTEM_BUFF vocabulary), scaled by
+        §AQ PH-9 resonance: allied same-god shrines amplify, rivals dim."""
+        base = float(TOTEM_BUFF.get(self._totem_of(c), {}).get(key, 0.0))
+        return base * self._totem_mult(c.clan_id)
 
     def _found_founding_clans(self) -> None:
         """§V Settlement seeding — every functional house anchors one clan and each
@@ -2092,7 +2383,7 @@ class Simulation:
                 if cfg.scent_enabled and len(self.signals) < SIGNALS_MAX:
                     self.signals.append({
                         "x": round(h.x, 2), "y": round(h.y, 2), "kind": "danger_scent",
-                        "sender": h.id, "clan_id": None, "ttl": DANGER_SCENT_TTL * 3,
+                        "sender": h.id, "clan_id": None, "born_tick": self.tick, "ttl": DANGER_SCENT_TTL * 3,
                     })
                 self._emit(
                     HistoryEvent(
@@ -2684,6 +2975,15 @@ class Simulation:
                     break
         self._leader_pos = leader_pos
 
+        # §AQ PH-9: living priest per clan (bio-electric calm aura)
+        priest_pos: dict[int, tuple[float, float]] = {}
+        for cid, members in m.items():
+            for c in members:
+                if c.caste == "Priest" and c.energy > 20.0:
+                    priest_pos[cid] = (c.x, c.y)
+                    break
+        self._priest_pos = priest_pos
+        self._totem_mult_cache = {}  # resonance is recomputed per tick
 
     def _get_creatures(self) -> list[Creature]:
         if self._cached_creatures:
@@ -2706,6 +3006,9 @@ class Simulation:
         self._update_wind()  # §AQ PH-2: the sky's breath follows the weather
         self._update_rivers()  # §AQ PH-3: rain swells the channels
         self._update_traffic()  # §AQ PH-4: grass reclaims quiet paths
+        self._update_seismic()  # §AQ PH-8: the ground sometimes moves
+        self._update_lightning()  # §AQ PH-9: storms strike real bolts
+        self._update_law_wave()  # §AQ PH-10: the shimmer front sweeps on
         # §Q signals decay (ripples fade)
         self.signals = [sg for sg in self.signals if sg["ttl"] > 1]
         for sg in self.signals:
@@ -2716,6 +3019,7 @@ class Simulation:
         self._update_plants()
         self.world.rebuild_index()
         self._refresh_cache()
+        self._update_anomaly_discovery()  # §AQ PH-10: explorers map the strange
 
         # Leaderless-clan repair: catch clans whose leader_id points to a dead or
         # missing creature (e.g. loaded from old state, or succession_enabled=False).
@@ -2875,7 +3179,7 @@ class Simulation:
         self.signals.append({
             "x": round(victim.x, 2), "y": round(victim.y, 2),
             "kind": "help", "sender": victim.id,
-            "clan_id": victim.clan_id or None, "ttl": 12,
+            "clan_id": victim.clan_id or None, "born_tick": self.tick, "ttl": 12,
             "threat_x": round(aggressor.x, 2), "threat_y": round(aggressor.y, 2),
             "threat_clan": aggressor.clan_id or None,
         })
@@ -3328,7 +3632,7 @@ class Simulation:
                             self.signals.append({
                                 "x": round(stone["x"], 2), "y": round(stone["y"], 2),
                                 "kind": "chime", "sender": 0,
-                                "clan_id": h.clan_id or None, "ttl": 12,
+                                "clan_id": h.clan_id or None, "born_tick": self.tick, "ttl": 12,
                                 "stone_x": stone["x"], "stone_y": stone["y"],
                                 "trespasser_x": round(c.x, 2), "trespasser_y": round(c.y, 2),
                             })
@@ -3660,7 +3964,7 @@ class Simulation:
                             self.signals.append({
                                 "x": round(herald.x, 2), "y": round(herald.y, 2),
                                 "kind": "knowledge", "sender": leader.id,
-                                "clan_id": other or None, "ttl": 12,
+                                "clan_id": other or None, "born_tick": self.tick, "ttl": 12,
                                 "fact": {"kind": "enemy", "clan_id": victim,
                                          "x": round(leader.x, 2), "y": round(leader.y, 2),
                                          "conf": 1.0},
@@ -3859,7 +4163,7 @@ class Simulation:
                             self.signals.append({
                                 "x": round(payer_house.x, 2), "y": round(payer_house.y, 2),
                                 "kind": "courier", "sender": 0,
-                                "clan_id": cid or None, "ttl": 20,
+                                "clan_id": cid or None, "born_tick": self.tick, "ttl": 20,
                             })
                 self._emit(
                     HistoryEvent(
@@ -4092,7 +4396,7 @@ class Simulation:
                         self.signals.append({
                             "x": round(sx, 2), "y": round(sy, 2), "kind": "omen",
                             "sender": priest.id, "clan_id": cid or None,
-                            "ttl": OMEN_SIGNAL_TTL, "season": next_season,
+                            "born_tick": self.tick, "ttl": OMEN_SIGNAL_TTL, "season": next_season,
                         })
                     self._log_clan_history(
                         cid, "omen",
@@ -4471,6 +4775,9 @@ class Simulation:
         deliver doctrinal sermons interpreting the change per their avatar's
         dogma (morale rally within the aura). Called from the god-law endpoint;
         never touches the rng."""
+        # §AQ PH-10: the law-change physical wave — a shimmer front sweeps
+        # the map while the new law settles (cosmology precedes doctrine).
+        self.law_wave = {"born_tick": self.tick}
         if not names or not self.config.theology_enabled:
             return
         chimes = 0
@@ -4485,7 +4792,7 @@ class Simulation:
             self.signals.append({
                 "x": round(shrine[0], 2), "y": round(shrine[1], 2),
                 "kind": "chime", "sender": 0,
-                "clan_id": cid, "ttl": 15,
+                "clan_id": cid, "born_tick": self.tick, "ttl": 15,
             })
             chimes += 1
             priest = self._clan_priest(cid)
@@ -4944,6 +5251,15 @@ class Simulation:
         §AQ PH-0: growth rides sunlight — the day cycle is the world's income."""
         cfg = self.config
         sun = self._sun_factor()
+        tod = self._time_of_day()
+        # §AQ PH-10: precompute roof shadows (cast west, the sun stands east)
+        shadow_rects: list[tuple[float, float, float, float]] = []
+        for h in (self._cached_houses or self._functional_houses()):
+                ext = h.size * SHADOW_LENGTH
+                shadow_rects.append((
+                    h.x - h.size / 2 - ext, h.x - h.size / 2,
+                    h.y - h.size / 2, h.y + h.size / 2,
+                ))
         if cfg.plant_growth_rate > 0 and sun > 0.0:
             season = self._season()
             summer_drought = season == "summer"
@@ -4998,6 +5314,22 @@ class Simulation:
                             eco_mult *= HERB_BERRY_MULT
                         if poison_near and e.variant != "poisonous":
                             eco_mult *= POISON_SUPPRESS
+                    # §AQ PH-10: fertile anomalies grow strange and lush
+                    if self.anomalies and self._anomaly_at(e.x, e.y, "fertile"):
+                        eco_mult *= ANOMALY_GROWTH_MULT
+                    # §AQ PH-10: roofs shade the ground west of them —
+                    # shade-starved sprouts grow slower
+                    for sh in shadow_rects:
+                        if sh[0] <= e.x <= sh[1] and sh[2] <= e.y <= sh[3]:
+                            eco_mult *= SHADOW_GROWTH_MULT
+                            break
+                    # §AQ PH-10: dawn light sweeps in from the east edge,
+                    # dusk from the west — the rim gets a brief bonus
+                    if (
+                        (0.22 < tod < 0.30 and e.x > cfg.width - SUN_EDGE_BAND)
+                        or (0.70 < tod < 0.78 and e.x < SUN_EDGE_BAND)
+                    ):
+                        eco_mult *= SUN_EDGE_GROWTH_MULT
                     # §AQ PH-3: fresh silt on the banks feeds the next harvest
                     for rv in self.rivers:
                         if (
@@ -5719,7 +6051,7 @@ class Simulation:
         ):
             self.signals.append({
                 "x": round(c.x, 2), "y": round(c.y, 2), "kind": "danger_scent",
-                "sender": c.id, "clan_id": c.clan_id or None, "ttl": DANGER_SCENT_TTL,
+                "sender": c.id, "clan_id": c.clan_id or None, "born_tick": self.tick, "ttl": DANGER_SCENT_TTL,
             })
         # Leadership succession (§P) — always runs; succession_enabled only gates the chronicle event.
         if c.clan_id:
@@ -5784,7 +6116,7 @@ class Simulation:
                 self.signals.append({
                     "x": round(c.x, 2), "y": round(c.y, 2),
                     "kind": "grief", "sender": c.id,
-                    "clan_id": c.clan_id or None, "ttl": 15,
+                    "clan_id": c.clan_id or None, "born_tick": self.tick, "ttl": 15,
                 })
 
 
@@ -6191,6 +6523,7 @@ class Simulation:
             if in_aura:
                 perceive *= 1.0 + LEADER_SIGHT_BONUS
                 fear_radius_eff = max(1.0, fear_radius_eff - LEADER_CALM)
+
         elif c.clan_id:
             perceive *= 1.0 - LEADER_SIGHT_BONUS
             fear_radius_eff += LEADERLESS_FEAR
@@ -6411,7 +6744,7 @@ class Simulation:
             # Food call: well-fed finds food → calls clan-mates
             if target is not None and c.energy / cfg.energy_max > cfg.hungry_ratio and c.signal_cooldown == 0:
                 if self.rng.random() < cfg.food_call_rate:
-                    self.signals.append({"x": c.x, "y": c.y, "kind": "food", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 15, "food_x": target.x, "food_y": target.y})
+                    self.signals.append({"x": c.x, "y": c.y, "kind": "food", "sender": c.id, "clan_id": c.clan_id or None, "born_tick": self.tick, "ttl": 15, "food_x": target.x, "food_y": target.y})
                     c.signal_cooldown = 8
                 # §AN B.2 forager scent trails — rich finds leave a breadcrumb
                 # line home for hungry kin to follow (rain washes scent faster)
@@ -6424,7 +6757,7 @@ class Simulation:
                     self.signals.append({
                         "x": round(c.x, 2), "y": round(c.y, 2), "kind": "trail",
                         "sender": c.id, "clan_id": c.clan_id or None,
-                        "ttl": SCENT_TTL, "food_x": round(target.x, 2), "food_y": round(target.y, 2),
+                        "born_tick": self.tick, "ttl": SCENT_TTL, "food_x": round(target.x, 2), "food_y": round(target.y, 2),
                     })
             # Alarm call: sees predator → alarm; teeth-close → a cry for help (§X)
             if flee_target is not None and c.signal_cooldown == 0:
@@ -6444,7 +6777,7 @@ class Simulation:
             if cfg.knowledge_enabled and c.signal_cooldown == 0 and self.rng.random() < cfg.knowledge_share_rate:
                 fact_msg = self._fact_to_share(c)
                 if fact_msg is not None:
-                    self.signals.append({"x": c.x, "y": c.y, "kind": "knowledge", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 12, "fact": fact_msg})
+                    self.signals.append({"x": c.x, "y": c.y, "kind": "knowledge", "sender": c.id, "clan_id": c.clan_id or None, "born_tick": self.tick, "ttl": 12, "fact": fact_msg})
                     c.signal_cooldown = 14
             # Recruitment: sated clan-mate near starving one calls toward remembered food (§Q Care)
             food_fact = self._fact_fresh(c, "food") if cfg.knowledge_enabled else None
@@ -6458,7 +6791,7 @@ class Simulation:
                     if other.energy / cfg.energy_max > cfg.starving_ratio:
                         continue  # only starving
                     if c.signal_cooldown == 0 and self.rng.random() < 0.08:
-                        self.signals.append({"x": c.x, "y": c.y, "kind": "food", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 12, "food_x": remembered_food[0], "food_y": remembered_food[1]})
+                        self.signals.append({"x": c.x, "y": c.y, "kind": "food", "sender": c.id, "clan_id": c.clan_id or None, "born_tick": self.tick, "ttl": 12, "food_x": remembered_food[0], "food_y": remembered_food[1]})
                         c.signal_cooldown = 12
                         break
 
@@ -6467,11 +6800,11 @@ class Simulation:
         if cfg.vocalizations_enabled and c.signal_cooldown == 0 and not c.is_predator and not c.is_herbivore:
             if c.caste == "Priest" and self.rng.random() < CHANT_CHANCE:
                 # Sonorous liturgy — calm flows outward through the clan
-                self.signals.append({"x": round(c.x, 2), "y": round(c.y, 2), "kind": "chant", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 10})
+                self.signals.append({"x": round(c.x, 2), "y": round(c.y, 2), "kind": "chant", "sender": c.id, "clan_id": c.clan_id or None, "born_tick": self.tick, "ttl": 10})
                 c.signal_cooldown = 16
             elif c.shape == "line" and self.rng.random() < HUM_CHANCE:
                 # Peace-hum — polygons step aside; corridors stay walkable (§C law)
-                self.signals.append({"x": round(c.x, 2), "y": round(c.y, 2), "kind": "hum", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 8})
+                self.signals.append({"x": round(c.x, 2), "y": round(c.y, 2), "kind": "hum", "sender": c.id, "clan_id": c.clan_id or None, "born_tick": self.tick, "ttl": 8})
                 c.signal_cooldown = 14
             elif (
                 c.caste == "Soldier"
@@ -6483,7 +6816,7 @@ class Simulation:
                 threat = hunt_target or flee_target or prey_target or enemy_target
                 self.signals.append({
                     "x": round(c.x, 2), "y": round(c.y, 2), "kind": "war",
-                    "sender": c.id, "clan_id": c.clan_id or None, "ttl": 10,
+                    "sender": c.id, "clan_id": c.clan_id or None, "born_tick": self.tick, "ttl": 10,
                     "threat_x": round(threat.x, 2), "threat_y": round(threat.y, 2),
                 })
                 c.signal_cooldown = 12
@@ -6526,7 +6859,7 @@ class Simulation:
                     o.energy = min(cfg.energy_max, o.energy + ARTISAN_GIFT_ENERGY)
                     o.emote = "cheer"
                     o.emote_ticks = 12
-                    self.signals.append({"x": round(c.x, 2), "y": round(c.y, 2), "kind": "chime", "sender": c.id, "clan_id": c.clan_id or None, "ttl": 8})
+                    self.signals.append({"x": round(c.x, 2), "y": round(c.y, 2), "kind": "chime", "sender": c.id, "clan_id": c.clan_id or None, "born_tick": self.tick, "ttl": 8})
                     if not kin and c.clan_id and o.clan_id:
                         self._bump_relation(c.clan_id, o.clan_id, 1)
                 break
@@ -6559,6 +6892,18 @@ class Simulation:
             my_dialect = float(self.clans.get(c.clan_id, {}).get("dialect", 0.0)) if c.clan_id else 0.0
             for sg in self.signals:
                 d2 = w.distance_sq(c.x, c.y, sg["x"], sg["y"])
+                # §AQ PH-8: news travels at finite speed — the wavefront
+                # expands from the source (faster downwind) and a listener
+                # too far away simply hasn't heard it yet.
+                born = sg.get("born_tick")
+                if born is not None and cfg.signal_speed > 0.0:
+                    age_t = self.tick - born
+                    dxw, dyw = w.delta(sg["x"], sg["y"], c.x, c.y)
+                    dl = math.hypot(dxw, dyw) or 1e-6
+                    tail = max(0.0, (dxw * math.cos(self.wind_angle) + dyw * math.sin(self.wind_angle)) / dl)
+                    speed = cfg.signal_speed * (1.0 + 0.4 * self.wind_speed * tail)
+                    if dl > age_t * speed:
+                        continue
                 if d2 > sig_r * sig_r:
                     # §AQ PH-2: beyond base range only the downwind ear catches
                     # the call - and never through a roof.
@@ -6978,6 +7323,16 @@ class Simulation:
             speed_mult *= WOUND_SPEED_MULT.get(c.wound_severity, 1.0)
         # §AQ PH-4: roads carry the stride; the grade ahead slows the climb
         stride_mult = 1.0
+        # §AQ PH-10: hidden zones bend the body — heavy ground drags, and a
+        # law-change shimmer front passing through turns the head
+        front_x = self._law_wave_front()
+        if front_x is not None:
+            dxw = abs(c.x - front_x)
+            dxw = min(dxw, self.config.width - dxw)
+            if dxw <= LAW_WAVE_BAND:
+                c.angle += self.rng.uniform(-0.35, 0.35)
+        if self.anomalies and self._anomaly_at(c.x, c.y, "heavy"):
+            stride_mult *= ANOMALY_HEAVY_SPEED
         if c.heat_stroke_ticks >= HEAT_STROKE_TICKS:
             # §AQ PH-7: heat prostration — the body refuses to move; it cools
             # where it fell, and dies there if shade never comes.
@@ -7231,6 +7586,12 @@ class Simulation:
         # 6. Metabolism, sickness and mortality. §R chill builds when cold & wet
         stage_mult = STAGE_ENERGY_MULT.get(c.stage, 1.0) if c.generation > 0 else 1.0
         decay_mult = stage_mult * self._metabolic_cost(c)  # §AQ PH-0 upkeep
+        # §AQ PH-10: the air itself differs inside anomaly zones
+        if self.anomalies:
+            if self._anomaly_at(c.x, c.y, "calm"):
+                decay_mult *= ANOMALY_CALM_DECAY
+            elif self._anomaly_at(c.x, c.y, "heavy"):
+                decay_mult *= 1.1
         # §AS L-0: the leader's aura eases every stride; an interregnum wearies.
         if c.clan_id:
             if in_aura:
@@ -7591,6 +7952,19 @@ class Simulation:
                  "h": self.elev_grid}
                 if self.config.relief_enabled else {}
             ),
+            # §AQ PH-9: visible bolts ride every frame (short-lived, few)
+            "lightning": [dict(b) for b in self.lightning],
+            # §AQ PH-10: only DISCOVERED anomalies appear on the wire
+            "anomalies": [
+                {"x": a["x"], "y": a["y"], "kind": a["kind"]}
+                for a in self.anomalies if a["discovered"]
+            ],
+            # §AQ PH-10: the law-change shimmer front
+            "law_wave": (
+                {"born_tick": self.law_wave["born_tick"],
+                 "ticks": LAW_WAVE_TICKS}
+                if self.law_wave is not None else {}
+            ),
             "wind": {"angle": round(self.wind_angle, 3), "speed": round(self.wind_speed, 3)},
             "age": self._age(),
             "age_tick": self._age_tick(),
@@ -7677,6 +8051,19 @@ class Simulation:
                     for d in self.dams
                 ],
             }
+        # §AQ PH-9/10: bolts ride when present; anomalies/wave only on change
+        if self.lightning:
+            geo["lightning"] = [dict(b) for b in self.lightning]
+        anomalies = [
+            {"x": a["x"], "y": a["y"], "kind": a["kind"]}
+            for a in self.anomalies if a["discovered"]
+        ]
+        a_sig = tuple((a["x"], a["y"]) for a in anomalies)
+        if a_sig != getattr(self, "_last_anomalies_sig", None):
+            self._last_anomalies_sig = a_sig
+            geo["anomalies"] = anomalies
+        if self.law_wave is not None:
+            geo["law_wave"] = {"born_tick": self.law_wave["born_tick"], "ticks": LAW_WAVE_TICKS}
 
         return {
             "type": "delta_state",

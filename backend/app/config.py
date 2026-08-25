@@ -220,6 +220,18 @@ class Config:
     structural_enabled: bool = True  # storms & floods wear buildings; builders mend
     rubble_blocking_enabled: bool = True  # collapsed ruins block lots until cleared
 
+    # Seismic & wave physics (§AQ PH-8)
+    earthquake_enabled: bool = False  # rare quakes displace, damage & crack
+    earthquake_rate: float = 0.00008  # chance/tick a quake begins
+    signal_speed: float = 8.0  # wavefront speed, units/tick (0 = instant news)
+
+    # Electrostatics (§AQ PH-9)
+    lightning_enabled: bool = True  # storms strike real bolts
+    lightning_strike_rate: float = 0.0015  # chance/tick during a storm
+
+    # Cosmological (§AQ PH-10)
+    anomaly_count: int = 3  # hidden zones of altered physics at world creation
+
     # Society — interaction & clan relations — war rare tuning
     cohesion_weight: float = 0.0  # pull toward same-clan flock centre
     alignment_weight: float = 0.0  # match neighbours' heading

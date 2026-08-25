@@ -17,6 +17,8 @@ from app.simulation import Simulation
 
 
 def stuck_cfg(**kw) -> Config:
+    kw.setdefault("signal_speed", 0.0)  # tests the give-up path, not news speed
+    kw.setdefault("anomaly_count", 0)
     kw.setdefault("relief_enabled", False)
     zeros = dict(
         seed=5,
