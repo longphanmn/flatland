@@ -1628,3 +1628,20 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [x] [P0] **Eliminate triplicate `_refresh_cache` and lambda Timsort** — reduce `_refresh_cache` from 3 calls per tick to a single consolidated call, and replace `sorted(creatures, key=lambda c: c.id)` with natural array ordering or `operator.attrgetter('id')` (reduces cache refresh from 25.0ms to <3.0ms per tick).
 - [x] [P0] **Early rival rejection in `_update_war`** — filter out kin and non-rival neighbours before executing assassin checks and neighbour list sorting for 800 creatures (reduces war step from 15.6ms to <2.0ms).
 - [x] [P1] **Batch spatial queries in `_update_creature`** — combine food perception, predator awareness, and kin interaction into a single multi-target spatial radius sweep per creature rather than 6+ separate `query_radius` calls per creature.
+
+---
+
+## AY. Multi-Core Engine Architecture & Native Performance Scaling  [P0–P1]
+> Scaling Flatland to 2,000–10,000+ simultaneous creatures across modern multi-core CPUs (e.g. 8-core / 12-thread Intel i5-12450H) and client GPUs.
+
+### Phase M-1: Multi-Core Spatial Domain Decomposition (Multiprocessing)  [P0]
+- [ ] [P0] **Spatial domain grid partitioning** — divide the 400×300 world into 4 quadrants (or 2×4 subgrids); assign creature updates (`_update_creature`) to separate worker processes via `multiprocessing` / shared memory (`multiprocessing.shared_memory`), overcoming Python GIL limitations to utilize all available CPU cores.
+- [ ] [P0] **Boundary halo buffer synchronization** — implement a thin halo band (~20 units) between spatial partitions to allow seamless cross-boundary perception and entity migration without race conditions or lock contention.
+- [ ] [P0] **Parallel batch reduction & step consolidation** — worker processes compute creature intentions, movements, and eating events concurrently; the main simulation thread applies state mutations, births, deaths, and world events in a single deterministic reduction pass.
+
+### Phase M-2: Native Hot-Path Compilation (Rust / PyO3 / Cython)  [P1]
+- [ ] [P1] **Native compiled spatial hash module (`flatland_core`)** — implement spatial index grid, toroidal distance arithmetic, and collision sweeps in Rust via `PyO3` (or C/Cython) for zero-overhead native execution (~10x–20x speedup for neighbor queries).
+- [ ] [P1] **Compiled vector steering & raycasting** — port ray-segment house wall intersection (`_path_crosses_wall`) and flocking steering calculations to compiled C/Rust functions.
+
+### Phase M-3: Client-Side GPU / WebGL Batch Acceleration  [P1]
+- [ ] [P1] **WebGL / WebGPU batch rendering pipeline** — migrate 2D HTML5 Canvas draw loops (`renderCore.ts`) to instanced WebGL/WebGPU sprite buffers, allowing client GPUs to render 5,000+ entities, river flow textures, and lighting shaders at locked 60–120 FPS.
