@@ -1310,33 +1310,34 @@ class Simulation:
         def dist_sq(h: House) -> float:
             return self.world.distance_sq(c.x, c.y, h.x, h.y)
 
-        c_sleeping = getattr(c, "sleeping", False)
-        occ_map = getattr(self, "_house_occupants", {})
-        beds_map = getattr(self, "_house_beds_map", {})
-        beds_taken = self._beds
-
         def has_room(h: House) -> bool:
-            occ = max(occ_map.get(h.id, 0), beds_taken.get(h.id, 0))
-            if c_sleeping and self._inside_house(c, h):
+            occ = max(getattr(self, "_house_occupants", {}).get(h.id, 0), self._beds.get(h.id, 0))
+            if self._inside_house(c, h):
                 occ = max(0, occ - 1)
-            return occ < beds_map.get(h.id, 2)
+            return occ < self._house_beds(h)
 
         def allowed(h: House) -> bool:
             # §AT-3 strict single-clan ownership: own clan or neutral roofs only.
             return h.clan_id == 0 or h.clan_id == c.clan_id
 
+
+
         if getattr(c, "waypoints", None) and "home" in c.waypoints:
             hx, hy = c.waypoints["home"]
-            prev_home = getattr(self, "_house_pos_map", {}).get((hx, hy))
+            prev_home = next((h for h in houses if isinstance(h, House) and round(h.x, 2) == hx and round(h.y, 2) == hy and not h.is_ruin), None)
             if prev_home and allowed(prev_home) and has_room(prev_home):
                 return prev_home
 
         if self.config.house_claim_enabled and c.clan_id:
+
             clan_info = self.clans.get(c.clan_id, {})
             leader_id = clan_info.get("leader_id")
             main_hid = clan_info.get("main_house_id")
 
-            own_houses = getattr(self, "_clan_houses", {}).get(c.clan_id, [])
+            own_houses = [
+                h for h in houses
+                if isinstance(h, House) and h.clan_id == c.clan_id and not h.is_ruin
+            ]
 
             if own_houses:
                 # Leader prioritizes living in the main house
@@ -1352,8 +1353,10 @@ class Simulation:
 
             # All own roofs full (or none): spill to the nearest UNCLAIMED roof
             # with space — never into another clan's house (§AT-2/AT-3).
-            unclaimed = getattr(self, "_unclaimed_houses", [])
-            free = [h for h in unclaimed if has_room(h)]
+            free = [
+                h for h in houses
+                if isinstance(h, House) and not h.is_ruin and h.clan_id == 0 and has_room(h)
+            ]
             if free:
                 return min(free, key=dist_sq)
 
@@ -1365,11 +1368,11 @@ class Simulation:
             return None
 
         # Clanless creature (or claims disabled): only neutral roofs count.
-        unclaimed = getattr(self, "_unclaimed_houses", [])
-        free = [h for h in unclaimed if has_room(h)]
-        if free:
-            return min(free, key=dist_sq)
-        return min(unclaimed, key=dist_sq) if unclaimed else None
+        free = [
+            h for h in houses
+            if isinstance(h, House) and not h.is_ruin and h.clan_id == 0 and has_room(h)
+        ]
+        return min(free, key=dist_sq) if free else None
 
 
 
@@ -1785,10 +1788,6 @@ class Simulation:
         houses: list = []
         corpses: list = []
         m: dict[int, list[Creature]] = {}
-        clan_houses: dict[int, list[House]] = {}
-        unclaimed_houses: list[House] = []
-        beds_map: dict[int, int] = {}
-        house_pos_map: dict[tuple[float, float], House] = {}
         for e in self.world.entities.values():
             t = type(e)
             if t is Creature:
@@ -1799,12 +1798,6 @@ class Simulation:
             elif t is House:
                 if not e.is_ruin:  # type: ignore[union-attr]
                     houses.append(e)
-                    beds_map[e.id] = self._house_beds(e)  # type: ignore[arg-type]
-                    house_pos_map[(round(e.x, 2), round(e.y, 2))] = e  # type: ignore[assignment]
-                    if e.clan_id:  # type: ignore[union-attr]
-                        clan_houses.setdefault(e.clan_id, []).append(e)  # type: ignore[union-attr]
-                    else:
-                        unclaimed_houses.append(e)  # type: ignore[arg-type]
             elif t is Corpse:
                 corpses.append(e)
         self._cached_creatures = creatures
@@ -1813,10 +1806,6 @@ class Simulation:
         self._cached_foods = foods
         self._cached_houses = sorted(houses, key=lambda h: h.id)
         self._cached_corpses = corpses
-        self._clan_houses = clan_houses
-        self._unclaimed_houses = unclaimed_houses
-        self._house_beds_map = beds_map
-        self._house_pos_map = house_pos_map
 
         # Compute sleeping house occupancy cache in single pass O(N)
         house_occ: dict[int, int] = {}
@@ -1826,7 +1815,7 @@ class Simulation:
                 if hid is not None:
                     house_occ[hid] = house_occ.get(hid, 0) + 1
                 else:
-                    for h in (clan_houses.get(c.clan_id, []) + unclaimed_houses):
+                    for h in houses:
                         if self._inside_house(c, h):
                             house_occ[h.id] = house_occ.get(h.id, 0) + 1
                             break
@@ -1834,11 +1823,11 @@ class Simulation:
 
         # §AS L-0: living leader positions per clan (for the morale aura)
         leader_pos: dict[int, tuple[float, float]] = {}
-        for cid, members in m.items():
-            lid = self.clans.get(cid, {}).get("leader_id")
+        for cid, info in self.clans.items():
+            lid = info.get("leader_id")
             if not lid:
                 continue
-            for c in members:
+            for c in m.get(cid, ()):
                 if c.id == lid:
                     leader_pos[cid] = (c.x, c.y)
                     break
@@ -1874,16 +1863,14 @@ class Simulation:
 
         # Leaderless-clan repair: catch clans whose leader_id points to a dead or
         # missing creature (e.g. loaded from old state, or succession_enabled=False).
-        # Runs every 30 ticks for active clans so the cost is negligible.
-        if self.tick % 30 == 0 and self._clan_members:
+        # Runs every 30 ticks so the cost is negligible.
+        if self.tick % 30 == 0 and self.clans:
             live_ids: set[int] = {c.id for c in self._cached_creatures}
-            for cid, members in self._clan_members.items():
-                clan = self.clans.get(cid)
-                if not clan:
-                    continue
+            for cid, clan in self.clans.items():
                 lid = clan.get("leader_id")
                 if lid is not None and lid not in live_ids:
                     # Leader is dead or missing — elect a replacement immediately.
+                    members = [c for c in self._cached_creatures if c.clan_id == cid]
                     if members:
                         gov = clan.get("governance", "republic")
                         if gov == "monarchy":
@@ -2062,9 +2049,6 @@ class Simulation:
         cfg = self.config
         if not cfg.war_enabled:
             return
-        war_clans = {cid for pair, score in self.relations.items() if self._zone_of(score) == -1 for cid in pair}
-        if not war_clans:
-            return
         # AF: pre-sorted in _refresh_cache; fallback if called outside step()
         creatures = self._cached_creatures_sorted if self._cached_creatures_sorted else sorted(self.world.creatures(), key=lambda c: c.id)
         to_kill: list[tuple[Creature, Creature]] = []
@@ -2074,7 +2058,7 @@ class Simulation:
         dist_sq = self.world.distance_sq
         w = self.world
         for a in creatures:
-            if a.id not in w.entities or a.id in fallen or a.is_predator or a.is_herbivore or a.clan_id not in war_clans:
+            if a.id not in w.entities or a.id in fallen or a.is_predator or a.is_herbivore or not a.clan_id:
                 continue
             neighbours = [
                 b
@@ -2410,12 +2394,10 @@ class Simulation:
                 if c.clan_id:
                     members_by_clan.setdefault(c.clan_id, []).append(c)
         claimed_houses = {h.clan_id for h in (self._cached_houses if self._cached_houses else self._functional_houses()) if h.clan_id}
-        for cid, members in list(members_by_clan.items()):
+        for cid, info in list(self.clans.items()):
+            members = members_by_clan.get(cid, [])
             pop = len(members)
             if pop < cfg.schism_min_pop:
-                continue
-            info = self.clans.get(cid)
-            if not isinstance(info, dict):
                 continue
             # Unhappy: starving or homeless (no house)
             has_house = cid in claimed_houses
@@ -2674,7 +2656,7 @@ class Simulation:
         if not cfg.leader_decisions_enabled:
             return
         pops = {cid: len(m) for cid, m in self._clan_members.items()}
-        for cid in sorted(self._clan_members.keys()):
+        for cid in sorted(self.clans.keys()):
             info = self.clans[cid]
             lid = info.get("leader_id")
             leader = self.world.entities.get(lid) if lid is not None else None
@@ -2706,7 +2688,7 @@ class Simulation:
                         )
                     )
                     # Treason: sow false knowledge so third clans distrust the victim too.
-                    for other in sorted(self._clan_members.keys()):
+                    for other in sorted(self.clans.keys()):
                         if other in (cid, victim):
                             continue
                         mates = self._clan_members.get(other, ())
@@ -2784,7 +2766,7 @@ class Simulation:
                 my_pop = pops.get(cid, 0)
                 if my_pop < 2:
                     continue
-                for other in sorted(self._clan_members.keys()):
+                for other in sorted(self.clans.keys()):
                     if other == cid or self._clan_coalition.get(other) == self._clan_coalition.get(cid):
                         continue
                     oinfo = self.clans[other]
@@ -2937,15 +2919,12 @@ class Simulation:
 
     def _update_clan_task_boards_and_bylaws(self) -> None:
         """§AL Clan Division of Labor & Dynamic Bylaws."""
-        if not self._clan_members:
+        if not self.clans:
             return
         is_winter = self._season() == "winter"
-        rivalry_threshold = self.config.rivalry_threshold
-        war_clans = {cid for pair, score in self.relations.items() if score <= rivalry_threshold for cid in pair}
 
-        for cid, members in self._clan_members.items():
-            clan = self.clans.get(cid)
-            if not isinstance(clan, dict) or not members:
+        for cid, clan in self.clans.items():
+            if not isinstance(clan, dict):
                 continue
             bylaws = clan.setdefault("bylaws", {"rationing": False, "martial_law": False, "sanctuary": "open"})
             task_board = clan.setdefault("task_board", {"priority": "balanced", "harvester_weight": 1.0, "guard_weight": 1.0})
@@ -2961,7 +2940,13 @@ class Simulation:
                 task_board["harvester_weight"] = 1.0
 
             # 2. Wartime martial law
-            if cid in war_clans:
+            is_at_war = False
+            for pair, score in self.relations.items():
+                if cid in pair and score <= self.config.rivalry_threshold:
+                    is_at_war = True
+                    break
+
+            if is_at_war:
                 bylaws["martial_law"] = True
                 task_board["priority"] = "defense"
                 task_board["guard_weight"] = 2.5

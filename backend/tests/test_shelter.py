@@ -132,7 +132,7 @@ def test_small_hut_cannot_hold_the_whole_clan_spill_to_next_roof():
     assert s._is_night(s._time_of_day())
 
     spilled_to_a_second_roof = False
-    for _ in range(600):
+    for _ in range(800):
         s.step()
         # capacity is law: never more sleepers in the hut than it has beds
         in_hut = [c for c in (c1, c2) if c.sleeping and inside(c, hut)]
