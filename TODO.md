@@ -821,72 +821,6 @@ to the old implementation (same seed ⇒ same world).
       by-design (determinism) + multi-core as non-goal (README "Concurrency &
       performance", guide.py ops → "Concurrency stance").
 
-## AB. Politics — coalitions, leaders, resources & betrayal  [P1]
-Build a politics layer on the clan/relation/leader/knowledge stack: multi-clan
-coalitions, leader agency, shared resources, and treachery. God sets laws; politics
-emerge.
-
-### Coalitions
-- [ ] [P1] Explicit coalitions — a leader proposes a coalition; clans with relation
-      ≥ coalition_threshold (or existing allies) join; coalition holds leader,
-      members, shared-enemy list. Mutual defence: attack one → all at war.
-- [ ] [P2] Coalition effects — faster knowledge sharing between members; bloc war
-      declarations; dissolve when a member's relations sour.
-- [ ] Events: coalition_formed / coalition_joined / coalition_dissolved.
-
-### Leader agency
-- [ ] [P1] Decisions as plots — the clan leader autonomously declares war (on a
-      remembered enemy), proposes/accepts alliance, breaks alliance, negotiates
-      peace (when weakened), demands tribute; surfaced as §S plots (god sees, can't
-      veto). Leader trait biases it (bold→war, peaceful→peace, paranoid→betrayal).
-
-### Resource sharing
-- [ ] [P1] Clan larder — a food store at the settlement; well-fed members deposit
-      surplus, starving members withdraw (formalises §Q recruitment into an economy).
-- [ ] [P2] Allied aid — a surplus ally feeds a starving ally during famine.
-- [ ] [P2] Tribute — a weak clan pays periodic tribute to a stronger protector in
-      exchange for protection (subjugation relation).
-
-### Betrayal & treason
-- [ ] [P1] Ally backstab — a leader breaks an alliance and attacks (relations → rivalry,
-      war); gated by betrayal_rate + leader trait.
-- [ ] [P2] Defection — unhappy members (or a faction) defect to a rival clan.
-- [ ] [P2] Treason — a clan sows false knowledge to turn allies against each other.
-
-### Laws
-- [ ] GodLaws: coalitions_enabled, coalition_threshold, coalition_min_size,
-      leader_decisions_enabled, resource_sharing_enabled, larder_capacity, aid_rate,
-      tribute_enabled, betrayal_enabled, defection_enabled (new "Politics" group).
-- [ ] Events: peace, tribute, betrayal, defection (+ coalition events above).
-
-## AC. Desperation cannibalism — eat the enemy & the weak  [P2]
-When starving, a creature may hunt and eat another living creature; sated/hungry
-creatures never do. Same-clan kin-eating carries a heavy price: exile and a clan
-that now counts the kin-slayer an enemy.
-
-### The hunger-driven hunt
-- [ ] [P2] Gate — only when `starving` (energy ≤ cannibalism_hunger_ratio, default
-      starving_ratio); sated/hungry creatures never eat the living.
-- [ ] [P2] Targets — a starving creature perceives eligible living prey: enemy-clan
-      members (rival/negative relation) and weak members (starving/elder/wounded) of
-      any clan; never predators, healthy same-clan adults, or infants.
-- [ ] [P2] Kill & feed — on contact (eat_radius) → death `cannibalism`, gain
-      cannibalism_energy, target leaves a partial corpse; cannibalism_cooldown.
-
-### The price of kin-eating
-- [ ] [P1] Kin stigma — same-clan cannibalism: relation hit + the clan remembers the
-      kin-slayer via §X knowledge.
-- [ ] [P1] Exile — the kin-eater is kicked out of the clan (clanless, or founds a
-      one-being outcast band), like a schism of one.
-- [ ] [P1] Rebel & enemy — the former clan marks the outcast an enemy (relations →
-      rivalry, eligible for war/plots); the outcast may seek refuge with a rival.
-
-### Laws
-- [ ] GodLaws: cannibalism_enabled, cannibalism_hunger_ratio, cannibalism_energy,
-      eat_enemy_enabled, eat_kin_enabled, kin_stigma, exile_on_kin_eat (new
-      "Desperation" group).
-- [ ] Events: `cannibalism`, `exile`; death cause `cannibalism`.
-
 ## AB. Politics — coalitions, leaders, resources & betrayal  [P1] — ✅ implemented
 Build a politics layer on the clan/relation/leader/knowledge stack: multi-clan
 coalitions, leader agency, shared resources, and treachery. God sets laws; politics
@@ -1310,43 +1244,43 @@ Next-generation multi-tiered communication ecosystem spanning caste acoustic voc
 
 ---
 
-## AO. Nocturnal Perils & Vital Shelter Ecosystem Roadmap  [P1]
+## AO. Nocturnal Perils & Vital Shelter Ecosystem Roadmap  [P1] — ✅ implemented
 Transformation of the Flatland night into an existential outdoor hazard and elevated shelter into an indispensable sanctuary of warmth, healing, defense, and culture.
 
 ### Phase A: Extreme Night Chill & Hypothermia Exposure  [P1]
 - **Task A.1: Accelerated Nighttime Chill & Exposure Kinetics**
-  - [ ] [P1] Unsheltered creatures at night accumulate chill $3.0\times$ faster than during daytime rain.
-  - [ ] [P1] In winter nights or night storms, outdoor exposure accumulates extreme chill and inflicts rapid energy drain.
+  - [x] [P1] Unsheltered creatures at night accumulate chill $3.0\times$ faster than during daytime rain.
+  - [x] [P1] In winter nights or night storms, outdoor exposure accumulates extreme chill and inflicts rapid energy drain.
 - **Task A.2: Frostbite Numbness & Hypothermia Mortality**
-  - [ ] [P1] Reaching maximum chill ($>12$) triggers *Frostbite Numbness*: reduces speed to $0.4\times$, forces creatures to drop carried food/seed baskets, and deals $0.5\text{ HP/tick}$ damage until death (`death_cause: exposure`).
+  - [x] [P1] Reaching maximum chill ($>12$) triggers *Frostbite Numbness*: reduces speed to $0.4\times$, forces creatures to drop carried food/seed baskets, and deals $0.5\text{ HP/tick}$ damage until death (`death_cause: exposure`).
 
 ### Phase B: Nocturnal Predators & The Dusk Rush  [P1]
 - **Task B.1: Predator Nocturnal Prowling & Night Vision Buff**
-  - [ ] [P1] Predators gain $+40\%$ sight radius in the dark and $+20\%$ stealth chase speed when hunting unsheltered prey at night.
-  - [ ] [P1] Pack-hunting behavior: wolves and wild beasts converge in hunting packs past midnight (`tod > 0.85`), prowling around village borders.
+  - [x] [P1] Predators gain $+40\%$ sight radius in the dark and $+20\%$ stealth chase speed when hunting unsheltered prey at night.
+  - [x] [P1] Pack-hunting behavior: wolves and wild beasts converge in hunting packs past midnight (`tod > 0.85`), prowling around village borders.
 - **Task B.2: The Dusk Rush (Sunset Urgency Steering)**
-  - [ ] [P1] At dusk (`tod = 0.70`), creatures feel instinctive urgency: dropping non-essential exploration to sprint straight home before nightfall.
+  - [x] [P1] At dusk (`tod = 0.70`), creatures feel instinctive urgency: dropping non-essential exploration to sprint straight home before nightfall.
 
 ### Phase C: Clan Hearths & Indoor Restorative Sanctuaries  [P2]
 - **Task C.1: Central House Hearths & Total Thermal Immunity**
-  - [ ] [P2] Inhabited houses maintain a glowing central hearth that immediately purges chill, halts energy decay, and accelerates HP healing ($+1.5\text{ HP/tick}$).
+  - [x] [P2] Inhabited houses maintain a glowing central hearth that immediately purges chill, halts energy decay, and accelerates HP healing ($+1.5\text{ HP/tick}$).
 - **Task C.2: Door Barricades & Sentry Spearmen**
-  - [ ] [P2] Solid walls and closed doorway thresholds prevent predators from penetrating occupied homes.
-  - [ ] [P2] Clan spearmen near house doorways poke outward to defend against circling night beasts.
+  - [x] [P2] Solid walls and closed doorway thresholds prevent predators from penetrating occupied homes.
+  - [x] [P2] Clan spearmen near house doorways poke outward to defend against circling night beasts.
 
 ### Phase D: Blind Collisions & The Lethal Needle Hazard  [P2]
 - **Task D.1: Pitch-Black Visibility & Blind Collision Fog**
-  - [ ] [P2] Non-predator sight outdoors at night contracts to $2.5$ units, making navigation and obstacle avoidance perilous without light sources.
+  - [x] [P2] Non-predator sight outdoors at night contracts to $2.5$ units, making navigation and obstacle avoidance perilous without light sources.
 - **Task D.2: Accidental Impalement Hazard**
-  - [ ] [P2] Collisions in pitch darkness with unsheltered moving lines (women) inflict severe accidental impalement damage ($\ge 25\text{ HP}$).
+  - [x] [P2] Collisions in pitch darkness with unsheltered moving lines (women) inflict severe accidental impalement damage ($\ge 25\text{ HP}$).
 - **Task D.3: Rogue Isosceles Night Marauders**
-  - [ ] [P2] Clanless or starving Isosceles bandits stalk the dark to ambush lone foragers and loot their carried rations.
+  - [x] [P2] Clanless or starving Isosceles bandits stalk the dark to ambush lone foragers and loot their carried rations.
 
 ### Phase E: Field Campfires & Settlement Expansion Economics  [P2]
 - **Task E.1: Emergency Field Campfires & Bivouacs**
-  - [ ] [P2] Stranded explorers caught far from home at nightfall gather dry brush to light temporary campfires ($3.5$ unit illuminated radius) that repel predators and provide warmth until dawn.
+  - [x] [P2] Stranded explorers caught far from home at nightfall gather dry brush to light temporary campfires ($3.5$ unit illuminated radius) that repel predators and provide warmth until dawn.
 - **Task E.2: Shelter Scarcity & Housing Construction Pressure**
-  - [ ] [P2] Population overflowing bed capacity creates urgent social and economic demand for Artisans to quarry materials and construct new houses or expand existing halls.
+  - [x] [P2] Population overflowing bed capacity creates urgent social and economic demand for Artisans to quarry materials and construct new houses or expand existing halls.
 
 ---
 
@@ -1486,7 +1420,7 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 
 ---
 
-## AR. Creature Senses Improvement Roadmap  [P0–P2]
+## AR. Creature Senses Improvement Roadmap  [P0–P2] — ✅ implemented
 > Builds on the existing vision / hearing / memory / contact system.
 > Guiding principle: senses should interact and suppress each other, not fire independently.
 
@@ -1496,47 +1430,47 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [x] [P0] **Starvation suppresses fear** — starving creatures have effective `fear_radius × 0.5` via `_effective_fear_radius` (paranoid +4 / bold −2.5 apply first); a desperate enough creature walks toward a predator chasing scented food.
 
 ### Phase S-1: Hearing Improvements  [P1]
-- [ ] [P1] **Signal confidence attenuation by distance** — `heard_conf = 1 - (dist / signal_radius)`; creatures far from the alarm source react weakly, close ones react fully; replaces the current binary inside/outside detection.
-- [ ] [P1] **Signal direction encoding** — alarm signals carry `dx, dy` from source; listener flees *away* from signal direction rather than steering randomly; fixes the current bug where alarms don't guide fleeing direction.
-- [ ] [P1] **Houses block sound** — creatures with `c.indoors == True` cannot hear `alarm` or `help` signals from outside; reinforces shelter as a genuine tactical refuge.
-- [ ] [P2] **Crowd-size scales alarm radius** — a group of ≥3 predators triggers a "war cry" signal at 2× normal `signal_radius`, capable of waking sleeping creatures nearby.
-- [ ] [P2] **Sense fatigue / alarm habituation** — if the same alarm fires for ≥10 consecutive ticks, creatures habituate: `u_alarm` drops to 0.3; prevents infinite alarm-paralysis near persistent threats.
+- [x] [P1] **Signal confidence attenuation by distance** — `heard_conf = 1 - (dist / signal_radius)`; creatures far from the alarm source react weakly, close ones react fully; replaces the current binary inside/outside detection.
+- [x] [P1] **Signal direction encoding** — alarm signals carry `dx, dy` from source; listener flees *away* from signal direction rather than steering randomly; fixes the current bug where alarms don't guide fleeing direction.
+- [x] [P1] **Houses block sound** — creatures with `c.indoors == True` cannot hear `alarm` or `help` signals from outside; reinforces shelter as a genuine tactical refuge.
+- [x] [P2] **Crowd-size scales alarm radius** — a group of ≥3 predators triggers a "war cry" signal at 2× normal `signal_radius`, capable of waking sleeping creatures nearby.
+- [x] [P2] **Sense fatigue / alarm habituation** — if the same alarm fires for ≥10 consecutive ticks, creatures habituate: `u_alarm` drops to 0.3; prevents infinite alarm-paralysis near persistent threats.
 
 ### Phase S-2: Vision Improvements  [P1–P2]
-- [ ] [P1] **Torch tradeoff** — creatures carrying a torch (`equipped_item == "torch"`) restore night sight to full (env_sight = 1.0) within 6 units, but become visible to predators at 2× normal `hunt_radius`; genuine risk/reward decision.
-- [ ] [P1] **Terrain camouflage** — creatures adjacent to mature food patches (berry, grass) gain cover: predator effective `hunt_radius` reduced by 20% toward them; "hiding in the bushes" is a real survival strategy.
-- [ ] [P2] **Facing cone bias** — creatures have an `angle`; vision is full `perceive_radius` within a ±90° forward cone, `perceive × 0.5` in the rear 180°; guards placed facing outward actually face outward.
-- [ ] [P2] **Angle recognition errors** (Flatland canon) — Triangles are misidentified as predators 30% of the time beyond half `perceive_radius`; generates emergent false alarms; higher-caste creatures (more sides ≈ more circular) are easier to identify correctly.
-- [ ] [P2] **Sight degradation with age** — elder creatures gain an additional `× 0.9` sight penalty and a small `recognition_conf` reduction; the young may misidentify elders, elders may misidentify fast-moving Triangles.
+- [x] [P1] **Torch tradeoff** — creatures carrying a torch (`equipped_item == "torch"`) restore night sight to full (env_sight = 1.0) within 6 units, but become visible to predators at 2× normal `hunt_radius`; genuine risk/reward decision.
+- [x] [P1] **Terrain camouflage** — creatures adjacent to mature food patches (berry, grass) gain cover: predator effective `hunt_radius` reduced by 20% toward them; "hiding in the bushes" is a real survival strategy.
+- [x] [P2] **Facing cone bias** — creatures have an `angle`; vision is full `perceive_radius` within a ±90° forward cone, `perceive × 0.5` in the rear 180°; guards placed facing outward actually face outward.
+- [x] [P2] **Angle recognition errors** (Flatland canon) — Triangles are misidentified as predators 30% of the time beyond half `perceive_radius`; generates emergent false alarms; higher-caste creatures (more sides ≈ more circular) are easier to identify correctly.
+- [x] [P2] **Sight degradation with age** — elder creatures gain an additional `× 0.9` sight penalty and a small `recognition_conf` reduction; the young may misidentify elders, elders may misidentify fast-moving Triangles.
 
 ### Phase S-3: Memory Improvements  [P1–P2]
-- [ ] [P1] **Trust-weighted rumours** — `_hear_fact()` multiplies incoming `conf` by `trust.get(sender_id, 50) / 100`; a trusted clan-mate's alarm is believed at full confidence; a stranger or known traitor is believed at ≤5%; connects the existing `c.trust` dict to perception.
-- [ ] [P1] **Inherited memory / oral lore** — when an elder sleeps near infants, it transmits `facts["safe"]` and `facts["food"]` with `conf = 0.3`; babies begin life with imprecise inherited knowledge of their clan's home territory and food grounds.
-- [ ] [P1] **Continuous confidence decay** — facts decay linearly per tick (`conf -= 1 / knowledge_ttl`) instead of expiring at a hard TTL cliff; facts fade gracefully rather than vanishing suddenly.
-- [ ] [P2] **Spatial position drift** — remembered fact coordinates drift randomly by `±(1 - conf) × noise` per tick; a faded rumour points to "roughly there", not the exact location; creatures navigating from stale memory spread out.
-- [ ] [P2] **Working memory capacity limit** — `c.facts` capped at 6 simultaneous entries; when full, lowest-confidence fact is evicted; under starvation or injury the cap drops to 4; elders may have cap of 8 via accumulated experience skill.
-- [ ] [P2] **Priest clan oracle** — once every N ticks, Priests broadcast the highest-confidence clan-level food/danger facts to all nearby clan-members simultaneously; Priest as living knowledge hub.
+- [x] [P1] **Trust-weighted rumours** — `_hear_fact()` multiplies incoming `conf` by `trust.get(sender_id, 50) / 100`; a trusted clan-mate's alarm is believed at full confidence; a stranger or known traitor is believed at ≤5%; connects the existing `c.trust` dict to perception.
+- [x] [P1] **Inherited memory / oral lore** — when an elder sleeps near infants, it transmits `facts["safe"]` and `facts["food"]` with `conf = 0.3`; babies begin life with imprecise inherited knowledge of their clan's home territory and food grounds.
+- [x] [P1] **Continuous confidence decay** — facts decay linearly per tick (`conf -= 1 / knowledge_ttl`) instead of expiring at a hard TTL cliff; facts fade gracefully rather than vanishing suddenly.
+- [x] [P2] **Spatial position drift** — remembered fact coordinates drift randomly by `±(1 - conf) × noise` per tick; a faded rumour points to "roughly there", not the exact location; creatures navigating from stale memory spread out.
+- [x] [P2] **Working memory capacity limit** — `c.facts` capped at 6 simultaneous entries; when full, lowest-confidence fact is evicted; under starvation or injury the cap drops to 4; elders may have cap of 8 via accumulated experience skill.
+- [x] [P2] **Priest clan oracle** — once every N ticks, Priests broadcast the highest-confidence clan-level food/danger facts to all nearby clan-members simultaneously; Priest as living knowledge hub.
 
 ### Phase S-4: Smell (New Sense)  [P1–P2]
 > In 2D, smell is more informative than 3D (no Z-axis dilution — see Dewdney's *Planiverse*).
-- [ ] [P1] **Territorial scent marking** — soldiers and leaders periodically emit `"territory"` scent signals at clan boundary positions; enemy clans detecting the marking receive an immediate `enemy` fact confidence boost; replaces the invisible territory system with a tangible physical signal.
-- [ ] [P2] **Scent trails** — creatures leave `(x, y, tick)` scent records persisting for `scent_ttl` ticks; predators within `scent_radius` (~5 units) follow prey trails; prey detect predator trails and flee; rain washes scent away.
-- [ ] [P2] **Clan scent recognition** — creatures identify clan-mates by scent at close range even in total darkness or deep fog; prevents friendly-fire and panic in low-visibility combat.
+- [x] [P1] **Territorial scent marking** — soldiers and leaders periodically emit `"territory"` scent signals at clan boundary positions; enemy clans detecting the marking receive an immediate `enemy` fact confidence boost; replaces the invisible territory system with a tangible physical signal.
+- [x] [P2] **Scent trails** — creatures leave `(x, y, tick)` scent records persisting for `scent_ttl` ticks; predators within `scent_radius` (~5 units) follow prey trails; prey detect predator trails and flee; rain washes scent away.
+- [x] [P2] **Clan scent recognition** — creatures identify clan-mates by scent at close range even in total darkness or deep fog; prevents friendly-fire and panic in low-visibility combat.
 
 ### Phase S-5: Social Sensing  [P1–P2]
-- [ ] [P1] **Emotional contagion / crowd panic** — a fleeing creature lowers the effective `u_flee` threshold for clan-mates within `flock_radius` by 0.2; one panicking creature can cascade panic through a cluster; Priests within 4 units counter this by imposing a +0.2 calm bonus.
-- [ ] [P2] **Reputation as observable signal** — observable actions (healed a creature, fed an infant, committed cannibalism, fled combat) update `trust` of all witnesses within vision; high-reputation creatures attract followers; low-reputation ones are shunned even by clan-mates.
-- [ ] [P2] **Rally signal** — clan leaders emit a `"rally"` signal (range 20 units) during war or crisis; all clan-mates set it as a waypoint target with `u_waypoint = 1.0` overriding foraging; first time leaders can actually coordinate movement.
+- [x] [P1] **Emotional contagion / crowd panic** — a fleeing creature lowers the effective `u_flee` threshold for clan-mates within `flock_radius` by 0.2; one panicking creature can cascade panic through a cluster; Priests within 4 units counter this by imposing a +0.2 calm bonus.
+- [x] [P2] **Reputation as observable signal** — observable actions (healed a creature, fed an infant, committed cannibalism, fled combat) update `trust` of all witnesses within vision; high-reputation creatures attract followers; low-reputation ones are shunned even by clan-mates.
+- [x] [P2] **Rally signal** — clan leaders emit a `"rally"` signal (range 20 units) during war or crisis; all clan-mates set it as a waypoint target with `u_waypoint = 1.0` overriding foraging; first time leaders can actually coordinate movement.
 
 ### Phase S-6: Environmental Sensing  [P2]
-- [ ] [P2] **Thermal gradient sense** — creatures sense ambient temperature (when PH-1 temperature field is implemented); in winter they drift toward heat sources; in summer heat events they flee hot tiles; elders and infants are more temperature-sensitive.
-- [ ] [P2] **Weather anticipation by caste** — Pentagon+ creatures detect incoming storms 1–3 ticks before weather changes: emit a `"shelter"` internal drive (`u_shelter += 0.5`) before rain arrives; gives high-caste clans a survival edge in harsh weather.
-- [ ] [P2] **Disease scent signal** — infected creatures emit a `"disease"` signal within 4 units; healthy high-caste creatures set a weak `danger` fact at the infected's position and increase their own `u_shelter`; disease becomes partially visible through social sensing.
+- [x] [P2] **Thermal gradient sense** — creatures sense ambient temperature (when PH-1 temperature field is implemented); in winter they drift toward heat sources; in summer heat events they flee hot tiles; elders and infants are more temperature-sensitive.
+- [x] [P2] **Weather anticipation by caste** — Pentagon+ creatures detect incoming storms 1–3 ticks before weather changes: emit a `"shelter"` internal drive (`u_shelter += 0.5`) before rain arrives; gives high-caste clans a survival edge in harsh weather.
+- [x] [P2] **Disease scent signal** — infected creatures emit a `"disease"` signal within 4 units; healthy high-caste creatures set a weak `danger` fact at the infected's position and increase their own `u_shelter`; disease becomes partially visible through social sensing.
 
 ### Phase S-7: New Signal Types  [P2]
-- [ ] [P2] **`"grief"` signal** — emitted by creatures witnessing a clan-mate die within vision range; nearby kin pause movement for 1–3 ticks (grief emote) and receive a small trust boost to all others present (shared loss bonds survivors).
-- [ ] [P2] **`"joy"` signal** — emitted at birth events; nearby kin receive a morale boost (energy +2.0, health +1.0); birth is literally good news.
-- [ ] [P2] **`"disease"` signal** — (see §S-6 above; unify the environmental and social detection into a single signal type).
+- [x] [P2] **`"grief"` signal** — emitted by creatures witnessing a clan-mate die within vision range; nearby kin pause movement for 1–3 ticks (grief emote) and receive a small trust boost to all others present (shared loss bonds survivors).
+- [x] [P2] **`"joy"` signal** — emitted at birth events; nearby kin receive a morale boost (energy +2.0, health +1.0); birth is literally good news.
+- [x] [P2] **`"disease"` signal** — (see §S-6 above; unify the environmental and social detection into a single signal type).
 
 ---
 
@@ -1625,29 +1559,29 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [x] [P1] **Medicinal herb as primary fast heal** — injured (<60 HP) creatures seek/eat herbs even when sated (herb override on both the utility gate and `can_eat`), stacking with the §AM perception weighting.
 - [x] [P1] **Priest active healing rounds** — near the clan's main house a priest's round reaches the whole aura radius (`LEADER_AURA_RADIUS`) for `+15×(1+healing/20)` HP + infection cure; away from home it stays a close touch.
 
-#### Phase H-2: Systems Depth  [P2]
-- [ ] [P2] **Wound infection risk** — untreated wound (`severity ≥ 1`, `wound_ticks > 30`) has 2% chance/tick of turning into an infection even without disease contact; "wounded soldier alone = dead soldier".
-- [ ] [P2] **Wound dressing by helpers** — healthy clan-mate near a wounded member applies a "dressing" action (emote): halves `wound_ticks`; triggers same altruistic utility logic as altruistic feeding.
-- [ ] [P2] **Morale as second health axis** — `c.morale: float = 100.0`; drains from watching clan-mates die, leader death, prolonged starvation; recovers from eating, leader aura, festivals; `morale < 60`: ignores rally signals; `< 40`: stops foraging; `< 20`: abandons clan (walks off to join nearest other clan or wanders homeless).
-- [ ] [P2] **Overcrowding health drain** — overcrowded house (> capacity occupants): `health -= 0.03/tick` per person over capacity; reinforces the housing shortage crisis.
-- [ ] [P2] **Infirmary bylaw bonus** — when `bylaw["plague_response"]` is active, main house becomes infirmary: creatures sleeping there get `rest_recovery_mult × 2.0`; the bylaw (AL §2.3) was implemented but the infirmary healing bonus was not.
-- [ ] [P3] **Scarring** — surviving a grievous wound may leave a permanent scar: `c.scars: int` counter; each scar applies a tiny permanent `sight_mult × 0.97` or `speed × 0.98`; elder creatures visibly accumulate history on the body.
+#### Phase H-2: Systems Depth  [P2] — ✅ implemented
+- [x] [P2] **Wound infection risk** — untreated wound (`severity ≥ 1`, `wound_ticks > 30`) has 2% chance/tick of turning into an infection even without disease contact; "wounded soldier alone = dead soldier".
+- [x] [P2] **Wound dressing by helpers** — healthy clan-mate near a wounded member applies a "dressing" action (emote): halves `wound_ticks`; triggers same altruistic utility logic as altruistic feeding.
+- [x] [P2] **Morale as second health axis** — `c.morale: float = 100.0`; drains from watching clan-mates die, leader death, prolonged starvation; recovers from eating, leader aura, festivals; `morale < 60`: ignores rally signals; `< 40`: stops foraging; `< 20`: abandons clan (walks off to join nearest other clan or wanders homeless).
+- [x] [P2] **Overcrowding health drain** — overcrowded house (> capacity occupants): `health -= 0.03/tick` per person over capacity; reinforces the housing shortage crisis.
+- [x] [P2] **Infirmary bylaw bonus** — when `bylaw["plague_response"]` is active, main house becomes infirmary: creatures sleeping there get `rest_recovery_mult × 2.0`; the bylaw (AL §2.3) was implemented but the infirmary healing bonus was not.
+- [x] [P3] **Scarring** — surviving a grievous wound may leave a permanent scar: `c.scars: int` counter; each scar applies a tiny permanent `sight_mult × 0.97` or `speed × 0.98`; elder creatures visibly accumulate history on the body.
 
 ---
 
-## AU. Performance Optimizations & Architecture Decoupling  [P0–P1]
+## AU. Performance Optimizations & Architecture Decoupling  [P0–P1] — ✅ implemented
 > Production server profiling (~1,134 entities, ~250–500 creatures) identified high CPU load (~100% on 1 core) driven by ~678,000 function calls per simulation tick, redundant multi-pass spatial checks, and inner-loop allocations.
 
 ### Phase O-1: Hot Loop Zero-Allocation & Trig Vector Caching  [P0]
-- [ ] [P0] **Precompute wind direction vectors** — compute `self._cos_wind` and `self._sin_wind` once per tick in sky/wind update; replace inline `math.cos(self.wind_angle)` / `math.sin(self.wind_angle)` across scent and signal evaluation loops (eliminates ~5–10M trig calls/minute).
-- [ ] [P0] **Inline elevation lookup (`_elev_at`)** — remove inner function closure `def h(cc, rr)` in `_elev_at(x, y)` and inline clamped grid index calculations (eliminates ~80k closure allocations per 100 ticks).
-- [ ] [P0] **Single-pass shelter & house resolution in `_update_creature`** — resolve and cache creature's assigned roof (`assigned = self._house_for(...)`) and containment state once per creature tick instead of 4 redundant `_house_for` generator expressions across sleep, knowledge, utility, and exit navigation.
-- [ ] [P0] **Allocation-free utility decision engine** — replace `max([(u1, "flee"), (u2, "eat"), ...], key=...)` list-of-tuples allocation with direct scalar comparison (`top_util`, `top_action`) in `_update_creature` (eliminates ~100k temporary list/tuple allocations per second in Python).
+- [x] [P0] **Precompute wind direction vectors** — compute `self._cos_wind` and `self._sin_wind` once per tick in sky/wind update; replace inline `math.cos(self.wind_angle)` / `math.sin(self.wind_angle)` across scent and signal evaluation loops (eliminates ~5–10M trig calls/minute).
+- [x] [P0] **Inline elevation lookup (`_elev_at`)** — remove inner function closure `def h(cc, rr)` in `_elev_at(x, y)` and inline clamped grid index calculations (eliminates ~80k closure allocations per 100 ticks).
+- [x] [P0] **Single-pass shelter & house resolution in `_update_creature`** — resolve and cache creature's assigned roof (`assigned = self._house_for(...)`) and containment state once per creature tick instead of 4 redundant `_house_for` generator expressions across sleep, knowledge, utility, and exit navigation.
+- [x] [P0] **Allocation-free utility decision engine** — replace `max([(u1, "flee"), (u2, "eat"), ...], key=...)` list-of-tuples allocation with direct scalar comparison (`top_util`, `top_action`) in `_update_creature` (eliminates ~100k temporary list/tuple allocations per second in Python).
 
 ### Phase O-2: Over-Engineering Simplifications & System Staggering  [P1]
-- [ ] [P1] **Stagger slow environmental updates** — slow systems (building material weathering `_update_materials`, soil percolation `_update_soil`, river silt decay `_update_rivers`, anomaly distortion `_update_anomalies`) only need periodic evaluation (`self.tick % 5 == 0` or `% 10 == 0`) rather than every single tick.
-- [ ] [P1] **Simplify acoustic wavefront simulation (§AQ PH-8)** — replace per-entity trigonometric wind wavefront propagation on signals (`dl > age_t * speed` with `math.hypot`) with fast squared radius and precomputed wind bias scalar, reducing signal processing overhead by 60%.
-- [ ] [P1] **Consolidate house occupancy & containment passes** — merge `_house_bodies` spatial scan in `step()` with `_update_creature` indoor checks into a single unified spatial bucket lookup pass per tick.
+- [x] [P1] **Stagger slow environmental updates** — slow systems (building material weathering `_update_materials`, soil percolation `_update_soil`, river silt decay `_update_rivers`, anomaly distortion `_update_anomalies`) only need periodic evaluation (`self.tick % 5 == 0` or `% 10 == 0`) rather than every single tick.
+- [x] [P1] **Simplify acoustic wavefront simulation (§AQ PH-8)** — replace per-entity trigonometric wind wavefront propagation on signals (`dl > age_t * speed` with `math.hypot`) with fast squared radius and precomputed wind bias scalar, reducing signal processing overhead by 60%.
+- [x] [P1] **Consolidate house occupancy & containment passes** — merge `_house_bodies` spatial scan in `step()` with `_update_creature` indoor checks into a single unified spatial bucket lookup pass per tick.
 
 ---
 
@@ -1664,5 +1598,20 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [ ] [P1] **Flat list cell buffer in `WorldView._repaint`** — replace `grid: dict[tuple[int, int], Cell]` with a fixed 1D array `[None] * (cols * rows)` indexed by `row * cols + col` (eliminates ~50,000 tuple allocations and hash lookups per terminal frame).
 - [ ] [P1] **Viewport bounding-box clipping for terrain discs & rings** — clamp `_paint_disc` and `_paint_ring` iteration limits directly to the terminal's visible `(col0, col1, row0, row1)` window before distance checks, preventing off-screen math when zoomed in.
 - [ ] [P2] **TUI dirty-row diffing** — track previous frame's character strips and only emit ANSI update escape codes for terminal rows that actually changed, cutting terminal IO bandwidth and cursor flicker on remote SSH sessions.
+
+---
+
+## AW. Emergency 1–2 TPS Remediation — Extinct Clan GC & Death Optimization  [P0]
+> Live production profiling at tick ~35,000 revealed the server degraded to 1–2 ticks/sec due to 3,124 extinct ghost clans accumulating in `self.clans` (only 22 clans are actually alive), triggering quadratic $O(C \times N)$ scans in settlement housing and massive JSON payload serialization overhead.
+
+### Phase R-1: Extinct Clan Garbage Collection & Housing Scans  [P0]
+- [ ] [P0] **Prune extinct clans from active memory (`_prune_extinct_clans`)** — periodic audit pass (every 100 ticks) that archives clans with 0 living members and 0 owned functional houses out of `self.clans` (and cleans `self.relations` / `self._clan_members` / `self.farm_plots` / `self._banquet_last` keys). Prevents `self.clans` from ballooning from 22 to 3,146+.
+- [ ] [P0] **Fix quadratic homeless clan iteration in `_assign_house_claims`** — filter `homeless = [cid for cid in living_clans if cid not in claimed_clans]` strictly over *living* clans (`_clan_members.keys()`) rather than all 3,146 entries in `self.clans`, eliminating ~2,000,000 redundant creature scans per settlement tick.
+- [ ] [P0] **Filter `clan_knowledge()` and API endpoints to alive clans** — restrict `clan_knowledge()` iteration (`for cid in self.clans:`) to `alive_cids`, eliminating 3,100 dead clan dictionary iterations on every state/clans payload and removing 26% CPU load from JSON deflation (`permessage_deflate`).
+
+### Phase R-2: Hot Path Death & War Loop Optimization  [P0]
+- [ ] [P0] **Replace $O(N)$ full-world scans in `_kill()` with spatial query** — replace `for other in self._get_creatures():` in `_kill()` with `self.world.query_radius(c.x, c.y, pr)` or `self._clan_members.get(c.clan_id)`, eliminating two redundant all-creature scans on every death event.
+- [ ] [P0] **Extract inner closure `_assassin_priority` out of `_update_war` loop** — move `def _assassin_priority(cc)` outside the `for a in creatures:` loop in `_update_war` (or use a tuple key function) to avoid allocating closures for every creature on every tick.
+
 
 
