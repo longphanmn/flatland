@@ -285,6 +285,10 @@ class Config:
     # Chronicle
     history_max: int = 200  # death events kept in the chronicle
 
+    # M-4 OpenMP multi-core
+    omp_enabled: bool = True  # use 8-core OpenMP batch when pop exceeds threshold
+    omp_threshold: int = 700  # min creatures to trigger parallel batch (tunable via FLATWORLD_OMP_THRESHOLD)
+
     @classmethod
     def from_env(cls) -> "Config":
         """Live runtime config: defaults to the Balance Goldilocks preset."""
@@ -323,6 +327,8 @@ class Config:
             schism_threshold=_env("FLATWORLD_SCHISM_THRESHOLD", float, 0.6),
             schism_min_pop=_env("FLATWORLD_SCHISM_MIN_POP", int, 8),
             communication_enabled=_env("FLATWORLD_COMMUNICATION_ENABLED", bool, True),
+            omp_enabled=_env("FLATWORLD_OMP_ENABLED", bool, True),
+            omp_threshold=_env("FLATWORLD_OMP_THRESHOLD", int, 700),
         )
 
     @property

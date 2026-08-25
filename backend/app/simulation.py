@@ -3563,10 +3563,9 @@ class Simulation:
         }
         self._sync_wind_cache()
         # M-4: OpenMP parallel batch kernel (zero-GIL, 8 cores, ~3-5ms @1000c, GIL released via ctypes)
-        # Runs only at high density (>700) to keep multi-core gain without taxing low-pop 400-500c (437c 99ms → 8.6 TPS)
-        # Pack ID-sorted (deterministic), call c_batch_update_creatures_omp (OpenMP 8), unpack ID-sorted (single-thread reduction, no race)
+        # Gate via omp_enabled/threshold so low-pop stays single-core (437c 37ms) and high-pop bursts 8 cores (784c 14ms)
         _omp_used = False
-        if _native_core is not None and hasattr(_native_core, "native_batch_update") and len(self._cached_creatures) > 700:
+        if _native_core is not None and hasattr(_native_core, "native_batch_update") and self.config.omp_enabled and len(self._cached_creatures) > self.config.omp_threshold:
             try:
                 sorted_c = sorted(self._cached_creatures, key=lambda c: c.id)
                 if self._c_creatures_buf is None or len(self._c_creatures_buf) < len(sorted_c):  # type: ignore
