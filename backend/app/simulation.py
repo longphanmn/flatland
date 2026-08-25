@@ -8923,16 +8923,9 @@ class Simulation:
         # The doorway is too small for the Carnivore caste (§L refuge) — predators see a closed wall.
         mdx, mdy = w.delta(c.x, c.y, px, py)
         was_blocked = False
-        if mdx * mdx + mdy * mdy <= step_len * step_len * 2.25:  # skip wrap teleports
-            for h in houses:
-                assert isinstance(h, House)
-                # Quick AABB check before full line segment intersection
-                hx_dist = abs(px - h.x)
-                if hx_dist > h.size * 1.2 and abs(hx_dist - cfg.width) > h.size * 1.2:
-                    continue
-                hy_dist = abs(py - h.y)
-                if hy_dist > h.size * 1.2 and abs(hy_dist - cfg.height) > h.size * 1.2:
-                    continue
+        if houses and mdx * mdx + mdy * mdy <= step_len * step_len * 2.25:  # skip wrap teleports
+            near_houses = [e for e in w.query_radius(px, py, 14.0) if isinstance(e, House)]
+            for h in near_houses:
                 crosses = (
                     _path_crosses_wall(px, py, px + mdx, py + mdy, h, predator_blocked=c.is_predator)
                     if c.is_predator
@@ -8943,8 +8936,7 @@ class Simulation:
                     c.x, c.y = w.normalize(px, py)
                     c.blocked_ticks += 1
                     if c.blocked_ticks >= 3:
-
-                        in_h = next((h for h in houses if self._is_inside_house(c, cast(House, h))), None)
+                        in_h = next((h for h in near_houses if self._is_inside_house(c, cast(House, h))), None)
                         if in_h is not None and not c.is_predator:
                             ex_x, ex_y = self._house_exit_target(c, in_h)
                             dx, dy = w.delta(ex_x, ex_y, c.x, c.y)
@@ -8955,14 +8947,12 @@ class Simulation:
                         c.angle += math.pi + self.rng.uniform(-0.4, 0.4)
                     if target is not None and cfg.food_giveup_ticks > 0:
                         self._give_up_on(c, target)  # meal sits behind a wall
-
                     break
         if not was_blocked:
             c.blocked_ticks = 0
         # Predator refuge safety net: even if a predator spawns inside a house, push it out
         if c.is_predator and houses:
-            for h in houses:
-                assert isinstance(h, House)
+            for h in [e for e in w.query_radius(c.x, c.y, 14.0) if isinstance(e, House)]:
                 if self._inside_house(c, h):
                     # push to doorway, then one step outside
                     dx, dy = self._door_pos(h)
