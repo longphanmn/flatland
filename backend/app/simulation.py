@@ -7744,8 +7744,8 @@ class Simulation:
                                 "x": round(c.x, 2), "y": round(c.y, 2),
                                 "kind": "pack", "sender": c.id,
                                 "clan_id": None, "born_tick": self.tick, "ttl": 12,
-                                "threat_x": round(best_prey.x, 2),
-                                "threat_y": round(best_prey.y, 2),
+                                "threat_x": round(hunt_target.x, 2),
+                                "threat_y": round(hunt_target.y, 2),
                             })
                         # §AR S-1: three or more beasts together raise a war
                         # cry that carries twice as far and wakes sleepers.
@@ -7759,14 +7759,14 @@ class Simulation:
                             if pack_n >= 2:
                                 self.signals.append({
                                     "x": round(c.x, 2), "y": round(c.y, 2),
-                                    "kind": "warcry", "sender": best_prey.id,
+                                    "kind": "warcry", "sender": hunt_target.id,
                                     "clan_id": None, "born_tick": self.tick,
                                     "ttl": max(6, int(cfg.signal_radius * WARCRY_RADIUS_MULT / cfg.signal_speed)) if cfg.signal_speed > 0 else 24,
                                     "threat_x": round(c.x, 2), "threat_y": round(c.y, 2),
                                 })
         elif cfg.predation_enabled and not c.is_predator:
-            # Find nearest predator within fear_radius to flee from.
-            # §AR S-2: vision is a forward cone — the rear half-circle
+            # Normal creature / prey: flee the nearest predator
+            # §AR S-2: forward cone = 120° full vision; rear hemisphere
             # detects at half range (smell ignores facing).
             # §AR S-2 canon: beyond half range an Isosceles triangle is
             # misread as a predator 30% of the time.
@@ -7774,9 +7774,10 @@ class Simulation:
             ca, sa = math.cos(c.angle), math.sin(c.angle)
             best_pred: Creature | None = None
             best_pred_d_sq = math.inf
+            fear_r_sq = cfg.fear_radius * cfg.fear_radius
             # §AX P1: reuse batched list instead of separate query
-            for o, d2 in w.query_radius_with_dist_sq_list(c.x, c.y, cfg.fear_radius):
-                if not isinstance(o, Creature) or not o.is_predator or o.id not in w.entities:
+            for o, d2 in _batch_list:
+                if d2 > fear_r_sq or not isinstance(o, Creature) or not o.is_predator or o.id not in w.entities:
                     continue
                 dxo, dyo = w.delta(c.x, c.y, o.x, o.y)
                 fwd = dxo * ca + dyo * sa  # >0: in the forward half
@@ -7798,8 +7799,8 @@ class Simulation:
             if best_pred is None:
                 # phantom wolves: far isosceles silhouettes misread 30%/tick
                 # reuse batch (already contains fear_radius candidates)
-                for o, d2 in w.query_radius_with_dist_sq_list(c.x, c.y, cfg.fear_radius):
-                    if not isinstance(o, Creature) or o.is_predator or o.id == c.id:
+                for o, d2 in _batch_list:
+                    if d2 > fear_r_sq or not isinstance(o, Creature) or o.is_predator or o.id == c.id:
                         continue
                     if o.sides != 3 or (o.clan_id and o.clan_id == c.clan_id):
                         continue  # §AR S-4: kin smell like kin
