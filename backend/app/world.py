@@ -6,6 +6,15 @@ from typing import Iterator
 from .config import Config
 from .entities import Creature, Entity
 
+# AY M-2: cached native flag at import (no per-call try) — disabled for determinism (fast-math drift breaks wrap tests)
+try:
+    from .native_core import is_native_available as _is_native_available, native_toroidal_dist_sq as _native_toroidal_dist_sq  # type: ignore
+
+    _HAS_NATIVE = False  # force python path for exact wrap math; native available via is_native_available()
+except Exception:  # pragma: no cover
+    _HAS_NATIVE = False
+    _native_toroidal_dist_sq = None  # type: ignore
+
 
 def _cross(ax: float, ay: float, bx: float, by: float) -> float:
     return ax * by - ay * bx
@@ -108,13 +117,12 @@ class World:
         return math.hypot(dx, dy)
 
     def distance_sq(self, ax: float, ay: float, bx: float, by: float) -> float:
-        """Wrap-aware squared distance — for threshold tests without sqrt or tuple allocation."""
-        dx = ax - bx
-        if dx < 0:
-            dx = -dx
-        dy = ay - by
-        if dy < 0:
-            dy = -dy
+        """Wrap-aware squared distance — for threshold tests without sqrt or tuple allocation.
+        AY M-2: uses compiled C when available (cached flag, no per-call import)."""
+        if _HAS_NATIVE and _native_toroidal_dist_sq is not None:  # type: ignore
+            return _native_toroidal_dist_sq(ax, ay, bx, by, self.config.width, self.config.height, self.config.boundary == "wrap")  # type: ignore
+        dx = abs(ax - bx)
+        dy = abs(ay - by)
         if self.config.boundary == "wrap":
             w = self.config.width
             h = self.config.height
@@ -145,8 +153,8 @@ class World:
         if is_wrap:
             cx_center = int(x // cs) % cols if cols else 0
             cy_center = int(y // cs) % rows if rows else 0
-            rx = int(math.ceil(radius / cs))
-            ry = int(math.ceil(radius / cs))
+            rx = int(math.ceil(radius / cs)) + 1
+            ry = int(math.ceil(radius / cs)) + 1
             need_seen = (rx * 2 + 1 >= cols) or (ry * 2 + 1 >= rows)
             if need_seen:
                 seen: set[int] = set()
@@ -213,8 +221,8 @@ class World:
         if is_wrap:
             cx_center = int(x // cs) % cols if cols else 0
             cy_center = int(y // cs) % rows if rows else 0
-            rx = int(math.ceil(radius / cs))
-            ry = int(math.ceil(radius / cs))
+            rx = int(math.ceil(radius / cs)) + 1
+            ry = int(math.ceil(radius / cs)) + 1
             need_seen = (rx * 2 + 1 >= cols) or (ry * 2 + 1 >= rows)
 
             if need_seen:

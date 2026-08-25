@@ -7814,6 +7814,8 @@ class Simulation:
         # AY fix: reuse batched query (_batch_r >= perceive) to avoid second spatial scan per creature
         _food_iter = _batch_list if _batch_r >= perceive - 1e-9 else w.query_radius_with_dist_sq_list(c.x, c.y, perceive)
         for e, d2 in _food_iter:
+            if d2 > perceive * perceive:
+                continue
             if e.kind not in ("food", "corpse") or e.id in self._eaten:
                 continue
             if c.is_predator and e.kind == "food":
@@ -7878,6 +7880,8 @@ class Simulation:
             scent_sq = FOOD_SCENT_RADIUS * FOOD_SCENT_RADIUS
             _scent_iter = _batch_list if _batch_r >= FOOD_SCENT_RADIUS - 1e-9 else w.query_radius_with_dist_sq(c.x, c.y, FOOD_SCENT_RADIUS)
             for e, d2 in _scent_iter:
+                if d2 > FOOD_SCENT_RADIUS * FOOD_SCENT_RADIUS:
+                    continue
                 if e.kind != "food" or e.id in self._eaten:
                     continue
                 f = cast(Food, e)
