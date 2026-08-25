@@ -1615,7 +1615,7 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 
 ---
 
-## AX. High-Density (800+ Creatures) 20 TPS Scaling & Lock/IO Decoupling  [P0–P1]
+## AX. High-Density (800+ Creatures) 20 TPS Scaling & Lock/IO Decoupling  [P0–P1] — ✅ implemented
 > Live server profiling at tick ~40,000 (800 creatures, 1,114 entities) measured 5.17 TPS with step time at ~167ms. CPU cycles are bottlenecked by WebSocket frame zlib compression (33.3%), REST endpoint lock contention (35.8%), spatial query generator overhead (34.7k calls/tick), and triplicate cache refreshes.
 
 ### Phase S-1: Lock Freeing, IO & Compression Offloading  [P0]
