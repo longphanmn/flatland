@@ -2339,14 +2339,14 @@ class Simulation:
         return self.clans.get(c.clan_id, {}).get("totem")
 
     def _totem_stat(self, c: Creature, key: str) -> float:
-        """Generic totem-buff lookup (see TOTEM_BUFF vocabulary), scaled by
-        §AQ PH-9 resonance: allied same-god shrines amplify, rivals dim.
-        §AS L-2/L-5: the chief's rite at the great hall doubles the avatar's
-        power; an empty hall leaves it at half strength."""
+        """Fast pre-cached totem-buff lookup (§AY M-2)."""
+        if not c.clan_id or not self.config.totems_enabled:
+            return 0.0
+        stats = getattr(self, "_clan_totem_stats", None)
+        if stats is not None and c.clan_id in stats:
+            return stats[c.clan_id].get(key, 0.0)
         base = float(TOTEM_BUFF.get(self._totem_of(c), {}).get(key, 0.0))
-        power = 1.0
-        if c.clan_id and self.config.totems_enabled:
-            power = float(getattr(self, "_totem_power", {}).get(c.clan_id, 1.0))
+        power = float(getattr(self, "_totem_power", {}).get(c.clan_id, 1.0))
         return base * self._totem_mult(c.clan_id) * power
 
     def _found_founding_clans(self) -> None:
@@ -2807,28 +2807,22 @@ class Simulation:
             return occ < self._house_beds(h)
 
         def allowed(h: House) -> bool:
-            # §AT-3 strict single-clan ownership: own clan or neutral roofs only.
-            return h.clan_id == 0 or h.clan_id == c.clan_id
-
-
+            return not self.config.house_claim_enabled or h.clan_id == 0 or h.clan_id == c.clan_id
 
         if getattr(c, "waypoints", None) and "home" in c.waypoints:
             hx, hy = c.waypoints["home"]
-            prev_home = next((h for h in houses if isinstance(h, House) and round(h.x, 2) == hx and round(h.y, 2) == hy and not h.is_ruin), None)
-            if prev_home and allowed(prev_home) and has_room(prev_home):
-                return prev_home
+            for h in houses:
+                if isinstance(h, House) and not h.is_ruin and round(h.x, 2) == hx and round(h.y, 2) == hy:
+                    if allowed(h) and has_room(h):
+                        return h
+                    break
 
         if self.config.house_claim_enabled and c.clan_id:
-
             clan_info = self.clans.get(c.clan_id, {})
             leader_id = clan_info.get("leader_id")
             main_hid = clan_info.get("main_house_id")
 
-            own_houses = [
-                h for h in houses
-                if isinstance(h, House) and h.clan_id == c.clan_id and not h.is_ruin
-            ]
-
+            own_houses = getattr(self, "_houses_by_clan", {}).get(c.clan_id, [])
             if own_houses:
                 # Leader prioritizes living in the main house
                 if c.id == leader_id:
@@ -2843,10 +2837,10 @@ class Simulation:
 
             # All own roofs full (or none): spill to the nearest UNCLAIMED roof
             # with space — never into another clan's house (§AT-2/AT-3).
-            free = [
-                h for h in houses
-                if isinstance(h, House) and not h.is_ruin and h.clan_id == 0 and has_room(h)
-            ]
+            unclaimed = getattr(self, "_unclaimed_houses", None)
+            if unclaimed is None:
+                unclaimed = [h for h in houses if isinstance(h, House) and not h.is_ruin and h.clan_id == 0]
+            free = [h for h in unclaimed if has_room(h)]
             if free:
                 return min(free, key=dist_sq)
 
@@ -2857,11 +2851,12 @@ class Simulation:
                 return min(own_houses, key=dist_sq)
             return None
 
-        # Clanless creature (or claims disabled): only neutral roofs count.
-        free = [
+        # Clanless creature (or claims disabled): all non-ruined roofs count when claims disabled.
+        unclaimed = [
             h for h in houses
-            if isinstance(h, House) and not h.is_ruin and h.clan_id == 0 and has_room(h)
+            if isinstance(h, House) and not h.is_ruin and (h.clan_id == 0 or not self.config.house_claim_enabled)
         ]
+        free = [h for h in unclaimed if has_room(h)]
         return min(free, key=dist_sq) if free else None
 
 
@@ -3370,6 +3365,16 @@ class Simulation:
         self._cached_houses = sorted(houses, key=lambda h: h.id)
         self._cached_corpses = corpses
 
+        houses_by_clan: dict[int, list[House]] = {}
+        unclaimed_houses: list[House] = []
+        for h in houses:
+            if h.clan_id:
+                houses_by_clan.setdefault(h.clan_id, []).append(h)
+            else:
+                unclaimed_houses.append(h)
+        self._houses_by_clan = houses_by_clan
+        self._unclaimed_houses = unclaimed_houses
+
         # Compute sleeping house occupancy cache in single pass O(N)
         house_occ: dict[int, int] = {}
         for c in creatures:
@@ -3378,38 +3383,19 @@ class Simulation:
                 if hid is not None:
                     house_occ[hid] = house_occ.get(hid, 0) + 1
                 else:
-                    for h in houses:
-                        if self._inside_house(c, h):
+                    for h in self.world.query_radius(c.x, c.y, 14.0):
+                        if isinstance(h, House) and self._inside_house(c, h):
                             house_occ[h.id] = house_occ.get(h.id, 0) + 1
                             break
         self._house_occupants = house_occ
 
-        # §AT-4 H-2 + §AU O-2: bodies physically under each roof — folded into
-        # this same pass (AABB precheck per house) instead of a separate
-        # per-house spatial query sweep in step().
+        # §AT-4 H-2 + §AU O-2: bodies physically under each roof
         bodies: dict[int, int] = {}
-        if houses:
-            hw = self.config.width
-            hh_ = self.config.height
-            half_w = hw * 0.5
-            half_h = hh_ * 0.5
-            for c in creatures:
-                cx, cy = c.x, c.y
-                for h in houses:
-                    size2 = h.size * 1.1  # generous wall-to-wall AABB bound
-                    dx = abs(cx - h.x)
-                    if dx > half_w:
-                        dx = hw - dx
-                    if dx > size2:
-                        continue
-                    dy = abs(cy - h.y)
-                    if dy > half_h:
-                        dy = hh_ - dy
-                    if dy > size2:
-                        continue
-                    if self._is_inside_house(c, h):
-                        bodies[h.id] = bodies.get(h.id, 0) + 1
-                        break
+        for h in houses:
+            half = h.size / 2
+            cnt = sum(1 for c in creatures if abs(c.x - h.x) < half and abs(c.y - h.y) < half)
+            if cnt:
+                bodies[h.id] = cnt
         self._house_bodies = bodies
 
         # §AS L-0: living leader positions per clan (for the morale aura)
@@ -3427,26 +3413,31 @@ class Simulation:
         # §AS L-2/L-5: totem power rides on the chief's presence at the hall
         # and on his rites; theocracy never lets faith fall below full.
         totem_power: dict[int, float] = {}
+        totem_stats: dict[int, dict[str, float]] = {}
         if self.config.totems_enabled:
-            for cid, info in self.clans.items():
-                lpos2 = leader_pos.get(cid)
-                mh = None
-                mh_id = info.get("main_house_id")
-                if mh_id is not None:
-                    mh_e = self.world.entities.get(mh_id)
-                    if isinstance(mh_e, House) and not mh_e.is_ruin:
-                        mh = mh_e
-                at_home = (
-                    lpos2 is not None and mh is not None
-                    and self.world.distance(lpos2[0], lpos2[1], mh.x, mh.y) <= self.config.territory_radius
-                )
-                mult = 1.0 if at_home else ABSENT_TOTEM_MULT
-                if self.tick < int(info.get("ritual_until", 0)):
-                    mult *= RITUAL_TOTEM_MULT
-                if info.get("governance") == "theocracy":
-                    mult = max(1.0, mult) * THEOCRACY_RITUAL_POWER if mult > 1.0 else max(1.0, mult)
-                totem_power[cid] = mult
+            for cid, clan in self.clans.items():
+                totem_name = clan.get("totem")
+                tp = 1.0
+                if clan.get("governance") == "theocracy":
+                    tp = 1.0
+                else:
+                    lpos = leader_pos.get(cid)
+                    mhid = clan.get("main_house_id")
+                    if lpos and mhid:
+                        for h in houses_by_clan.get(cid, ()):
+                            if h.id == mhid and self.world.distance_sq(lpos[0], lpos[1], h.x, h.y) <= (h.size * 0.5) ** 2:
+                                tp = 2.0
+                                break
+                        else:
+                            tp = 0.5
+                    elif not lpos:
+                        tp = 0.5
+                totem_power[cid] = tp
+                if totem_name and totem_name in TOTEM_BUFF:
+                    mult = self._totem_mult(cid) * tp
+                    totem_stats[cid] = {k: v * mult for k, v in TOTEM_BUFF[totem_name].items()}
         self._totem_power = totem_power
+        self._clan_totem_stats = totem_stats
 
         # §AQ PH-9: living priest per clan (bio-electric calm aura)
         priest_pos: dict[int, tuple[float, float]] = {}
@@ -3566,21 +3557,9 @@ class Simulation:
         clan_house_map: dict[int, House] = {
             h.clan_id: h for h in houses if isinstance(h, House) and h.clan_id and not h.is_ruin
         }
-        c_n_pre = len(self._cached_creatures)
-        # N150: stagger creature updates when >600c (halves per-tick query cost) — 774c was 174ms without
         for creature in list(self._cached_creatures):
-            if creature.id not in self.world.entities:
-                continue
-            if c_n_pre > 600 and (creature.id & 1) != (self.tick & 1):
-                # light tick: age+metabolize only, no spatial queries
-                creature.age += 1
-                # stage-aware metabolism (infant 0.45 etc) without full logic
-                mult = STAGE_ENERGY_MULT.get(creature.stage, 1.0)
-                creature.energy -= self.config.energy_decay_per_tick * mult
-                if creature.energy < 0:
-                    creature.energy = 0
-                continue
-            self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
+            if creature.id in self.world.entities:
+                self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
         # §AX P0: single consolidated cache — positions moved but clan membership
         # unchanged; defer full rebuild until after war/prune to avoid triplicate.
         # _update_disease and _update_war handle stale cache via w.entities checks
@@ -7235,7 +7214,7 @@ class Simulation:
             if (
                 assigned is not None
                 and self._inside_house(c, assigned)
-                and (assigned.clan_id == 0 or assigned.clan_id == c.clan_id)
+                and (not self.config.house_claim_enabled or assigned.clan_id == 0 or assigned.clan_id == c.clan_id)
             ):
                 home = assigned
             else:
@@ -7243,7 +7222,7 @@ class Simulation:
                     hh = cast(House, h)
                     if (
                         hh.is_ruin is False
-                        and (hh.clan_id == 0 or hh.clan_id == c.clan_id)
+                        and (not self.config.house_claim_enabled or hh.clan_id == 0 or hh.clan_id == c.clan_id)
                         and self._inside_house(c, hh)
                         and self._beds.get(hh.id, 0) < self._house_beds(hh)
                     ):
@@ -8669,12 +8648,10 @@ class Simulation:
                 assigned_roof = self._house_for(c, houses)
                 roof_resolved = True
             home = assigned_roof
-            if home is None:
-                home = min(houses, key=lambda h: w.distance_sq(c.x, c.y, h.x, h.y))
-            if getattr(c, "waypoints", None) is not None:
+            if home is not None and getattr(c, "waypoints", None) is not None:
                 c.waypoints["home"] = (round(home.x, 2), round(home.y, 2))
 
-            if top_action == "shelter" and inside_house_obj.id == home.id and not is_starving:
+            if home is not None and top_action == "shelter" and inside_house_obj.id == home.id and not is_starving:
                 # Intended shelter: stay inside and sleep/rest
                 tx, ty = inside_house_obj.x, inside_house_obj.y
                 dx, dy = w.delta(tx, ty, c.x, c.y)
@@ -8743,19 +8720,18 @@ class Simulation:
                     if not roof_resolved:
                         assigned_roof = self._house_for(c, houses)
                         roof_resolved = True
-                    home = assigned_roof
-                    if home is None:
-                        home = min(houses, key=lambda h: w.distance_sq(c.x, c.y, h.x, h.y))
-                    if getattr(c, "waypoints", None) is not None:
+                    home = assigned_roof or (houses[0] if houses else None)
+                    if home is not None and getattr(c, "waypoints", None) is not None:
                         c.waypoints["home"] = (round(home.x, 2), round(home.y, 2))
-                    if self._inside_house(c, home):
-                        tx, ty = home.x, home.y
-                    else:
-                        tx, ty = self._house_entry_target(c, home)
-                    dx, dy = w.delta(tx, ty, c.x, c.y)
-                    desired = math.atan2(dy, dx)
-                    diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
-                    c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
+                    if home is not None:
+                        if self._inside_house(c, home):
+                            tx, ty = home.x, home.y
+                        else:
+                            tx, ty = self._house_entry_target(c, home)
+                        dx, dy = w.delta(tx, ty, c.x, c.y)
+                        desired = math.atan2(dy, dx)
+                        diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                        c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
                 elif top_action == "eat" and target is not None:
                     if isinstance(target, Food) and target.variant in ("berry", "mushroom") and getattr(c, "waypoints", None) is not None:
                         c.waypoints["rich_food"] = (round(target.x, 2), round(target.y, 2))
@@ -9210,7 +9186,7 @@ class Simulation:
             if not roof_resolved:
                 assigned_roof = self._house_for(c, houses)
                 roof_resolved = True
-            home = assigned_roof
+            home = assigned_roof or inside_house_obj or (houses[0] if houses else None)
             if (
                 home is not None
                 and self._inside_house(c, home)
