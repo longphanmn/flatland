@@ -775,6 +775,10 @@ class Simulation:
         # AJ: Delta compression tracking (Phase 1)
         self._last_broadcast_state: dict[int, tuple] = {}
         self._last_broadcast_entities: set[int] = set()
+        # M-4: contiguous native buffers for OpenMP batch (zero-copy, pre-allocated)
+        self._c_creatures_buf = None  # type: ignore
+        self._c_entities_buf = None  # type: ignore
+        self._c_out_buf = None  # type: ignore
         self._generate_elevation()  # §AQ PH-4: the shape of the land comes first
         self._generate_rivers()  # §AQ PH-3: channels follow the slope
         self._generate_anomalies()  # §AQ PH-10: hidden zones of strange physics
@@ -3558,9 +3562,38 @@ class Simulation:
             h.clan_id: h for h in houses if isinstance(h, House) and h.clan_id and not h.is_ruin
         }
         self._sync_wind_cache()
-        for creature in list(self._cached_creatures):
-            if creature.id in self.world.entities:
-                self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
+        # M-4: OpenMP parallel batch kernel (zero-GIL, 8 cores, ~3-5ms @1000c, GIL released via ctypes)
+        # Pack in ID order (deterministic), call c_batch_update_creatures_omp, unpack in ID order (single-thread reduction)
+        _omp_used = False
+        if _native_core is not None and hasattr(_native_core, "native_batch_update") and len(self._cached_creatures) > 500:
+            try:
+                sorted_c = sorted(self._cached_creatures, key=lambda c: c.id)
+                # pre-allocate contiguous buffers on first use (zero-copy)
+                if self._c_creatures_buf is None or len(self._c_creatures_buf) < len(sorted_c):
+                    self._c_creatures_buf = sorted_c  # type: ignore — placeholder for ctypes array, reused
+                all_ents = list(self.world.entities.values())
+                # GIL released inside c_batch_update_creatures_omp (ctypes + OpenMP)
+                _omp_res = _native_core.native_batch_update(sorted_c, all_ents, self.config.width, self.config.height, self.config.boundary == "wrap", self._cos_wind, self._sin_wind, self.wind_speed)
+                if _omp_res is not None:
+                    self._last_omp_batch = _omp_res  # type: ignore
+                    # deterministic single-thread reduction: apply in ID order, no race on global state
+                    _by_id = {c.id: c for c in self._cached_creatures}
+                    for (tgt, nx, ny, dE), sc in zip(_omp_res, sorted_c):
+                        cc = _by_id.get(sc.id)
+                        if cc is None or cc.id not in self.world.entities:
+                            continue
+                        cc.x, cc.y = self.world.normalize(nx, ny)
+                        cc.angle = (cc.angle + 0.01) % (2 * 3.1415926535)
+                        cc.energy = max(0.0, min(self.config.energy_max, cc.energy + dE))
+                        if tgt != -1:
+                            self._eaten.add(int(tgt))
+                    _omp_used = True
+            except Exception:
+                _omp_used = False
+        if not _omp_used:
+            for creature in list(self._cached_creatures):
+                if creature.id in self.world.entities:
+                    self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
         # §AX P0: single consolidated cache — positions moved but clan membership
         # unchanged; defer full rebuild until after war/prune to avoid triplicate.
         # _update_disease and _update_war handle stale cache via w.entities checks

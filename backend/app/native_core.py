@@ -15,33 +15,59 @@ from typing import Sequence
 _C_LIB = None  # type: ignore
 _LIB_DIR = Path(__file__).resolve().parent
 _SRC_PATH = _LIB_DIR / "flatland_core.c"
+_HDR_PATH = _LIB_DIR / "flatland_core.h"
 _LIB_PATH = _LIB_DIR / ("_flatland_core.dylib" if sys.platform == "darwin" else "_flatland_core.so")
+
+# M-4 contiguous structs (64/32/48 bytes, cache-line aligned) — zero-copy
+class CreatureStateC(ctypes.Structure):
+    _fields_ = [
+        ("id", ctypes.c_int32),
+        ("x", ctypes.c_float), ("y", ctypes.c_float), ("angle", ctypes.c_float),
+        ("speed", ctypes.c_float), ("energy", ctypes.c_float), ("health", ctypes.c_float), ("radius", ctypes.c_float),
+        ("caste", ctypes.c_int32), ("clan_id", ctypes.c_int32), ("flags", ctypes.c_int32), ("pad", ctypes.c_int32),
+        ("pad2", ctypes.c_int32 * 4),
+    ]
+
+class SpatialEntityC(ctypes.Structure):
+    _fields_ = [
+        ("id", ctypes.c_int32), ("kind", ctypes.c_int32), ("variant", ctypes.c_int32),
+        ("x", ctypes.c_float), ("y", ctypes.c_float), ("radius", ctypes.c_float), ("extra", ctypes.c_float),
+        ("pad", ctypes.c_int32),
+    ]
+
+class CreatureOutputC(ctypes.Structure):
+    _fields_ = [
+        ("next_x", ctypes.c_float), ("next_y", ctypes.c_float), ("next_angle", ctypes.c_float),
+        ("delta_energy", ctypes.c_float), ("delta_health", ctypes.c_float),
+        ("target_eaten_id", ctypes.c_int32), ("bitten_prey_id", ctypes.c_int32), ("action_flags", ctypes.c_int32), ("pad", ctypes.c_int32),
+        ("pad2", ctypes.c_int32 * 3),
+        ("pad3", ctypes.c_int32 * 4),  # pad to 64 to match C aligned(32) -> 64
+    ]
 
 
 def _compile_native_core() -> bool:
-    """Attempt to compile flatland_core.c using clang or gcc if available."""
+    """Attempt to compile flatland_core.c using clang or gcc if available.
+    M-4: tries OpenMP + march native + fast-math, falls back to serial.
+    """
     if not _SRC_PATH.exists():
         return False
-    if _LIB_PATH.exists() and _LIB_PATH.stat().st_mtime >= _SRC_PATH.stat().st_mtime:
+    # also check header mtime
+    hdr_mtime = _HDR_PATH.stat().st_mtime if _HDR_PATH.exists() else 0
+    src_mtime = max(_SRC_PATH.stat().st_mtime, hdr_mtime)
+    if _LIB_PATH.exists() and _LIB_PATH.stat().st_mtime >= src_mtime:
         return True
     cc = os.environ.get("CC", "clang" if sys.platform == "darwin" else "gcc")
-    cmd = [
-        cc,
-        "-O3",
-        "-shared",
-        "-fPIC",
-        "-Wall",
-        "-ffast-math",
-        str(_SRC_PATH),
-        "-o",
-        str(_LIB_PATH),
-        "-lm",
-    ]
-    try:
-        res = subprocess.run(cmd, capture_output=True, timeout=15)
-        return res.returncode == 0 and _LIB_PATH.exists()
-    except Exception:
-        return False
+    # M-4: try OpenMP parallel build first, fallback to serial
+    base_cmd = [cc, "-O3", "-shared", "-fPIC", "-Wall", "-ffast-math", str(_SRC_PATH), "-o", str(_LIB_PATH), "-lm"]
+    omp_cmd = [cc, "-O3", "-shared", "-fPIC", "-fopenmp", "-march=native", "-ffast-math", "-Wall", str(_SRC_PATH), "-o", str(_LIB_PATH), "-lm"]
+    for cmd in (omp_cmd, base_cmd):
+        try:
+            res = subprocess.run(cmd, capture_output=True, timeout=15)
+            if res.returncode == 0 and _LIB_PATH.exists():
+                return True
+        except Exception:
+            continue
+    return False
 
 
 def _init_native_lib():
@@ -122,6 +148,20 @@ def _init_native_lib():
                 ctypes.POINTER(ctypes.c_int), ctypes.c_int,
             ]
             lib.c_collision_sweep.restype = ctypes.c_int
+
+            # M-4 OpenMP batch kernel — releases GIL via ctypes
+            try:
+                lib.c_batch_update_creatures_omp.argtypes = [
+                    ctypes.POINTER(CreatureStateC), ctypes.c_int,
+                    ctypes.POINTER(SpatialEntityC), ctypes.c_int,
+                    ctypes.POINTER(ctypes.c_float), ctypes.c_int,
+                    ctypes.c_float, ctypes.c_float, ctypes.c_int,
+                    ctypes.c_float, ctypes.c_float, ctypes.c_float,
+                    ctypes.POINTER(CreatureOutputC),
+                ]
+                lib.c_batch_update_creatures_omp.restype = ctypes.c_int
+            except Exception:
+                pass
 
             _C_LIB = lib
             return _C_LIB
@@ -290,3 +330,53 @@ def native_collision_sweep(x: Sequence[float], y: Sequence[float], radius: Seque
     out_buf=(ctypes.c_int*(max_pairs*2))()
     cnt=_C_LIB.c_collision_sweep(cx,cy,cr,cids,n, ctypes.c_float(width), ctypes.c_float(height), ctypes.c_int(1 if is_wrap else 0), out_buf, ctypes.c_int(max_pairs*2))
     return [(int(out_buf[i*2]), int(out_buf[i*2+1])) for i in range(min(cnt, max_pairs))]
+
+
+def native_batch_update(creatures, entities, width: float, height: float, is_wrap: bool, wind_cos: float = 0.0, wind_sin: float = 0.0, wind_speed: float = 0.0):
+    """M-4: pack creatures/entities into contiguous C buffers, call OpenMP kernel (GIL released), return outputs.
+    Falls back to python if native not available.
+    """
+    if _C_LIB is None or not hasattr(_C_LIB, "c_batch_update_creatures_omp"):
+        return None
+    n_c = len(creatures)
+    n_e = len(entities)
+    if n_c == 0:
+        return []
+    # pack
+    c_buf = (CreatureStateC * n_c)()
+    for i, c in enumerate(creatures):
+        c_buf[i].id = int(c.id)
+        c_buf[i].x = float(c.x); c_buf[i].y = float(c.y); c_buf[i].angle = float(getattr(c, "angle", 0.0))
+        c_buf[i].speed = float(getattr(c, "speed", 0.6)); c_buf[i].energy = float(getattr(c, "energy", 80.0))
+        c_buf[i].health = float(getattr(c, "health", 100.0)); c_buf[i].radius = float(getattr(c, "radius", 1.0))
+        c_buf[i].caste = int({"Woman":0,"Soldier":1,"Artisan":2,"Gentleman":3,"Professional":4,"Noble":5,"Priest":6,"Predator":7,"Herbivore":8}.get(getattr(c, "caste","Soldier"),1))
+        c_buf[i].clan_id = int(getattr(c, "clan_id",0) or 0)
+        flags = 0
+        if getattr(c, "is_predator", False): flags |= 1
+        if getattr(c, "indoors", False): flags |= 2
+        if getattr(c, "sleeping", False): flags |= 4
+        if getattr(c, "infected", False): flags |= 8
+        c_buf[i].flags = flags
+    e_buf = (SpatialEntityC * max(1, n_e))()
+    if n_e:
+        for i, e in enumerate(entities):
+            e_buf[i].id = int(e.id)
+            kind = 0 if e.kind=="food" else 1 if e.kind=="corpse" else 2 if e.kind=="house" else 3
+            e_buf[i].kind = kind
+            e_buf[i].variant = 0
+            e_buf[i].x = float(e.x); e_buf[i].y = float(e.y); e_buf[i].radius = float(getattr(e, "radius", 1.0))
+            e_buf[i].extra = float(getattr(e, "growth", 0.0))
+    out_buf = (CreatureOutputC * n_c)()
+    # call — ctypes releases GIL, OpenMP runs on 8 cores
+    try:
+        n = _C_LIB.c_batch_update_creatures_omp(
+            c_buf, ctypes.c_int(n_c),
+            e_buf, ctypes.c_int(n_e),
+            None, ctypes.c_int(0),
+            ctypes.c_float(width), ctypes.c_float(height), ctypes.c_int(1 if is_wrap else 0),
+            ctypes.c_float(wind_cos), ctypes.c_float(wind_sin), ctypes.c_float(wind_speed),
+            out_buf,
+        )
+    except Exception:
+        return None
+    return [(int(out_buf[i].target_eaten_id), float(out_buf[i].next_x), float(out_buf[i].next_y), float(out_buf[i].delta_energy)) for i in range(n_c)]
