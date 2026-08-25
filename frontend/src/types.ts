@@ -126,6 +126,7 @@ export interface StateMessage {
   events: HistoryEvent[]
   signals: { x: number; y: number; kind: 'food' | 'alarm'; sender: number; clan_id: number | null; ttl: number }[]
   fires: { x: number; y: number; r: number; ttl: number }[]
+  campfires?: { x: number; y: number }[]
   boundary_stones?: { x: number; y: number; clan_id: number }[]
   markets?: { x: number; y: number; a: number; b: number }[]
   wind?: { angle: number; speed: number }
@@ -163,6 +164,7 @@ export interface DeltaStateMessage {
   events: HistoryEvent[]
   signals: { x: number; y: number; kind: 'food' | 'alarm'; sender: number; clan_id: number | null; ttl: number }[]
   fires: { x: number; y: number; r: number; ttl: number }[]
+  campfires?: { x: number; y: number }[]
   boundary_stones?: { x: number; y: number; clan_id: number }[]
   markets?: { x: number; y: number; a: number; b: number }[]
   wind?: { angle: number; speed: number }
@@ -188,6 +190,7 @@ export interface HistoryEvent {
     | 'miracle' | 'sermon' | 'synod' | 'temple' | 'epiphany' | 'resonance'
     | 'compost' | 'banquet' | 'raid' | 'hospitality'
     | 'peace_envoy' | 'market' | 'caravan' | 'omen'
+    | 'regicide' | 'herald'
   tick: number
   entity_id: number
   caste?: string | null

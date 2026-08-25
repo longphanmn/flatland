@@ -179,8 +179,20 @@ class Creature(Entity):
     low_energy_ticks: int = 0  # consecutive ticks below the exhaustion floor
     wound_ticks: int = 0  # countdown while a persistent wound lingers
     wound_severity: int = 0  # 0 none | 1 wound | 2 grievous (no combat)
+    wound_dressed: bool = False  # §AT-4 H-2: a helper has bandaged this wound
+    scars: int = 0  # §AT-4 H-2: permanent marks of survived grievous wounds
     heal_bonus_amount: float = 0.0  # extra health per tick from rich food
     heal_bonus_ticks: int = 0  # countdown for the bonus above
+    # §AT-4 H-2: morale — the second health axis; despair stops provision,
+    # breaks bonds and finally drives a body to abandon its clan.
+    morale: float = 100.0
+    pause_ticks: int = 0  # §AR S-7: grieving kin stand still for a few ticks
+    # §AR S-1 hearing: alarm habituation and rude awakenings
+    alarm_streak: int = 0  # consecutive ticks hearing the SAME alarm source
+    last_alarm_sender: int = -1  # sender id of the last heard alarm
+    alarm_wake_ticks: int = 0  # >0: a war cry tore us from our sleep
+    # §AS L-1: a rally before battle sharpens every blade in earshot
+    combat_boost_ticks: int = 0
     # §AM agriculture: seed pouches gathered from wild harvests, sown at farm plots
     seeds: int = 0
     # §AQ PH-7 metabolic extremes: sustained cooking collapses the body

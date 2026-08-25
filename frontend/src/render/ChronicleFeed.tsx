@@ -71,6 +71,8 @@ function matchesCategory(ev: HistoryEvent, category: EventCategory): boolean {
       'market',
       'caravan',
       'omen',
+      'regicide',
+      'herald',
     ].includes(ev.type)
   }
   if (category === 'deaths') {
@@ -763,6 +765,28 @@ export default function ChronicleFeed({
                   🐫 a trade caravan travelled between{' '}
                   <button className="chronicle-name" onClick={() => onSelectClan(p.a)} title="show clan"><b>{p.a_name ?? `Clan ${p.a}`}</b></button>
                   {' '}and{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.b)} title="show clan"><b>{p.b_name ?? `Clan ${p.b}`}</b></button>
+                  {' '}at tick {ev.tick}
+                </li>
+              )
+            }
+            if (ev.type === 'regicide') {
+              return (
+                <li key={key} style={{ color: '#f85149' }}>
+                  🗡 regicide: <b>{p.assassin}</b> of{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.assassin_clan)} title="show clan"><b>{p.assassin_clan_name ?? `Clan ${p.assassin_clan}`}</b></button>
+                  {' '}murdered Chief #{p.victim} of{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.victim_clan)} title="show clan"><b>{p.victim_clan_name ?? `Clan ${p.victim_clan}`}</b></button>
+                  {' '}at tick {ev.tick}
+                </li>
+              )
+            }
+            if (ev.type === 'herald') {
+              return (
+                <li key={key} style={{ color: '#8b949e' }}>
+                  📜 a herald carried terms from{' '}
+                  <button className="chronicle-name" onClick={() => onSelectClan(p.a)} title="show clan"><b>{p.a_name ?? `Clan ${p.a}`}</b></button>
+                  {' '}to{' '}
                   <button className="chronicle-name" onClick={() => onSelectClan(p.b)} title="show clan"><b>{p.b_name ?? `Clan ${p.b}`}</b></button>
                   {' '}at tick {ev.tick}
                 </li>

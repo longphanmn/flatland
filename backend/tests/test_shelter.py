@@ -4,7 +4,7 @@ import pytest
 
 from app.config import Config
 from app.entities import Creature, House
-from app.simulation import HEALING_ENERGY_COST, METABOLIC_COST, Simulation
+from app.simulation import HEALING_ENERGY_COST, METABOLIC_COST, OVERCROWD_DRAIN, Simulation
 
 
 def shelter_cfg(**kw) -> Config:
@@ -50,12 +50,17 @@ def test_house_capacity_overflows_into_the_rain():
         s.step()
     assert s._is_night(s._time_of_day())
     e_second = second.energy
+    h_second = second.health
     s.step()
     assert first.sleeping and first.indoors
     assert not second.sleeping and not second.indoors
+    # §AT-4 H-2: the roof holds two bodies over one bed — the overflow body
+    # grinds health down (overcrowding) and mending the grind costs energy.
+    assert h_second - second.health == pytest.approx(0.0)  # drain is re-mended at full pool
     assert e_second - second.energy == pytest.approx(
         s.config.energy_decay_per_tick * METABOLIC_COST[second.caste]
         + s.config.exposure_drain
+        + OVERCROWD_DRAIN * HEALING_ENERGY_COST  # 1 body over capacity
     )
 
 

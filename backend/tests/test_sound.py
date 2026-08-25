@@ -39,9 +39,11 @@ def sound_cfg(**kw) -> Config:
     return Config(**zeros)
 
 
-def hearer_flees(cfg: Config, listener_x: float, indoors: bool = False) -> bool:
-    """True when the listener consistently steers AWAY from the alarm source
-    (net displacement over repeated ticks); wander averages out to ~zero."""
+def hearer_net(cfg: Config, listener_x: float, indoors: bool = False,
+               quiet: bool = False) -> float:
+    """Net displacement away from the source over repeated pinned ticks.
+    §AR S-1 note: an unheard ear keeps its heading — compare against a
+    quiet control run instead of expecting zero drift."""
     s = Simulation(cfg)
     s.wind_angle = 0.0
     s.wind_speed = 1.0
@@ -50,8 +52,9 @@ def hearer_flees(cfg: Config, listener_x: float, indoors: bool = False) -> bool:
         h = s.world.add(House(x=listener_x, y=150.0, size=8.0))
     c = s.world.add(Creature(x=listener_x, y=150.0, energy=90.0,
                              lifespan=100000.0, speed=0.5))
-    s.signals.append({"x": 200.0, "y": 150.0, "kind": "alarm",
-                      "sender": 999, "clan_id": None, "ttl": 100})
+    if not quiet:
+        s.signals.append({"x": 200.0, "y": 150.0, "kind": "alarm",
+                          "sender": 999, "clan_id": None, "ttl": 100})
     houses = [h] if indoors else []
     net_away = 0.0
     for _ in range(14):
@@ -60,24 +63,27 @@ def hearer_flees(cfg: Config, listener_x: float, indoors: bool = False) -> bool:
         # displacement relative to the source (east = away, west = toward)
         dx, _ = s.world.delta(c.x, c.y, 200.0, 150.0)
         net_away += dx - (listener_x - 200.0)
-    return net_away > 3.0
+    return net_away
 
 
 def test_calls_carry_farther_downwind_than_upwind():
     cfg = sound_cfg(signal_radius=10.0)
     assert 14.0 <= 10.0 * (1.0 + SOUND_WIND_MULT)
     # west wind (+x): a listener east of the source is downwind — hears at 13
-    assert hearer_flees(cfg, 213.0), "downwind ear missed the call"
-    # the same gap upwind stays silent (base radius only reaches 10)
-    assert not hearer_flees(cfg, 187.0), "upwind ear caught a distant call"
+    assert hearer_net(cfg, 213.0) > 3.0, "downwind ear missed the call"
+    # the same gap upwind stays silent (base radius only reaches 10): the
+    # ear must not REACT to the call — its walk matches a quiet control run
+    # (heading drift included), while a heard call would bend the path.
+    assert abs(hearer_net(cfg, 187.0) - hearer_net(cfg, 187.0, quiet=True)) < 1.0, \
+        "upwind ear caught a distant call"
 
 
 def test_roofs_muffle_alarms_from_the_open():
     cfg = sound_cfg(signal_radius=12.0)
     # well inside earshot but under a roof: the open-air alarm goes unheard
-    assert not hearer_flees(cfg, 206.0, indoors=True)
+    assert not hearer_net(cfg, 206.0, indoors=True) > 3.0
     # the same spot unsheltered hears it fine
-    assert hearer_flees(cfg, 206.0, indoors=False)
+    assert hearer_net(cfg, 206.0, indoors=False) > 3.0
 
 
 def test_collapsing_roof_booms_across_the_land():

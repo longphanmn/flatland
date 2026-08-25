@@ -1474,47 +1474,47 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 
 ---
 
-## AS. Clan Leader Importance Roadmap  [P0–P2]
+## AS. Clan Leader Importance Roadmap  [P0–P2] — ✅ implemented
 > Design principle: leader alive = clan multiplier; leader dead = clan crisis.
 > The leader must be a single point of leverage — both a buff when present and a vulnerability when killed.
 
-### Phase L-0: Make Leader Death Painful  [P0] — ✅ implemented
+### Phase L-0: Make Leader Death Painful  [P0] — ✅ implemented — ✅ implemented
 - [x] [P0] **Morale aura** — all clan members within `LEADER_AURA_RADIUS` (15) of the living leader gain: −5% energy decay (`LEADER_DECAY_MULT`), +10% sight (`LEADER_SIGHT_BONUS`), fear radius −1 (`LEADER_CALM`); with no living leader the clan glooms: +5% decay, −10% sight, +1 fear (`_leader_pos` cache built in `_refresh_cache`, applied in `_update_creature`). (`simulation.py`, tests `tests/test_leader.py`)
 - [x] [P0] **Leaderless penalty** — when `clan["leader_id"]` resolves to nobody living: all members harvest at ×0.85 (`LEADERLESS_GAIN_MULT`), bylaws/task boards pause (rationing off, duty weights neutral), war declarations stop (`_update_leader_decisions` requires a living leader creature), and members drift toward `cautious` personality at `LEADERLESS_CAUTIOUS_CHANCE`/tick.
 - [x] [P0] **Leader death = clan shock** — in `_kill` succession block: every living member instantly loses 10 energy (`LEADER_SHOCK_ENERGY`, floored 0.5), gains `panic_ticks = 20` (+0.3 `u_flee` while it lasts, panic emote), the larder loses 20% (`LEADER_SHOCK_LARDER_MULT`), and a grey `"grief"` ripple emits at the death spot.
 
-### Phase L-1: Military Command  [P1]
-- [ ] [P1] **Combat effectiveness halved without leader** — during `_update_war`, if the attacking or defending clan has no living leader (`leader_id` missing or dead), apply `×0.5` modifier to their attack roll / yield calculation; an army without a general fights at half strength.
-- [ ] [P1] **Bodyguard clustering** — clan Soldiers within `aura_radius` of their own living leader gain `u_help = 1.5` (ultra-high priority to defend the leader's position); the bodyguard cluster emerges from the existing signal/utility system with no extra mechanics.
-- [ ] [P1] **Rally signal before war** — before a war declaration fires, leader emits a `"rally"` signal (new kind) toward the remembered enemy; Soldiers within range boost `u_help`; all members get +0.3 combat skill for 30 ticks; long-distance war declarations without a rally are strategically weaker.
-- [ ] [P1] **Targeted assassination** — bold/Junta leaders specifically target the enemy clan's `leader_id` creature during combat (`+0.2` attack bonus); killing the enemy leader ends the war immediately (forced peace event); decapitation is a valid strategy.
+### Phase L-1: Military Command  [P1] — ✅ implemented
+- [x] [P1] **Combat effectiveness halved without leader** — during `_update_war`, if the attacking or defending clan has no living leader (`leader_id` missing or dead), apply `×0.5` modifier to their attack roll / yield calculation; an army without a general fights at half strength.
+- [x] [P1] **Bodyguard clustering** — clan Soldiers within `aura_radius` of their own living leader gain `u_help = 1.5` (ultra-high priority to defend the leader's position); the bodyguard cluster emerges from the existing signal/utility system with no extra mechanics.
+- [x] [P1] **Rally signal before war** — before a war declaration fires, leader emits a `"rally"` signal (new kind) toward the remembered enemy; Soldiers within range boost `u_help`; all members get +0.3 combat skill for 30 ticks; long-distance war declarations without a rally are strategically weaker.
+- [x] [P1] **Targeted assassination** — bold/Junta leaders specifically target the enemy clan's `leader_id` creature during combat (`+0.2` attack bonus); killing the enemy leader ends the war immediately (forced peace event); decapitation is a valid strategy.
 
-### Phase L-2: Active Commands — Leader Issues Orders  [P1–P2]
-- [ ] [P1] **Retreat command** — leader health < 30%: emits a `"retreat"` signal (new kind) at `signal_radius × 2`; all clan-mates in range switch to `u_shelter = 2.0`, overriding all other drives; catastrophic for the clan but realistic.
-- [ ] [P1] **Ritual at main house boosts totem** — leader at main house every N ticks conducts a "ritual" (emote); totem buff magnitude doubles for 30 ticks for all clan members; without a living leader at the main house, totem power drops to 50% effectiveness.
-- [ ] [P2] **Harvest order signal** — leader at main house in autumn emits `"harvest"` signal; all farmers in radius boost foraging range and `u_eat` weight; increases larder fill rate during the crucial autumn window.
-- [ ] [P2] **Evacuation order** — leader detects disaster (fire/flood spreading nearby): emits `"evacuate"` signal with a direction vector; clan members set highest-priority waypoint in that direction.
+### Phase L-2: Active Commands — Leader Issues Orders  [P1–P2] — ✅ implemented
+- [x] [P1] **Retreat command** — leader health < 30%: emits a `"retreat"` signal (new kind) at `signal_radius × 2`; all clan-mates in range switch to `u_shelter = 2.0`, overriding all other drives; catastrophic for the clan but realistic.
+- [x] [P1] **Ritual at main house boosts totem** — leader at main house every N ticks conducts a "ritual" (emote); totem buff magnitude doubles for 30 ticks for all clan members; without a living leader at the main house, totem power drops to 50% effectiveness.
+- [x] [P2] **Harvest order signal** — leader at main house in autumn emits `"harvest"` signal; all farmers in radius boost foraging range and `u_eat` weight; increases larder fill rate during the crucial autumn window.
+- [x] [P2] **Evacuation order** — leader detects disaster (fire/flood spreading nearby): emits `"evacuate"` signal with a direction vector; clan members set highest-priority waypoint in that direction.
 
-### Phase L-3: Economic Control  [P1]
-- [ ] [P1] **Larder deposits require leader presence** — food deposits into the clan larder are only accepted when a living leader is within `main_house_radius`; without leader, members can still withdraw (eat reserves) but cannot deposit; a leaderless clan slowly starves even with a full larder.
-- [ ] [P1] **Leader distributes rations** — larder distribution becomes a periodic leader action at the main house rather than automatic; distribution quality scales with leader `farming` skill; absent/dead leader = no distribution.
+### Phase L-3: Economic Control  [P1] — ✅ implemented
+- [x] [P1] **Larder deposits require leader presence** — food deposits into the clan larder are only accepted when a living leader is within `main_house_radius`; without leader, members can still withdraw (eat reserves) but cannot deposit; a leaderless clan slowly starves even with a full larder.
+- [x] [P1] **Leader distributes rations** — larder distribution becomes a periodic leader action at the main house rather than automatic; distribution quality scales with leader `farming` skill; absent/dead leader = no distribution.
 
-### Phase L-4: Diplomacy Requires Presence  [P2]
-- [ ] [P2] **Peace requires physical meeting** — peace negotiations require both leaders to be within `talk_radius` (~6 units) of each other; a peace offer only finalises if the rival leader is nearby; if a leader dies mid-negotiation, the deal collapses.
-- [ ] [P2] **Herald system** — when leaders are far apart, the highest-caste living member is dispatched as a "herald" creature with a waypoint toward the rival leader; the herald must survive the journey for diplomacy to succeed.
-- [ ] [P2] **Regicide political fallout** — killing an enemy leader without formal war declaration fires a `"regicide"` history event; the assassin's clan gets −60 relations with all neutrals ("they murder chiefs"), but the victim clan gets +40 sympathy from all others; high-risk, high-reward political weapon.
+### Phase L-4: Diplomacy Requires Presence  [P2] — ✅ implemented
+- [x] [P2] **Peace requires physical meeting** — peace negotiations require both leaders to be within `talk_radius` (~6 units) of each other; a peace offer only finalises if the rival leader is nearby; if a leader dies mid-negotiation, the deal collapses.
+- [x] [P2] **Herald system** — when leaders are far apart, the highest-caste living member is dispatched as a "herald" creature with a waypoint toward the rival leader; the herald must survive the journey for diplomacy to succeed.
+- [x] [P2] **Regicide political fallout** — killing an enemy leader without formal war declaration fires a `"regicide"` history event; the assassin's clan gets −60 relations with all neutrals ("they murder chiefs"), but the victim clan gets +40 sympathy from all others; high-risk, high-reward political weapon.
 
-### Phase L-5: Governance Differentiation  [P1]
+### Phase L-5: Governance Differentiation  [P1] — ✅ implemented
 > Governance types already exist (republic/monarchy/theocracy/junta) but only differ in succession order.
-- [ ] [P1] **Republic active bonus** — strongest diplomacy (+20% peace offer acceptance), best larder distribution efficiency, but slowest war decisions (requires 2-tick deliberation before war fires).
-- [ ] [P1] **Monarchy active bonus** — largest morale aura radius (×1.5); tribute income doubles; risk: if gene pool small, inbreeding mutation chance increases.
-- [ ] [P1] **Theocracy active bonus** — ritual power ×2 (totem always at 100%); cannot declare war unilaterally (requires a Priest elder co-sign signal); strongest spiritual defenses.
-- [ ] [P1] **Junta active bonus** — all clan combat skill ×1.5; assassination attempts get ×2 frequency; peace offers from Junta clans are ignored by rivals (militarist reputation); larder distribution is poorest (food wasted).
+- [x] [P1] **Republic active bonus** — strongest diplomacy (+20% peace offer acceptance), best larder distribution efficiency, but slowest war decisions (requires 2-tick deliberation before war fires).
+- [x] [P1] **Monarchy active bonus** — largest morale aura radius (×1.5); tribute income doubles; risk: if gene pool small, inbreeding mutation chance increases.
+- [x] [P1] **Theocracy active bonus** — ritual power ×2 (totem always at 100%); cannot declare war unilaterally (requires a Priest elder co-sign signal); strongest spiritual defenses.
+- [x] [P1] **Junta active bonus** — all clan combat skill ×1.5; assassination attempts get ×2 frequency; peace offers from Junta clans are ignored by rivals (militarist reputation); larder distribution is poorest (food wasted).
 
-### Phase L-6: Symbolic / Succession Flavor  [P2]
-- [ ] [P2] **Totem change on succession** — when a new leader ascends, 10% chance of totem reassignment biased by new leader's personality and caste (bold Soldier → Wolf/Fox/Boar; peaceful Priest → Tree/Shield/Rabbit; greedy Circle → Raven/Bear); a totem change is a major chronicle event.
-- [ ] [P2] **Schism on contested succession** — within 30 ticks of a leader's death, if two equally-ranked candidates exist, 15% chance the clan splits into two factions each claiming the new leader; leverages existing schism system.
-- [ ] [P2] **Law interpretation by leader** — when The Sphere changes a law, the living clan leader delivers an "interpretation" (trait-biased signal): bold frames it as a call to war, peaceful as a farming blessing; biases how members respond to law changes for 20 ticks.
+### Phase L-6: Symbolic / Succession Flavor  [P2] — ✅ implemented
+- [x] [P2] **Totem change on succession** — when a new leader ascends, 10% chance of totem reassignment biased by new leader's personality and caste (bold Soldier → Wolf/Fox/Boar; peaceful Priest → Tree/Shield/Rabbit; greedy Circle → Raven/Bear); a totem change is a major chronicle event.
+- [x] [P2] **Schism on contested succession** — within 30 ticks of a leader's death, if two equally-ranked candidates exist, 15% chance the clan splits into two factions each claiming the new leader; leverages existing schism system.
+- [x] [P2] **Law interpretation by leader** — when The Sphere changes a law, the living clan leader delivers an "interpretation" (trait-biased signal): bold frames it as a call to war, peaceful as a farming blessing; biases how members respond to law changes for 20 ticks.
 
 ---
 
@@ -1585,19 +1585,19 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 
 ---
 
-## AV. Frontend & TUI Performance Optimizations  [P1–P2]
+## AV. Frontend & TUI Performance Optimizations  [P1–P2] — ✅ implemented
 > Auditing of web canvas rendering (`renderCore.ts`) and terminal UI (`world_view.py`) identified rendering GC pressure and grid lookup overhead.
 
-### Phase F-1: Web Frontend & Canvas 60 FPS Optimization  [P1]
-- [ ] [P1] **Persistent scratch arrays in `drawBatchedEntities`** — replace 20 fresh `const list = []` and `new Map()` allocations per frame in `drawBatchedEntities` with reusable module-level scratch arrays cleared via `.length = 0` (eliminates 1,200 array allocations/sec at 60 FPS and removes V8 GC stutter).
-- [ ] [P1] **Canvas gradient caching for rivers & law waves** — avoid calling `ctx.createLinearGradient()` and binding fresh GPU textures on every frame for static river channels; pre-create or use solid alpha fills with math falloff.
-- [ ] [P1] **Offscreen grid caching for terrain elevation & soil** — render the background elevation/temperature/soil grid onto a static `OffscreenCanvas` only on season/weather changes, compositing with a single `drawImage()` call instead of per-cell `fillRect` loops every frame.
-- [ ] [P2] **React subpanel re-render memoization** — wrap inspector, clan list, and history sub-widgets in `React.memo` with custom shallow comparators so rapid WebSocket tick stream does not trigger virtual DOM reconciliation on dormant sidebars.
+### Phase F-1: Web Frontend & Canvas 60 FPS Optimization  [P1] — ✅ implemented
+- [x] [P1] **Persistent scratch arrays in `drawBatchedEntities`** — replace 20 fresh `const list = []` and `new Map()` allocations per frame in `drawBatchedEntities` with reusable module-level scratch arrays cleared via `.length = 0` (eliminates 1,200 array allocations/sec at 60 FPS and removes V8 GC stutter).
+- [x] [P1] **Canvas gradient caching for rivers & law waves** — avoid calling `ctx.createLinearGradient()` and binding fresh GPU textures on every frame for static river channels; pre-create or use solid alpha fills with math falloff.
+- [x] [P1] **Offscreen grid caching for terrain elevation & soil** — render the background elevation/temperature/soil grid onto a static `OffscreenCanvas` only on season/weather changes, compositing with a single `drawImage()` call instead of per-cell `fillRect` loops every frame.
+- [x] [P2] **React subpanel re-render memoization** — wrap inspector, clan list, and history sub-widgets in `React.memo` with custom shallow comparators so rapid WebSocket tick stream does not trigger virtual DOM reconciliation on dormant sidebars.
 
-### Phase T-1: Terminal UI (TUI) Optimization  [P1–P2]
-- [ ] [P1] **Flat list cell buffer in `WorldView._repaint`** — replace `grid: dict[tuple[int, int], Cell]` with a fixed 1D array `[None] * (cols * rows)` indexed by `row * cols + col` (eliminates ~50,000 tuple allocations and hash lookups per terminal frame).
-- [ ] [P1] **Viewport bounding-box clipping for terrain discs & rings** — clamp `_paint_disc` and `_paint_ring` iteration limits directly to the terminal's visible `(col0, col1, row0, row1)` window before distance checks, preventing off-screen math when zoomed in.
-- [ ] [P2] **TUI dirty-row diffing** — track previous frame's character strips and only emit ANSI update escape codes for terminal rows that actually changed, cutting terminal IO bandwidth and cursor flicker on remote SSH sessions.
+### Phase T-1: Terminal UI (TUI) Optimization  [P1–P2] — ✅ implemented
+- [x] [P1] **Flat list cell buffer in `WorldView._repaint`** — replace `grid: dict[tuple[int, int], Cell]` with a fixed 1D array `[None] * (cols * rows)` indexed by `row * cols + col` (eliminates ~50,000 tuple allocations and hash lookups per terminal frame).
+- [x] [P1] **Viewport bounding-box clipping for terrain discs & rings** — clamp `_paint_disc` and `_paint_ring` iteration limits directly to the terminal's visible `(col0, col1, row0, row1)` window before distance checks, preventing off-screen math when zoomed in.
+- [x] [P2] **TUI dirty-row diffing** — track previous frame's character strips and only emit ANSI update escape codes for terminal rows that actually changed, cutting terminal IO bandwidth and cursor flicker on remote SSH sessions.
 
 ---
 
@@ -1605,13 +1605,13 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 > Live production profiling at tick ~35,000 revealed the server degraded to 1–2 ticks/sec due to 3,124 extinct ghost clans accumulating in `self.clans` (only 22 clans are actually alive), triggering quadratic $O(C \times N)$ scans in settlement housing and massive JSON payload serialization overhead.
 
 ### Phase R-1: Extinct Clan Garbage Collection & Housing Scans  [P0]
-- [ ] [P0] **Prune extinct clans from active memory (`_prune_extinct_clans`)** — periodic audit pass (every 100 ticks) that archives clans with 0 living members and 0 owned functional houses out of `self.clans` (and cleans `self.relations` / `self._clan_members` / `self.farm_plots` / `self._banquet_last` keys). Prevents `self.clans` from ballooning from 22 to 3,146+.
-- [ ] [P0] **Fix quadratic homeless clan iteration in `_assign_house_claims`** — filter `homeless = [cid for cid in living_clans if cid not in claimed_clans]` strictly over *living* clans (`_clan_members.keys()`) rather than all 3,146 entries in `self.clans`, eliminating ~2,000,000 redundant creature scans per settlement tick.
-- [ ] [P0] **Filter `clan_knowledge()` and API endpoints to alive clans** — restrict `clan_knowledge()` iteration (`for cid in self.clans:`) to `alive_cids`, eliminating 3,100 dead clan dictionary iterations on every state/clans payload and removing 26% CPU load from JSON deflation (`permessage_deflate`).
+- [x] [P0] **Prune extinct clans from active memory (`_prune_extinct_clans`)** — periodic audit pass (every 100 ticks) that archives clans with 0 living members and 0 owned functional houses out of `self.clans` (and cleans `self.relations` / `self._clan_members` / `self.farm_plots` / `self._banquet_last` keys). Prevents `self.clans` from ballooning from 22 to 3,146+.
+- [x] [P0] **Fix quadratic homeless clan iteration in `_assign_house_claims`** — filter `homeless = [cid for cid in living_clans if cid not in claimed_clans]` strictly over *living* clans (`_clan_members.keys()`) rather than all 3,146 entries in `self.clans`, eliminating ~2,000,000 redundant creature scans per settlement tick.
+- [x] [P0] **Filter `clan_knowledge()` and API endpoints to alive clans** — restrict `clan_knowledge()` iteration (`for cid in self.clans:`) to `alive_cids`, eliminating 3,100 dead clan dictionary iterations on every state/clans payload and removing 26% CPU load from JSON deflation (`permessage_deflate`).
 
 ### Phase R-2: Hot Path Death & War Loop Optimization  [P0]
-- [ ] [P0] **Replace $O(N)$ full-world scans in `_kill()` with spatial query** — replace `for other in self._get_creatures():` in `_kill()` with `self.world.query_radius(c.x, c.y, pr)` or `self._clan_members.get(c.clan_id)`, eliminating two redundant all-creature scans on every death event.
-- [ ] [P0] **Extract inner closure `_assassin_priority` out of `_update_war` loop** — move `def _assassin_priority(cc)` outside the `for a in creatures:` loop in `_update_war` (or use a tuple key function) to avoid allocating closures for every creature on every tick.
+- [x] [P0] **Replace $O(N)$ full-world scans in `_kill()` with spatial query** — replace `for other in self._get_creatures():` in `_kill()` with `self.world.query_radius(c.x, c.y, pr)` or `self._clan_members.get(c.clan_id)`, eliminating two redundant all-creature scans on every death event.
+- [x] [P0] **Extract inner closure `_assassin_priority` out of `_update_war` loop** — move `def _assassin_priority(cc)` outside the `for a in creatures:` loop in `_update_war` (or use a tuple key function) to avoid allocating closures for every creature on every tick.
 
 
 

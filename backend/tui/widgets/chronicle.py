@@ -30,7 +30,7 @@ EVENT_CATEGORIES: dict[str, set[str]] = {
     # §AP unified theology
     "faith": {"miracle", "sermon", "synod", "temple", "epiphany", "resonance", "omen"},
     # §AM agriculture + §AN trade & diplomacy
-    "trade": {"raid", "hospitality", "peace_envoy", "market", "caravan",
+    "trade": {"raid", "hospitality", "peace_envoy", "market", "caravan", "herald",
               "banquet", "compost"},
 }
 
@@ -262,6 +262,10 @@ def format_event(ev: HistoryEvent, clans: dict | None = None) -> Text:
         line.append(f"market: neutral post between {p.get('a_name')} and {p.get('b_name')}", style=color)
     elif t == "caravan":
         line.append(f"🐫 caravan: {p.get('a_name')} ⇄ {p.get('b_name')}", style=color)
+    elif t == "regicide":
+        line.append(f"🗡 regicide: #{p.get('assassin')} of {p.get('assassin_clan')} murdered Chief #{p.get('victim')} of {p.get('victim_clan')}", style="bold " + color)
+    elif t == "herald":
+        line.append(f"📜 herald: {p.get('a_name')} sent terms to {p.get('b_name')}", style=color)
     elif t == "omen":
         line.append(f"omen: a priest foresees the {p.get('season')} for {p.get('clan_name')}", style="bold " + color)
     elif t == "outbreak":

@@ -217,6 +217,7 @@ class StateMessage:
     events: list[HistoryEvent] = field(default_factory=list)
     signals: list[dict] = field(default_factory=list)
     fires: list[dict] = field(default_factory=list)
+    campfires: list[dict] = field(default_factory=list)
     age: Optional[str] = None
     age_tick: int = 0
     age_day: int = 1
@@ -247,6 +248,7 @@ class StateMessage:
             events=[HistoryEvent.from_dict(e) for e in d.get("events") or []],
             signals=d.get("signals") or [],
             fires=d.get("fires") or [],
+            campfires=d.get("campfires") or [],
             age=_o(d, "age"),
             age_tick=_i(d, "age_tick"),
             age_day=_i(d, "age_day", 1),

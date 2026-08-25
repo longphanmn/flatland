@@ -48,7 +48,11 @@ class WorldView(Widget, can_focus=True):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self._state: StateMessage | None = None
-        self._grid: dict[tuple[int, int], Cell] = {}
+        # §AV T-1: flat list cell buffer — row-major 1D array avoids tuple-key dict overhead
+        self._grid_cols: int = 0
+        self._grid_rows: int = 0
+        self._grid: list[Cell | None] = []
+        self._prev_strips: list[Strip | None] = []  # §AV T-1 dirty-row cache
         self._sel_cell: tuple[int, int] | None = None
         # camera: center in world coords; zoom = world units per column
         self.cam_cx = 100.0
@@ -209,11 +213,17 @@ class WorldView(Widget, can_focus=True):
             put(sg.get("x", 0), sg.get("y", 0), char=theme.GLYPH_SIGNAL, fg=color, prio=7)
         for fire in st.fires:
             put(fire.get("x", 0), fire.get("y", 0), char=theme.GLYPH_FIRE, fg="#ff6b35", prio=6)
+        # §AO E: field campfires — warm dots in the dark
+        for cf in getattr(st, "campfires", []) or []:
+            put(cf.get("x", 0), cf.get("y", 0), char="▲", fg="#ff8c42", prio=6)
 
     def _paint_disc(self, put, cx: float, cy: float, r: float, *, bg: str, ring_bg: str | None = None) -> None:
+        # §AV T-1: clamp to the visible viewport before any distance math
         z = max(self.zoom, 1e-6)
-        col0, col1 = math.floor((cx - r) / z), math.floor((cx + r) / z)
-        row0, row1 = math.floor((cy - r) / z), math.floor((cy + r) / z)
+        col0 = max(0, math.floor((cx - r) / z))
+        col1 = min(self._grid_cols - 1, math.floor((cx + r) / z))
+        row0 = max(0, math.floor((cy - r) / z))
+        row1 = min(self._grid_rows - 1, math.floor((cy + r) / z))
         for row in range(row0, row1 + 1):
             wy = (row + 0.5) * z
             for col in range(col0, col1 + 1):
@@ -336,6 +346,8 @@ class WorldView(Widget, can_focus=True):
                 "cheer": "★",
                 "sleep": "z",
                 "craft": "🧺",
+                "grief": "✝",
+                "fear": "❗",
             }.get(e.emote, "·")
             put(e.x, e.y - self.zoom * 0.8, char=emote_char, fg="#ffd166", prio=8)
 

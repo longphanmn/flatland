@@ -108,6 +108,7 @@ class StateMessage(BaseModel):
     events: list["HistoryEvent"] = Field(default_factory=list)
     signals: list[dict[str, Any]] = Field(default_factory=list)
     fires: list[dict[str, Any]] = Field(default_factory=list)
+    campfires: list[dict[str, Any]] = Field(default_factory=list)  # §AO field campfires
     boundary_stones: list[dict[str, Any]] = Field(default_factory=list)  # §AN
     markets: list[dict[str, Any]] = Field(default_factory=list)  # §AN trading posts
     wind: dict[str, float] = Field(default_factory=dict)  # §AQ PH-2 {angle,speed}
@@ -145,6 +146,7 @@ class DeltaStateMessage(BaseModel):
     events: list["HistoryEvent"] = Field(default_factory=list)
     signals: list[dict[str, Any]] = Field(default_factory=list)
     fires: list[dict[str, Any]] = Field(default_factory=list)
+    campfires: list[dict[str, Any]] = Field(default_factory=list)  # §AO field campfires
     boundary_stones: list[dict[str, Any]] = Field(default_factory=list)  # §AN
     markets: list[dict[str, Any]] = Field(default_factory=list)  # §AN trading posts
     wind: dict[str, float] = Field(default_factory=dict)  # §AQ PH-2 {angle,speed}
@@ -172,7 +174,7 @@ class HistoryEvent(BaseModel):
         "wither", "takeover",
         "miracle", "sermon", "synod", "temple", "epiphany", "resonance",
         "compost", "banquet", "raid", "hospitality",
-        "peace_envoy", "market", "caravan", "omen",
+        "peace_envoy", "market", "caravan", "omen", "regicide", "herald",
         "anomaly",
     ] = ("death")
     tick: int

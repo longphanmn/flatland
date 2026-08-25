@@ -120,9 +120,83 @@ WOUND_TICKS_BASE = 50      # wounds linger 50–100 ticks
 WOUND_SPEED_MULT = {1: 0.85, 2: 0.70}
 WOUND_REGEN_DIV = {1: 2.0, 2: 4.0}
 
+# §AT-4 H-2 — systems depth: untreated wounds fester, healthy kin dress them,
+# morale bends behaviour long before the body fails, and scars outlive wounds.
+WOUND_INFECTION_CHANCE = 0.02  # per-tick risk an untreated wound turns septic
+WOUND_INFECTION_AFTER = 30     # ticks before an open wound can fester
+DRESS_MIN_HEALTH = 70.0        # a helper must be healthy to dress wounds
+DRESS_RADIUS = 3.0             # bandages are applied at arm's reach
+MORALE_DEATH_WITNESS = 6.0     # morale lost watching a clan-mate die
+MORALE_LEADER_DEATH = 15.0     # extra grief when the fallen one is the chief
+MORALE_STARVE_DRAIN = 0.08     # prolonged starvation erodes the will
+MORALE_BASE_RECOVER = 0.02     # hearts mend slowly on their own
+MORALE_EAT_RESTORE = 12.0      # a meal lifts the spirit
+MORALE_AURA_RECOVER = 0.05     # the leader's aura mends hearts slowly
+MORALE_FEAST_RECOVER = 0.10    # festivals lift every heart in the clan
+MORALE_RALLY_MIN = 60.0        # below this rally calls fall on deaf ears
+MORALE_FORAGE_MIN = 40.0       # below this the body stops providing
+MORALE_ABANDON = 20.0          # below this a body abandons its clan
+MORALE_ABANDON_CHANCE = 0.02   # per-tick chance the broken walk away
+OVERCROWD_DRAIN = 0.03         # health/tick per body beyond a house's beds
+INFIRMARY_REGEN_MULT = 2.0     # plague-response bylaw doubles rest healing
+SCAR_CHANCE = 0.5              # surviving a grievous wound may leave a mark
+SCAR_SIGHT_MULT = 0.97         # permanent sight loss per scar
+SCAR_SPEED_MULT = 0.98         # permanent stride loss per scar
+
+# §AO — nocturnal perils: the Flatland night is an existential hazard, and
+# shelter is the only sanctuary. Night is when the cold kills, the wolves
+# prowl in packs, and the blind stumble onto a woman's sharp line.
+NIGHT_CHILL_MULT = 3.0         # unsheltered night chill builds this much faster
+EXTREME_NIGHT_EXPOSURE = 0.06  # extra energy/tick: winter nights & night storms
+FROSTBITE_SPEED_MULT = 0.4     # numb limbs crawl (chill past the threshold)
+FROSTBITE_DRAIN = 0.5          # HP/tick of deep frostbite; cause `exposure`
+PREDATOR_NIGHT_SIGHT = 1.4     # +40% hunt radius in the dark
+PREDATOR_NIGHT_SPEED = 1.2     # +20% stealth chase vs unsheltered prey
+PACK_HOUR = 0.85               # past midnight beasts converge in packs
+PACK_RADIUS = 18.0             # pack-mates share a kill within this range
+DUSK_TOD = 0.70                # dusk rush: instinct screams "home" from here
+DUSK_SHELTER_URGE = 1.6        # overrides exploration before nightfall
+HEARTH_SANCTUARY_HEAL = 1.5    # HP/tick beside a lit hearth
+SPEAR_POKE_RADIUS = 3.0        # sentries poke outward from the doorway
+SPEAR_POKE_DAMAGE = 22.0       # damage per poke at circling night beasts
+PITCH_BLACK_SIGHT = 2.5        # outdoor night sight for non-predators
+IMPALE_CHANCE = 0.08           # per-tick blind-collision risk in pitch dark
+IMPALE_DAMAGE = 25.0           # a woman's line cuts deep (death: impalement)
+MARAUDER_CHANCE = 0.03         # per-tick ambush roll for a dark isosceles
+MARAUDER_AMBUSH_RADIUS = 6.0   # strike range against lone foragers
+CAMPFIRE_LIGHT_RADIUS = 3.5    # a field campfire's circle of safety
+CAMPFIRE_TTL_TO_DAWN = True    # campfires burn until dawn, no refuelling
+CAMPFIRE_HEAT = 14.0           # warmth target near the flames
+CAMPFIRE_KINDLE_CHANCE = 0.10  # per-tick kindling chance for stranded explorers
+BED_OVERFLOW_BUILD_THRESHOLD = 3  # denied beds last night → build pressure
+
 # §AR S-0 — senses interact: ripe plants smell through the dark, and
 # desperation dulls fear.
 FOOD_SCENT_RADIUS = 8.0  # mature plants are detectable by smell within this range
+
+# §AR S-1..S-7 — senses that interact and suppress each other.
+ALARM_HABITUATION_TICKS = 10   # same source this long → u_alarm drops to 0.3
+ALARM_HABITUATED_U = 0.3
+WARCRY_RADIUS_MULT = 2.0       # a predator pack's cry carries twice as far
+ELDER_SIGHT_PENALTY = 0.9      # §AR S-2: old eyes dim a little further
+VISION_CONE_COS = 0.0          # ±90° forward cone (cos 90°)
+REAR_SIGHT_MULT = 0.5          # the rear 180° sees half as far
+TRIANGLE_FALSE_ALARM = 0.30    # §AR S-2 Flatland canon: isosceles misread
+TORCH_LIGHT_RADIUS = 6.0       # a torch restores night sight around its bearer
+CAMOUFLAGE_RANGE = 2.5         # mature cover hides prey this close to plants
+CAMOUFLAGE_HUNT_MULT = 0.8     # ...cutting predator range by a fifth
+ORAL_LORE_CONF = 0.3           # §AR S-3: inherited memory arrives vague
+WORKING_MEMORY_CAP = 6         # simultaneous facts a mind holds
+MEMORY_CAP_STRESSED = 4        # hunger and wounds shrink the world
+MEMORY_CAP_ELDER = 8           # a life of experience widens it
+PRIEST_ORACLE_INTERVAL = 120   # cadence of the priest's clan briefing
+PANIC_CONTAGION = 0.2          # §AR S-5: one runner spooks the flock
+PRIEST_CALM_BONUS = 0.2        # ...a priest steadies them
+PRIEST_CALM_RADIUS = 4.0       # the priest's calming presence range
+RALLY_SIGNAL_TTL = 20
+THERMAL_SEEK_UTILITY = 0.35    # §AR S-6: drift toward warmth when freezing
+WEATHER_ANTICIPATION_TICKS = 3 # pentagon+ read the sky this fast
+DISEASE_SCENT_RADIUS = 4.0     # the sick smell of sickness
 
 # §AM Food & Agriculture — seed & furrow, granary & soil, feast & famine raid.
 SEED_SKILL_MIN = 6.0        # farming XP before hands gather/sow seed
@@ -184,6 +258,35 @@ LEADER_SHOCK_LARDER_MULT = 0.8  # looting: larder loses 20%
 LEADER_SHOCK_PANIC_TICKS = 20
 LEADER_SHOCK_U_FLEE = 0.3    # flee-urge spike while the panic window lasts
 LEADERLESS_CAUTIOUS_CHANCE = 0.01  # per-tick personality drift toward cautious
+
+# §AS L-1..L-6 — the leader as commander, provider, diplomat and symbol.
+LEADERLESS_WAR_MULT = 0.5     # an army without a general fights at half strength
+BODYGUARD_U_HELP = 1.5        # soldiers hold their chief above all else
+COMBAT_BOOST_TICKS = 30       # a rally sharpens blades this long
+COMBAT_RALLY_BONUS = 0.3      # effective combat skill while rallied
+ASSASSIN_ATTACK_BONUS = 0.2   # bold/junta blades aim for the throat
+REGICIDE_RELATION_HIT = -60   # killing chiefs unprovoked: "they murder chiefs"
+REGICIDE_SYMPATHY = 40        # ...and mourners rally to the victim's banner
+TALK_RADIUS = 6.0             # peace needs two chiefs face to face
+RETREAT_HEALTH_FRAC = 0.30    # a bleeding general sounds the retreat
+RETREAT_SHELTER_URGE = 2.0    # kin drop everything and run home
+RITUAL_INTERVAL = 120         # the chief's rite at the great hall
+RITUAL_TOTEM_MULT = 2.0       # the totem answers with doubled power
+RITUAL_TICKS = 30             # ...for this long after each rite
+HARVEST_ORDER_SEASON = "autumn"  # the chief calls the stores in before winter
+ABSENT_TOTEM_MULT = 0.5       # no chief at the hall: half-strength totem
+REPUBLIC_PEACE_MULT = 1.2     # councils negotiate hardest
+REPUBLIC_LARDER_EFF = 1.25    # ...and portion out stores fairest
+MONARCHY_TRIBUTE_MULT = 2.0   # kingdoms extract double protection money
+MONARCHY_AURA_MULT = 1.5      # the crown's aura reaches farther
+MONARCHY_INBREEDING = 1.25    # thin royal blood mutates more easily
+THEOCRACY_RITUAL_POWER = 2.0  # faith doubles every rite
+JUNTA_COMBAT_SKILL = 1.5      # soldiers of the junta live for war
+JUNTA_LARDER_EFF = 0.75       # ...but stores are portioned wastefully
+JUNTA_ASSASSINATION_MULT = 2.0
+CONTESTED_SUCCESSION_CHANCE = 0.15  # two equal heirs may split the clan
+TOTEM_CHANGE_CHANCE = 0.10    # a new chief may call a new avatar
+LAW_INTERPRET_TICKS = 20      # the chief explains God's law for this long
 
 # §AQ PH-0 — foundational axioms: energy is the universal currency.
 # Sunlight is the world's only income; every body pays upkeep in proportion
@@ -339,6 +442,7 @@ SLOPE_SPEED_MULT = 0.35     # speed lost at the steepest climb
 CLIFF_DROP_UNITS = 14.0     # a terraced cell-boundary drop this steep is a cliff
 FALL_DAMAGE_PER_UNIT = 1.0  # health lost per unit fallen past the threshold
 TRAFFIC_DECAY = 0.995       # per-tick fade of packed earth
+TRAFFIC_DECAY_STAGGERED = TRAFFIC_DECAY ** 10  # §AU O-2: applied every 10th tick
 TRAFFIC_PER_PASS = 1.0      # traffic earned per body-tick on a cell
 ROAD_SPEED_PER_TRAFFIC = 0.03  # speed bonus per traffic level (packed earth)
 ROAD_SPEED_CAP = 0.30       # ...capped here
@@ -628,6 +732,7 @@ class Simulation:
         self._totem_mult_cache: dict[int, float] = {}
         self.signals: list[dict] = []  # §Q: {x,y,kind,sender,clan_id,ttl}
         self.fires: list[dict] = []  # §S wildfire: {x,y,r,ttl}
+        self.campfires: list[dict] = []  # §AO E: field campfires {x,y,day}
         # §AQ PH-1: coarse ambient heat field (row-major, top-left origin)
         self._temp_cols = max(1, math.ceil(self.config.width / TEMP_CELL))
         self._temp_rows = max(1, math.ceil(self.config.height / TEMP_CELL))
@@ -641,6 +746,11 @@ class Simulation:
         self.traffic_grid: list[float] = [0.0] * (self._temp_cols * self._temp_rows)
         self.wind_angle = (self.config.seed % 6283) / 1000.0  # §AQ PH-2, rng-free init
         self.wind_speed = WIND_CALM_SPEED
+        # §AU O-1: wind direction trig computed once per tick, not per query
+        self._wind_cached_for = None
+        self._cos_wind = 1.0
+        self._sin_wind = 0.0
+        self._sync_wind_cache()
         # §AM agriculture: tilled plots per clan + feast pacing
         self.farm_plots: dict[int, list[dict]] = {}  # clan id -> [{x,y,irrigated}]
         self._banquet_last: dict[int, int] = {}  # clan id -> tick of last feast
@@ -721,6 +831,8 @@ class Simulation:
             return
         others = [w for w in WEATHER_STATES if w != self.weather]
         self.weather = self.rng.choice(others)
+        # §AR S-6: high castes read the sky the moment it turns
+        self._weather_since_tick = self.tick
         # §AQ PH-2: a new sky brings a new wind — direction re-rolls near the
         # season's prevailing bearing.
         self.wind_angle = (
@@ -735,6 +847,15 @@ class Simulation:
             "rain": WIND_RAIN_SPEED,
         }.get(self.weather, WIND_CALM_SPEED)
         self.wind_speed += (target - self.wind_speed) * WIND_RATE
+        self._sync_wind_cache()
+
+    def _sync_wind_cache(self) -> None:
+        """§AU O-1: keep the precomputed wind trig honest even when a test (or
+        a future system) mutates wind_angle between ticks."""
+        if getattr(self, "_wind_cached_for", None) != self.wind_angle:
+            self._cos_wind = math.cos(self.wind_angle)
+            self._sin_wind = math.sin(self.wind_angle)
+            self._wind_cached_for = self.wind_angle
 
     def env_sight_mult(self) -> float:
         """Night and fog dim every eye (Sight Recognition suffers)."""
@@ -894,7 +1015,12 @@ class Simulation:
         """Ambient temperature at a point on the heat field (§AQ PH-1)."""
         col = min(self._temp_cols - 1, max(0, int(x / self.config.width * self._temp_cols)))
         row = min(self._temp_rows - 1, max(0, int(y / self.config.height * self._temp_rows)))
-        return self.temperature_grid[row * self._temp_cols + col]
+        t = self.temperature_grid[row * self._temp_cols + col]
+        # §AO E: a field campfire warms its circle of light.
+        for cf in self.campfires:
+            if (x - cf["x"]) ** 2 + (y - cf["y"]) ** 2 <= CAMPFIRE_LIGHT_RADIUS * CAMPFIRE_LIGHT_RADIUS:
+                t = max(t, CAMPFIRE_HEAT)
+        return t
 
     def indoor_ambient(self, house: House) -> float:
         """Inside air: insulation pulls the room toward comfort; bigger floors
@@ -1008,23 +1134,29 @@ class Simulation:
     def _elev_at(self, x: float, y: float) -> float:
         """Normalised ground height (0..1) under a point; 0.5 flat worlds.
         Bilinear between cell centres — the land is smooth, so ordinary travel
-        never trips the cliff threshold (only true escarpments do)."""
+        never trips the cliff threshold (only true escarpments do).
+        §AU O-1: closure inlined — clamped grid reads straight off the buffer."""
         if not self.config.relief_enabled:
             return 0.5
-        gx = x / self.config.width * self._elev_cols - 0.5
-        gy = y / self.config.height * self._elev_rows - 0.5
+        cols = self._elev_cols
+        rows = self._elev_rows
+        grid = self.elev_grid
+        gx = x / self.config.width * cols - 0.5
+        gy = y / self.config.height * rows - 0.5
         c0 = math.floor(gx)
         r0 = math.floor(gy)
         fx = gx - c0
         fy = gy - r0
-
-        def h(cc: int, rr: int) -> float:
-            cc = min(self._elev_cols - 1, max(0, cc))
-            rr = min(self._elev_rows - 1, max(0, rr))
-            return self.elev_grid[rr * self._elev_cols + cc]
-
-        top = h(c0, r0) * (1.0 - fx) + h(c0 + 1, r0) * fx
-        bot = h(c0, r0 + 1) * (1.0 - fx) + h(c0 + 1, r0 + 1) * fx
+        cc0 = 0 if c0 < 0 else (cols - 1 if c0 > cols - 1 else c0)
+        cc1 = 0 if c0 + 1 < 0 else (cols - 1 if c0 + 1 > cols - 1 else c0 + 1)
+        rr0 = 0 if r0 < 0 else (rows - 1 if r0 > rows - 1 else r0)
+        rr1 = 0 if r0 + 1 < 0 else (rows - 1 if r0 + 1 > rows - 1 else r0 + 1)
+        h00 = grid[rr0 * cols + cc0]
+        h10 = grid[rr0 * cols + cc1]
+        h01 = grid[rr1 * cols + cc0]
+        h11 = grid[rr1 * cols + cc1]
+        top = h00 * (1.0 - fx) + h10 * fx
+        bot = h01 * (1.0 - fx) + h11 * fx
         return top * (1.0 - fy) + bot * fy
 
     def _elev_cell_units(self, x: float, y: float) -> float:
@@ -1110,13 +1242,18 @@ class Simulation:
         return 1.0 + min(ROAD_SPEED_CAP, traffic * ROAD_SPEED_PER_TRAFFIC)
 
     def _update_traffic(self) -> None:
-        """Rain and grass slowly heal packed earth; roads need constant use."""
+        """Rain and grass slowly heal packed earth; roads need constant use.
+        §AU O-2: the decay sweep runs every 10th tick with the compounded
+        factor (`0.995**10`) — identical mathematics, a tenth of the work."""
         if not self.config.relief_enabled:
             return
+        if self.tick % 10 != 0:
+            return
         g = self.traffic_grid
+        f = TRAFFIC_DECAY_STAGGERED
         for i in range(len(g)):
             if g[i] > 0:
-                g[i] *= TRAFFIC_DECAY
+                g[i] *= f
                 if g[i] < 0.05:
                     g[i] = 0.0
     def _generate_rivers(self) -> None:
@@ -1290,6 +1427,133 @@ class Simulation:
                 "x": round(x, 2), "y": round(y, 2),
                 "kind": "boom", "sender": 0, "clan_id": None, "born_tick": self.tick, "ttl": 10,
             })
+
+    def _update_leader_orders(self) -> None:
+        """§AS L-2 — the chief's voice at need: the retreat when bleeding,
+        the rite at the great hall, the autumn harvest call, and the
+        evacuation when fire or flood comes for the village."""
+        cfg = self.config
+        if not self.clans or len(self.signals) >= SIGNALS_MAX:
+            return
+        w = self.world
+
+        def emit(cid: int, leader: Creature, kind: str, ttl: int, **extra) -> None:
+            if len(self.signals) < SIGNALS_MAX:
+                sg = {
+                    "x": round(leader.x, 2), "y": round(leader.y, 2),
+                    "kind": kind, "sender": leader.id,
+                    "clan_id": cid or None, "born_tick": self.tick, "ttl": ttl,
+                }
+                sg.update(extra)
+                self.signals.append(sg)
+
+        season = self._season()
+        for cid in sorted(self.clans.keys()):
+            info = self.clans[cid]
+            lid = info.get("leader_id")
+            leader = self.world.entities.get(lid) if lid is not None else None
+            if not isinstance(leader, Creature):
+                continue
+            mh_id = info.get("main_house_id")
+            mh = self.world.entities.get(mh_id) if mh_id is not None else None
+            at_home = isinstance(mh, House) and not mh.is_ruin and (
+                w.distance(leader.x, leader.y, mh.x, mh.y) <= cfg.territory_radius
+            )
+            gov = info.get("governance", "republic")
+            # 1. retreat — a bleeding general pulls the war party home
+            if (
+                leader.health <= RETREAT_HEALTH_FRAC * leader.max_health
+                and (self.tick + cid) % 20 == 0
+            ):
+                emit(cid, leader, "retreat", 30)
+            # 2. ritual — the rite that powers the totem (§AS L-2/L-5)
+            if at_home and self.config.totems_enabled and (self.tick + cid) % RITUAL_INTERVAL == 0:
+                power_ticks = RITUAL_TICKS
+                if gov == "theocracy":
+                    power_ticks *= THEOCRACY_RITUAL_POWER
+                info["ritual_until"] = self.tick + power_ticks
+                leader.emote = "cheer"
+                leader.emote_ticks = 20
+            # 3. harvest order — autumn stores decide winter
+            if (
+                season == HARVEST_ORDER_SEASON
+                and at_home
+                and cfg.granaries_enabled
+                and (self.tick + cid) % 240 == 0
+            ):
+                emit(cid, leader, "harvest", 60, house_x=round(mh.x, 2), house_y=round(mh.y, 2))
+            # 4. evacuation — fire or flood closing on the settlement
+            if (self.tick + cid) % 15 == 0:
+                hazard = None
+                for ffire in self.fires:
+                    if w.distance(ffire["x"], ffire["y"], mh.x if mh else leader.x, mh.y if mh else leader.y) < 25.0:
+                        hazard = (ffire["x"], ffire["y"])
+                        break
+                if hazard is None:
+                    for rv in self.rivers:
+                        if rv.get("flood_ticks", 0) > 0 and mh is not None:
+                            dy_ = self._river_dy(mh.y, rv["cy"])
+                            if abs(dy_) <= rv["hw"] + 6.0:
+                                hazard = (mh.x, rv["cy"])
+                                break
+                if hazard is not None:
+                    hx_, hy_ = hazard
+                    dxl, dyl = w.delta(hx_, hy_, leader.x, leader.y)
+                    dl = math.hypot(dxl, dyl) or 1e-6
+                    ex = leader.x + dxl / dl * 18.0
+                    ey = leader.y + dyl / dl * 18.0
+                    emit(cid, leader, "evacuate", 40, evac_x=round(ex % cfg.width, 2),
+                         evac_y=round(ey % cfg.height, 2))
+
+    def _update_night_watch(self) -> None:
+        """§AO Phase C: sentry spearmen hold the doorway — soldiers resting
+        near their own threshold poke outward at any beast circling the
+        settlement after dark."""
+        tod = self._time_of_day()
+        if not self._is_night(tod):
+            return
+        w = self.world
+        for c in self._get_creatures():
+            if (
+                c.caste != "Soldier"
+                or c.equipped_item != "spear"
+                or c.sleeping
+                or not c.clan_id
+                or (self.tick + c.id) % 3 != 0
+            ):
+                continue
+            info = self.clans.get(c.clan_id)
+            if not info:
+                continue
+            hid = info.get("main_house_id")
+            h = w.entities.get(hid) if hid is not None else None
+            if not isinstance(h, House) or h.is_ruin:
+                continue
+            dx, dy = self._door_pos(h)
+            if w.distance_sq(c.x, c.y, dx, dy) > (SPEAR_POKE_RADIUS * 2.0) ** 2:
+                continue
+            # poke anything hostile circling the threshold
+            for o, d2 in w.query_radius_with_dist_sq(dx, dy, SPEAR_POKE_RADIUS):
+                if not isinstance(o, Creature) or o.id == c.id or o.indoors:
+                    continue
+                if o.id not in w.entities:
+                    continue
+                hostile = (
+                    o.is_predator
+                    or (o.clan_id == 0 and o.sides == 3)
+                    or (o.clan_id and self._zone_of(
+                        self.relations.get(self._relation_pair(c.clan_id, o.clan_id), 0)) == -1)
+                )
+                if not hostile or d2 > SPEAR_POKE_RADIUS * SPEAR_POKE_RADIUS:
+                    continue
+                dmg = SPEAR_POKE_DAMAGE * (1.0 + c.skills.get("combat", 0.0) / 25.0)
+                o.health -= dmg
+                c.emote = "combat"
+                c.emote_ticks = 12
+                c.skills["combat"] = c.skills.get("combat", 0.0) + 0.5
+                if o.health <= 0:
+                    self._kill(o, "war")
+                break
 
     def _update_structures(self) -> None:
         """§AQ PH-6: material physics — storms and floodwater wear buildings
@@ -2065,9 +2329,14 @@ class Simulation:
 
     def _totem_stat(self, c: Creature, key: str) -> float:
         """Generic totem-buff lookup (see TOTEM_BUFF vocabulary), scaled by
-        §AQ PH-9 resonance: allied same-god shrines amplify, rivals dim."""
+        §AQ PH-9 resonance: allied same-god shrines amplify, rivals dim.
+        §AS L-2/L-5: the chief's rite at the great hall doubles the avatar's
+        power; an empty hall leaves it at half strength."""
         base = float(TOTEM_BUFF.get(self._totem_of(c), {}).get(key, 0.0))
-        return base * self._totem_mult(c.clan_id)
+        power = 1.0
+        if c.clan_id and self.config.totems_enabled:
+            power = float(getattr(self, "_totem_power", {}).get(c.clan_id, 1.0))
+        return base * self._totem_mult(c.clan_id) * power
 
     def _found_founding_clans(self) -> None:
         """§V Settlement seeding — every functional house anchors one clan and each
@@ -2193,6 +2462,31 @@ class Simulation:
                 if any(c.clan_id == cid for c in self.world.creatures()):
                     self._claim_house_for_clan(cid)
 
+    def _prune_extinct_clans(self) -> None:
+        """§P0: archive clans with 0 living members and 0 owned functional houses.
+        Runs every 100 ticks; keeps relations/_clan_members/farm_plots/banquet_last bounded."""
+        if self.tick % 100 != 0 or not self.clans:
+            return
+        alive_cids = set(self._clan_members.keys()) if self._clan_members else {c.clan_id for c in self._get_creatures() if c.clan_id}
+        owned = {h.clan_id for h in self._functional_houses() if h.clan_id}
+        extinct = [cid for cid in list(self.clans.keys()) if cid not in alive_cids and cid not in owned]
+        if not extinct:
+            return
+        extinct_set = set(extinct)
+        for cid in extinct:
+            del self.clans[cid]
+            self._clan_members.pop(cid, None)
+            self.farm_plots.pop(cid, None) if hasattr(self, 'farm_plots') else None
+            self._banquet_last.pop(cid, None) if hasattr(self, '_banquet_last') else None
+            self.clans.pop(cid, None)  # idempotent
+        # clean relations involving extinct clans
+        for pair in list(self.relations.keys()):
+            if pair[0] in extinct_set or pair[1] in extinct_set:
+                del self.relations[pair]
+        for pair in list(getattr(self, '_declared_wars', {}).keys()):
+            if pair[0] in extinct_set or pair[1] in extinct_set:
+                del self._declared_wars[pair]
+
     def _assign_house_claims(self) -> None:
         """§V Anchor claims — each homeless clan settles at the free house nearest
         its people (never round-robin): a clan's settlement IS its nearest house."""
@@ -2207,7 +2501,9 @@ class Simulation:
                 h.is_main = False
         # Clans that already own at least one house keep their claimed settlement
         claimed_clans = {h.clan_id for h in houses if h.clan_id}
-        homeless = [cid for cid in self.clans if cid not in claimed_clans]
+        # §P0: only living clans can be homeless — dead entries bloat settlement ticks
+        living = set(self._clan_members.keys()) if self._clan_members else {c.clan_id for c in self._get_creatures() if c.clan_id}
+        homeless = [cid for cid in living if cid not in claimed_clans]
         if not homeless:
             return
         self._anchor_homeless_clans(homeless)
@@ -2362,6 +2658,15 @@ class Simulation:
         target = self._target_house_count()
         if len(functional) < target and (self.tick % 100 == 0):
             self._spawn_settlement_house()
+        # §AO Phase E: bed overflow last night is urgent social demand —
+        # builders raise an emergency roof even at the density target.
+        if (
+            getattr(self, "_last_night_overflow", 0) >= BED_OVERFLOW_BUILD_THRESHOLD
+            and self.tick % 50 == 0
+        ):
+            self._last_night_overflow = 0
+            if len(functional) < int(target * 1.5):
+                self._spawn_settlement_house()
 
         # — clan expansion: growing clans claim free houses, seize weak rivals'
         #    spares (§AT-2) or build new ones —
@@ -2819,7 +3124,9 @@ class Simulation:
 
     # ------------------------------------------------------------- §X knowledge
     def _fact_fresh(self, c: Creature, key, ttl: int | None = None) -> dict | None:
-        """Return a live fact or None (and prune it when stale)."""
+        """Return a live fact or None (and prune it when stale).
+        §AR S-3: confidence also decays linearly each tick in
+        _maintain_facts, so facts fade gracefully before this hard limit."""
         f = c.facts.get(key)
         if not isinstance(f, dict):
             return None
@@ -2828,6 +3135,58 @@ class Simulation:
             del c.facts[key]
             return None
         return f
+
+    def _maintain_facts(self, c: Creature) -> None:
+        """§AR S-3 memory housekeeping, run once per creature tick:
+        continuous confidence decay, spatial drift of stale rumours, and a
+        working-memory capacity with lowest-confidence eviction."""
+        if not self.config.knowledge_enabled or not c.facts:
+            return
+        ttl = max(1, self.config.knowledge_ttl)
+        decay = 1.0 / ttl
+        # capacity: hunger, wounds and age reshape the mind's workspace
+        cap = WORKING_MEMORY_CAP
+        if c.stage == "elder" and max(c.skills.values(), default=0.0) >= 6.0:
+            cap = MEMORY_CAP_ELDER
+        elif c.status == "starving" or (c.wound_severity >= 1 and c.wound_ticks > 10):
+            cap = MEMORY_CAP_STRESSED
+        # linear decay + drift
+        for key in list(c.facts.keys()):
+            f = c.facts.get(key)
+            if not isinstance(f, dict):
+                continue
+            if key == "enemies":
+                for cid in list(f.keys()):
+                    meta = f.get(cid)
+                    if not isinstance(meta, dict):
+                        continue
+                    meta["conf"] = round(float(meta.get("conf", 1.0)) - decay, 4)
+                    if self.tick - int(meta.get("tick", 0)) > ttl or meta["conf"] <= 0.05:
+                        del f[cid]
+                if not f:
+                    del c.facts[key]
+                continue
+            f["conf"] = round(float(f.get("conf", 1.0)) - decay, 4)
+            # faded memories wander: low-conf coordinates blur
+            if (
+                "x" in f
+                and (self.tick + c.id) % 5 == 0
+                and f["conf"] < 0.9
+            ):
+                noise = (1.0 - f["conf"]) * 0.8
+                f["x"] = round(f["x"] + self.rng.uniform(-noise, noise), 2)
+                f["y"] = round(f["y"] + self.rng.uniform(-noise, noise), 2)
+            if self.tick - int(f.get("tick", 0)) > ttl or f["conf"] <= 0.05:
+                del c.facts[key]
+        # eviction: too many facts → drop the least credible
+        entries: list[tuple[float, str | int]] = []
+        for key, f in c.facts.items():
+            if isinstance(f, dict):
+                entries.append((float(f.get("conf", 0.0)), key))
+        while len(entries) > cap:
+            entries.sort()
+            worst_conf, worst_key = entries.pop(0)
+            del c.facts[worst_key]
 
     def _learn(self, c: Creature, key, x: float | None = None, y: float | None = None,
                conf: float = 1.0) -> None:
@@ -2839,13 +3198,18 @@ class Simulation:
             fact["x"], fact["y"] = round(x, 2), round(y, 2)
         c.facts[key] = fact
 
-    def _hear_fact(self, c: Creature, msg_fact: dict | None) -> None:
+    def _hear_fact(self, c: Creature, msg_fact: dict | None, sender_id: int | None = None) -> None:
         """§X rumor: a heard fact lands with halved confidence — retold knowledge
-        is vaguer than firsthand sighting; only better news overwrites."""
+        is vaguer than firsthand sighting; only better news overwrites.
+        §AR S-3: rumours are trust-weighted — a trusted clan-mate's word is
+        believed at full strength, a stranger's or traitor's barely at all."""
         if not msg_fact or not self.config.knowledge_enabled:
             return
         kind = msg_fact.get("kind")
         conf = float(msg_fact.get("conf", 1.0)) * 0.5
+        if sender_id is not None:
+            trust = float(c.trust.get(sender_id, 50.0)) / 100.0
+            conf *= max(0.05, min(1.0, trust))
         if conf < 0.05:
             return
         if kind == "enemy":
@@ -3007,6 +3371,34 @@ class Simulation:
                             break
         self._house_occupants = house_occ
 
+        # §AT-4 H-2 + §AU O-2: bodies physically under each roof — folded into
+        # this same pass (AABB precheck per house) instead of a separate
+        # per-house spatial query sweep in step().
+        bodies: dict[int, int] = {}
+        if houses:
+            hw = self.config.width
+            hh_ = self.config.height
+            half_w = hw * 0.5
+            half_h = hh_ * 0.5
+            for c in creatures:
+                cx, cy = c.x, c.y
+                for h in houses:
+                    size2 = h.size * 1.1  # generous wall-to-wall AABB bound
+                    dx = abs(cx - h.x)
+                    if dx > half_w:
+                        dx = hw - dx
+                    if dx > size2:
+                        continue
+                    dy = abs(cy - h.y)
+                    if dy > half_h:
+                        dy = hh_ - dy
+                    if dy > size2:
+                        continue
+                    if self._is_inside_house(c, h):
+                        bodies[h.id] = bodies.get(h.id, 0) + 1
+                        break
+        self._house_bodies = bodies
+
         # §AS L-0: living leader positions per clan (for the morale aura)
         leader_pos: dict[int, tuple[float, float]] = {}
         for cid, info in self.clans.items():
@@ -3018,6 +3410,30 @@ class Simulation:
                     leader_pos[cid] = (c.x, c.y)
                     break
         self._leader_pos = leader_pos
+
+        # §AS L-2/L-5: totem power rides on the chief's presence at the hall
+        # and on his rites; theocracy never lets faith fall below full.
+        totem_power: dict[int, float] = {}
+        if self.config.totems_enabled:
+            for cid, info in self.clans.items():
+                lpos2 = leader_pos.get(cid)
+                mh = None
+                mh_id = info.get("main_house_id")
+                if mh_id is not None:
+                    mh_e = self.world.entities.get(mh_id)
+                    if isinstance(mh_e, House) and not mh_e.is_ruin:
+                        mh = mh_e
+                at_home = (
+                    lpos2 is not None and mh is not None
+                    and self.world.distance(lpos2[0], lpos2[1], mh.x, mh.y) <= self.config.territory_radius
+                )
+                mult = 1.0 if at_home else ABSENT_TOTEM_MULT
+                if self.tick < int(info.get("ritual_until", 0)):
+                    mult *= RITUAL_TOTEM_MULT
+                if info.get("governance") == "theocracy":
+                    mult = max(1.0, mult) * THEOCRACY_RITUAL_POWER if mult > 1.0 else max(1.0, mult)
+                totem_power[cid] = mult
+        self._totem_power = totem_power
 
         # §AQ PH-9: living priest per clan (bio-electric calm aura)
         priest_pos: dict[int, tuple[float, float]] = {}
@@ -3040,6 +3456,7 @@ class Simulation:
         """Advance the world by exactly one tick (deterministic)."""
         t_step0 = time.perf_counter()
         self._eaten.clear()
+        self._fleeing_ids = set()  # §AR S-5: who ran scared this tick
         self._beds.clear()  # beds are re-contested every tick, in id order
         self._events_this_tick = []
         self._eaters_this_tick = []
@@ -3057,7 +3474,18 @@ class Simulation:
         self.signals = [sg for sg in self.signals if sg["ttl"] > 1]
         for sg in self.signals:
             sg["ttl"] -= 1
+        # §AR S-1: a war cry must wake sleepers BEFORE they settle — the full
+        # hearing pass never reaches a sleeping body.
+        if self.signals and self.config.communication_enabled:
+            for sg in self.signals:
+                if sg.get("kind") != "warcry":
+                    continue
+                wr = self.config.signal_radius * WARCRY_RADIUS_MULT
+                for o in self.world.query_radius(sg["x"], sg["y"], wr):
+                    if isinstance(o, Creature) and not o.is_predator:
+                        o.alarm_wake_ticks = max(o.alarm_wake_ticks, 20)
         self._update_fires()
+        self._update_campfires()  # §AO E: explorers kindle the night's fire
         self._update_disasters()
         self._update_temperature()  # §AQ PH-1: the heat field breathes
         self._update_plants()
@@ -3112,6 +3540,14 @@ class Simulation:
         houses = self._cached_houses
         tod = self._time_of_day()
         is_night = self._is_night(tod)
+        # §AO Phase E: close the nightly bed-overflow census at dawn.
+        if not is_night and getattr(self, "_overflow_was_night", False):
+            self._last_night_overflow = max(
+                getattr(self, "_last_night_overflow", 0),
+                getattr(self, "_bed_overflow_night", 0),
+            )
+            self._bed_overflow_night = 0
+        self._overflow_was_night = is_night
         env_sight = self.env_sight_mult()
         env_speed = self.env_speed_mult()
         clan_house_map: dict[int, House] = {
@@ -3138,6 +3574,9 @@ class Simulation:
         # queries below see where everyone actually stands now.
         self.world.rebuild_index()
         self._update_war()
+        self._update_night_watch()  # §AO C: spearmen guard the thresholds
+        self._update_leader_orders()  # §AS L-2: retreat, ritual, harvest, evacuate
+        self._prune_extinct_clans()  # §P0: keep clan bookkeeping bounded
         self._refresh_cache()
         self._reproduce()
         # N150 hotfix: throttle heavy clan/politics work when pop >800 — staggered offsets to avoid 15-tick pileup
@@ -3281,7 +3720,23 @@ class Simulation:
                 for b, _ in w.query_radius_with_dist_sq(a.x, a.y, cfg.attack_radius)
                 if b.kind == "creature" and b.id > a.id and b.id not in fallen
             ]
-            neighbours.sort(key=lambda c: c.id)
+            # §AS L-1 / §P0: bold/junta assassins prioritize enemy chiefs —
+            # split without allocating a closure per attacker.
+            is_assassin = (
+                getattr(a, "trait", None) == "bold"
+                or self.clans.get(a.clan_id, {}).get("governance") == "junta"
+            )
+            if is_assassin:
+                chiefs = [cc for cc in neighbours if self.clans.get(cc.clan_id, {}).get("leader_id") == cc.id]  # type: ignore[union-attr]
+                if chiefs:
+                    chiefs.sort(key=lambda cc: cc.id)  # type: ignore[union-attr]
+                    rest = [cc for cc in neighbours if cc not in chiefs]  # type: ignore[union-attr]
+                    rest.sort(key=lambda cc: cc.id)  # type: ignore[union-attr]
+                    neighbours = chiefs + rest
+                else:
+                    neighbours.sort(key=lambda cc: cc.id)  # type: ignore[union-attr]
+            else:
+                neighbours.sort(key=lambda cc: cc.id)  # type: ignore[union-attr]
             for b in neighbours:  # type: ignore[union-attr]
                 b = cast(Creature, b)
                 if b.id not in w.entities or b.is_predator or b.is_herbivore or not b.clan_id or a.clan_id == b.clan_id:
@@ -3303,6 +3758,28 @@ class Simulation:
                     dmg *= 1.25
                 elif winner.trait == "peaceful":
                     dmg *= 0.65
+                # §AS L-5: the junta's soldiers live for war — their combat
+                # mastery grows faster (skill gains scaled in the resolve pass)
+                if self.clans.get(winner.clan_id, {}).get("governance") == "junta":
+                    pass
+                # §AS L-1: an army without its general fights at half strength;
+                # a rally before battle sharpens every blade in earshot.
+                if winner.clan_id and winner.clan_id not in getattr(self, "_leader_pos", {}):
+                    dmg *= LEADERLESS_WAR_MULT
+                if getattr(winner, "combat_boost_ticks", 0) > 0:
+                    dmg *= 1.0 + COMBAT_RALLY_BONUS
+                # §AS L-1: targeted assassination — striking at the enemy chief
+                loser_is_enemy_chief = (
+                    self.clans.get(loser.clan_id, {}).get("leader_id") == loser.id
+                )
+                if (
+                    loser_is_enemy_chief
+                    and (
+                        winner.trait == "bold"
+                        or self.clans.get(winner.clan_id, {}).get("governance") == "junta"
+                    )
+                ):
+                    dmg *= 1.0 + ASSASSIN_ATTACK_BONUS
                 # §AP: the Celestial Strike lends God's Wrath to its warriors
                 dmg *= 1.0 + self._totem_stat(winner, "damage")
                 if loser.trait == "paranoid":
@@ -3323,7 +3800,10 @@ class Simulation:
             if loser.id not in self.world.entities:
                 continue
             if hasattr(winner, "skills") and isinstance(winner.skills, dict):
-                winner.skills["combat"] = winner.skills.get("combat", 0.0) + 3.0
+                skill_gain = 3.0
+                if self.clans.get(winner.clan_id, {}).get("governance") == "junta":
+                    skill_gain *= JUNTA_COMBAT_SKILL  # §AS L-5
+                winner.skills["combat"] = winner.skills.get("combat", 0.0) + skill_gain
             winner.energy = max(1.0, winner.energy - 6.0)
             winner.emote = "combat"
             winner.emote_ticks = 25
@@ -3344,6 +3824,53 @@ class Simulation:
                     payload={"winner": winner.id, "a": loser.clan_id, "b": winner.clan_id, "lethal": True},
                 )
             )
+            # §AS L-1: killing the enemy chief breaks the army's will —
+            # the war ends on the spot (forced peace).
+            if loser_is_enemy_chief:
+                pair2 = self._relation_pair(loser.clan_id, winner.clan_id)
+                self.relations[pair2] = min(100, max(self.relations.get(pair2, 0), 10))
+                self._declared_wars.pop(pair2, None)
+                self._emit(
+                    HistoryEvent(
+                        type="peace",
+                        tick=self.tick + 1,
+                        entity_id=0,
+                        payload={
+                            "a": loser.clan_id, "b": winner.clan_id,
+                            "a_name": self.clans.get(loser.clan_id, {}).get("name"),
+                            "b_name": self.clans.get(winner.clan_id, {}).get("name"),
+                            "reason": "leader_slain",
+                        },
+                    )
+                )
+                # §AS L-4: was this murder DECLARED? An undeclared regicide
+                # turns every neutral stomach against the assassin's clan.
+                formal = self._declared_wars.pop(
+                    self._relation_pair(winner.clan_id, loser.clan_id), None
+                )
+                if formal is None:
+                    self._emit(
+                        HistoryEvent(
+                            type="regicide",
+                            tick=self.tick + 1,
+                            entity_id=winner.id,
+                            caste=winner.caste,
+                            x=round(loser.x, 2),
+                            y=round(loser.y, 2),
+                            payload={
+                                "victim": loser.id, "victim_clan": loser.clan_id,
+                                "assassin_clan": winner.clan_id,
+                                "assassin": winner.id,
+                            },
+                        )
+                    )
+                    for other in sorted(self.clans.keys()):
+                        if other in (winner.clan_id, loser.clan_id):
+                            continue
+                        opair = self._relation_pair(other, winner.clan_id)
+                        self.relations[opair] = max(-100, self.relations.get(opair, 0) + REGICIDE_RELATION_HIT)
+                        vpair = self._relation_pair(other, loser.clan_id)
+                        self.relations[vpair] = min(100, self.relations.get(vpair, 0) + REGICIDE_SYMPATHY)
             self._bump_relation(loser.clan_id, winner.clan_id, -5)
             # §AB mutual defence — the loser attacked a whole coalition
             self._mobilise_coalition(winner.clan_id, loser.clan_id)
@@ -3946,6 +4473,36 @@ class Simulation:
                     best = (t, int(enemy))
         return best[1] if best is not None else None
 
+    def _dispatch_herald(self, cid: int, leader: Creature, rival: int) -> None:
+        """§AS L-4: the two chiefs stand too far apart to talk — dispatch the
+        highest-caste healthy subject as a herald. The herald must survive
+        the journey for diplomacy to succeed (envoy machinery resolves it)."""
+        candidates = [
+            m for m in self._clan_members.get(cid, ())
+            if m.stage in ("adult", "elder")
+            and not m.is_predator and not m.is_herbivore
+            and m.health > 50.0 and getattr(m, "mission", None) is None
+            and m.id != leader.id
+        ]
+        if not candidates:
+            return
+        herald = max(candidates, key=lambda m: (m.sides, -m.id))
+        rleader_id = self.clans.get(rival, {}).get("leader_id")
+        rleader = self.world.entities.get(rleader_id) if rleader_id is not None else None
+        tx, ty = (
+            (rleader.x, rleader.y) if isinstance(rleader, Creature)
+            else (herald.x, herald.y)
+        )
+        herald.mission = {
+            "type": "peace", "target_clan": rival,
+            "x": round(tx, 2), "y": round(ty, 2),
+            "deadline": self.tick + ENVOY_MISSION_TICKS,
+        }
+        self._log_clan_history(
+            cid, "herald",
+            f"Dispatched a herald to {self.clans.get(rival, {}).get('name')} (Day {self.day})",
+        )
+
     def _update_leader_decisions(self) -> None:
         """§AB Leader agency — war, peace, tribute demand and betrayal surface as plots.
 
@@ -4028,20 +4585,37 @@ class Simulation:
                     rival = pair[1] if pair[0] == cid else pair[0]
                     my_pop = pops.get(cid, 0)
                     if my_pop and my_pop <= pops.get(rival, 0):
-                        self.relations[pair] = min(100, score + (90 if scales_peace else 60))
-                        # §AP/§AB fix: peace closes the feud — the pair may only
-                        # be re-declared on after the full cooldown.
-                        self._declared_wars.pop(pair, None)
-                        self._emit(
-                            HistoryEvent(
-                                type="peace",
-                                tick=self.tick + 1,
-                                entity_id=0,
-                                payload={"a": cid, "b": rival,
-                                         "a_name": info.get("name"),
-                                         "b_name": self.clans.get(rival, {}).get("name")},
-                            )
+                        # §AS L-4: peace needs a face-to-face meeting — if the
+                        # two chiefs stand far apart the offer rides with a
+                        # herald instead (envoy mission below).
+                        rleader_id = self.clans.get(rival, {}).get("leader_id")
+                        rleader = self.world.entities.get(rleader_id) if rleader_id is not None else None
+                        leaders_close = isinstance(rleader, Creature) and (
+                            self.world.distance(leader.x, leader.y, rleader.x, rleader.y) <= TALK_RADIUS
                         )
+                        boost = 90 if scales_peace else 60
+                        gov = info.get("governance", "republic")
+                        if gov == "republic":
+                            boost = int(boost * REPUBLIC_PEACE_MULT)  # §AS L-5
+                        elif gov == "junta":
+                            boost //= 2  # militarists are half believed
+                        if leaders_close:
+                            self.relations[pair] = min(100, score + boost)
+                            # §AP/§AB fix: peace closes the feud — the pair may only
+                            # be re-declared on after the full cooldown.
+                            self._declared_wars.pop(pair, None)
+                            self._emit(
+                                HistoryEvent(
+                                    type="peace",
+                                    tick=self.tick + 1,
+                                    entity_id=0,
+                                    payload={"a": cid, "b": rival,
+                                             "a_name": info.get("name"),
+                                             "b_name": self.clans.get(rival, {}).get("name")},
+                                )
+                            )
+                        elif cfg.envoys_enabled:
+                            self._dispatch_herald(cid, leader, rival)
                         acted = True
                         break
             if acted:
@@ -4080,6 +4654,19 @@ class Simulation:
                 continue
             # War: declare on an enemy with specific calculated Casus Belli (§AL)
             if trait == "bold" or trait is None or info.get("governance") == "junta":
+                # §AS L-5: a theocracy cannot declare war unilaterally — it
+                # needs a priest elder at the chief's side to co-sign.
+                if info.get("governance") == "theocracy":
+                    priest_elder = next(
+                        (
+                            m for m in self._clan_members.get(cid, ())
+                            if m.caste == "Priest" and m.stage in ("adult", "elder")
+                            and self.world.distance(m.x, m.y, leader.x, leader.y) <= 15.0
+                        ),
+                        None,
+                    )
+                    if priest_elder is None:
+                        continue
                 enemy = self._remembered_enemy(cid)
                 casus_belli = "blood_feud"
                 if enemy is None:
@@ -4105,6 +4692,24 @@ class Simulation:
                         self._zone_of(score) != -1
                         and (last_declared is None or self.tick - last_declared >= WAR_DECLARE_COOLDOWN)
                     ):
+                        # §AS L-5: a republic deliberates two ticks before war.
+                        if info.get("governance") == "republic":
+                            pending = info.get("war_pending")
+                            if pending is None or pending[0] != enemy:
+                                info["war_pending"] = (enemy, self.tick)
+                                continue
+                            if self.tick - pending[1] < 2:
+                                continue
+                            info.pop("war_pending", None)
+                        # §AS L-1: the chief raises the rally BEFORE the blade —
+                        # long-distance declarations without it are weaker.
+                        if len(self.signals) < SIGNALS_MAX:
+                            self.signals.append({
+                                "x": round(leader.x, 2), "y": round(leader.y, 2),
+                                "kind": "rally", "sender": lid,
+                                "clan_id": cid or None, "born_tick": self.tick,
+                                "ttl": RALLY_SIGNAL_TTL,
+                            })
                         self._bump_relation(cid, enemy, -50)
                         self._declared_wars[pair] = self.tick
                         enemy_name = self.clans.get(enemy, {}).get("name", f"Clan {enemy}")
@@ -4145,6 +4750,40 @@ class Simulation:
         for e in (self._cached_houses if self._cached_houses else self._functional_houses()):
             if isinstance(e, House) and e.clan_id and not e.is_ruin and e.clan_id not in houses_by_clan:
                 houses_by_clan[e.clan_id] = e
+        # §AS L-3: the larder answers to its chief. Deposits are accepted only
+        # when a living leader stands at the settlement; withdrawals run at a
+        # rate set by governance and by the leader's farming wisdom.
+        leader_at_settlement: dict[int, bool] = {}
+        larder_eff: dict[int, float] = {}
+        for cid, info in self.clans.items():
+            seat = houses_by_clan.get(cid)
+            if seat is None:
+                mh_id = info.get("main_house_id")
+                if mh_id is not None:
+                    mh_e = self.world.entities.get(mh_id)
+                    if isinstance(mh_e, House) and not mh_e.is_ruin:
+                        seat = mh_e
+            lpos3 = getattr(self, "_leader_pos", {}).get(cid)
+            present = (
+                isinstance(seat, House) and lpos3 is not None
+                and self.world.distance(lpos3[0], lpos3[1], seat.x, seat.y) <= self.config.territory_radius
+            )
+            leader_at_settlement[cid] = present
+            gov = info.get("governance", "republic")
+            eff = 1.0
+            if gov == "republic":
+                eff = REPUBLIC_LARDER_EFF
+            elif gov == "junta":
+                eff = JUNTA_LARDER_EFF
+            elif gov == "monarchy":
+                eff = 1.0
+            if not present:
+                eff *= 0.5  # no chief: only a trickle leaves the store
+            else:
+                leader_c = self.world.entities.get(info.get("leader_id"))
+                if isinstance(leader_c, Creature):
+                    eff *= 1.0 + leader_c.skills.get("farming", 0.0) / 50.0
+            larder_eff[cid] = eff
         starving_by_clan: dict[int, int] = {}
         for c in self._get_creatures():
             if not c.clan_id or c.is_predator or c.is_herbivore:
@@ -4158,6 +4797,9 @@ class Simulation:
 
             ratio = c.energy / cfg.energy_max if cfg.energy_max else 1.0
             if ratio > 0.75:
+                # §AS L-3: deposits need the chief's presence at the settlement
+                if not leader_at_settlement.get(c.clan_id, False):
+                    continue
                 deposit = min(0.5, (ratio - 0.75) * 8.0)
                 stored = float(clan.get("larder", 0.0))
                 room = max(0.0, cfg.larder_capacity - stored)
@@ -4168,7 +4810,7 @@ class Simulation:
             elif ratio <= cfg.starving_ratio:
                 stored = float(clan.get("larder", 0.0))
                 if stored > 0:
-                    take = min(3.0, stored)
+                    take = min(GRANARY_WITHDRAW_RATE * larder_eff.get(c.clan_id, 1.0), stored)
                     clan["larder"] = stored - take
                     c.energy += take
                 # §AM C: the dry, roofed granary feeds its own through famine
@@ -4192,6 +4834,9 @@ class Simulation:
                     continue
                 info["larder"] = float(info.get("larder", 0.0)) - amount
                 pinfo = self.clans[protector]
+                # §AS L-5: a kingdom extracts double protection money
+                if pinfo.get("governance") == "monarchy":
+                    amount *= MONARCHY_TRIBUTE_MULT
                 room = max(0.0, cfg.larder_capacity - float(pinfo.get("larder", 0.0)))
                 pinfo["larder"] = float(pinfo.get("larder", 0.0)) + min(amount, room)
                 # §AN C.2: the tribute rides in a courier's panniers — grain and
@@ -4514,6 +5159,11 @@ class Simulation:
             else:
                 bylaws["martial_law"] = False
                 task_board["guard_weight"] = 1.0
+
+            # 3. §AT-4 H-2 plague response: the main house becomes an infirmary —
+            # its beds heal twice as well while sickness walks the clan.
+            members = self._clan_members.get(cid, ())
+            bylaws["plague_response"] = sum(1 for cc in members if cc.infected) >= 2
 
     def _update_trade_caravans(self) -> None:
         """§AL Inter-Clan Trade Caravans & Economic Specialization Barter."""
@@ -4866,6 +5516,21 @@ class Simulation:
                 type="resonance", tick=self.tick + 1, entity_id=0, x=0.0, y=0.0,
                 payload={"laws": names, "chimes": chimes, "sermons": sermons},
             ))
+        # §AS L-6: the chiefs interpret God's will — bold frames it as a call
+        # to arms, the peaceful as a farming blessing. Never touches the rng.
+        for cid in sorted(self.clans.keys()):
+            info = self.clans[cid]
+            lid = info.get("leader_id")
+            leader = self.world.entities.get(lid) if lid is not None else None
+            if not isinstance(leader, Creature):
+                continue
+            tone = "war" if leader.trait == "bold" else "blessing"
+            if len(self.signals) < SIGNALS_MAX:
+                self.signals.append({
+                    "x": round(leader.x, 2), "y": round(leader.y, 2),
+                    "kind": "interpret", "tone": tone, "sender": leader.id,
+                    "clan_id": cid or None, "born_tick": self.tick, "ttl": 15,
+                })
 
     def _update_politics(self) -> None:
         """§AB orchestrator — fixed order keeps the rng stream deterministic."""
@@ -4985,6 +5650,17 @@ class Simulation:
                 payload={"prey": prey.id, "prey_caste": prey.caste, "kin": kin},
             )
         )
+        # §AR S-5: reputation is observable — witnesses shun the man-eater.
+        pr_sq = cfg.perceive_radius * cfg.perceive_radius
+        for o in self._get_creatures():
+            if o.id == eater.id:
+                continue
+            if o.clan_id and o.clan_id == eater.clan_id:
+                continue
+            if self.world.distance_sq(o.x, o.y, eater.x, eater.y) <= pr_sq:
+                if not hasattr(o, "trust") or o.trust is None:
+                    o.trust = {}
+                o.trust[eater.id] = max(-100.0, o.trust.get(eater.id, 0.0) - 20.0)
         if kin:
             self._exile_kin_eater(eater)
 
@@ -5017,7 +5693,7 @@ class Simulation:
         if self.rng.random() < ignite_chance:
             foods = [e for e in (self._cached_foods or self.world.entities.values()) if isinstance(e, Food) and e.growth > 0.5]
             if foods:
-                wx, wy = math.cos(self.wind_angle), math.sin(self.wind_angle)
+                wx, wy = self._cos_wind, self._sin_wind
                 f0 = max(self.fires, key=lambda f: f["r"]) if self.fires else None
 
                 def tailwind(e: Entity) -> float:
@@ -5034,7 +5710,7 @@ class Simulation:
                 self._emit(HistoryEvent(type="fire", tick=self.tick+1, entity_id=0, x=round(victim.x,2), y=round(victim.y,2), payload={"kind": "ignite", "r": 3.0}))
         # Spread to neighboring plants — faster downwind (§AQ PH-2)
         if self.fires and self.rng.random() < cfg.fire_spread_rate * len(self.fires):
-            wx, wy = math.cos(self.wind_angle), math.sin(self.wind_angle)
+            wx, wy = self._cos_wind, self._sin_wind
             for f in list(self.fires):
                 for e in self.world.query_radius(f["x"], f["y"], 6.0):
                     if not isinstance(e, Food):
@@ -5080,6 +5756,45 @@ class Simulation:
                         h.clan_id = 0
                         h.clan_color = None
                         self._emit(HistoryEvent(type="fire", tick=self.tick+1, entity_id=h.id, x=round(h.x,2), y=round(h.y,2), payload={"kind": "house_burn"}))
+
+    def _update_campfires(self) -> None:
+        """§AO Phase E: stranded explorers caught far from home at nightfall
+        gather dry brush and light a field campfire — a small circle of light
+        and warmth that repels predators and burns until dawn."""
+        tod = self._time_of_day()
+        if not self._is_night(tod):
+            if self.campfires:
+                self.campfires = []  # dawn: the fires go cold
+            return
+        if len(self.campfires) >= 12:
+            return
+        for c in self._get_creatures():
+            if c.personality != "explorer" or c.is_predator or c.is_herbivore:
+                continue
+            if c.indoors or c.sleeping:
+                continue
+            if self.rng.random() >= CAMPFIRE_KINDLE_CHANCE:
+                continue
+            # stranded means far from any roof (own clan's or neutral)
+            stranded = True
+            for h in self._cached_houses:
+                hh = cast(House, h)
+                if not hh.is_ruin and self.world.distance(c.x, c.y, hh.x, hh.y) < 24.0:
+                    stranded = False
+                    break
+            if not stranded:
+                continue
+            # no fire already burning nearby
+            too_close = False
+            for cf in self.campfires:
+                if (cf["x"] - c.x) ** 2 + (cf["y"] - c.y) ** 2 < 64.0:
+                    too_close = True
+                    break
+            if too_close:
+                continue
+            self.campfires.append({"x": round(c.x, 2), "y": round(c.y, 2), "day": self.day})
+            c.emote = "craft"
+            c.emote_ticks = 15
 
     def _update_disasters(self) -> None:
         """§S Disaster laws — meteor/flood stochastic, gated by disaster_rate."""
@@ -5174,7 +5889,9 @@ class Simulation:
             for m in self._get_creatures():
                 if m.clan_id:
                     clan_creatures.setdefault(m.clan_id, []).append(m)
-        for cid in self.clans:
+        # §P0: only alive clans carry memory — dead clans bloat payloads
+        alive_for_know = set(self._clan_members.keys()) if self._clan_members else {c.clan_id for c in self._get_creatures() if c.clan_id}
+        for cid in alive_for_know:
             enemies: set[int] = set()
             danger: list[dict] = []
             food: list[dict] = []
@@ -5453,7 +6170,7 @@ class Simulation:
         if cfg.plant_spread_rate > 0 and sun > 0.0:
             target = round(cfg.food_count * _season_food_mult(self._season(), cfg.winter_food_mult))
             total = sum(1 for e in self.world.entities.values() if e.kind == "food")
-            wx, wy = math.cos(self.wind_angle), math.sin(self.wind_angle)
+            wx, wy = self._cos_wind, self._sin_wind
             seed_blend = min(0.7, WIND_SEED_BIAS * self.wind_speed)
             for parent in list(self.world.entities.values()):
                 if not isinstance(parent, Food) or parent.growth < 1.0:
@@ -5972,6 +6689,13 @@ class Simulation:
             mut_rate = cfg.mutation_rate
             # §AP: Rift clans breed adaptable children — mutation odds multiply.
             mut_rate = min(1.0, mut_rate * (1.0 + self._totem_stat(mother, "mutate")))
+            # §AS L-5: thin royal blood — small monarchies mutate more easily
+            mother_clan_gov = self.clans.get(mother.clan_id, {}).get("governance")
+            if (
+                mother_clan_gov == "monarchy"
+                and len(self._clan_members.get(mother.clan_id, ())) < 8
+            ):
+                mut_rate = min(1.0, mut_rate * MONARCHY_INBREEDING)
             age = self._age()
             if age is not None:
                 mut_rate = min(1.0, mut_rate * AGE_MUTATION_MULT.get(age, 1.0))
@@ -6052,6 +6776,15 @@ class Simulation:
         self._events_this_tick.append(event.model_dump(mode="json"))
         if self.on_event is not None:
             self.on_event(event)
+        # §AR S-7: birth is literally good news — kin nearby share a joy
+        # ripple and a small morale/health gift.
+        if child.clan_id and len(self.signals) < SIGNALS_MAX:
+            self.signals.append({
+                "x": round(child.x, 2), "y": round(child.y, 2),
+                "kind": "joy", "sender": mother.id,
+                "clan_id": child.clan_id or None, "born_tick": self.tick, "ttl": 15,
+                "joy_energy": 2.0, "joy_health": 1.0,
+            })
 
         if promoted:
             pevent = HistoryEvent(
@@ -6101,6 +6834,28 @@ class Simulation:
             })
         # Leadership succession (§P) — always runs; succession_enabled only gates the chronicle event.
         if c.clan_id:
+            # §AT-4 H-2: kin who watch a clan-mate die carry the grief —
+            # morale breaks a little in every witness (§AR S-7 grief ripple).
+            witnesses = 0
+            pr_sq = self.config.perceive_radius * self.config.perceive_radius
+            # §P0: clan-scoped witness scan instead of full-world scan
+            for other in self._clan_members.get(c.clan_id, ()) or self._get_creatures():
+                if other.id == c.id or other.clan_id != c.clan_id:
+                    continue
+                if self.world.distance_sq(other.x, other.y, c.x, c.y) <= pr_sq:
+                    other.morale = max(0.0, other.morale - MORALE_DEATH_WITNESS)
+                    witnesses += 1
+            if witnesses and len(self.signals) < SIGNALS_MAX:
+                self.signals.append({
+                    "x": round(c.x, 2), "y": round(c.y, 2),
+                    "kind": "grief", "sender": c.id,
+                    "clan_id": c.clan_id or None, "born_tick": self.tick, "ttl": 15,
+                    "witnesses": [
+                        o.id for o in self._clan_members.get(c.clan_id, ()) or self._get_creatures()
+                        if o.id != c.id and o.clan_id == c.clan_id
+                        and self.world.distance_sq(o.x, o.y, c.x, c.y) <= pr_sq
+                    ],
+                })
             clan = self.clans.get(c.clan_id)
             if clan and clan.get("leader_id") == c.id:
                 # Exclude the dying creature from candidates: world.remove() ran above but
@@ -6122,8 +6877,50 @@ class Simulation:
                         successor = sorted(candidates, key=lambda cc: (-cc.sides, -cc.age, cc.id))[0]
 
                     clan["leader_id"] = successor.id
+                    succ_name = personal_name_for(successor.id, self.config.seed, successor.generation)
+                    # §AS L-6: succession flavor — a new chief may call a new
+                    # avatar; two equal heirs may tear the clan in two.
+                    if self.rng.random() < TOTEM_CHANGE_CHANCE:
+                        bias = {
+                            "bold": "Celestial Strike",
+                            "peaceful": "Sacred Spiral",
+                            "paranoid": "All-Seeing Vertex",
+                            None: "Radiant Circle",
+                        }.get(successor.trait, "Radiant Circle")
+                        if successor.caste == "Soldier":
+                            bias = "Celestial Strike"
+                        old_totem = clan.get("totem")
+                        clan["totem"] = bias
+                        self._log_clan_history(
+                            c.clan_id, "totem_change",
+                            f"{bias} succeeds {old_totem} under Chief {succ_name} (Day {self.day})",
+                        )
+                    else:
+                        equals = [
+                            cc for cc in candidates
+                            if (cc.sides, cc.age) == (successor.sides, successor.age)
+                            and cc.id != successor.id
+                        ]
+                        if equals and self.rng.random() < CONTESTED_SUCCESSION_CHANCE:
+                            faction = [
+                                cc for cc in candidates if cc.id % 2 == 0
+                            ][: max(1, len(candidates) // 2)]
+                            if faction and len(faction) < len(candidates):
+                                new_cid = self._new_clan(faction[0])
+                                for cc in faction:
+                                    cc.clan_id = new_cid
+                                self._bump_relation(c.clan_id, new_cid, -40)
+                                self._emit(
+                                    HistoryEvent(
+                                        type="schism",
+                                        tick=self.tick + 1,
+                                        entity_id=faction[0].id,
+                                        caste=faction[0].caste,
+                                        payload={"parent": c.clan_id, "new_clan": new_cid,
+                                                 "reason": "contested_succession"},
+                                    )
+                                )
                     if self.config.succession_enabled:
-                        succ_name = personal_name_for(successor.id, self.config.seed, successor.generation)
                         self._log_clan_history(
                             c.clan_id,
                             "leader_change",
@@ -6155,6 +6952,8 @@ class Simulation:
                     if member.clan_id == c.clan_id and member.id != c.id:
                         member.energy = max(0.5, member.energy - LEADER_SHOCK_ENERGY)
                         member.panic_ticks = LEADER_SHOCK_PANIC_TICKS
+                        # §AT-4 H-2: the chief's death breaks more hearts than a common loss.
+                        member.morale = max(0.0, member.morale - MORALE_LEADER_DEATH)
                         member.emote = "panic"
                         member.emote_ticks = 15
                 if clan:
@@ -6164,6 +6963,40 @@ class Simulation:
                     "kind": "grief", "sender": c.id,
                     "clan_id": c.clan_id or None, "born_tick": self.tick, "ttl": 15,
                 })
+                # §AS L-4: a chief cut down outside a declared feud is
+                # regicide when any rival lives at war with the victim's clan.
+                if cause == "war" and not any(
+                    e.get("type") == "regicide"
+                    and e.get("payload", {}).get("victim") == c.id
+                    for e in getattr(self, "_events_this_tick", [])
+                ):
+                    for other in sorted(self.clans.keys()):
+                        if other == c.clan_id:
+                            continue
+                        pair = self._relation_pair(c.clan_id, other)
+                        if self._zone_of(self.relations.get(pair, 0)) != -1:
+                            continue
+                        if self._declared_wars.get(pair) is not None:
+                            continue
+                        self._emit(
+                            HistoryEvent(
+                                type="regicide",
+                                tick=self.tick + 1,
+                                entity_id=c.id,
+                                payload={
+                                    "victim": c.id, "victim_clan": c.clan_id,
+                                    "assassin_clan": other,
+                                },
+                            )
+                        )
+                        for third in sorted(self.clans.keys()):
+                            if third in (c.clan_id, other):
+                                continue
+                            opair = self._relation_pair(third, other)
+                            self.relations[opair] = max(-100, self.relations.get(opair, 0) + REGICIDE_RELATION_HIT)
+                            vpair = self._relation_pair(third, c.clan_id)
+                            self.relations[vpair] = min(100, self.relations.get(vpair, 0) + REGICIDE_SYMPATHY)
+                        break
 
 
     def _update_creature_skills_and_titles(self, c: Creature) -> None:
@@ -6212,6 +7045,7 @@ class Simulation:
         clan_house_map: dict[int, House] | None = None,
     ) -> None:
         cfg, w = self.config, self.world
+        self._sync_wind_cache()  # §AU O-1: honest wind trig even mid-mutation
         if tod is None:
             tod = self._time_of_day()
         if is_night is None:
@@ -6227,6 +7061,10 @@ class Simulation:
 
         c.ticks_since_meal += 1
         c.age += 1
+        # §AU O-1: the assigned roof resolves lazily ONCE per creature tick;
+        # every later consumer reuses it instead of re-scanning all houses.
+        roof_resolved = False
+        assigned_roof: House | None = None
         if c.repro_cooldown > 0:
             c.repro_cooldown -= 1
         if c.bite_cooldown > 0:
@@ -6235,6 +7073,12 @@ class Simulation:
             c.cannibal_cooldown -= 1
         if c.panic_ticks > 0:
             c.panic_ticks -= 1
+        if c.alarm_wake_ticks > 0:
+            c.alarm_wake_ticks -= 1
+        if getattr(c, "combat_boost_ticks", 0) > 0:
+            c.combat_boost_ticks -= 1
+        # §AR S-3: decay, drift and eviction keep memory honest
+        self._maintain_facts(c)
         if c.calm_ticks > 0:
             c.calm_ticks -= 1
         if c.prepared_ticks > 0:
@@ -6256,6 +7100,73 @@ class Simulation:
         # Leader crown
         if c.clan_id and self.clans.get(c.clan_id, {}).get("leader_id") == c.id:
             c.equipped_item = "crown"
+        elif is_night and c.personality == "explorer" and not c.is_predator and not c.is_herbivore:
+            # §AR S-2: the torch tradeoff — an explorer's flame restores night
+            # sight around it, but the glow draws every wolf's eye.
+            if c.equipped_item is None or c.equipped_item == "torch":
+                c.equipped_item = "torch"
+        elif c.equipped_item == "torch" and not is_night:
+            c.equipped_item = None  # daybreak: douse the torch
+
+        # §AR S-5 / §AS L-1: a leader whose clan is at war raises the rally —
+        # kin set it as their waypoint and come running.
+        if (
+            c.clan_id
+            and self.clans.get(c.clan_id, {}).get("leader_id") == c.id
+            and not c.sleeping
+            and not c.is_predator
+            and (self.tick + c.id) % 30 == 0
+            and len(self.signals) < SIGNALS_MAX
+        ):
+            at_war_now = False
+            for pair, score in self.relations.items():
+                if c.clan_id in pair and score <= cfg.rivalry_threshold:
+                    at_war_now = True
+                    break
+            if at_war_now:
+                self.signals.append({
+                    "x": round(c.x, 2), "y": round(c.y, 2), "kind": "rally",
+                    "sender": c.id, "clan_id": c.clan_id or None,
+                    "born_tick": self.tick, "ttl": RALLY_SIGNAL_TTL,
+                })
+        # §AS L-2: retreat when bleeding + evacuation when threatened — independent cadence
+        if (
+            c.clan_id
+            and self.clans.get(c.clan_id, {}).get("leader_id") == c.id
+            and not c.sleeping
+            and not c.is_predator
+            and c.health <= RETREAT_HEALTH_FRAC * c.max_health
+            and (self.tick + c.id) % 20 == 0
+            and len(self.signals) < SIGNALS_MAX
+        ):
+            self.signals.append({
+                "x": round(c.x, 2), "y": round(c.y, 2), "kind": "retreat",
+                "sender": c.id, "clan_id": c.clan_id or None,
+                "born_tick": self.tick, "ttl": 30,
+            })
+        if (
+            c.clan_id
+            and self.clans.get(c.clan_id, {}).get("leader_id") == c.id
+            and not c.sleeping
+            and not c.is_predator
+            and (self.tick + c.id) % 15 == 0
+            and len(self.signals) < SIGNALS_MAX
+        ):
+            fire_near2 = any(self.world.distance(c.x, c.y, f["x"], f["y"]) < 25.0 for f in self.fires)
+            flood_near2 = any(rv.get("flood_ticks", 0) > 0 for rv in self.rivers)
+            if fire_near2 or flood_near2:
+                import math as _m3b
+                hx_, hy_ = (self.fires[0]["x"], self.fires[0]["y"]) if self.fires else (c.x, c.y)
+                dxl, dyl = self.world.delta(hx_, hy_, c.x, c.y)
+                dl = _m3b.hypot(dxl, dyl) or 1e-6
+                ex = c.x + dxl/dl*18.0; ey = c.y + dyl/dl*18.0
+                self.signals.append({
+                    "x": round(c.x, 2), "y": round(c.y, 2), "kind": "evacuate",
+                    "sender": c.id, "clan_id": c.clan_id or None,
+                    "born_tick": self.tick, "ttl": 40,
+                    "evac_x": round(ex % self.config.width, 2),
+                    "evac_y": round(ey % self.config.height, 2),
+                })
 
         # Evaluate skills and dynamic epithets
         if self.tick % 10 == 0:
@@ -6276,13 +7187,17 @@ class Simulation:
             and not c.is_herbivore
             and not is_starving
             and is_night
+            and c.alarm_wake_ticks <= 0  # §AR S-1: a war cry wakes sleepers
             and houses
         ):
             # Assigned roof (room-aware, §L); if we're not under it but stand
             # inside ANOTHER roof with a free bed, rest here instead of
             # trekking across the village. No bed ⇒ no rest: capacity is law.
             # §AT-3: only own-clan or unclaimed roofs may be entered.
-            assigned = self._house_for(c, houses)
+            if not roof_resolved:
+                assigned_roof = self._house_for(c, houses)
+                roof_resolved = True
+            assigned = assigned_roof
             home: House | None = None
             if (
                 assigned is not None
@@ -6320,8 +7235,29 @@ class Simulation:
                                     o.skills[best_skill] = o.skills.get(best_skill, 0.0) + lore_xp
                 if cfg.knowledge_enabled:
                     self._learn(c, "safe", home.x, home.y)  # §X: this roof is safe
+                    # §AR S-3: inherited memory — an elder at rest passes its
+                    # sense of home and food grounds to the young asleep near.
+                    if c.stage == "elder" and (self.tick + c.id) % 20 == 0:
+                        for o in w.query_radius(c.x, c.y, 5.0):
+                            if (
+                                isinstance(o, Creature)
+                                and o.clan_id == c.clan_id
+                                and o.stage in ("infant", "juvenile")
+                            ):
+                                safe = self._fact_fresh(c, "safe")
+                                food = self._fact_fresh(c, "food")
+                                if safe is not None:
+                                    o.facts["safe"] = dict(safe, conf=ORAL_LORE_CONF, tick=self.tick)
+                                if food is not None:
+                                    o.facts["food"] = dict(food, conf=ORAL_LORE_CONF, tick=self.tick)
                 stage_mult = STAGE_ENERGY_MULT.get(c.stage, 1.0) if c.generation > 0 else 1.0
-                c.energy -= cfg.energy_decay_per_tick * cfg.sleep_energy_mult * stage_mult * self._metabolic_cost(c)
+                # §AO Phase C: a lit hearth is total sanctuary — the fire
+                # purges every trace of chill and halts the night's burn.
+                hearth_sanctuary = bool(getattr(home, "hearth_lit", False))
+                if hearth_sanctuary:
+                    c.chill = 0.0
+                else:
+                    c.energy -= cfg.energy_decay_per_tick * cfg.sleep_energy_mult * stage_mult * self._metabolic_cost(c)
                 if c.infected and cfg.disease_enabled:
                     c.energy -= cfg.disease_energy_drain
                     c.health -= 2.0 * cfg.disease_lethality
@@ -6330,6 +7266,18 @@ class Simulation:
                     # cannot mend itself, even asleep. §AQ PH-0: mending costs.
                     if (c.energy / cfg.energy_max) > HEALTH_REGEN_MIN_ENERGY:
                         regen = 0.15 * cfg.rest_recovery_mult
+                        # §AO Phase C: the hearth's warmth knits wounds fast.
+                        if hearth_sanctuary:
+                            regen += HEARTH_SANCTUARY_HEAL
+                        # §AT-4 H-2: plague-response bylaw — the main house is an
+                        # infirmary and its beds heal twice as well.
+                        ci_sl = self.clans.get(c.clan_id) if c.clan_id else None
+                        if (
+                            isinstance(ci_sl, dict)
+                            and (ci_sl.get("bylaws") or {}).get("plague_response")
+                            and ci_sl.get("main_house_id") == home.id
+                        ):
+                            regen *= INFIRMARY_REGEN_MULT
                         regen *= 1.0 + self._totem_stat(c, "defense")  # totem vitality heals faster
                         if c.heal_bonus_ticks > 0:
                             regen += c.heal_bonus_amount  # §AT-4 H-1: supper keeps working
@@ -6353,6 +7301,10 @@ class Simulation:
                 # Asleep means STILL: no steering, no wandering, no fleeing —
                 # the body does not move again until dawn (or death).
                 return
+            else:
+                # §AO Phase E: wanted a roof, found no bed — tonight's housing
+                # shortage census (drives emergency construction).
+                self._bed_overflow_night = getattr(self, "_bed_overflow_night", 0) + 1
 
         # §AQ PH-7: torpor — a starving body in killing cold shuts down:
         # 5% burn, unconscious and defenceless until the air warms or it dies.
@@ -6405,6 +7357,24 @@ class Simulation:
 
 
 
+        # §AR S-3: the priest as living oracle — periodically broadcasts the
+        # clan's best knowledge to every ear within signal range.
+        if (
+            c.caste == "Priest"
+            and cfg.knowledge_enabled
+            and not c.sleeping
+            and (self.tick + c.id) % PRIEST_ORACLE_INTERVAL == 0
+        ):
+            oracle_fact = self._fact_to_share(c)
+            if oracle_fact is not None and len(self.signals) < SIGNALS_MAX:
+                self.signals.append({
+                    "x": round(c.x, 2), "y": round(c.y, 2),
+                    "kind": "knowledge", "sender": c.id,
+                    "clan_id": c.clan_id or None,
+                    "born_tick": self.tick, "ttl": 15,
+                    "fact": dict(oracle_fact),
+                })
+
         # Priests heal injured / infected clanmates — full healing rounds near
         # the settlement seat (§AT-4 H-1), a lighter touch on the road.
         if c.caste == "Priest" and not c.sleeping and (self.tick + c.id) % 8 == 0:
@@ -6434,6 +7404,35 @@ class Simulation:
                             c.trust = {}
                         c.trust[o.id] = min(100.0, c.trust.get(o.id, 0.0) + 5.0)
                         break
+
+        # §AT-4 H-2: wound dressing — healthy kin bandage the hurt, halving
+        # how long a wound lingers (and with it the infection window).
+        if (
+            c.health >= DRESS_MIN_HEALTH
+            and not c.sleeping
+            and not c.is_predator
+            and not c.is_herbivore
+            and (self.tick + c.id) % 4 == 0
+        ):
+            for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, DRESS_RADIUS):
+                if (
+                    isinstance(o, Creature)
+                    and o.id != c.id
+                    and o.clan_id == c.clan_id
+                    and o.wound_severity >= 1
+                    and o.wound_ticks > 10
+                    and not o.wound_dressed
+                    and o.id in w.entities
+                ):
+                    o.wound_ticks = max(10, o.wound_ticks // 2)
+                    o.wound_dressed = True
+                    c.emote = "heal"
+                    c.emote_ticks = 12
+                    o.morale = min(100.0, o.morale + MORALE_EAT_RESTORE * 0.5)  # care lifts the spirit
+                    if not hasattr(o, "trust") or o.trust is None:
+                        o.trust = {}
+                    o.trust[c.id] = min(100.0, o.trust.get(c.id, 0.0) + 8.0)
+                    break
 
         # Altruistic feeding & basket hauling
         if getattr(c, "food_basket", 0) > 0 and not c.sleeping:
@@ -6535,6 +7534,12 @@ class Simulation:
 
         stage_speed, stage_sight = STAGE_MULT[c.stage]
         perceive = cfg.perceive_radius * c.sight_mult * stage_sight * env_sight
+        # §AR S-2: age dims the eyes further — elders see ×0.9 again.
+        if c.stage == "elder":
+            perceive *= ELDER_SIGHT_PENALTY
+        # §AT-4 H-2: scars dim the eyes forever.
+        if c.scars:
+            perceive *= SCAR_SIGHT_MULT ** c.scars
         # Totem sight (§P): Eye +25%, Owl +35%, Raven +15% …
         perceive *= 1.0 + self._totem_stat(c, "sight")
         # §AP: the All-Seeing Vertex sees clearly even in the dark of the world —
@@ -6552,6 +7557,26 @@ class Simulation:
         if self._totem_of(c) and (c.is_predator or perceive > cfg.perceive_radius):
             speed_mult *= 1.0 + self._totem_stat(c, "speed")
 
+        # §AO Phase D: pitch black — outdoors at night non-predator sight
+        # contracts to a hand's width ahead. Predators hunt by nose; the
+        # All-Seeing Vertex pierces the dark; a torch pushes it back (§AR S-2).
+        if (
+            is_night
+            and not c.indoors
+            and not c.is_predator
+            and not c.sleeping
+        ):
+            dark_cap = PITCH_BLACK_SIGHT * (1.0 + self._totem_stat(c, "clarity"))
+            if c.equipped_item == "torch":
+                dark_cap = max(dark_cap, cfg.perceive_radius * env_sight)
+            else:
+                # a torch within TORCH_LIGHT_RADIUS lights the ground here too
+                for o in w.query_radius(c.x, c.y, TORCH_LIGHT_RADIUS):
+                    if isinstance(o, Creature) and o.equipped_item == "torch" and not o.indoors:
+                        dark_cap = max(dark_cap, cfg.perceive_radius * env_sight * 0.9)
+                        break
+            perceive = min(perceive, dark_cap)
+
         # trait paranoid/bold nudges flee threshold (§S); §AR S-0 starvation
         # dulls fear (all in _effective_fear_radius); §AP the Eternal Hearth
         # calms its people through the night.
@@ -6562,10 +7587,14 @@ class Simulation:
         # gloom over the whole clan (weaker eyes, faster burn, deeper fear).
         clan_info_aura = self.clans.get(c.clan_id) if c.clan_id else None
         leader_alive = bool(clan_info_aura and clan_info_aura.get("leader_id"))
+        # §AS L-5: a crown's aura reaches half again as far
+        aura_radius = LEADER_AURA_RADIUS * (
+            MONARCHY_AURA_MULT if (clan_info_aura or {}).get("governance") == "monarchy" else 1.0
+        )
         lpos = getattr(self, "_leader_pos", {}).get(c.clan_id) if c.clan_id else None
         in_aura = False
         if leader_alive and lpos is not None:
-            in_aura = w.distance_sq(c.x, c.y, lpos[0], lpos[1]) <= LEADER_AURA_RADIUS * LEADER_AURA_RADIUS
+            in_aura = w.distance_sq(c.x, c.y, lpos[0], lpos[1]) <= aura_radius * aura_radius
             if in_aura:
                 perceive *= 1.0 + LEADER_SIGHT_BONUS
                 fear_radius_eff = max(1.0, fear_radius_eff - LEADER_CALM)
@@ -6589,19 +7618,43 @@ class Simulation:
                  else WIND_SCENT_MULT * self.wind_speed)
                 if cfg.scent_enabled else 0.0
             )
-            wx_s, wy_s = math.cos(self.wind_angle), math.sin(self.wind_angle)
+            wx_s, wy_s = self._cos_wind, self._sin_wind
             if c.is_predator and c.bite_cooldown <= 0:
                 # Find nearest non-predator prey within hunt_radius (+2 Wolf totem)
+                # §AO Phase B: night vision +40% in the dark; a lit campfire
+                # is a wall of light no beast will cross.
                 hunt_r = cfg.hunt_radius + self._totem_stat(c, "hunt_radius")
+                if is_night:
+                    hunt_r *= PREDATOR_NIGHT_SIGHT
+                if self.campfires:
+                    for cf in self.campfires:
+                        if w.distance_sq(c.x, c.y, cf["x"], cf["y"]) <= CAMPFIRE_LIGHT_RADIUS * CAMPFIRE_LIGHT_RADIUS:
+                            hunt_r = 0.0  # firelight repels: no hunting from here
+                            break
                 best_prey: Creature | None = None
-                best_prey_d_sq = hunt_r * hunt_r + 1e-9
-                for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, hunt_r * (1.0 + scent_boost)):
+                best_prey_d_sq = math.inf
+                if self.campfires:
+                    for cf in self.campfires:
+                        if w.distance_sq(c.x, c.y, cf["x"], cf["y"]) <= CAMPFIRE_LIGHT_RADIUS * CAMPFIRE_LIGHT_RADIUS:
+                            hunt_r = -1.0  # firelight repels: no hunting from here
+                            break
+                # §AR S-2: a torch bearer glows in the dark — visible twice
+                # as far as any honest shadow.
+                torch_glow_r2 = (hunt_r * 2.0) ** 2 if hunt_r > 0 else 0.0
+                sight_r2 = hunt_r * hunt_r if hunt_r > 0 else math.inf
+                query_r = max(hunt_r * 2.0, hunt_r * (1.0 + scent_boost)) if hunt_r > 0 else 0.0
+                for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, query_r):
                     if not isinstance(o, Creature) or o.id == c.id or o.is_predator:
                         continue
                     if o.id not in w.entities or o.indoors:
                         continue  # indoors prey are safe (predator refuge)
-                    if d2 >= best_prey_d_sq:
-                        # §AQ PH-2: beyond base sight only UPWIND prey is smelled
+                    # §AR S-2: a torch bearer glows twice as far as any shadow
+                    if getattr(o, "equipped_item", None) == "torch":
+                        if d2 < torch_glow_r2 and d2 < best_prey_d_sq:
+                            best_prey_d_sq, best_prey = d2, o
+                        continue
+                    # §AQ PH-2: beyond base sight only UPWIND prey is smelled
+                    if d2 >= sight_r2:
                         if scent_boost <= 0.0:
                             continue
                         d = math.sqrt(d2) or 1e-6
@@ -6610,7 +7663,26 @@ class Simulation:
                         eff = hunt_r * (1.0 + scent_boost * upwind)
                         if d > eff:
                             continue
-                    best_prey_d_sq, best_prey = d2, o
+                    # §AU-fix: NEAREST always wins — a passing far candidate
+                    # must never replace a closer one.
+                    if d2 < best_prey_d_sq:
+                        best_prey_d_sq, best_prey = d2, o
+                # §AR S-2: terrain camouflage — prey standing in mature cover
+                # are only visible at 80% of the hunter's reach.
+                if (
+                    best_prey is not None
+                    and best_prey_d_sq > (hunt_r * CAMOUFLAGE_HUNT_MULT) ** 2
+                ):
+                    for veg, vd2 in w.query_radius_with_dist_sq(
+                        best_prey.x, best_prey.y, CAMOUFLAGE_RANGE,
+                    ):
+                        if (
+                            isinstance(veg, Food)
+                            and veg.growth >= 1.0
+                            and veg.variant in ("berry", "grass", "grain")
+                        ):
+                            best_prey, best_prey_d_sq = None, math.inf
+                            break
                 if best_prey is not None:
                     if best_prey_d_sq <= cfg.eat_radius * cfg.eat_radius:
                         # Bite — instant kill, predator feeds
@@ -6633,26 +7705,79 @@ class Simulation:
                         hunt_target = None
                     else:
                         hunt_target = best_prey
+                        # §AO Phase B: past midnight beasts converge in packs —
+                        # the finder shares the kill with any wolf in earshot.
+                        if tod > PACK_HOUR and len(self.signals) < SIGNALS_MAX:
+                            self.signals.append({
+                                "x": round(c.x, 2), "y": round(c.y, 2),
+                                "kind": "pack", "sender": c.id,
+                                "clan_id": None, "born_tick": self.tick, "ttl": 12,
+                                "threat_x": round(best_prey.x, 2),
+                                "threat_y": round(best_prey.y, 2),
+                            })
+                        # §AR S-1: three or more beasts together raise a war
+                        # cry that carries twice as far and wakes sleepers.
+                        if len(self.signals) < SIGNALS_MAX and (
+                            self.rng.random() < 0.15
+                        ):
+                            pack_n = 0
+                            for o2, d22 in w.query_radius_with_dist_sq(c.x, c.y, PACK_RADIUS):
+                                if isinstance(o2, Creature) and o2.is_predator and o2.id != c.id:
+                                    pack_n += 1
+                            if pack_n >= 2:
+                                self.signals.append({
+                                    "x": round(c.x, 2), "y": round(c.y, 2),
+                                    "kind": "warcry", "sender": best_prey.id,
+                                    "clan_id": None, "born_tick": self.tick,
+                                    "ttl": max(6, int(cfg.signal_radius * WARCRY_RADIUS_MULT / cfg.signal_speed)) if cfg.signal_speed > 0 else 24,
+                                    "threat_x": round(c.x, 2), "threat_y": round(c.y, 2),
+                                })
             elif not c.is_predator:
-                # Find nearest predator within fear_radius to flee from
+                # Find nearest predator within fear_radius to flee from.
+                # §AR S-2: vision is a forward cone — the rear half-circle
+                # detects at half range (smell ignores facing).
+                # §AR S-2 canon: beyond half range an Isosceles triangle is
+                # misread as a predator 30% of the time.
+                # §AR S-4: kin are recognized by scent up close — no panic.
+                ca, sa = math.cos(c.angle), math.sin(c.angle)
                 best_pred: Creature | None = None
-                best_pred_d_sq = fear_radius_eff * fear_radius_eff + 1e-9
-                for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, fear_radius_eff * (1.0 + scent_boost)):
-                    if not isinstance(o, Creature) or not o.is_predator:
+                best_pred_d_sq = math.inf
+                for o, d2 in w.query_radius_with_dist_sq(
+                    c.x, c.y,
+                    max(fear_radius_eff, cfg.fear_radius) * (1.0 + scent_boost),
+                ):
+                    if not isinstance(o, Creature) or not o.is_predator or o.id not in w.entities:
                         continue
-                    if o.id not in w.entities:
+                    dxo, dyo = w.delta(c.x, c.y, o.x, o.y)
+                    fwd = dxo * ca + dyo * sa  # >0: in the forward half
+                    visual_limit = (
+                        fear_radius_eff if fwd >= VISION_CONE_COS
+                        else fear_radius_eff * REAR_SIGHT_MULT
+                    )
+                    if d2 <= visual_limit * visual_limit:
+                        if d2 < best_pred_d_sq:
+                            best_pred_d_sq, best_pred = d2, o
                         continue
-                    if d2 >= best_pred_d_sq:
-                        # §AQ PH-2: beyond base fear only an UPWIND predator reeks
-                        if scent_boost <= 0.0:
-                            continue
-                        d = math.sqrt(d2) or 1e-6
-                        dx, dy = w.delta(o.x, o.y, c.x, c.y)  # predator relative to prey
-                        upwind = max(0.0, -(dx * wx_s + dy * wy_s) / d)
+                    # §AQ PH-2: beyond sight only an UPWIND predator reeks
+                    if scent_boost > 0.0:
+                        d = math.sqrt(d2)
+                        upwind = max(0.0, -(dxo * wx_s + dyo * wy_s) / (d or 1e-6))
                         eff = fear_radius_eff * (1.0 + scent_boost * upwind)
-                        if d > eff:
+                        if d <= eff and d2 < best_pred_d_sq:
+                            best_pred_d_sq, best_pred = d2, o
+                if best_pred is None:
+                    # phantom wolves: far isosceles silhouettes misread 30%/tick
+                    for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, cfg.fear_radius):
+                        if not isinstance(o, Creature) or o.is_predator or o.id == c.id:
                             continue
-                    best_pred_d_sq, best_pred = d2, o
+                        if o.sides != 3 or (o.clan_id and o.clan_id == c.clan_id):
+                            continue  # §AR S-4: kin smell like kin
+                        if d2 > (cfg.fear_radius * 0.5) ** 2:
+                            continue  # misreading only happens far out
+                        if self.rng.random() >= TRIANGLE_FALSE_ALARM:
+                            continue
+                        best_pred_d_sq, best_pred = d2, o
+                        break
                 flee_target = best_pred
 
         # 2. Perceive the nearest meal — food or the fallen. Diet strictness (§O) filters.
@@ -6780,7 +7905,10 @@ class Simulation:
             if flee_target is not None:
                 self._learn(c, "danger", flee_target.x, flee_target.y)
             if c.indoors:
-                home_fact = self._house_for(c, houses) if houses else None
+                if not roof_resolved:
+                    assigned_roof = self._house_for(c, houses) if houses else None
+                    roof_resolved = True
+                home_fact = assigned_roof
                 if home_fact is not None:
                     self._learn(c, "safe", home_fact.x, home_fact.y)
         if c.signal_cooldown > 0:
@@ -6840,6 +7968,46 @@ class Simulation:
                         self.signals.append({"x": c.x, "y": c.y, "kind": "food", "sender": c.id, "clan_id": c.clan_id or None, "born_tick": self.tick, "ttl": 12, "food_x": remembered_food[0], "food_y": remembered_food[1]})
                         c.signal_cooldown = 12
                         break
+
+        # §AR S-4: smell made physical — scent marks and trails ride the air.
+        if cfg.scent_enabled and not c.sleeping and len(self.signals) < SIGNALS_MAX:
+            # territorial marking: sentries and chiefs scent the border
+            if (
+                c.clan_id
+                and (c.caste == "Soldier" or self.clans.get(c.clan_id, {}).get("leader_id") == c.id)
+                and (self.tick + c.id) % 45 == 0
+            ):
+                mh = self.world.entities.get(self.clans[c.clan_id].get("main_house_id")) if self.clans[c.clan_id].get("main_house_id") is not None else None
+                if isinstance(mh, House):
+                    d_home = w.distance(c.x, c.y, mh.x, mh.y)
+                    if abs(d_home - cfg.territory_radius) <= cfg.territory_radius * 0.35:
+                        ttl = max(10, int(SCENT_TTL / 2)) if self.weather in ("rain", "storm") else SCENT_TTL
+                        self.signals.append({
+                            "x": round(c.x, 2), "y": round(c.y, 2), "kind": "territory",
+                            "sender": c.id, "clan_id": c.clan_id or None,
+                            "born_tick": self.tick, "ttl": min(ttl, 90),
+                        })
+            # forager/prey scent: every moving body leaves a fading trail;
+            # rain washes it thin. Predators leave their own — prey learn fear.
+            if (self.tick + c.id) % 40 == 0 and (c.status or c.is_predator):
+                ttl = max(8, SCENT_TTL // 2) if self.weather in ("rain", "storm") else SCENT_TTL
+                kind = "pred_scent" if c.is_predator else "prey_scent"
+                self.signals.append({
+                    "x": round(c.x, 2), "y": round(c.y, 2), "kind": kind,
+                    "sender": c.id, "clan_id": c.clan_id or None,
+                    "born_tick": self.tick, "ttl": ttl,
+                })
+            # §AR S-6/S-7: the sick reek of sickness; the healthy take note.
+            if (
+                cfg.disease_enabled
+                and c.infected
+                and (self.tick + c.id) % 20 == 0
+            ):
+                self.signals.append({
+                    "x": round(c.x, 2), "y": round(c.y, 2), "kind": "disease",
+                    "sender": c.id, "clan_id": c.clan_id or None,
+                    "born_tick": self.tick, "ttl": 30,
+                })
 
         # §AN Phase A — every caste has a voice: the priest's liturgy, the
         # woman's peace-hum, the soldier's war-chirp.
@@ -6927,37 +8095,68 @@ class Simulation:
         signal_help_target = None
         signal_hum_source = None  # §AN woman's peace-hum — corridor clearing
         best_help_d_sq = math.inf
+        alarm_heard_conf = 1.0  # §AR S-1: distance attenuation of the cry
+        disease_scent_near = False  # §AR S-6: sickness in the air
+        retreat_heard = False  # §AS L-2: the general sounded retreat
+        harvest_order = False  # §AS L-2: autumn stores call
+        harvest_house: tuple[float, float] | None = None
         if cfg.communication_enabled and self.signals:
             sig_r = cfg.signal_radius
             # §AQ PH-2: sound rides the wind - listeners DOWNWIND of a source
             # hear it farther (the pressure wave drifts with the air).
             snd_boost = SOUND_WIND_MULT * self.wind_speed if cfg.scent_enabled else 0.0
-            wx_s, wy_s = math.cos(self.wind_angle), math.sin(self.wind_angle)
+            wx_s, wy_s = self._cos_wind, self._sin_wind
+            # §AU O-2: hoisted per-tick constants and a cheap squared
+            # far-reject before any wavefront trig runs.
+            sig_r2 = sig_r * sig_r
+            half_w = cfg.width * 0.5
+            half_h = cfg.height * 0.5
+            max_hear_d = sig_r * 2.5 * (1.0 + snd_boost)
+            max_hear_d2 = max_hear_d * max_hear_d
             best_food_sq = math.inf
             best_alarm_sq = math.inf
             my_dialect = float(self.clans.get(c.clan_id, {}).get("dialect", 0.0)) if c.clan_id else 0.0
             for sg in self.signals:
                 d2 = w.distance_sq(c.x, c.y, sg["x"], sg["y"])
+                if d2 > max_hear_d2:
+                    continue  # beyond every reach: no wavefront math needed
                 # §AQ PH-8: news travels at finite speed — the wavefront
                 # expands from the source (faster downwind) and a listener
                 # too far away simply hasn't heard it yet.
                 born = sg.get("born_tick")
                 if born is not None and cfg.signal_speed > 0.0:
                     age_t = self.tick - born
-                    dxw, dyw = w.delta(sg["x"], sg["y"], c.x, c.y)
-                    dl = math.hypot(dxw, dyw) or 1e-6
-                    tail = max(0.0, (dxw * math.cos(self.wind_angle) + dyw * math.sin(self.wind_angle)) / dl)
-                    speed = cfg.signal_speed * (1.0 + 0.4 * self.wind_speed * tail)
-                    if dl > age_t * speed:
-                        continue
-                if d2 > sig_r * sig_r:
+                    dxw = sg["x"] - c.x
+                    if dxw > half_w:
+                        dxw -= cfg.width
+                    elif dxw < -half_w:
+                        dxw += cfg.width
+                    dyw = sg["y"] - c.y
+                    if dyw > half_h:
+                        dyw -= cfg.height
+                    elif dyw < -half_h:
+                        dyw += cfg.height
+                    dl = math.sqrt(dxw * dxw + dyw * dyw) or 1e-6
+                    tail = (dxw * self._cos_wind + dyw * self._sin_wind) / dl
+                    if tail <= 0.0:
+                        # no tailwind: plain radius check, squared
+                        speed0 = cfg.signal_speed
+                        if d2 > age_t * age_t * speed0 * speed0:
+                            continue
+                    else:
+                        speed = cfg.signal_speed * (1.0 + 0.4 * self.wind_speed * tail)
+                        if dl > age_t * speed:
+                            continue
+                if d2 > sig_r2:
                     # §AQ PH-2: beyond base range only the downwind ear catches
-                    # the call - and never through a roof.
+                    # the call - and never through a roof. Downwind means the
+                    # WIND carries the call TOWARD the listener: align
+                    # (listener - source) with the wind vector.
                     if snd_boost <= 0.0 or c.indoors or d2 >= (sig_r * 2.5) ** 2:
                         continue
                     d_snd = math.sqrt(d2)
-                    dxs, dys = w.delta(sg["x"], sg["y"], c.x, c.y)  # listener rel. source
-                    downwind = max(0.0, (dxs * wx_s + dys * wy_s) / d_snd)
+                    dxs, dys = w.delta(sg["x"], sg["y"], c.x, c.y)  # source rel. listener
+                    downwind = max(0.0, -(dxs * wx_s + dys * wy_s) / d_snd)
                     if d_snd > sig_r * (1.0 + snd_boost * downwind):
                         continue
                 kind = sg["kind"]
@@ -6989,6 +8188,29 @@ class Simulation:
                     if df2 < best_food_sq:
                         best_food_sq = df2
                         signal_food_target = (fx, fy)
+                elif kind == "prey_scent" and c.is_predator:
+                    # §AR S-4: a nose to the ground — wolves track fresh trails
+                    # even before hunger bites.
+                    if hunt_target is None and flee_target is None and d2 < best_food_sq:
+                        best_food_sq = d2
+                        signal_food_target = (sg["x"], sg["y"])
+                elif kind == "pred_scent" and not c.is_predator:
+                    # §AR S-4: prey smell wolf-passages and learn the danger
+                    self._learn(c, "danger", sg["x"], sg["y"], conf=0.5)
+                elif kind == "territory" and cfg.knowledge_enabled:
+                    # §AR S-4: a rival's border-stench names its clan as enemy
+                    marker_clan = sg.get("clan_id")
+                    if marker_clan and marker_clan != c.clan_id:
+                        self._learn_enemy(c, marker_clan)
+                elif kind == "disease":
+                    # §AR S-6/S-7: sickness has a smell — the healthy mark the
+                    # spot dangerous (high castes notice first) and drift home.
+                    if not c.infected and c.sides >= 4 and cfg.knowledge_enabled:
+                        old_danger = self._fact_fresh(c, "danger")
+                        if old_danger is None or float(old_danger.get("conf", 0.0)) < 0.4:
+                            self._learn(c, "danger", sg["x"], sg["y"], conf=0.4)
+                    u_shelter_bonus = 0.2  # applied below via flag
+                    disease_scent_near = True
                 elif kind == "chant" and cfg.vocalizations_enabled and is_kin:
                     # §AN A.1 liturgy: panic drains away; the starving find heart
                     c.panic_ticks = 0
@@ -7011,15 +8233,80 @@ class Simulation:
                     if td2 < best_help_d_sq:
                         best_help_d_sq = td2
                         signal_help_target = (tx, ty)
+                elif kind == "pack" and cfg.predation_enabled and c.is_predator:
+                    # §AO Phase B: pack convergence — beasts rally to the
+                    # flagged prey past midnight.
+                    tx, ty = sg.get("threat_x", sg["x"]), sg.get("threat_y", sg["y"])
+                    td2 = w.distance_sq(c.x, c.y, tx, ty)
+                    if hunt_target is None and flee_target is None and td2 < best_help_d_sq:
+                        best_help_d_sq = td2
+                        signal_help_target = (tx, ty)
+                elif kind == "rally" and is_kin:
+                    # §AR S-5: the banner is raised — kin mark the spot;
+                    # only hearts above despair answer the call.
+                    if (
+                        c.morale >= MORALE_RALLY_MIN
+                        and getattr(c, "waypoints", None) is not None
+                    ):
+                        c.waypoints["rally"] = (sg["x"], sg["y"])
+                    # §AS L-1: a rally before battle sharpens every blade.
+                    if c.caste == "Soldier" and c.morale >= MORALE_RALLY_MIN:
+                        c.combat_boost_ticks = COMBAT_BOOST_TICKS
+                elif kind == "retreat" and is_kin:
+                    # §AS L-2: the general is bleeding — everyone home, now.
+                    retreat_heard = True
+                elif kind == "harvest" and is_kin:
+                    # §AS L-2: the granary calls — farmers work the fields hard.
+                    harvest_order = True
+                    harvest_house = (sg.get("house_x", sg["x"]), sg.get("house_y", sg["y"]))
+                elif kind == "evacuate" and is_kin:
+                    # §AS L-2: fire and flood — run THIS way.
+                    ex2, ey2 = sg.get("evac_x", sg["x"]), sg.get("evac_y", sg["y"])
+                    if getattr(c, "waypoints", None) is not None:
+                        c.waypoints["evacuate"] = (ex2, ey2)
+                elif kind == "interpret" and is_kin:
+                    # §AS L-6: the chief's reading of God's law bends the
+                    # clan's mood for a while — war-hunger or blessing-calm.
+                    if sg.get("tone") == "war" and c.caste == "Soldier":
+                        c.combat_boost_ticks = max(c.combat_boost_ticks, LAW_INTERPRET_TICKS)
+                        c.morale = min(100.0, c.morale + 2.0)
+                    else:
+                        c.calm_ticks = max(c.calm_ticks, LAW_INTERPRET_TICKS)
+                        c.morale = min(100.0, c.morale + 3.0)
                 elif kind == "omen" and cfg.omens_enabled and is_kin:
                     # §AN E.3 the priest has seen the turning of the season
                     c.prepared_ticks = PREPARED_TICKS
+                elif kind == "joy" and is_kin:
+                    # §AR S-7: birth is literally good news — a small gift of
+                    # energy and health rides the cheer.
+                    c.energy = min(cfg.energy_max, c.energy + float(sg.get("joy_energy", 2.0)))
+                    c.health = min(c.max_health, c.health + float(sg.get("joy_health", 1.0)))
+                    c.morale = min(100.0, c.morale + MORALE_EAT_RESTORE * 0.25)
+                    if not c.emote:
+                        c.emote = "cheer"
+                        c.emote_ticks = 12
                 elif kind == "danger_scent" and cfg.scent_enabled:
                     # §AN B.3: the young and vulnerable learn to shun death sites
                     if c.stage in ("infant", "juvenile") or c.health < 50.0:
                         self._learn(c, "danger", sg["x"], sg["y"], conf=0.6)
+                elif kind == "grief" and is_kin:
+                    # §AR S-7: shared loss bonds survivors — kin pause a few
+                    # ticks to mourn, and those present draw closer together.
+                    # Nobody mourns mid-flight or mid-ford: an active threat
+                    # or moving water overrides grief.
+                    if flee_target is None and (
+                        not self.rivers or not self._in_river_band(c.x, c.y)
+                    ):
+                        c.pause_ticks = 1 + (c.id % 3)
+                        if not c.emote:
+                            c.emote = "grief"
+                            c.emote_ticks = 12
+                    for oid in sg.get("witnesses", ()):
+                        if oid != c.id:
+                            cur = c.trust.get(oid, 0.0)
+                            c.trust[oid] = min(100.0, cur + 5.0)
                 elif kind == "knowledge" and cfg.knowledge_enabled:
-                    self._hear_fact(c, sg.get("fact"))
+                    self._hear_fact(c, sg.get("fact"), sg.get("sender"))
                     f = (sg.get("fact") or {})
                     if (
                         f.get("kind") == "food"
@@ -7044,7 +8331,19 @@ class Simulation:
                 elif sg["kind"] == "alarm" and flee_target is None:
                     if d2 < best_alarm_sq:
                         best_alarm_sq = d2
+                        # §AR S-1: confidence fades with distance — far alarms
+                        # move us less than close ones.
                         signal_alarm_target = sg
+                        alarm_heard_conf = max(0.0, 1.0 - math.sqrt(d2) / (sig_r * (1.0 + snd_boost)))
+                elif sg["kind"] == "warcry":
+                    # §AR S-1: a predator pack's war cry carries twice as far
+                    # and tears sleeping prey from their beds.
+                    if c.alarm_wake_ticks < 20:
+                        c.alarm_wake_ticks = 20
+                    if flee_target is None and d2 < best_alarm_sq:
+                        best_alarm_sq = d2
+                        signal_alarm_target = sg
+                        alarm_heard_conf = max(0.0, 1.0 - math.sqrt(d2) / (sig_r * WARCRY_RADIUS_MULT))
         # §X Danger zones: remembered predator sightings are avoided on sight of memory
         danger_avoid_target = None
         if cfg.knowledge_enabled and flee_target is None and c.status != "":
@@ -7054,6 +8353,8 @@ class Simulation:
                 if dd2 < (cfg.fear_radius * 1.5) ** 2:
                     danger_avoid_target = (danger_fact["x"], danger_fact["y"])
         # §AL Multi-Objective Utility Engine & Purposeful Tactical Steering
+        if flee_target is not None:
+            self._fleeing_ids.add(c.id)
         u_flee = 0.0
         if flee_target is not None:
             u_flee = 1.2
@@ -7067,8 +8368,44 @@ class Simulation:
         # leader's death every member startles at shadows.
         if c.panic_ticks > 0:
             u_flee += LEADER_SHOCK_U_FLEE
+        # §AR S-5: panic is contagious — a running kinspanics the flock;
+        # a priest's presence steadies it.
+        if not c.is_predator and not c.is_herbivore:
+            panicked_mate = False
+            priest_near = False
+            for o, d2o in w.query_radius_with_dist_sq(c.x, c.y, max(cfg.flock_radius, PRIEST_CALM_RADIUS)):
+                if not isinstance(o, Creature) or o.id == c.id or o.clan_id != c.clan_id:
+                    continue
+                if o.id in getattr(self, "_fleeing_ids", ()) or o.panic_ticks > 0:
+                    panicked_mate = True
+                if o.caste == "Priest" and d2o <= PRIEST_CALM_RADIUS * PRIEST_CALM_RADIUS:
+                    priest_near = True
+            if panicked_mate and (
+                flee_target is not None or self._fact_fresh(c, "danger") is not None
+            ):
+                # §AR S-5: contagion amplifies awareness — kin who smell the
+                # threat secondhand join the flight; the truly oblivious stay.
+                u_flee += PANIC_CONTAGION
+            if priest_near and u_flee > 0.2:
+                u_flee -= PRIEST_CALM_BONUS
 
-        u_alarm = 1.0 if (signal_alarm_target is not None and flee_target is None) else 0.0
+        # §AR S-1: habituation — the same alarm ringing for many ticks stops
+        # moving anyone; a fresh source startles anew.
+        if signal_alarm_target is not None:
+            sender_id = signal_alarm_target.get("sender", -1)
+            if sender_id == c.last_alarm_sender:
+                c.alarm_streak += 1
+            else:
+                c.last_alarm_sender = sender_id
+                c.alarm_streak = 0
+        else:
+            c.alarm_streak = 0
+            c.last_alarm_sender = -1
+        u_alarm = 0.0
+        if signal_alarm_target is not None and flee_target is None:
+            u_alarm = max(0.25, alarm_heard_conf)
+            if c.alarm_streak >= ALARM_HABITUATION_TICKS:
+                u_alarm *= ALARM_HABITUATED_U
 
         u_help = 0.0
         if signal_help_target is not None and flee_target is None:
@@ -7077,6 +8414,22 @@ class Simulation:
                 u_help += 0.35
             if c.personality == "cautious" or c.health < 35.0:
                 u_help -= 0.45
+        # §AS L-1: bodyguard clustering — soldiers hold their chief's side
+        # above any other call; the cluster emerges from the utility system.
+        if (
+            c.caste == "Soldier"
+            and c.clan_id
+            and not c.is_predator
+            and flee_target is None
+        ):
+            lpos_bg = getattr(self, "_leader_pos", {}).get(c.clan_id)
+            aura_r = LEADER_AURA_RADIUS * (
+                MONARCHY_AURA_MULT if self.clans.get(c.clan_id, {}).get("governance") == "monarchy" else 1.0
+            )
+            if lpos_bg is not None and w.distance_sq(c.x, c.y, *lpos_bg) <= aura_r * aura_r:
+                # override any far help cry — the chief is the priority
+                signal_help_target = lpos_bg
+                u_help = max(u_help, BODYGUARD_U_HELP)
 
         u_hunt = 1.15 if hunt_target is not None else 0.0
         u_cannibal = 1.25 if prey_target is not None else 0.0
@@ -7092,6 +8445,25 @@ class Simulation:
             # §AN E.3: the omen was heeded — worshippers drift home early
             if u_shelter < 1.5 and c.prepared_ticks > 0:
                 u_shelter += 0.4
+            # §AO Phase B: the dusk rush — at first dusk instinct drops every
+            # non-essential plan and sprints for home before nightfall.
+            if DUSK_TOD <= tod < 0.78 and u_shelter < DUSK_SHELTER_URGE:
+                u_shelter = DUSK_SHELTER_URGE
+            # §AR S-6: sickness smells like danger — heads for the roof.
+            if disease_scent_near:
+                u_shelter += 0.2
+            # §AR S-6: pentagon+ castes read the sky the instant it turns —
+            # they seek cover before the first drop lands.
+            if (
+                c.sides >= 5
+                and self.weather in ("rain", "storm")
+                and self.tick - getattr(self, "_weather_since_tick", self.tick) <= WEATHER_ANTICIPATION_TICKS
+                and u_shelter < 1.0
+            ):
+                u_shelter += 0.5
+            # §AS L-2: a retreat command overrides every other drive.
+            if retreat_heard:
+                u_shelter = max(u_shelter, RETREAT_SHELTER_URGE)
 
         # §AT-4 H-1: a wounded creature seeks herbs even on a full stomach.
         herb_need = (
@@ -7109,12 +8481,56 @@ class Simulation:
                 u_eat += 0.25
             if c.status == "starving":
                 u_eat += 0.5
+            # §AS L-2: the harvest order — autumn hands work faster.
+            if harvest_order:
+                farmer_spec = self.clans.get(c.clan_id, {}).get("specialization", {}).get("farmer", 0.33) if c.clan_id else 0.33
+                if farmer_spec >= 0.4 or c.skills.get("farming", 0.0) >= 6.0:
+                    u_eat += 0.25
+            # §AT-4 H-2: despair blunts provision — but raw hunger overrides
+            # despair, and the body always mends its spirit a little each tick.
+            if c.morale < MORALE_FORAGE_MIN and c.status == "" and not herb_need:
+                u_eat = 0.0
 
         u_signal_food = 0.0
         if signal_food_target is not None and target is None and c.status in ("hungry", "starving"):
             u_signal_food = 0.75
 
         u_danger_avoid = 0.6 if (danger_avoid_target is not None and flee_target is None) else 0.0
+
+        # §AR S-6: the thermal gradient is a sense — freezing bodies drift
+        # toward known heat, cooking bodies toward water; the very young and
+        # the very old feel it most.
+        u_thermal = 0.0
+        thermal_target: tuple[float, float] | None = None
+        if not c.indoors and not c.sleeping:
+            amb_here = self.ambient_at(c.x, c.y)
+            sens = 2.0 if c.stage in ("infant", "elder") else 0.0
+            if amb_here < HYPOTHERMIA_TEMP + sens:
+                near_heat: tuple[float, float] | None = None
+                best_hd2 = 625.0  # 25 units
+                for cf in self.campfires:
+                    hd2 = w.distance_sq(c.x, c.y, cf["x"], cf["y"])
+                    if hd2 < best_hd2:
+                        best_hd2, near_heat = hd2, (cf["x"], cf["y"])
+                for ffire in self.fires:
+                    hd2 = w.distance_sq(c.x, c.y, ffire["x"], ffire["y"])
+                    if hd2 < best_hd2:
+                        best_hd2, near_heat = hd2, (ffire["x"], ffire["y"])
+                for hhh in houses:
+                    hh2 = cast(House, hhh)
+                    if hh2.hearth_lit:
+                        hd2 = w.distance_sq(c.x, c.y, hh2.x, hh2.y)
+                        if hd2 < best_hd2:
+                            best_hd2, near_heat = hd2, (hh2.x, hh2.y)
+                if near_heat is not None and not c.is_predator:
+                    thermal_target = near_heat
+                    u_thermal = THERMAL_SEEK_UTILITY * (1.0 + sens * 0.25)
+            elif c.body_temp > HYPERTHERMIA_TEMP - 2.0 and self.rivers:
+                # overheated: make for the nearest water
+                ry = min((r["cy"] for r in self.rivers), key=lambda cy_: min(abs(cy_ - c.y), cfg.height - abs(cy_ - c.y)))
+                if abs(ry - c.y) > 1.0:
+                    thermal_target = (c.x, ry)
+                    u_thermal = THERMAL_SEEK_UTILITY
 
         # Purposeful Waypoint Navigation (§AL)
         waypoint_target = None
@@ -7130,7 +8546,24 @@ class Simulation:
                 elif getattr(c, "waypoints", None) is not None:
                     c.waypoints["rich_food"] = (round(ex_, 2), round(ey_, 2))
             elif getattr(c, "waypoints", None) and isinstance(c.waypoints, dict):
-                if c.status in ("hungry", "starving") and target is None and "rich_food" in c.waypoints:
+                # §AS L-2: fire and flood — the evacuation overrides all errands.
+                if "evacuate" in c.waypoints:
+                    ex3, ey3 = c.waypoints["evacuate"]
+                    if w.distance_sq(c.x, c.y, ex3, ey3) <= 4.0:
+                        del c.waypoints["evacuate"]
+                    else:
+                        waypoint_target = (ex3, ey3)
+                        u_waypoint = 2.0
+                # §AR S-5: the rally overrides every errand — first time
+                # leaders actually coordinate movement.
+                elif "rally" in c.waypoints and c.morale >= MORALE_RALLY_MIN:
+                    rx2, ry2 = c.waypoints["rally"]
+                    if w.distance_sq(c.x, c.y, rx2, ry2) <= 4.0:
+                        del c.waypoints["rally"]  # arrived; banner lowered
+                    else:
+                        waypoint_target = (rx2, ry2)
+                        u_waypoint = 1.0
+                elif c.status in ("hungry", "starving") and target is None and "rich_food" in c.waypoints:
                     rx, ry = c.waypoints["rich_food"]
                     if w.distance_sq(c.x, c.y, rx, ry) > 4.0:
                         waypoint_target = (rx, ry)
@@ -7149,19 +8582,30 @@ class Simulation:
 
         # Tactical Formations & Actions
 
-        utilities = [
-            (u_flee, "flee"),
-            (u_alarm, "alarm"),
-            (u_help, "help"),
-            (u_cannibal, "cannibal"),
-            (u_hunt, "hunt"),
-            (u_shelter, "shelter"),
-            (u_eat, "eat"),
-            (u_signal_food, "signal_food"),
-            (u_danger_avoid, "danger_avoid"),
-            (u_waypoint, "waypoint"),
-        ]
-        top_util, top_action = max(utilities, key=lambda pair: pair[0])
+        # §AU O-1: allocation-free argmax — direct scalar comparisons instead
+        # of building a list of tuples every creature tick.
+        top_util = u_flee
+        top_action = "flee"
+        if u_alarm > top_util:
+            top_util, top_action = u_alarm, "alarm"
+        if u_help > top_util:
+            top_util, top_action = u_help, "help"
+        if u_cannibal > top_util:
+            top_util, top_action = u_cannibal, "cannibal"
+        if u_hunt > top_util:
+            top_util, top_action = u_hunt, "hunt"
+        if u_shelter > top_util:
+            top_util, top_action = u_shelter, "shelter"
+        if u_eat > top_util:
+            top_util, top_action = u_eat, "eat"
+        if u_signal_food > top_util:
+            top_util, top_action = u_signal_food, "signal_food"
+        if u_danger_avoid > top_util:
+            top_util, top_action = u_danger_avoid, "danger_avoid"
+        if u_waypoint > top_util:
+            top_util, top_action = u_waypoint, "waypoint"
+        if u_thermal > top_util:
+            top_util, top_action = u_thermal, "thermal"
 
         # Waypoints recording for rich food
         if target is not None and isinstance(target, Food) and target.variant in ("berry", "mushroom") and getattr(c, "waypoints", None) is not None:
@@ -7176,7 +8620,10 @@ class Simulation:
                     break
 
         if inside_house_obj is not None:
-            home = self._house_for(c, houses)
+            if not roof_resolved:
+                assigned_roof = self._house_for(c, houses)
+                roof_resolved = True
+            home = assigned_roof
             if home is None:
                 home = min(houses, key=lambda h: w.distance_sq(c.x, c.y, h.x, h.y))
             if getattr(c, "waypoints", None) is not None:
@@ -7218,6 +8665,9 @@ class Simulation:
                         diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
                         c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
                 elif top_action == "alarm" and signal_alarm_target is not None:
+                    # §AR S-1: the alarm encodes the danger's bearing.
+                    # world.delta(a, b) = a − b, so delta(c, sg) is the vector
+                    # FROM the source TO us — turning along it flees outward.
                     dx, dy = w.delta(c.x, c.y, signal_alarm_target["x"], signal_alarm_target["y"])
                     desired = math.atan2(dy, dx)
                     diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
@@ -7245,7 +8695,10 @@ class Simulation:
                     diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
                     c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
                 elif top_action == "shelter" and houses:
-                    home = self._house_for(c, houses)
+                    if not roof_resolved:
+                        assigned_roof = self._house_for(c, houses)
+                        roof_resolved = True
+                    home = assigned_roof
                     if home is None:
                         home = min(houses, key=lambda h: w.distance_sq(c.x, c.y, h.x, h.y))
                     if getattr(c, "waypoints", None) is not None:
@@ -7283,6 +8736,12 @@ class Simulation:
                     desired = math.atan2(dy, dx)
                     diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
                     c.angle += max(-cfg.steer_turn * 0.8, min(cfg.steer_turn * 0.8, diff))
+                elif top_action == "thermal" and thermal_target is not None:
+                    tx2, ty2 = thermal_target
+                    dx, dy = w.delta(tx2, ty2, c.x, c.y)
+                    desired = math.atan2(dy, dx)
+                    diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                    c.angle += max(-cfg.steer_turn * 0.7, min(cfg.steer_turn * 0.7, diff))
             else:
                 # §AN A.2: a woman's peace-hum parts the crowd — polygons
                 # drift aside so her corridor stays walkable.
@@ -7367,6 +8826,16 @@ class Simulation:
         speed_mult *= self._health_speed_mult(c.health)
         if c.wound_ticks > 0 and c.wound_severity:
             speed_mult *= WOUND_SPEED_MULT.get(c.wound_severity, 1.0)
+        # §AT-4 H-2: old scars shorten the stride forever.
+        if c.scars:
+            speed_mult *= SCAR_SPEED_MULT ** c.scars
+        # §AO Phase A: frostbite numbness — deep-chilled limbs crawl.
+        if cfg.weather_sickness_enabled and c.chill >= cfg.chill_threshold:
+            speed_mult *= FROSTBITE_SPEED_MULT
+        # §AR S-7: grieving kin stand still for a few ticks.
+        if c.pause_ticks > 0:
+            c.pause_ticks -= 1
+            speed_mult = 0.0
         # §AQ PH-4: roads carry the stride; the grade ahead slows the climb
         stride_mult = 1.0
         # §AQ PH-10: hidden zones bend the body — heavy ground drags, and a
@@ -7393,6 +8862,10 @@ class Simulation:
             ahead_y = c.y + math.sin(c.angle) * 2.0
             rise = self._elev_units(ahead_x, ahead_y) - here_h
             stride_mult *= max(0.55, 1.0 - SLOPE_SPEED_MULT * max(0.0, rise) / (2.0 * ELEV_MAX_HEIGHT))
+        # §AO Phase B: night chase — a predator runs its unsheltered prey down
+        # 20% faster in the dark (stealth of the hunter, blindness of the hunted).
+        if c.is_predator and is_night and hunt_target is not None and not hunt_target.indoors:
+            speed_mult *= PREDATOR_NIGHT_SPEED
         step_len = c.speed * speed_mult * stage_speed * env_speed * stride_mult
         px, py = c.x, c.y
         nx = c.x + math.cos(c.angle) * step_len
@@ -7481,6 +8954,35 @@ class Simulation:
                 if self._segment_hits_circle(c.x, c.y, target.x, target.y, hit_rock, pad=c.radius):
                     self._give_up_on(c, target)
 
+        # §AO Phase D: blind collisions in pitch darkness — a stumbling
+        # polygon meets an unsheltered moving line and the line cuts deep.
+        if (
+            is_night
+            and not c.indoors
+            and c.shape != "line"
+            and not c.is_predator
+            and not c.is_herbivore
+            and not c.sleeping
+            and self.rng.random() < IMPALE_CHANCE
+        ):
+            for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, c.radius + 1.0):
+                if (
+                    isinstance(o, Creature)
+                    and o.shape == "line"
+                    and o.id != c.id
+                    and o.id in w.entities
+                    and not o.indoors
+                    and not o.sleeping
+                    and d2 <= (c.radius + o.radius) ** 2
+                ):
+                    c.health -= IMPALE_DAMAGE
+                    c.emote = "panic"
+                    c.emote_ticks = 12
+                    if c.health <= 0:
+                        self._kill(c, "impalement")
+                        return
+                    break
+
         # 4c. §AC Desperation fulfilled: prey within reach is killed and eaten.
         if (
             prey_target is not None
@@ -7491,6 +8993,55 @@ class Simulation:
             self._do_cannibalism(c, prey_target)
             if c.id not in w.entities:  # a kin-eater may have been exiled (still alive)
                 return
+
+        # 4c-bis. §AO Phase D: rogue isosceles marauders — a clanless or
+        # starving triangle stalks the dark to ambush a lone forager and
+        # loot its carried rations.
+        if (
+            is_night
+            and not c.indoors
+            and not c.sleeping
+            and c.sides == 3
+            and (c.clan_id == 0 or is_starving)
+            and self.rng.random() < MARAUDER_CHANCE
+        ):
+            for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, MARAUDER_AMBUSH_RADIUS):
+                if (
+                    not isinstance(o, Creature)
+                    or o.id == c.id
+                    or o.id not in w.entities
+                    or o.is_predator
+                    or o.is_herbivore
+                    or o.indoors
+                    or (o.clan_id and o.clan_id == c.clan_id)
+                ):
+                    continue
+                # lone means alone: no kin of the victim within earshot
+                lone = True
+                for p, pd2 in w.query_radius_with_dist_sq(o.x, o.y, MARAUDER_AMBUSH_RADIUS):
+                    if (
+                        isinstance(p, Creature)
+                        and p.id != o.id
+                        and p.id != c.id
+                        and p.clan_id == o.clan_id
+                        and pd2 <= MARAUDER_AMBUSH_RADIUS * MARAUDER_AMBUSH_RADIUS
+                    ):
+                        lone = False
+                        break
+                if not lone:
+                    continue
+                loot = getattr(o, "food_basket", 0)
+                if loot > 0:
+                    o.food_basket = 0
+                    room = max(0, 3 - c.food_basket)
+                    kept = min(loot, room)
+                    c.food_basket += kept
+                    c.energy = min(cfg.energy_max, c.energy + (loot - kept) * cfg.energy_from_food * 0.5)
+                c.emote = "combat"
+                c.emote_ticks = 15
+                o.emote = "panic"
+                o.emote_ticks = 15
+                break
 
         # 5. Eat or Harvest into basket / reserve. Full creatures (>85% energy) do not consume food.
         can_eat = target is not None and best_sq <= cfg.eat_radius * cfg.eat_radius and (
@@ -7504,6 +9055,8 @@ class Simulation:
             c.meals += 1
             c.give_ups.clear()  # fed: old grudges against unreachable food fade
             self._eaters_this_tick.append(c.id)
+            # §AT-4 H-2: a meal lifts the spirit.
+            c.morale = min(100.0, c.morale + MORALE_EAT_RESTORE)
             gain = cfg.energy_from_food
             health_delta = 0.0
             if isinstance(target, Food):
@@ -7619,7 +9172,10 @@ class Simulation:
             and not self._is_night(tod)
             and self.weather in ("rain", "storm")
         ):
-            home = self._house_for(c, houses)
+            if not roof_resolved:
+                assigned_roof = self._house_for(c, houses)
+                roof_resolved = True
+            home = assigned_roof
             if (
                 home is not None
                 and self._inside_house(c, home)
@@ -7645,6 +9201,18 @@ class Simulation:
             elif leaderless:
                 decay_mult *= LEADERLESS_DECAY_MULT
         c.energy -= cfg.energy_decay_per_tick * decay_mult
+        # §AT-4 H-2: morale — the second health axis. Starvation erodes the
+        # will; the leader's aura, festivals and simple resilience mend it.
+        if is_starving:
+            c.morale = max(0.0, c.morale - MORALE_STARVE_DRAIN)
+        else:
+            c.morale = min(100.0, c.morale + MORALE_BASE_RECOVER)
+        if c.clan_id:
+            if in_aura:
+                c.morale = min(100.0, c.morale + MORALE_AURA_RECOVER)
+            ci_m = self.clans.get(c.clan_id)
+            if ci_m and self.tick < int(ci_m.get("feast_until", 0)):
+                c.morale = min(100.0, c.morale + MORALE_FEAST_RECOVER)
         # §AT-4 H-1 damage variety: chronic hunger, old age, lingering wounds.
         metabolism_ratio = c.energy / cfg.energy_max if cfg.energy_max > 0 else 1.0
         if metabolism_ratio < EXHAUSTION_ENERGY_FRACTION:
@@ -7664,9 +9232,23 @@ class Simulation:
         if c.heal_bonus_ticks > 0:
             c.heal_bonus_ticks -= 1
         if c.wound_ticks > 0:
+            # §AT-4 H-2: an untreated wound left open long enough festers —
+            # "a wounded soldier alone is a dead soldier".
+            if (
+                cfg.disease_enabled
+                and not c.infected
+                and c.wound_severity >= 1
+                and c.wound_ticks > WOUND_INFECTION_AFTER
+                and self.rng.random() < WOUND_INFECTION_CHANCE
+            ):
+                self._infect(c)
             c.wound_ticks -= 1
             if c.wound_ticks <= 0:
+                # §AT-4 H-2: surviving a grievous wound may leave a permanent scar.
+                if c.wound_severity >= 2 and self.rng.random() < SCAR_CHANCE:
+                    c.scars += 1
                 c.wound_severity = 0
+                c.wound_dressed = False
         # §AQ PH-1: the body drifts toward the world's heat; houses insulate
         # against both extremes. Extreme cold feeds §R chill, extreme heat cooks.
         amb = self.ambient_at(c.x, c.y)
@@ -7693,12 +9275,30 @@ class Simulation:
             and (self._is_night(tod) or self.weather in ("rain", "storm"))
         ):
             c.energy -= cfg.exposure_drain
-        # §R Chill — Ice age chills deeper (§S)
+        # §AT-4 H-2: overcrowded houses breed misery — every body beyond the
+        # bed count grinds health down a little more.
+        if (
+            inside_house_obj is not None
+            and not c.sleeping
+            and getattr(self, "_house_bodies", None)
+        ):
+            over = self._house_bodies.get(inside_house_obj.id, 0) - self._house_beds(inside_house_obj)
+            if over > 0:
+                c.health -= OVERCROWD_DRAIN * over
+                if c.health <= 0:
+                    self._kill(c, "overcrowding")
+                    return
+        # §R Chill — Ice age chills deeper (§S); §AO the night chills three
+        # times faster than daytime rain, and frostbite numbs the body past
+        # the sickness threshold.
         if cfg.weather_sickness_enabled:
             is_wet = self.weather in ("rain", "storm")
             is_winter_night = self._season() == "winter" and self._is_night(tod)
             age = self._age()
             chill_mult = 1.4 if age == "Ice" else 1.0
+            # §AO Phase A: night chill bites 3× deeper than daytime rain.
+            if not c.indoors and is_night:
+                chill_mult *= NIGHT_CHILL_MULT
             if not c.indoors and (is_wet or is_winter_night):
                 # §AP: the Indomitable Monolith resists the cold's bite
                 chill_mult *= 1.0 - self._totem_stat(c, "cold")
@@ -7711,6 +9311,23 @@ class Simulation:
                 if c.health <= 0:
                     self._kill(c, "chill")
                     return
+                # §AO Phase A: frostbite numbness — carried food/seed pouches
+                # are dropped by numb hands, and the body keeps dying.
+                if getattr(c, "food_basket", 0) > 0:
+                    c.food_basket = 0
+                    c.emote = "panic"
+                    c.emote_ticks = 12
+                c.health -= FROSTBITE_DRAIN
+                if c.health <= 0:
+                    self._kill(c, "exposure")
+                    return
+            # §AO: winter nights and night storms drain the exposed body fast.
+            if (
+                not c.indoors
+                and is_night
+                and (is_winter_night or self.weather == "storm")
+            ):
+                c.energy -= EXTREME_NIGHT_EXPOSURE
         else:
             c.chill = max(0.0, c.chill - 0.05)
         if cfg.disease_enabled and c.infected:
@@ -7742,6 +9359,43 @@ class Simulation:
                 if healed > 0:
                     c.health += healed
                     c.energy = max(0.0, c.energy - healed * HEALING_ENERGY_COST)  # §AQ PH-0: mending costs
+        # §AT-4 H-2: total despair — a broken creature abandons its clan and
+        # walks to the nearest other banner, or wanders off clanless.
+        if (
+            c.morale < MORALE_ABANDON
+            and c.clan_id
+            and not c.is_predator
+            and not c.is_herbivore
+            and self.rng.random() < MORALE_ABANDON_CHANCE
+        ):
+            best_cid, best_d2 = None, math.inf
+            for other_cid, members in self._clan_members.items():
+                if other_cid == c.clan_id or not other_cid or not members:
+                    continue
+                info = self.clans.get(other_cid)
+                if not info:
+                    continue
+                mh = self.world.entities.get(info.get("main_house_id")) if info.get("main_house_id") is not None else None
+                tx, ty = (mh.x, mh.y) if isinstance(mh, House) else (members[0].x, members[0].y)
+                d2c = w.distance_sq(c.x, c.y, tx, ty)
+                if d2c < best_d2:
+                    best_cid, best_d2 = other_cid, d2c
+            old_cid = c.clan_id
+            c.clan_id = best_cid or 0
+            c.morale = 35.0  # a fresh start lifts the heart a little
+            self._emit(
+                HistoryEvent(
+                    type="defection",
+                    tick=self.tick + 1,
+                    entity_id=c.id,
+                    caste=c.caste,
+                    x=round(c.x, 2),
+                    y=round(c.y, 2),
+                    payload={"from": old_cid, "to": c.clan_id,
+                             "reason": "despair",
+                             "personal_name": personal_name_for(c.id, self.config.seed, c.generation)},
+                )
+            )
         if c.energy <= 0:
             if getattr(c, "food_basket", 0) > 0:
                 c.food_basket -= 1
@@ -7978,6 +9632,8 @@ class Simulation:
             "events": self._events_this_tick,  # AA: pre-dumped in _emit() — zero work here
             "signals": [dict(sg) for sg in self.signals],
             "fires": [dict(f) for f in self.fires],
+            # §AO E: field campfires (tiny list, rides every frame)
+            "campfires": [dict(cf) for cf in self.campfires],
             "boundary_stones": [dict(s) for s in self.boundary_stones],
             "markets": [dict(m, a=pair[0], b=pair[1]) for pair, m in self.markets.items()],
             "wind": {"angle": round(self.wind_angle, 3), "speed": round(self.wind_speed, 3)},
@@ -8134,6 +9790,8 @@ class Simulation:
             "events": self._events_this_tick,
             "signals": [dict(sg) for sg in self.signals],
             "fires": [dict(f) for f in self.fires],
+            # §AO E: field campfires (tiny list, rides every frame)
+            "campfires": [dict(cf) for cf in self.campfires],
             "boundary_stones": [dict(s) for s in self.boundary_stones],
             "markets": [dict(m, a=pair[0], b=pair[1]) for pair, m in self.markets.items()],
             "wind": {"angle": round(self.wind_angle, 3), "speed": round(self.wind_speed, 3)},

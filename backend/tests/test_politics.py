@@ -10,7 +10,7 @@ import pytest
 import app.simulation as simmod
 from app.config import Config
 from app.entities import Creature, House
-from app.simulation import Simulation
+from app.simulation import GRANARY_WITHDRAW_RATE, REPUBLIC_LARDER_EFF, Simulation
 
 
 def pol_cfg(**kw) -> Config:
@@ -122,11 +122,13 @@ def test_paranoid_leader_betrays_ally(monkeypatch):
 
 
 def test_weakened_peaceful_leader_sues_for_peace(monkeypatch):
+    """§AS L-4: close chiefs sign at once; far chiefs send a herald."""
     monkeypatch.setattr(simmod, "LEADER_DECISION_CHANCE", 1.0)
+    # — face to face within TALK_RADIUS: immediate treaty —
     s = Simulation(pol_cfg(relation_drift_rate=0))
     leader = spawn(s, 20.0, 20.0, clan=1, trait="peaceful", energy=100.0)
-    strong = spawn(s, 40.0, 20.0, clan=2)
-    backup = spawn(s, 41.0, 20.0, clan=2)
+    strong = spawn(s, 23.0, 20.0, clan=2)
+    backup = spawn(s, 24.0, 20.0, clan=2)
     make_clan(s, 1, leader)
     make_clan(s, 2, strong)
     s.relations[s._relation_pair(1, 2)] = -80
@@ -137,6 +139,29 @@ def test_weakened_peaceful_leader_sues_for_peace(monkeypatch):
     peace = [e for e in s.history if e.type == "peace"]
     assert peace and peace[0].payload["a"] == 1 and peace[0].payload["b"] == 2
     assert s.relations[s._relation_pair(1, 2)] >= -80 + 60 - 5
+
+    # — chiefs far apart: a herald is dispatched with the terms —
+    monkeypatch.setattr(simmod, "LEADER_DECISION_CHANCE", 1.0)
+    s2 = Simulation(pol_cfg(relation_drift_rate=0, envoys_enabled=True))
+    l2 = spawn(s2, 20.0, 20.0, clan=1, trait="peaceful", energy=100.0)
+    subject = spawn(s2, 21.0, 21.0, clan=1)  # an adult subject carries the banner
+    subject.age = 6000
+    strong2 = spawn(s2, 40.0, 20.0, clan=2)
+    backup2 = spawn(s2, 41.0, 20.0, clan=2)
+    make_clan(s2, 1, l2)
+    make_clan(s2, 2, strong2)
+    s2.relations[s2._relation_pair(1, 2)] = -80
+    s2._relation_zones[s2._relation_pair(1, 2)] = -1
+
+    s2.step()
+
+    heralded = any(
+        isinstance(m, dict) and m.get("type") == "peace" and m.get("target_clan") == 2
+        for c_ in s2.world.creatures()
+        if (m := getattr(c_, "mission", None))
+    )
+    assert heralded, "distant peace rides with a herald"
+    assert not [e for e in s2.history if e.type == "peace"], "no instant treaty afar"
 
 
 def test_bold_leader_declares_war_on_remembered_enemy(monkeypatch):
@@ -207,8 +232,9 @@ def test_starving_members_withdraw_from_the_larder():
     s._refresh_cache()
     s._update_politics()
 
-    assert starved.energy == pytest.approx(11.0, abs=0.01)  # drew from the store
-    assert s.clans[1]["larder"] == pytest.approx(47.0, abs=0.01)
+    # §AS L-5: republics portion stores at 1.25× efficiency (3.75/tick)
+    assert starved.energy == pytest.approx(8.0 + GRANARY_WITHDRAW_RATE * REPUBLIC_LARDER_EFF, abs=0.01)
+    assert s.clans[1]["larder"] == pytest.approx(50.0 - GRANARY_WITHDRAW_RATE * REPUBLIC_LARDER_EFF, abs=0.01)
 
 
 def test_vassal_pays_tribute_to_protector():

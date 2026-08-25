@@ -3,6 +3,10 @@ import { houseWallSegments } from '../types'
 import { TOTEMS } from '../totems'
 
 export const TAU = Math.PI * 2
+const _riverGradCacheGlobal = new Map<string, CanvasGradient>()
+const _riverGradCache: Map<string, CanvasGradient> = _riverGradCacheGlobal
+// §AO E: matches backend CAMPFIRE_LIGHT_RADIUS
+const CAMPFIRE_LIGHT_RADIUS = 3.5
 export const PRIEST_SIDES = 24
 export const MIN_SCALE_FACTOR = 0.4
 export const MAX_SCALE = 80
@@ -28,6 +32,8 @@ export const EMOTE_ICONS: Record<string, string> = {
   cheer: '🏆',
   sleep: '💤',
   craft: '🧺',
+  grief: '🥀',
+  fear: '❗',
 }
 
 export interface Camera {
@@ -64,6 +70,31 @@ export function drawWeather(
   ctx.stroke()
 }
 
+// §AV F-1: persistent scratch arrays — cleared via .length=0 each frame
+// instead of allocating ~20 fresh arrays/Maps per 60 FPS tick.
+const _scratch = {
+  grass: [] as EntityState[],
+  grain: [] as EntityState[],
+  berry: [] as EntityState[],
+  herb: [] as EntityState[],
+  mushroom: [] as EntityState[],
+  poison: [] as EntityState[],
+  cultivated: [] as EntityState[],
+  corpses: [] as EntityState[],
+  houses: [] as EntityState[],
+  women: [] as EntityState[],
+  polygonsByCaste: new Map<string, EntityState[]>(),
+  crestsByColor: new Map<string, EntityState[]>(),
+  sleeping: [] as EntityState[],
+  hungry: [] as EntityState[],
+  starving: [] as EntityState[],
+  infected: [] as EntityState[],
+  chilled: [] as EntityState[],
+  torpid: [] as EntityState[],
+  glyphs: [] as EntityState[],
+  visible: [] as EntityState[],
+}
+
 export function drawBatchedEntities(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   entities: EntityState[],
@@ -76,26 +107,26 @@ export function drawBatchedEntities(
   const isVeryZoomedOut = camScale < 2.2
   const isDense = entities.length > 300
 
-  const grassPlants: EntityState[] = []
-  const grainPlants: EntityState[] = []
-  const berryPlants: EntityState[] = []
-  const herbPlants: EntityState[] = []
-  const mushroomPlants: EntityState[] = []
-  const poisonPlants: EntityState[] = []
-  const cultivatedPlants: EntityState[] = []
-  const corpses: EntityState[] = []
-  const houses: EntityState[] = []
-  const women: EntityState[] = []
-  const polygonsByCaste: Map<string, EntityState[]> = new Map()
-  const crestsByColor: Map<string, EntityState[]> = new Map()
-  const sleepingCreatures: EntityState[] = []
-  const hungryCreatures: EntityState[] = []
-  const starvingCreatures: EntityState[] = []
-  const infectedCreatures: EntityState[] = []
-  const chilledCreatures: EntityState[] = []
-  const torpidCreatures: EntityState[] = []
-  const glyphCreatures: EntityState[] = []
-  const visibleCreatures: EntityState[] = []
+  const grassPlants = _scratch.grass; grassPlants.length = 0
+  const grainPlants = _scratch.grain; grainPlants.length = 0
+  const berryPlants = _scratch.berry; berryPlants.length = 0
+  const herbPlants = _scratch.herb; herbPlants.length = 0
+  const mushroomPlants = _scratch.mushroom; mushroomPlants.length = 0
+  const poisonPlants = _scratch.poison; poisonPlants.length = 0
+  const cultivatedPlants = _scratch.cultivated; cultivatedPlants.length = 0
+  const corpses = _scratch.corpses; corpses.length = 0
+  const houses = _scratch.houses; houses.length = 0
+  const women = _scratch.women; women.length = 0
+  const polygonsByCaste = _scratch.polygonsByCaste; polygonsByCaste.clear()
+  const crestsByColor = _scratch.crestsByColor; crestsByColor.clear()
+  const sleepingCreatures = _scratch.sleeping; sleepingCreatures.length = 0
+  const hungryCreatures = _scratch.hungry; hungryCreatures.length = 0
+  const starvingCreatures = _scratch.starving; starvingCreatures.length = 0
+  const infectedCreatures = _scratch.infected; infectedCreatures.length = 0
+  const chilledCreatures = _scratch.chilled; chilledCreatures.length = 0
+  const torpidCreatures = _scratch.torpid; torpidCreatures.length = 0
+  const glyphCreatures = _scratch.glyphs; glyphCreatures.length = 0
+  const visibleCreatures = _scratch.visible; visibleCreatures.length = 0
 
   for (const e of entities) {
     const rad = (e as any).radius ?? (e as any).size ?? 1.5
@@ -732,11 +763,17 @@ export function renderWorldFrame(
     ctx.stroke()
   }
 
+  // §AV F-1: river gradients are static per (cy,hw,flood) — cache the gradient
+  // instead of creating fresh GPU textures per frame.
+  const _riverGradCache = (_riverGradCacheGlobal as Map<string, CanvasGradient>)
   // §AQ PH-3: rivers — horizontal channel bands with a flow direction
   for (const rv of state.rivers ?? []) {
     const cy = cam.oy + rv.cy * cam.scale
     const hw = Math.max(1, rv.hw * cam.scale)
-    const grad = ctx.createLinearGradient(0, cy - hw, 0, cy + hw)
+    const gkey = `${Math.round(cy)}:${Math.round(hw)}:${rv.flood ? 1 : 0}`
+    let grad = _riverGradCache.get(gkey)
+    if (!grad) {
+      grad = ctx.createLinearGradient(0, cy - hw, 0, cy + hw)
     if (rv.flood) {
       grad.addColorStop(0, 'rgba(60,120,190,0.10)')
       grad.addColorStop(0.5, 'rgba(70,140,210,0.45)')
@@ -745,6 +782,8 @@ export function renderWorldFrame(
       grad.addColorStop(0, 'rgba(50,110,180,0.08)')
       grad.addColorStop(0.5, 'rgba(60,130,200,0.32)')
       grad.addColorStop(1, 'rgba(50,110,180,0.08)')
+    }
+      _riverGradCache.set(gkey, grad)
     }
     ctx.fillStyle = grad
     ctx.fillRect(cam.ox, cy - hw, state.width * cam.scale, hw * 2)
@@ -905,6 +944,28 @@ export function renderWorldFrame(
       ctx.globalAlpha = alpha * 0.85
       ctx.beginPath()
       ctx.arc(f.x, f.y, f.r * 0.45, 0, TAU)
+      ctx.fill()
+      ctx.globalAlpha = 1
+    }
+  }
+
+  // §AO E: field campfires — a small warm glow with a ring of light
+  if (state.campfires) {
+    for (const cf of state.campfires) {
+      if (!visible(cf.x, cf.y, 4)) continue
+      ctx.globalAlpha = 0.14
+      ctx.fillStyle = '#ffb347'
+      ctx.beginPath()
+      ctx.arc(cf.x, cf.y, CAMPFIRE_LIGHT_RADIUS, 0, TAU)
+      ctx.fill()
+      ctx.globalAlpha = 0.95
+      ctx.fillStyle = '#ff8c42'
+      ctx.beginPath()
+      ctx.arc(cf.x, cf.y, 0.7, 0, TAU)
+      ctx.fill()
+      ctx.fillStyle = '#ffd166'
+      ctx.beginPath()
+      ctx.arc(cf.x, cf.y - 0.15, 0.35, 0, TAU)
       ctx.fill()
       ctx.globalAlpha = 1
     }
