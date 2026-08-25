@@ -379,4 +379,4 @@ def native_batch_update(creatures, entities, width: float, height: float, is_wra
         )
     except Exception:
         return None
-    return [(int(out_buf[i].target_eaten_id), float(out_buf[i].next_x), float(out_buf[i].next_y), float(out_buf[i].delta_energy)) for i in range(n_c)]
+    return [(int(out_buf[i].target_eaten_id), float(out_buf[i].next_x), float(out_buf[i].next_y), float(out_buf[i].next_angle), float(out_buf[i].delta_energy), float(out_buf[i].delta_health)) for i in range(n_c)]

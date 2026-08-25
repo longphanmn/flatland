@@ -351,10 +351,10 @@ EXPORT int c_batch_update_creatures_omp(
                 eaten = e->id;
             }
         }
-        /* Thermal drift placeholder: energy -0.025 + wind chill */
+        /* Energy: decay + wind chill, +32 food gain if ate (matches Python gain 32) */
         float dE = -0.025f - (wind_speed * 0.002f);
         float dH = 0.0f;
-        if (eaten >= 0) dH = 1.0f;
+        if (eaten >= 0) { dE += 32.0f; dH = 1.0f; }
         o->next_x = nx;
         o->next_y = ny;
         o->next_angle = nangle;
