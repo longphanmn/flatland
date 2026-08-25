@@ -2811,11 +2811,10 @@ class Simulation:
 
         if getattr(c, "waypoints", None) and "home" in c.waypoints:
             hx, hy = c.waypoints["home"]
-            for h in houses:
-                if isinstance(h, House) and not h.is_ruin and round(h.x, 2) == hx and round(h.y, 2) == hy:
-                    if allowed(h) and has_room(h):
-                        return h
-                    break
+            h_pos_map = getattr(self, "_house_by_pos", None)
+            h = h_pos_map.get((hx, hy)) if h_pos_map else None
+            if h is not None and not h.is_ruin and allowed(h) and has_room(h):
+                return h
 
         if self.config.house_claim_enabled and c.clan_id:
             clan_info = self.clans.get(c.clan_id, {})
@@ -3374,6 +3373,7 @@ class Simulation:
                 unclaimed_houses.append(h)
         self._houses_by_clan = houses_by_clan
         self._unclaimed_houses = unclaimed_houses
+        self._house_by_pos = {(round(h.x, 2), round(h.y, 2)): h for h in houses}
 
         # Compute sleeping house occupancy cache in single pass O(N)
         house_occ: dict[int, int] = {}
@@ -7932,10 +7932,7 @@ class Simulation:
             if flee_target is not None:
                 self._learn(c, "danger", flee_target.x, flee_target.y)
             if c.indoors:
-                if not roof_resolved:
-                    assigned_roof = self._house_for(c, houses) if houses else None
-                    roof_resolved = True
-                home_fact = assigned_roof
+                home_fact = inside_house_obj or assigned_roof or (self._house_for(c, houses) if not roof_resolved else None)
                 if home_fact is not None:
                     self._learn(c, "safe", home_fact.x, home_fact.y)
         if c.signal_cooldown > 0:
