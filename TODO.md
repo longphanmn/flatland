@@ -1632,3 +1632,37 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [ ] [P2] **Overcrowding health drain** — overcrowded house (> capacity occupants): `health -= 0.03/tick` per person over capacity; reinforces the housing shortage crisis.
 - [ ] [P2] **Infirmary bylaw bonus** — when `bylaw["plague_response"]` is active, main house becomes infirmary: creatures sleeping there get `rest_recovery_mult × 2.0`; the bylaw (AL §2.3) was implemented but the infirmary healing bonus was not.
 - [ ] [P3] **Scarring** — surviving a grievous wound may leave a permanent scar: `c.scars: int` counter; each scar applies a tiny permanent `sight_mult × 0.97` or `speed × 0.98`; elder creatures visibly accumulate history on the body.
+
+---
+
+## AU. Performance Optimizations & Architecture Decoupling  [P0–P1]
+> Production server profiling (~1,134 entities, ~250–500 creatures) identified high CPU load (~100% on 1 core) driven by ~678,000 function calls per simulation tick, redundant multi-pass spatial checks, and inner-loop allocations.
+
+### Phase O-1: Hot Loop Zero-Allocation & Trig Vector Caching  [P0]
+- [ ] [P0] **Precompute wind direction vectors** — compute `self._cos_wind` and `self._sin_wind` once per tick in sky/wind update; replace inline `math.cos(self.wind_angle)` / `math.sin(self.wind_angle)` across scent and signal evaluation loops (eliminates ~5–10M trig calls/minute).
+- [ ] [P0] **Inline elevation lookup (`_elev_at`)** — remove inner function closure `def h(cc, rr)` in `_elev_at(x, y)` and inline clamped grid index calculations (eliminates ~80k closure allocations per 100 ticks).
+- [ ] [P0] **Single-pass shelter & house resolution in `_update_creature`** — resolve and cache creature's assigned roof (`assigned = self._house_for(...)`) and containment state once per creature tick instead of 4 redundant `_house_for` generator expressions across sleep, knowledge, utility, and exit navigation.
+- [ ] [P0] **Allocation-free utility decision engine** — replace `max([(u1, "flee"), (u2, "eat"), ...], key=...)` list-of-tuples allocation with direct scalar comparison (`top_util`, `top_action`) in `_update_creature` (eliminates ~100k temporary list/tuple allocations per second in Python).
+
+### Phase O-2: Over-Engineering Simplifications & System Staggering  [P1]
+- [ ] [P1] **Stagger slow environmental updates** — slow systems (building material weathering `_update_materials`, soil percolation `_update_soil`, river silt decay `_update_rivers`, anomaly distortion `_update_anomalies`) only need periodic evaluation (`self.tick % 5 == 0` or `% 10 == 0`) rather than every single tick.
+- [ ] [P1] **Simplify acoustic wavefront simulation (§AQ PH-8)** — replace per-entity trigonometric wind wavefront propagation on signals (`dl > age_t * speed` with `math.hypot`) with fast squared radius and precomputed wind bias scalar, reducing signal processing overhead by 60%.
+- [ ] [P1] **Consolidate house occupancy & containment passes** — merge `_house_bodies` spatial scan in `step()` with `_update_creature` indoor checks into a single unified spatial bucket lookup pass per tick.
+
+---
+
+## AV. Frontend & TUI Performance Optimizations  [P1–P2]
+> Auditing of web canvas rendering (`renderCore.ts`) and terminal UI (`world_view.py`) identified rendering GC pressure and grid lookup overhead.
+
+### Phase F-1: Web Frontend & Canvas 60 FPS Optimization  [P1]
+- [ ] [P1] **Persistent scratch arrays in `drawBatchedEntities`** — replace 20 fresh `const list = []` and `new Map()` allocations per frame in `drawBatchedEntities` with reusable module-level scratch arrays cleared via `.length = 0` (eliminates 1,200 array allocations/sec at 60 FPS and removes V8 GC stutter).
+- [ ] [P1] **Canvas gradient caching for rivers & law waves** — avoid calling `ctx.createLinearGradient()` and binding fresh GPU textures on every frame for static river channels; pre-create or use solid alpha fills with math falloff.
+- [ ] [P1] **Offscreen grid caching for terrain elevation & soil** — render the background elevation/temperature/soil grid onto a static `OffscreenCanvas` only on season/weather changes, compositing with a single `drawImage()` call instead of per-cell `fillRect` loops every frame.
+- [ ] [P2] **React subpanel re-render memoization** — wrap inspector, clan list, and history sub-widgets in `React.memo` with custom shallow comparators so rapid WebSocket tick stream does not trigger virtual DOM reconciliation on dormant sidebars.
+
+### Phase T-1: Terminal UI (TUI) Optimization  [P1–P2]
+- [ ] [P1] **Flat list cell buffer in `WorldView._repaint`** — replace `grid: dict[tuple[int, int], Cell]` with a fixed 1D array `[None] * (cols * rows)` indexed by `row * cols + col` (eliminates ~50,000 tuple allocations and hash lookups per terminal frame).
+- [ ] [P1] **Viewport bounding-box clipping for terrain discs & rings** — clamp `_paint_disc` and `_paint_ring` iteration limits directly to the terminal's visible `(col0, col1, row0, row1)` window before distance checks, preventing off-screen math when zoomed in.
+- [ ] [P2] **TUI dirty-row diffing** — track previous frame's character strips and only emit ANSI update escape codes for terminal rows that actually changed, cutting terminal IO bandwidth and cursor flicker on remote SSH sessions.
+
+
