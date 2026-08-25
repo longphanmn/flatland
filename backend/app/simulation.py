@@ -241,7 +241,9 @@ WIND_SEASON_BIAS = {"spring": 0.0, "summer": 1.3, "autumn": 2.5, "winter": 4.0}
 WIND_FIRE_MULT = 0.8      # extra spread chance per unit of tailwind speed
 # §AQ PH-2: the wind carries more than flame — seeds and scent ride it too.
 WIND_SEED_BIAS = 0.65     # how strongly seed drift bends downwind (× speed)
-WIND_SCENT_MULT = 0.5     # noses reach this much farther toward UPWIND targets
+SOUND_WIND_MULT = 0.4     # calls carry this much farther to DOWNWIND listeners
+# (scent kept gentle — a strong upwind nose destabilises predator/prey cycles)
+WIND_SCENT_MULT = 0.35    # upwind reach bonus (prey full, predators half)
 
 # §AQ PH-1 — hearths & radiant fire: warmth is infrastructure, and open
 # flame is a double-edged tool (it warms the winter roof AND cooks the unwary).
@@ -1129,6 +1131,7 @@ class Simulation:
             if r is not None:
                 r["flood_ticks"] = max(r["flood_ticks"], RIVER_FLOOD_TICKS // 2)
                 r["hw"] = min(RIVER_BASE_HW * RIVER_FLOOD_HW_MULT * DAM_FLASH_SPIKE, r["hw"] * DAM_FLASH_SPIKE)
+                self._emit_boom(d["x"], d["cy"])
                 self._emit(HistoryEvent(
                     type="disaster", tick=self.tick + 1, entity_id=0,
                     x=round(d["x"], 2), y=round(d["cy"], 2),
@@ -1163,6 +1166,22 @@ class Simulation:
                 self._kill(c, "drowning")
             else:
                 c.health -= dmg
+
+    def _point_in_any_house(self, x: float, y: float) -> bool:
+        """True when the point stands under some roof (§AQ PH-2 sound block)."""
+        for h in self._cached_houses:
+            if abs(x - h.x) <= h.size / 2 and abs(y - h.y) <= h.size / 2:
+                return True
+        return False
+
+    def _emit_boom(self, x: float, y: float) -> None:
+        """§AQ PH-2: a loud event — collapse, dam burst — rolls out as a
+        pressure wave every creature hears (roofs muffle, wind carries)."""
+        if len(self.signals) < SIGNALS_MAX:
+            self.signals.append({
+                "x": round(x, 2), "y": round(y, 2),
+                "kind": "boom", "sender": 0, "clan_id": None, "ttl": 10,
+            })
 
     def _update_structures(self) -> None:
         """§AQ PH-6: material physics — storms and floodwater wear buildings
@@ -1224,6 +1243,7 @@ class Simulation:
         h.hearth_fuel = 0.0
         if self.config.rubble_blocking_enabled:
             h.rubble = round(h.size, 2)  # blocks the lot until builders clear it
+        self._emit_boom(h.x, h.y)
         self._emit(HistoryEvent(
             type="ruin", tick=self.tick + 1, entity_id=h.id,
             x=round(h.x, 2), y=round(h.y, 2),
@@ -6148,7 +6168,13 @@ class Simulation:
         hunt_target: Creature | None = None
         flee_target: Creature | None = None
         if cfg.predation_enabled:
-            scent_boost = WIND_SCENT_MULT * self.wind_speed if cfg.scent_enabled else 0.0
+            # §AQ PH-2: asymmetric noses — smelling a wolf beats hunting by
+            # scent, so prey read the wind twice as well as predators do.
+            scent_boost = (
+                (WIND_SCENT_MULT * self.wind_speed * 0.5 if c.is_predator
+                 else WIND_SCENT_MULT * self.wind_speed)
+                if cfg.scent_enabled else 0.0
+            )
             wx_s, wy_s = math.cos(self.wind_angle), math.sin(self.wind_angle)
             if c.is_predator and c.bite_cooldown <= 0:
                 # Find nearest non-predator prey within hunt_radius (+2 Wolf totem)
@@ -6488,13 +6514,34 @@ class Simulation:
         signal_hum_source = None  # §AN woman's peace-hum — corridor clearing
         best_help_d_sq = math.inf
         if cfg.communication_enabled and self.signals:
-            sig_r2 = cfg.signal_radius * cfg.signal_radius
+            sig_r = cfg.signal_radius
+            # §AQ PH-2: sound rides the wind - listeners DOWNWIND of a source
+            # hear it farther (the pressure wave drifts with the air).
+            snd_boost = SOUND_WIND_MULT * self.wind_speed if cfg.scent_enabled else 0.0
+            wx_s, wy_s = math.cos(self.wind_angle), math.sin(self.wind_angle)
             best_food_sq = math.inf
             best_alarm_sq = math.inf
             my_dialect = float(self.clans.get(c.clan_id, {}).get("dialect", 0.0)) if c.clan_id else 0.0
             for sg in self.signals:
                 d2 = w.distance_sq(c.x, c.y, sg["x"], sg["y"])
-                if d2 > sig_r2:
+                if d2 > sig_r * sig_r:
+                    # §AQ PH-2: beyond base range only the downwind ear catches
+                    # the call - and never through a roof.
+                    if snd_boost <= 0.0 or c.indoors or d2 >= (sig_r * 2.5) ** 2:
+                        continue
+                    d_snd = math.sqrt(d2)
+                    dxs, dys = w.delta(sg["x"], sg["y"], c.x, c.y)  # listener rel. source
+                    downwind = max(0.0, (dxs * wx_s + dys * wy_s) / d_snd)
+                    if d_snd > sig_r * (1.0 + snd_boost * downwind):
+                        continue
+                kind = sg["kind"]
+                # §AQ PH-2: roofs muffle the world - indoors creatures cannot
+                # hear alarms or cries for help raised out in the open.
+                if (
+                    c.indoors
+                    and kind in ("alarm", "help", "boom")
+                    and not self._point_in_any_house(sg["x"], sg["y"])
+                ):
                     continue
                 # clan weighting: clan-mates always hear; strangers hear less,
                 # the less our dialects agree (§AN E.2 linguistic drift)
@@ -6507,7 +6554,6 @@ class Simulation:
                         ignore_p = 0.65
                     if self.rng.random() < ignore_p:
                         continue
-                kind = sg["kind"]
                 if (kind == "food" or kind == "trail") and c.status in ("hungry", "starving"):
                     # §AN B.2: scent trails point at the patch like a food call;
                     # food signals point to food_x/food_y if present, else sender pos

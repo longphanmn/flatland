@@ -11,6 +11,7 @@ from app.config import Config
 from app.entities import Corpse, Creature, Food, House
 from app.simulation import (
     FIRE_HEAT,
+    WIND_SCENT_MULT,
     HEARTH_COMFORT_TEMP,
     INSULATION_BY_MATERIAL,
     SEASON_BASE_TEMP,
@@ -185,7 +186,7 @@ def test_scent_carries_upwind_to_predator_nose():
     """A predator steers hard toward UPWIND prey beyond base sight range;
     the same gap downwind stays hidden (directional stealth layer)."""
     cfg = aq_cfg(predation_enabled=True, scent_enabled=True)
-    assert cfg.hunt_radius < 11.0  # base nose cannot cover the 11-unit gap
+    assert cfg.hunt_radius * (1.0 + 0.5 * WIND_SCENT_MULT) >= 9.0 > cfg.hunt_radius
     houses: list = []
 
     def probe(prey_dx: float) -> float:
@@ -203,12 +204,13 @@ def test_scent_carries_upwind_to_predator_nose():
         for _ in range(6):
             if prey.id not in s.world.entities:
                 break  # got close enough to bite — strongest possible signal
+            pred.x, pred.y = 200.0, 150.0  # pin: isolate one tick of tracking
             s._update_creature(pred, houses, 0.5, False, 1.0, 1.0, {})
         # how closely does the hunter face its quarry (π = due west)?
         return abs((pred.angle - math.pi + math.pi) % (2 * math.pi) - math.pi)
 
-    upwind_miss = probe(-11.0)   # scent blows from prey to predator's nose
-    downwind_miss = probe(+11.0) # scent blows away from the predator
+    upwind_miss = probe(-9.0)   # scent blows from prey to predator's nose
+    downwind_miss = probe(+9.0) # scent blows away from the predator
     assert upwind_miss < 0.7, f"upwind prey not tracked (miss {upwind_miss})"
     assert downwind_miss > 1.0, f"downwind prey somehow tracked (miss {downwind_miss})"
 
