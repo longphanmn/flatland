@@ -95,14 +95,16 @@ def test_metabolic_cost_by_caste():
 
     def burn(caste_args: dict) -> float:
         s = Simulation(physics_cfg(seed=5))
-        c = Creature(x=50.0, y=50.0, energy=100.0, lifespan=100000.0, **caste_args)
+        from app.entities import max_hp_for
+        c = Creature(x=50.0, y=50.0, energy=100.0, lifespan=100000.0,
+                     health=max_hp_for(caste_args["caste"]), **caste_args)
         s.world.add(c)
         e0 = c.energy
         s.step()
         return e0 - c.energy
 
-    woman_burn = burn(dict(shape="line", sides=2))
-    soldier_burn = burn(dict(shape="polygon", sides=3))
+    woman_burn = burn(dict(shape="line", sides=2, caste="Woman"))
+    soldier_burn = burn(dict(shape="polygon", sides=3, caste="Soldier"))
     assert woman_burn == pytest.approx(soldier_burn * 1.5, rel=1e-6)
 
 
@@ -117,10 +119,10 @@ def test_healing_costs_energy():
         s.step()
         return e0 - c.energy, c.health - h0
 
-    burn_healthy, heal_healthy = burn_with(100.0)
+    burn_healthy, heal_healthy = burn_with(130.0)  # Soldier max HP pool: full
     burn_wounded, heal_wounded = burn_with(60.0)
     assert heal_healthy == pytest.approx(0.0)      # full health: no mend, no cost
-    assert heal_wounded == pytest.approx(0.1)
+    assert heal_wounded == pytest.approx(0.05)     # 0.1 base × REGEN_OUTDOOR_MULT
     assert burn_wounded == pytest.approx(
-        burn_healthy + 0.1 * HEALING_ENERGY_COST, rel=1e-6
+        burn_healthy + 0.05 * HEALING_ENERGY_COST, rel=1e-6
     )

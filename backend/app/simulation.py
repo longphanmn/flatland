@@ -83,6 +83,28 @@ HEALTH_SELF_DRAIN_RATE = 0.05  # health lost per tick while self-cannibalizing
 HEALTH_SPEED_TIERS = ((80.0, 0.95), (60.0, 0.85), (40.0, 0.70), (20.0, 0.50))
 REPRO_MIN_HEALTH = 50.0  # sickly creatures cannot mate
 
+# §AT-4 H-1 — damage variety: hunger gnaws, age withers, wounds linger, and
+# what a body eats decides how well it mends.
+EXHAUSTION_ENERGY_FRACTION = 0.20  # chronic-hunger floor
+EXHAUSTION_TICKS = 30              # below the floor this long → health drain
+EXHAUSTION_DRAIN = 0.08
+ELDER_DECAY_RATE = 0.02            # passive health decay in old age
+HEALTH_SIGHT_TIERS = ((30.0, 0.75), (60.0, 0.90))  # ascending threshold check
+COMBAT_MIN_HEALTH = 30.0           # cannot initiate combat below this
+FORAGE_MULT_HURT = 0.80            # harvest mult at health <60
+FORAGE_MULT_WEAK = 0.50            # harvest mult at health <30
+FOOD_HEAL_BONUS = {                # variant -> (+health/tick, for N ticks)
+    "berry": (0.3, 20),
+    "grain": (0.2, 30),
+    "medicinal_herb": (0.8, 40),
+}
+REGEN_OUTDOOR_MULT = 0.5   # waking regen in the open
+REGEN_INDOOR_MULT = 0.8    # sheltered but awake
+WOUND_MIN_DAMAGE = 15.0    # hits above this leave a lingering wound
+WOUND_TICKS_BASE = 50      # wounds linger 50–100 ticks
+WOUND_SPEED_MULT = {1: 0.85, 2: 0.70}
+WOUND_REGEN_DIV = {1: 2.0, 2: 4.0}
+
 # §AR S-0 — senses interact: ripe plants smell through the dark, and
 # desperation dulls fear.
 FOOD_SCENT_RADIUS = 8.0  # mature plants are detectable by smell within this range
@@ -442,6 +464,23 @@ class Simulation:
         for threshold, mult in sorted(HEALTH_SPEED_TIERS, key=lambda t: t[0]):
             if health < threshold:
                 return mult
+        return 1.0
+
+    @staticmethod
+    def _health_sight_mult(health: float) -> float:
+        """§AT-4 H-1: a sick body cannot see as far."""
+        for threshold, mult in HEALTH_SIGHT_TIERS:
+            if health < threshold:
+                return mult
+        return 1.0
+
+    @staticmethod
+    def _forage_mult(health: float) -> float:
+        """§AT-4 H-1: weakness blunts the harvest — decline feeds on itself."""
+        if health < 30.0:
+            return FORAGE_MULT_WEAK
+        if health < 60.0:
+            return FORAGE_MULT_HURT
         return 1.0
 
     def _effective_fear_radius(self, c: Creature) -> float:
@@ -2060,6 +2099,10 @@ class Simulation:
         for a in creatures:
             if a.id not in w.entities or a.id in fallen or a.is_predator or a.is_herbivore or not a.clan_id:
                 continue
+            # §AT-4 H-1: the badly wounded cannot start a fight — they can
+            # still be attacked, and grievously wounded bodies never initiate.
+            if a.health < COMBAT_MIN_HEALTH or (a.wound_ticks > 0 and a.wound_severity >= 2):
+                continue
             neighbours = [
                 b
                 for b, _ in w.query_radius_with_dist_sq(a.x, a.y, cfg.attack_radius)
@@ -2197,6 +2240,11 @@ class Simulation:
             # §X mobbing softens blows on the wound path too
             dmg /= 1.0 + cfg.defense_weight * min(self._mob_defenders(loser, winner), 4)
             loser.health = max(0, loser.health - dmg)
+            # §AT-4 H-1: a heavy blow leaves a lingering wound — regen halves
+            # (or quarters, if grievous), the body hobbles, war is over for it.
+            if dmg > WOUND_MIN_DAMAGE and loser.id in w.entities:
+                loser.wound_ticks = self.rng.randint(WOUND_TICKS_BASE, WOUND_TICKS_BASE + 50)
+                loser.wound_severity = 2 if dmg >= 40.0 else 1
             # wounded flees
             dx, dy = self.world.delta(loser.x, loser.y, winner.x, winner.y)
             loser.angle = math.atan2(dy, dx)
@@ -3852,7 +3900,7 @@ class Simulation:
         self.world.add(child)
         gift = self._totem_stat(child, "health")  # totem vitality: Bear/Shield cubs
         if gift:
-            child.health = min(100.0, child.health + gift)
+            child.health = min(child.max_health, child.health + gift)
         if child.clan_id == 0:
             # Children belong to their mother's clan; orphans found new ones
             # (clan set before the claim so the founder counts as a member, §V).
@@ -4146,7 +4194,9 @@ class Simulation:
                     if (c.energy / cfg.energy_max) > HEALTH_REGEN_MIN_ENERGY:
                         regen = 0.15 * cfg.rest_recovery_mult
                         regen *= 1.0 + self._totem_stat(c, "defense")  # totem vitality heals faster
-                        healed = min(100.0, c.health + regen) - c.health
+                        if c.heal_bonus_ticks > 0:
+                            regen += c.heal_bonus_amount  # §AT-4 H-1: supper keeps working
+                        healed = min(c.max_health, c.health + regen) - c.health
                         if healed > 0:
                             c.health += healed
                             c.energy = max(0.0, c.energy - healed * HEALING_ENERGY_COST)
@@ -4200,12 +4250,22 @@ class Simulation:
 
 
 
-        # Priests heal injured / infected clanmates
+        # Priests heal injured / infected clanmates — full healing rounds near
+        # the settlement seat (§AT-4 H-1), a lighter touch on the road.
         if c.caste == "Priest" and not c.sleeping and (self.tick + c.id) % 8 == 0:
-            for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, 4.0):
+            main_house = None
+            if c.clan_id:
+                main_hid = self.clans.get(c.clan_id, {}).get("main_house_id")
+                if main_hid and houses:
+                    mh = next((h for h in houses if isinstance(h, House) and h.id == main_hid), None)
+                    if mh is not None and w.distance(c.x, c.y, mh.x, mh.y) <= cfg.territory_radius:
+                        main_house = mh
+            heal_radius = LEADER_AURA_RADIUS if main_house is not None else 4.0
+            heal_amount = 15.0 * (1.0 + c.skills.get("healing", 0.0) / 20.0)
+            for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, heal_radius):
                 if isinstance(o, Creature) and o.clan_id == c.clan_id and o.id != c.id:
-                    if (o.health < 80.0 or o.infected) and o.id in w.entities:
-                        o.health = min(100.0, o.health + 25.0)
+                    if (o.health < min(100.0, o.max_health) or o.infected) and o.id in w.entities:
+                        o.health = min(o.max_health, o.health + heal_amount)
                         o.infected = False
                         c.skills["healing"] = c.skills.get("healing", 0.0) + 1.5
                         c.emote = "heal"
@@ -4317,6 +4377,8 @@ class Simulation:
         elif c.clan_id:
             perceive *= 1.0 - LEADER_SIGHT_BONUS
             fear_radius_eff += LEADERLESS_FEAR
+        # §AT-4 H-1: sickness dims the eyes.
+        perceive *= self._health_sight_mult(c.health)
         # 1. Predation: hunt (predator) / flee (prey) — highest priority after sleep
         hunt_target: Creature | None = None
         flee_target: Creature | None = None
@@ -4606,10 +4668,18 @@ class Simulation:
             elif c.personality == "cautious" and (c.energy < 40.0 or c.health < 50.0):
                 u_shelter = 0.7
 
+        # §AT-4 H-1: a wounded creature seeks herbs even on a full stomach.
+        herb_need = (
+            isinstance(target, Food)
+            and target.variant == "medicinal_herb"
+            and c.health < 60.0
+        )
         u_eat = 0.0
-        if target is not None and (c.is_predator or c.energy <= 0.85 * cfg.energy_max):
+        if target is not None and (c.is_predator or c.energy <= 0.85 * cfg.energy_max or herb_need):
             energy_deficit = 1.0 - (c.energy / cfg.energy_max) if cfg.energy_max > 0 else 0.5
             u_eat = 0.6 + energy_deficit * 0.8
+            if herb_need:
+                u_eat += 0.55
             if c.personality == "greedy":
                 u_eat += 0.25
             if c.status == "starving":
@@ -4849,8 +4919,11 @@ class Simulation:
 
 
         # 3. Move (hunger speeds up the desperate; rain slows every body;
-        # §AT-4 H-0: wounds and sickness slow it further).
+        # §AT-4 H-0: wounds and sickness slow it further; §AT-4 H-1: fresh
+        # wounds hobble worse the graver they are).
         speed_mult *= self._health_speed_mult(c.health)
+        if c.wound_ticks > 0 and c.wound_severity:
+            speed_mult *= WOUND_SPEED_MULT.get(c.wound_severity, 1.0)
         step_len = c.speed * speed_mult * stage_speed * env_speed
         px, py = c.x, c.y
         nx = c.x + math.cos(c.angle) * step_len
@@ -4945,6 +5018,7 @@ class Simulation:
         # 5. Eat or Harvest into basket / reserve. Full creatures (>85% energy) do not consume food.
         can_eat = target is not None and best_sq <= cfg.eat_radius * cfg.eat_radius and (
             c.is_predator or c.energy <= 0.85 * cfg.energy_max
+            or (isinstance(target, Food) and target.variant == "medicinal_herb" and c.health < 60.0)
         )
         if can_eat and target is not None:
             w.remove(target.id)
@@ -4981,6 +5055,8 @@ class Simulation:
             # §AS L-0: a leaderless clan gathers less — no one organises the hunt.
             if leaderless:
                 gain *= LEADERLESS_GAIN_MULT
+            # §AT-4 H-1: weak hands harvest less — decline feeds on itself.
+            gain *= self._forage_mult(c.health)
 
             # Store in food basket / reserve when well-fed, else eat
             if isinstance(target, Food) and c.energy > 0.60 * cfg.energy_max and c.food_basket < 3:
@@ -4992,11 +5068,15 @@ class Simulation:
                 c.energy = min(cfg.energy_max, c.energy + gain)
                 if isinstance(target, Food):
                     c.skills["farming"] = c.skills.get("farming", 0.0) + 0.4
+                    # §AT-4 H-1: rich food keeps mending the body for a while.
+                    bonus = FOOD_HEAL_BONUS.get(target.variant)
+                    if bonus:
+                        c.heal_bonus_amount, c.heal_bonus_ticks = bonus
                     # Functional Dietary Effects (§AM)
                     if target.variant == "medicinal_herb":
                         c.infected = False
                         c.disease_id = 0
-                        c.health = min(100.0, c.health + 20.0)
+                        c.health = min(c.max_health, c.health + 20.0)
                         c.emote = "heal"
                         c.emote_ticks = 20
                     elif target.variant in ("sun_berry", "berry"):
@@ -5013,7 +5093,7 @@ class Simulation:
                     c.skills["foraging"] = c.skills.get("foraging", 0.0) + 0.6
 
             if health_delta != 0:
-                c.health = max(0.0, min(100.0, c.health + health_delta))
+                c.health = max(0.0, min(c.max_health, c.health + health_delta))
                 if c.health <= 0:
                     self._kill(c, "poison")
                     return
@@ -5050,6 +5130,28 @@ class Simulation:
             elif leaderless:
                 decay_mult *= LEADERLESS_DECAY_MULT
         c.energy -= cfg.energy_decay_per_tick * decay_mult
+        # §AT-4 H-1 damage variety: chronic hunger, old age, lingering wounds.
+        metabolism_ratio = c.energy / cfg.energy_max if cfg.energy_max > 0 else 1.0
+        if metabolism_ratio < EXHAUSTION_ENERGY_FRACTION:
+            c.low_energy_ticks += 1
+        else:
+            c.low_energy_ticks = 0
+        if c.low_energy_ticks > EXHAUSTION_TICKS:
+            c.health -= EXHAUSTION_DRAIN
+            if c.health <= 0:
+                self._kill(c, "exhaustion")
+                return
+        if c.stage == "elder":
+            c.health -= ELDER_DECAY_RATE
+            if c.health <= 0:
+                self._kill(c, "old_age")
+                return
+        if c.heal_bonus_ticks > 0:
+            c.heal_bonus_ticks -= 1
+        if c.wound_ticks > 0:
+            c.wound_ticks -= 1
+            if c.wound_ticks <= 0:
+                c.wound_severity = 0
         # §AQ PH-1: the body drifts toward the world's heat; houses insulate
         # against both extremes. Extreme cold feeds §R chill, extreme heat cooks.
         amb = self.ambient_at(c.x, c.y)
@@ -5105,9 +5207,16 @@ class Simulation:
                 if c.health <= 0:
                     self._kill(c, "starvation")
                     return
-            elif ratio_now > HEALTH_REGEN_MIN_ENERGY and c.health < 100.0:
+            elif ratio_now > HEALTH_REGEN_MIN_ENERGY and c.health < c.max_health:
                 regen = 0.1 * (1.0 + self._totem_stat(c, "defense"))
-                healed = min(100.0, c.health + regen) - c.health
+                # §AT-4 H-1: shelter heals faster than the open plain; wounds
+                # slow mending; rich food keeps working after the meal.
+                regen *= REGEN_INDOOR_MULT if c.indoors else REGEN_OUTDOOR_MULT
+                if c.wound_ticks > 0 and c.wound_severity:
+                    regen /= WOUND_REGEN_DIV.get(c.wound_severity, 2.0)
+                if c.heal_bonus_ticks > 0:
+                    regen += c.heal_bonus_amount
+                healed = min(c.max_health, c.health + regen) - c.health
                 if healed > 0:
                     c.health += healed
                     c.energy = max(0.0, c.energy - healed * HEALING_ENERGY_COST)  # §AQ PH-0: mending costs

@@ -52,6 +52,26 @@ CASTE_TRAITS = {
 }
 DEFAULT_TRAITS = CasteTraits(lifespan=6000, speed=0.60)
 
+# §AT-4 H-1: bodies differ — triangles are built for violence, lines survive,
+# pentagons are delicate. Max health pools by caste (health still starts at 100;
+# pools above 100 allow over-healing, pools below clamp at birth).
+CASTE_MAX_HP = {
+    "Soldier": 130,
+    "Artisan": 130,
+    "Woman": 110,
+    "Gentleman": 100,
+    "Professional": 90,
+    "Noble": 120,
+    "Priest": 90,
+    "Predator": 120,
+    "Herbivore": 100,
+}
+DEFAULT_MAX_HP = 100
+
+
+def max_hp_for(caste: str) -> float:
+    return float(CASTE_MAX_HP.get(caste, DEFAULT_MAX_HP))
+
 
 def traits_for(caste: str) -> CasteTraits:
     return CASTE_TRAITS.get(caste, DEFAULT_TRAITS)
@@ -155,6 +175,16 @@ class Creature(Entity):
     panic_ticks: int = 0
     # §AQ PH-1: body temperature (°C-ish) — drifts toward the ambient heat field
     body_temp: float = 20.0
+    # §AT-4 H-1 damage variety: chronic hunger, lingering wounds, food-quality healing
+    low_energy_ticks: int = 0  # consecutive ticks below the exhaustion floor
+    wound_ticks: int = 0  # countdown while a persistent wound lingers
+    wound_severity: int = 0  # 0 none | 1 wound | 2 grievous (no combat)
+    heal_bonus_amount: float = 0.0  # extra health per tick from rich food
+    heal_bonus_ticks: int = 0  # countdown for the bonus above
+
+    @property
+    def max_health(self) -> float:
+        return max_hp_for(self.caste)
 
 
     def __post_init__(self) -> None:
@@ -167,6 +197,10 @@ class Creature(Entity):
             self.lifespan = traits.lifespan
         if not self.sight_mult:
             self.sight_mult = traits.sight_mult
+        # §AT-4 H-1: a soft-bodied caste cannot start above its health pool
+        cap = max_hp_for(self.caste)
+        if self.health > cap:
+            self.health = cap
 
     @property
     def sex(self) -> str:

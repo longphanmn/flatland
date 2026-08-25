@@ -39,7 +39,7 @@ def test_regen_requires_energy_surplus():
     fed = s.world.add(Creature(x=200.0, y=200.0, energy=90.0, health=60.0))
     s.step()
     assert weak.health == pytest.approx(60.0)  # stalled: 30% < 40%
-    assert fed.health == pytest.approx(60.1)   # + base regen
+    assert fed.health == pytest.approx(60.05)  # + base regen × REGEN_OUTDOOR_MULT
 
 
 def test_starving_body_drains_health():

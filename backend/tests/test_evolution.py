@@ -95,7 +95,8 @@ def test_priest_heals_clanmates():
     sim.tick = (8 - (priest.id % 8)) % 8
     sim._update_creature(priest, houses)
 
-    assert patient.health >= 60.0
+    # §AT-4 H-1: base round is 15 HP, scaling with the priest's healing skill
+    assert patient.health >= 55.0
     assert not patient.infected
     assert priest.skills["healing"] >= 1.5
     assert priest.emote == "heal"

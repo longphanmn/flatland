@@ -1599,18 +1599,18 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [x] [P0] **Speed penalty by health** — `<80`: ×0.95, `<60`: ×0.85, `<40`: ×0.70, `<20`: ×0.50 (`HEALTH_SPEED_TIERS`, `_health_speed_mult` applied to `step_len`) — a creature at 5 HP no longer sprints.
 - [x] [P0] **Reproduction blocked below 50 HP** — `REPRO_MIN_HEALTH` in `_reproduce().eligible()`, so disease outbreaks suppress births without touching the birth mechanic.
 
-#### Phase H-1: Damage Variety  [P1]
-- [ ] [P1] **Exhaustion drain** — `energy < 20%` for > 30 consecutive ticks triggers `health -= 0.08/tick`; chronic hunger visibly kills; track with `c.low_energy_ticks` counter.
-- [ ] [P1] **Elder age-related health decay** — elder stage: passive `health -= 0.02/tick` always; aging is now genuinely dangerous; elders are valuable (oral lore) but fragile.
-- [ ] [P1] **Sight penalty by health** — `health < 60`: `perceive_radius × 0.90`; `< 30`: `× 0.75`; a sick/wounded creature cannot see as far.
-- [ ] [P1] **Combat blocked below 30 HP** — creature cannot *initiate* combat when `health < 30`; can still be attacked; wounded soldiers retreat automatically.
-- [ ] [P1] **Foraging efficiency by health** — `health < 60`: harvest `−20%` energy from food; `< 30`: `−50%`; weakness creates a positive feedback of decline.
-- [ ] [P1] **Regen scales with food quality** — eating berry: `+0.3 HP regen bonus` for 20 ticks; grain: `+0.2` for 30 ticks; medicinal herb: `+0.8` for 40 ticks; mushroom: none; diet becomes active health management.
-- [ ] [P1] **Regen halved outdoors** — outdoor waking regen `×0.5`; shelter (indoors, not sleeping) `×0.8`; sleeping indoors `×1.0`; shelter heals faster.
-- [ ] [P1] **Persistent wounds** — hits above 15 HP in one tick set `c.wound_ticks` (50–100 tick countdown) and `c.wound_severity` (1=wound, 2=grievous); while `wound_ticks > 0`: regen rate halved/quartered, speed penalized, no combat for severity 2.
-- [ ] [P1] **Caste-based max HP pools** — Triangle: 130 HP (built for violence); Square: 100; Priest/Pentagon: 90 (sensitive); Hexagon/Doctor: 120; Circle: 80 (soft, sheltered); Woman/Line: 110 (survivor caste); defined in a `CASTE_MAX_HP` table.
-- [ ] [P1] **Medicinal herb as primary fast heal** — with free regen nerfed, herb is the best heal source; creatures with `health < 60` specifically pathfind toward remembered herb locations even when energy is full; herb patches become strategically contested.
-- [ ] [P1] **Priest active healing rounds** — Priest at main house visits clan members within aura radius every N ticks, applies `+15 × (1 + skills["healing"]/20)` HP; creates a functional doctor role beyond the passive one-time touch.
+#### Phase H-1: Damage Variety  [P1] — ✅ implemented
+- [x] [P1] **Exhaustion drain** — `energy < 20%` for > 30 consecutive ticks triggers `health -= 0.08/tick` (death cause `exhaustion`); tracked with `c.low_energy_ticks`. (`simulation.py`, tests `tests/test_health_variety.py`)
+- [x] [P1] **Elder age-related health decay** — elder stage passive `health -= 0.02/tick` always; elders are valuable (oral lore) but fragile.
+- [x] [P1] **Sight penalty by health** — `<60`: `×0.90`; `<30`: `×0.75` (`HEALTH_SIGHT_TIERS`, `_health_sight_mult`) — the wounded cannot see as far.
+- [x] [P1] **Combat blocked below 30 HP / grievous wounds** — creatures under `COMBAT_MIN_HEALTH` or carrying a severity-2 wound cannot *initiate* war duels (id-ascending initiator check in `_update_war`); they can still be attacked.
+- [x] [P1] **Foraging efficiency by health** — `_forage_mult`: harvest ×0.8 below 60 HP, ×0.5 below 30; weakness creates a feedback of decline.
+- [x] [P1] **Regen scales with food quality** — berry +0.3 HP/tick for 20t, grain +0.2×30, medicinal herb +0.8×40 (`FOOD_HEAL_BONUS` → `heal_bonus_*` fields, consumed by awake + sleep regen).
+- [x] [P1] **Regen halved outdoors** — outdoor waking regen ×0.5 (`REGEN_OUTDOOR_MULT`); sheltered-but-awake ×0.8 (`REGEN_INDOOR_MULT`); sleeping indoors ×1.0.
+- [x] [P1] **Persistent wounds** — hits above 15 HP set `wound_ticks` (50–100) and severity (2 if damage ≥40); regen ÷2/÷4, speed ×0.85/×0.70, no duel initiation at severity 2.
+- [x] [P1] **Caste-based max HP pools** — `CASTE_MAX_HP`: Soldier/Artisan 130, Noble/Predator 120, Woman 110, Gentleman/Herbivore 100, Professional/Priest 90; regen and all heals cap at each body's own pool, births clamp to it.
+- [x] [P1] **Medicinal herb as primary fast heal** — injured (<60 HP) creatures seek/eat herbs even when sated (herb override on both the utility gate and `can_eat`), stacking with the §AM perception weighting.
+- [x] [P1] **Priest active healing rounds** — near the clan's main house a priest's round reaches the whole aura radius (`LEADER_AURA_RADIUS`) for `+15×(1+healing/20)` HP + infection cure; away from home it stays a close touch.
 
 #### Phase H-2: Systems Depth  [P2]
 - [ ] [P2] **Wound infection risk** — untreated wound (`severity ≥ 1`, `wound_ticks > 30`) has 2% chance/tick of turning into an infection even without disease contact; "wounded soldier alone = dead soldier".

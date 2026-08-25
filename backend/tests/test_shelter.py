@@ -106,9 +106,9 @@ def test_shelter_law_disabled_stops_sleep_and_exposure():
     # burn + the energy price of the 0.1 health regenerated this tick (§AQ PH-0)
     assert e_before - c.energy == pytest.approx(
         s.config.energy_decay_per_tick * METABOLIC_COST[c.caste]
-        + 0.1 * HEALING_ENERGY_COST
+        + 0.05 * HEALING_ENERGY_COST
     )
-    assert c.health - h_before == pytest.approx(0.1)
+    assert c.health - h_before == pytest.approx(0.05)
 
 
 def test_small_hut_cannot_hold_the_whole_clan_spill_to_next_roof():
