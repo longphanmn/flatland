@@ -109,8 +109,12 @@ class World:
 
     def distance_sq(self, ax: float, ay: float, bx: float, by: float) -> float:
         """Wrap-aware squared distance — for threshold tests without sqrt or tuple allocation."""
-        dx = abs(ax - bx)
-        dy = abs(ay - by)
+        dx = ax - bx
+        if dx < 0:
+            dx = -dx
+        dy = ay - by
+        if dy < 0:
+            dy = -dy
         if self.config.boundary == "wrap":
             w = self.config.width
             h = self.config.height
