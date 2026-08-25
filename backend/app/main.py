@@ -181,7 +181,7 @@ def advance_world(rt: RuntimeState, hub: Hub | None = None, force_keyframe: bool
         # daemon commits them off-thread — step() never waits on SQLite.
         rt.sim.step()
         # World End / Extinction: if all creatures die (tick > 30), pause ticking automatically
-        if rt.sim.tick > 30 and len(rt.sim.world.creatures()) == 0:
+        if rt.sim.tick > 30 and len(rt.sim._cached_creatures) == 0:
             rt.paused = True
     except Exception as exc:
         # The world must never die silently: one failed tick is logged
@@ -267,23 +267,18 @@ class SimEngine:
             with self.rt.lock:
                 if not self.rt.paused:
                     payload = advance_world(self.rt, self.hub)
-                    if payload is not None:
-                        # §AX P0: single-pass serialization on tick thread — hub
-                        # just fans out immutable bytes, no per-client JSON re-dumps
-                        # and no zlib on the event loop (permessage-deflate off).
-                        try:
-                            text = _dumps(payload)
-                            self.rt._cached_state_text = text  # type: ignore[attr-defined]
-                        except Exception:
-                            text = None
-                        # §AX P0: lockless snapshot caches for REST — throttle to every 10 ticks (1s)
-                        # so full clan/plots dictionaries are not built on every single tick inside the lock.
-                        if self.rt.sim.tick % 10 == 0 or getattr(self.rt, "_cached_clans_payload", None) is None:
-                            try:
-                                self.rt._cached_clans_payload = _clans_payload()  # type: ignore[attr-defined]
-                                self.rt._cached_plots_payload = {"plots": self.rt.sim.get_plots(), "tick": self.rt.sim.tick}  # type: ignore[attr-defined]
-                            except Exception:
-                                pass
+            if payload is not None:
+                try:
+                    text = _dumps(payload)
+                    self.rt._cached_state_text = text  # type: ignore[attr-defined]
+                except Exception:
+                    text = None
+                if getattr(self.rt, "sim", None) and (self.rt.sim.tick % 10 == 0 or getattr(self.rt, "_cached_clans_payload", None) is None):
+                    try:
+                        self.rt._cached_clans_payload = _clans_payload()  # type: ignore[attr-defined]
+                        self.rt._cached_plots_payload = {"plots": self.rt.sim.get_plots(), "tick": self.rt.sim.tick}  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
             if text is not None:
                 asyncio.run_coroutine_threadsafe(
                     self.hub.broadcast_text(text), self._loop

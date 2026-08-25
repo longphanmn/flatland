@@ -3619,7 +3619,7 @@ class Simulation:
         # Log slow ticks for N150 profiling (over 150ms)
         dur = time.perf_counter() - t_step0
         if dur > 0.15:
-            print(f"[sim] slow tick={self.tick} {dur*1000:.1f}ms c={len(self.world.creatures())} food={len(self._cached_foods)} houses={len(self._cached_houses)}", flush=True)
+            print(f"[sim] slow tick={self.tick} {dur*1000:.1f}ms c={len(self._cached_creatures)} food={len(self._cached_foods)} houses={len(self._cached_houses)}", flush=True)
         self.tick += 1
 
     # ---------------------------------------------------------------- society
