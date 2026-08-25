@@ -1645,3 +1645,39 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 
 ### Phase M-3: Client-Side GPU / WebGL Batch Acceleration  [P1] — ✅ implemented
 - [x] [P1] **WebGL / WebGPU batch rendering pipeline** — migrate 2D HTML5 Canvas draw loops (`renderCore.ts`) to instanced WebGL/WebGPU sprite buffers, allowing client GPUs to render 5,000+ entities, river flow textures, and lighting shaders at locked 60–120 FPS. (`frontend/src/render/webglCore.ts` WebGL2 instanced shader + `WebGLBatch`, `frontend/src/render/webglRenderer.ts` `renderWorldFrameWebGL`, `CanvasRenderer.tsx` GPU-first with Canvas2D fallback, Vite build 370ms)
+
+### Phase M-4: Native C OpenMP Parallel Batch Kernel (Zero-GIL Multi-Core)  [P0]
+> **Diagnostic Root Cause**: CPython runtime GIL restricts `_update_creature` (which accounts for 88.5% of tick time: 168ms / 190ms at 800 creatures) to a single OS core, leaving the remaining 7 CPU cores idle on the Intel Core i5-12450H 8-core host. Standard `multiprocessing` introduces IPC pickle serialization overhead (~15–20ms) every frame.
+> **Solution**: Execute creature perception, steering, thermal physics, and movement directly inside `backend/app/flatland_core.c` using OpenMP (`#pragma omp parallel for num_threads(8)`). Calling native C via `ctypes` unconditionally releases the CPython GIL, enabling true parallel hardware execution across all 8 cores with shared native memory and zero IPC overhead.
+
+- [ ] [P0] **Contiguous Native Struct Buffers (`flatland_core.h`)** — Define compact C-aligned structs for zero-copy memory transfer:
+  - `CreatureStateC` (64 bytes, cache-line aligned): `int id`, `float x, y, angle, speed, energy, health, radius`, `int caste, clan_id, flags` (`is_predator`, `indoors`, `sleeping`, `infected`).
+  - `SpatialEntityC` (32 bytes): `int id, kind, variant`, `float x, y, radius, extra`.
+  - `CreatureOutputC` (48 bytes): `float next_x, next_y, next_angle, delta_energy, delta_health`, `int target_eaten_id, bitten_prey_id, action_flags`.
+  - Pre-allocate contiguous input/output ctypes arrays in Python (`Simulation._c_creatures_buf`, `_c_entities_buf`, `_c_out_buf`) to eliminate heap allocation during ticks.
+
+- [ ] [P0] **Parallel OpenMP Creature Kernel (`c_batch_update_creatures_omp`)** — Implement full inner steering and perception loop in C99 inside `backend/app/flatland_core.c`:
+  - `#pragma omp parallel for schedule(guided) num_threads(8)` over the `CreatureStateC` array.
+  - Inlined toroidal spatial hash queries (`c_spatial_query_radius`) running directly over contiguous C cell buffers with AVX2 SIMD squared-distance arithmetic.
+  - Inlined wall collision ray-segment tests (`c_path_crosses_wall`) and rock avoidance.
+  - Inlined boids steering (separation, alignment, cohesion) and predator/prey avoidance vectors.
+  - Release GIL during call: `_flatland_core.c_batch_update_creatures_omp(...)` via `ctypes.CDLL`.
+
+- [ ] [P0] **Deterministic Single-Thread Reduction Phase** — In `backend/app/simulation.py:step()`:
+  - Pack active creature state into `_c_creatures_buf` in single pass $O(N)$.
+  - Invoke `c_batch_update_creatures_omp()` (runs across all 8 cores concurrently in ~3–5ms).
+  - Unpack results in ID order: apply new coordinates, consume eaten food/corpses, apply combat damage, and dispatch chronicle events (`birth`, `death`, `war`).
+  - Guarantees 100% deterministic world evolution with zero race conditions on global state.
+
+- [ ] [P0] **Build Pipeline & Compiler Flags in `deploy.sh`** —
+  - Update `deploy.sh` compilation line to include OpenMP and architecture tuning flags:
+    ```bash
+    gcc -O3 -shared -fPIC -fopenmp -march=native -ffast-math -Wall \
+        backend/app/flatland_core.c -o backend/app/_flatland_core.so -lm
+    ```
+  - Add fallback runtime detection: if OpenMP is not available on host, dynamically degrade to serial native C execution without crashing.
+
+- [ ] [P1] **Production Multi-Core Verification** —
+  - Verify with `htop` / `top` on `root@192.168.1.21` that `uvicorn` utilizes >400–700% CPU across all 8 cores during high-density ticks.
+  - Verify `/healthz` reports `avg_tick_ms < 15ms` and `actual_tps >= 20.0` at 1,000+ creatures.
+
