@@ -27,6 +27,7 @@ def _base_cfg() -> dict:
 
 
 def th_cfg(**kw) -> Config:
+    kw.setdefault("relief_enabled", False)
     zeros = dict(
         seed=17,
         width=80.0,

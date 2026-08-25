@@ -10,6 +10,7 @@ from app.simulation import Simulation
 
 
 def zeros(**kw) -> Config:
+    kw.setdefault("relief_enabled", False)
     base = dict(
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,
         num_priests=0, num_women=0, num_houses=0,
@@ -190,7 +191,7 @@ def test_flocking_is_double_edged():
     )
     # Two worlds: one flocking, one not — same seed, same initial positions
     def world(flock: bool):
-        c = Config(**{**cfg.__dict__, 'cohesion_weight': 1.5 if flock else 0.0, 'alignment_weight': 0.5 if flock else 0.0, 'rivers_enabled': False})
+        c = Config(**{**cfg.__dict__, 'cohesion_weight': 1.5 if flock else 0.0, 'alignment_weight': 0.5 if flock else 0.0, 'rivers_enabled': False, 'relief_enabled': False})
         s = Simulation(c)
         # tight flock of 10 vs same 10 but with flocking
         for i in range(10):

@@ -399,6 +399,7 @@ LAW_HINTS_MD = {
     "hearths_enabled": "kin buy hearth fuel from the clan larder; a lit hearth warms its roof past comfort through winter and night — unfed, the fire goes dark",
     "rivers_enabled": "horizontal channels cross the land: fords cost energy, the current sweeps infants and the wounded downstream, rain floods the banks and leaves fertile silt; builders span planks and raise dams",
     "river_count": "channel bands across the map at world creation (2) — applies to new worlds",
+    "relief_enabled": "the land has height: uphill travel burns energy and slows the stride, cliffs deal fall damage, rain can slide steep slopes, and well-walked ground packs into fast roads that grow nothing",
 }
 
 def get_wiki_json(app: Any) -> dict:

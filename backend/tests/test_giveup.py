@@ -17,6 +17,7 @@ from app.simulation import Simulation
 
 
 def stuck_cfg(**kw) -> Config:
+    kw.setdefault("relief_enabled", False)
     zeros = dict(
         seed=5,
         width=60.0,

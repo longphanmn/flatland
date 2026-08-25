@@ -10,6 +10,7 @@ from app.simulation import Simulation
 
 
 def minimal_cfg(**kw) -> Config:
+    kw.setdefault("relief_enabled", False)
     """Config with an empty world; tests spawn entities explicitly."""
     kw.setdefault("rivers_enabled", False)
     base = dict(

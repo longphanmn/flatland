@@ -129,6 +129,7 @@ export interface StateMessage {
   rivers?: { cy: number; hw: number; dir: number; flood: boolean }[]
   bridges?: { x: number; cy: number }[]
   dams?: { x: number; cy: number; hp_frac: number }[]
+  elevation?: { cell: number; cols: number; rows: number; h: number[] }
   age: string | null
   age_tick: number
   age_day?: number
@@ -162,6 +163,7 @@ export interface DeltaStateMessage {
   rivers?: { cy: number; hw: number; dir: number; flood: boolean }[]
   bridges?: { x: number; cy: number }[]
   dams?: { x: number; cy: number; hp_frac: number }[]
+  elevation?: { cell: number; cols: number; rows: number; h: number[] }
   age: string | null
   age_tick: number
   age_day?: number
@@ -350,6 +352,7 @@ export interface GodLaws {
   hearths_enabled?: boolean
   rivers_enabled?: boolean
   river_count?: number
+  relief_enabled?: boolean
   exposure_drain?: number
   house_capacity?: number
   house_claim_enabled?: boolean

@@ -111,6 +111,7 @@ class StateMessage(BaseModel):
     rivers: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 channels
     bridges: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 planks
     dams: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 masonry
+    elevation: dict[str, Any] = Field(default_factory=dict)  # §AQ PH-4 static height field
     age: Optional[str] = None
     age_tick: int = 0
     age_day: int = 1
@@ -144,6 +145,7 @@ class DeltaStateMessage(BaseModel):
     rivers: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 channels
     bridges: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 planks
     dams: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 masonry
+    elevation: dict[str, Any] = Field(default_factory=dict)  # §AQ PH-4 static height field
     age: Optional[str] = None
     age_tick: int = 0
     age_day: int = 1
@@ -379,6 +381,9 @@ class GodLaws(BaseModel):
     # Rivers (§AQ PH-3)
     rivers_enabled: Optional[bool] = None
     river_count: Optional[int] = Field(None, ge=0, le=8)
+
+    # Relief (§AQ PH-4) — elevation, cliffs & roads
+    relief_enabled: Optional[bool] = None
 
     # T: soften winter
     winter_food_mult: Optional[float] = Field(None, ge=0.1, le=2)

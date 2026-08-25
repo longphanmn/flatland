@@ -213,6 +213,9 @@ class Config:
     rivers_enabled: bool = True
     river_count: int = 2  # channel bands across the map at world creation
 
+    # Relief (§AQ PH-4) — the height of the land: grades, cliffs & roads
+    relief_enabled: bool = True  # elevation field bends energy, speed & growth
+
     # Society — interaction & clan relations — war rare tuning
     cohesion_weight: float = 0.0  # pull toward same-clan flock centre
     alignment_weight: float = 0.0  # match neighbours' heading

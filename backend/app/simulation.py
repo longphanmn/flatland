@@ -276,6 +276,23 @@ DAM_HP = 3600               # ticks a dam holds before rotting
 DAM_STRESS_DAMAGE = 30      # masonry lost per flood tick under pressure
 DAM_FLASH_SPIKE = 1.8       # flash-flood half-width spike on dam failure
 
+# §AQ PH-4 — gravity & terrain topology: a smooth height field bends every
+# journey (uphill bleeds energy, downhill runs free), sharp drops are cliffs
+# you can fall off, and feet pack the earth into roads that choke plant life.
+ELEV_CELL = 25.0            # grid units per elevation sample
+ELEV_MAX_HEIGHT = 60.0      # world-units between the lowest and highest ground
+SLOPE_ENERGY_COST = 0.05    # extra energy/tick per unit of uphill grade
+SLOPE_SPEED_MULT = 0.35     # speed lost at the steepest climb
+CLIFF_DROP_UNITS = 9.0      # a descent steeper than this per tick is a fall
+FALL_DAMAGE_PER_UNIT = 1.2  # health lost per unit fallen past the threshold
+TRAFFIC_DECAY = 0.995       # per-tick fade of packed earth
+TRAFFIC_PER_PASS = 1.0      # traffic earned per body-tick on a cell
+ROAD_SPEED_PER_TRAFFIC = 0.03  # speed bonus per traffic level (packed earth)
+ROAD_SPEED_CAP = 0.30       # ...capped here
+TRAFFIC_PLANT_BLOCK = 6.0   # traffic above this halts plant growth entirely
+AVALANCHE_SLOPE = 0.5       # grade that can slide in the rain
+AVALANCHE_CHANCE = 0.002    # per creature per rainy tick on such a slope
+
 # §AE food decay — nothing lasts forever: variant lifespan multipliers (§AM)
 FOOD_LIFESPAN_MULT = {
     "grass": 1.0,
@@ -546,6 +563,10 @@ class Simulation:
         self.rivers: list[dict] = []  # §AQ PH-3: horizontal channels {cy,hw,base_hw,dir,water,flood_ticks,silt_ticks}
         self.bridges: list[dict] = []  # §AQ PH-3: planks {x,cy,hw,hp}
         self.dams: list[dict] = []  # §AQ PH-3: stone dams {x,cy,hp}
+        # §AQ PH-4: the height of the land + the paths feet pack into roads
+        self._elev_cols = max(1, math.ceil(self.config.width / ELEV_CELL))
+        self._elev_rows = max(1, math.ceil(self.config.height / ELEV_CELL))
+        self.elev_grid: list[float] = [0.5] * (self._elev_cols * self._elev_rows)  # 0..1
         self.signals: list[dict] = []  # §Q: {x,y,kind,sender,clan_id,ttl}
         self.fires: list[dict] = []  # §S wildfire: {x,y,r,ttl}
         # §AQ PH-1: coarse ambient heat field (row-major, top-left origin)
@@ -557,6 +578,8 @@ class Simulation:
         self._soil_cols = self._temp_cols
         self._soil_rows = self._temp_rows
         self.soil_grid = [1.0] * (self._soil_cols * self._soil_rows)
+        # §AQ PH-4: traffic over the same coarse cells — feet pack the earth
+        self.traffic_grid: list[float] = [0.0] * (self._temp_cols * self._temp_rows)
         self.wind_angle = (self.config.seed % 6283) / 1000.0  # §AQ PH-2, rng-free init
         self.wind_speed = WIND_CALM_SPEED
         # §AM agriculture: tilled plots per clan + feast pacing
@@ -572,7 +595,8 @@ class Simulation:
         # AJ: Delta compression tracking (Phase 1)
         self._last_broadcast_state: dict[int, tuple] = {}
         self._last_broadcast_entities: set[int] = set()
-        self._generate_rivers()  # §AQ PH-3: channels first, so life settles around them
+        self._generate_elevation()  # §AQ PH-4: the shape of the land comes first
+        self._generate_rivers()  # §AQ PH-3: channels follow the slope
         self._spawn_initial()
         self._generate_terrain()
         self._consecrate_initial_shrines()
@@ -861,6 +885,110 @@ class Simulation:
             h.hearth_lit = True
 
     # -------------------------------------------------- §AQ PH-3 rivers
+    def _generate_elevation(self) -> None:
+        """§AQ PH-4: a smooth height field from seeded sinusoids (a dedicated
+        geography rng — the shape of the land never perturbs the life stream),
+        normalized to 0..1 across ELEV_MAX_HEIGHT world-units of relief."""
+        if not self.config.relief_enabled:
+            return
+        geo_rng = random.Random((self.config.seed * 77017) ^ 0x5EED1A)
+        w, h = self.config.width, self.config.height
+        waves = []
+        for _ in range(4):
+            fx = geo_rng.uniform(1.0, 4.0) * math.tau / max(w, 1.0)
+            fy = geo_rng.uniform(1.0, 4.0) * math.tau / max(h, 1.0)
+            px = geo_rng.uniform(0, math.tau)
+            py = geo_rng.uniform(0, math.tau)
+            amp = geo_rng.uniform(0.6, 1.4)
+            waves.append((amp, fx, fy, px, py))
+        vals = []
+        for row in range(self._elev_rows):
+            for col in range(self._elev_cols):
+                x = (col + 0.5) * w / self._elev_cols
+                y = (row + 0.5) * h / self._elev_rows
+                v = 0.0
+                for amp, fx, fy, px, py in waves:
+                    v += amp * math.sin(fx * x + px) * math.sin(fy * y + py)
+                vals.append(v)
+        lo, hi = min(vals), max(vals)
+        span = (hi - lo) or 1.0
+        self.elev_grid = [round((v - lo) / span, 4) for v in vals]
+
+    def _elev_at(self, x: float, y: float) -> float:
+        """Normalised ground height (0..1) under a point; 0.5 flat worlds."""
+        if not self.config.relief_enabled:
+            return 0.5
+        col = min(self._elev_cols - 1, max(0, int(x / self.config.width * self._elev_cols)))
+        row = min(self._elev_rows - 1, max(0, int(y / self.config.height * self._elev_rows)))
+        return self.elev_grid[row * self._elev_cols + col]
+
+    def _elev_units(self, x: float, y: float) -> float:
+        """Ground height in world-units (bodies and water care about these)."""
+        return self._elev_at(x, y) * ELEV_MAX_HEIGHT
+
+    def _terrain_effects(self, c: Creature, px: float, py: float) -> None:
+        """§AQ PH-4 applied to one body after it moves: uphill grade bleeds
+        energy and slows the stride, cliffs hurt, feet pack roads, and rain
+        loosens steep slopes into landslides."""
+        cfg = self.config
+        if not cfg.relief_enabled:
+            return
+        # traffic: this body just packed the earth it stands on
+        tcol = min(self._temp_cols - 1, max(0, int(c.x / cfg.width * self._temp_cols)))
+        trow = min(self._temp_rows - 1, max(0, int(c.y / cfg.height * self._temp_rows)))
+        ti = trow * self._temp_cols + tcol
+        self.traffic_grid[ti] += TRAFFIC_PER_PASS
+        # grade along the step just taken
+        dxg, dyg = self.world.delta(px, py, c.x, c.y)
+        dist = math.hypot(dxg, dyg)
+        if dist < 1e-6:
+            return
+        rise = self._elev_units(c.x, c.y) - self._elev_units(px, py)  # >0 climbed
+        grade = rise / dist  # >0 climbing
+        if grade > 0:
+            c.energy = max(0.0, c.energy - SLOPE_ENERGY_COST * grade)
+        elif rise <= -CLIFF_DROP_UNITS:
+            # walked off a sharp edge: fall damage scales with the drop
+            excess = -rise - CLIFF_DROP_UNITS
+            dmg = FALL_DAMAGE_PER_UNIT * (excess + CLIFF_DROP_UNITS * 0.5)
+            if c.health - dmg <= 0:
+                self._kill(c, "fall")
+            else:
+                c.health -= dmg
+                c.angle += math.pi  # stunned, turn around
+        # avalanche: rain loosens steep ground underfoot
+        if (
+            self.weather in ("rain", "storm")
+            and grade > AVALANCHE_SLOPE
+            and self.rng.random() < AVALANCHE_CHANCE
+        ):
+            slide_x = c.x - math.copysign(dist, dxg) * 8.0  # back down the slope
+            c.x, c.y = self.world.normalize(slide_x, c.y)
+            dmg = self.rng.uniform(8.0, 20.0)
+            if c.health - dmg <= 0:
+                self._kill(c, "landslide")
+            else:
+                c.health -= dmg
+
+    def _road_speed_mult(self, x: float, y: float) -> float:
+        """Packed earth is fast going (§AQ PH-4 emergent roads)."""
+        col = min(self._temp_cols - 1, max(0, int(x / self.config.width * self._temp_cols)))
+        row = min(self._temp_rows - 1, max(0, int(y / self.config.height * self._temp_rows)))
+        traffic = self.traffic_grid[row * self._temp_cols + col]
+        if traffic <= 0:
+            return 1.0
+        return 1.0 + min(ROAD_SPEED_CAP, traffic * ROAD_SPEED_PER_TRAFFIC)
+
+    def _update_traffic(self) -> None:
+        """Rain and grass slowly heal packed earth; roads need constant use."""
+        if not self.config.relief_enabled:
+            return
+        g = self.traffic_grid
+        for i in range(len(g)):
+            if g[i] > 0:
+                g[i] *= TRAFFIC_DECAY
+                if g[i] < 0.05:
+                    g[i] = 0.0
     def _generate_rivers(self) -> None:
         """§AQ PH-3: seed the world's river channels — horizontal bands with a
         flow direction each, spaced down the map so every bank stays reachable.
@@ -876,7 +1004,15 @@ class Simulation:
         usable = max(10.0, self.config.height - 2 * margin)
         for i in range(count):
             cy = (margin + usable * (i + 1 + geo_rng.uniform(-0.2, 0.2)) / (count + 1)) % self.config.height
-            direction = 1.0 if geo_rng.random() < 0.5 else -1.0  # east or west
+            # water runs downhill: flow follows the east-west height gradient
+            mid_x = self.config.width / 2
+            probe = self.config.width / 8
+            h_west = self._elev_units(mid_x - probe, cy)
+            h_east = self._elev_units(mid_x + probe, cy)
+            if h_west != h_east:
+                direction = 1.0 if h_west > h_east else -1.0
+            else:
+                direction = 1.0 if geo_rng.random() < 0.5 else -1.0
             self.rivers.append({
                 "cy": round(cy, 2),
                 "hw": RIVER_BASE_HW,
@@ -2437,6 +2573,7 @@ class Simulation:
         self._update_weather()
         self._update_wind()  # §AQ PH-2: the sky's breath follows the weather
         self._update_rivers()  # §AQ PH-3: rain swells the channels
+        self._update_traffic()  # §AQ PH-4: grass reclaims quiet paths
         # §Q signals decay (ripples fade)
         self.signals = [sg for sg in self.signals if sg["ttl"] > 1]
         for sg in self.signals:
@@ -4736,6 +4873,15 @@ class Simulation:
                         ):
                             eco_mult *= RIVER_SILT_MULT
                             break
+                    # §AQ PH-4: packed earth grows nothing — roads starve the field
+                    if cfg.relief_enabled:
+                        tcol = min(self._temp_cols - 1, max(0, int(e.x / cfg.width * self._temp_cols)))
+                        trow = min(self._temp_rows - 1, max(0, int(e.y / cfg.height * self._temp_rows)))
+                        traffic = self.traffic_grid[trow * self._temp_cols + tcol]
+                        if traffic >= TRAFFIC_PLANT_BLOCK:
+                            eco_mult = 0.0
+                        elif traffic > 0:
+                            eco_mult *= max(0.25, 1.0 - traffic / TRAFFIC_PLANT_BLOCK)
                     # §AM D: the soil gives what the soil has
                     soil = self._soil_at(e.x, e.y)
                     soil_f = max(0.5, min(1.4, 0.55 + 0.45 * soil))
@@ -6653,7 +6799,16 @@ class Simulation:
         speed_mult *= self._health_speed_mult(c.health)
         if c.wound_ticks > 0 and c.wound_severity:
             speed_mult *= WOUND_SPEED_MULT.get(c.wound_severity, 1.0)
-        step_len = c.speed * speed_mult * stage_speed * env_speed
+        # §AQ PH-4: roads carry the stride; the grade ahead slows the climb
+        stride_mult = 1.0
+        if cfg.relief_enabled:
+            stride_mult *= self._road_speed_mult(c.x, c.y)
+            here_h = self._elev_units(c.x, c.y)
+            ahead_x = c.x + math.cos(c.angle) * 2.0
+            ahead_y = c.y + math.sin(c.angle) * 2.0
+            rise = self._elev_units(ahead_x, ahead_y) - here_h
+            stride_mult *= max(0.55, 1.0 - SLOPE_SPEED_MULT * max(0.0, rise) / (2.0 * ELEV_MAX_HEIGHT))
+        step_len = c.speed * speed_mult * stage_speed * env_speed * stride_mult
         px, py = c.x, c.y
         nx = c.x + math.cos(c.angle) * step_len
         ny = c.y + math.sin(c.angle) * step_len
@@ -6666,6 +6821,9 @@ class Simulation:
                 c.angle = -c.angle
         c.x, c.y = w.normalize(nx, ny)
 
+        # §AQ PH-4: grades tax the climb, cliffs hurt, feet pack roads.
+        if cfg.relief_enabled:
+            self._terrain_effects(c, px, py)
         # §AQ PH-3: rivers — fording costs energy and speed, bridges cross dry,
         # the current sweeps the weak downstream, floods drown the stubborn.
         if self.rivers:
@@ -7229,6 +7387,13 @@ class Simulation:
                 {"x": d["x"], "cy": d["cy"], "hp_frac": round(max(0.0, d["hp"]) / DAM_HP, 2)}
                 for d in self.dams
             ],
+            # §AQ PH-4: the static height field rides only the keyframe
+            "elevation": (
+                {"cell": ELEV_CELL, "cols": self._elev_cols, "rows": self._elev_rows,
+                 "h": self.elev_grid}
+                if self.config.relief_enabled else {}
+            ),
+            "wind": {"angle": round(self.wind_angle, 3), "speed": round(self.wind_speed, 3)},
             "age": self._age(),
             "age_tick": self._age_tick(),
             "age_day": self._age_day(),

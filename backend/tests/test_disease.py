@@ -8,6 +8,7 @@ from app.simulation import Simulation
 
 
 def disease_cfg(**kw) -> Config:
+    kw.setdefault("relief_enabled", False)
     zeros = dict(
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,
         num_priests=0, num_women=0, food_count=0, num_houses=0,
@@ -98,6 +99,7 @@ def test_disabled_disease_freezes_everything():
 
 # ----------------------------------------------------------- corpses §N
 def corpses_cfg(**kw) -> Config:
+    kw.setdefault("relief_enabled", False)
     zeros = dict(
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,
         num_priests=0, num_women=0, food_count=0, num_houses=0, adult_age=0.0,

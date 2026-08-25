@@ -594,6 +594,7 @@ LAW_FIELDS = (
     "hearths_enabled",
     "rivers_enabled",
     "river_count",
+    "relief_enabled",
     "predation_enabled",
     "predator_ratio",
     "hunt_radius",

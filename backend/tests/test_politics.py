@@ -14,6 +14,7 @@ from app.simulation import Simulation
 
 
 def pol_cfg(**kw) -> Config:
+    kw.setdefault("relief_enabled", False)
     zeros = dict(
         seed=31,
         width=80.0,

@@ -27,6 +27,7 @@ from app.simulation import (
 
 
 def ag_cfg(**kw) -> Config:
+    kw.setdefault("relief_enabled", False)
     zeros = dict(
         seed=7, width=80.0, height=80.0,
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,

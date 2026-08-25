@@ -179,6 +179,7 @@ NUMBER_LAWS: dict[str, list[tuple[str, str]]] = {
     "Rivers": [
         ("river_count", "River count"),
     ],
+    "Terrain": [],
     "Bodies & Houses": [
         ("door_clearance", "Door clearance ×"),
         ("house_min_size", "House min size"),
@@ -216,6 +217,7 @@ BOOL_LAWS: dict[str, list[tuple[str, str]]] = {
         ("disaster_enabled", "Disasters"),
     ],
     "Rivers": [("rivers_enabled", "Rivers")],
+    "Terrain": [("relief_enabled", "Relief (height field)")],
     "Ecosystem": [
         ("plant_variants_enabled", "Plant variants"),
     ],

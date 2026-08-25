@@ -36,6 +36,7 @@ def client():
 
 
 def decay_cfg(**kw) -> Config:
+    kw.setdefault("relief_enabled", False)
     zeros = dict(
         seed=5,
         width=60.0,

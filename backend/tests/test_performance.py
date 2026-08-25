@@ -11,6 +11,7 @@ from app.world import World
 
 
 def perf_cfg(**kw) -> Config:
+    kw.setdefault("relief_enabled", False)
     base = dict(
         seed=42,
         width=200.0,

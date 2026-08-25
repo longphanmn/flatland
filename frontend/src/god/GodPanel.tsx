@@ -189,6 +189,7 @@ const GROUP_ORDER = [
   'Theology',
   'Bodies & Houses',
   'Rivers',
+  'Terrain',
 ]
 
 // Backend Config defaults — switches render these until laws load.
@@ -238,6 +239,7 @@ const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
   omens_enabled: true,
   dialect_drift_enabled: true,
   rivers_enabled: true,
+  relief_enabled: true,
 }
 
 const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
@@ -801,6 +803,9 @@ export default function GodPanel({ open, onClose }: Props) {
                 )}
                 {group === 'Rivers' && (
                   <ToggleRow k="rivers_enabled" label="Rivers" title="horizontal channels: fords cost energy, the current sweeps infants and the wounded, rain floods the banks and leaves silt; builders span planks and raise dams (§AQ PH-3)" />
+                )}
+                {group === 'Terrain' && (
+                  <ToggleRow k="relief_enabled" label="Relief (height field)" title="the land has height: uphill burns energy, cliffs deal fall damage, rain slides steep slopes, feet pack fast roads that grow nothing (§AQ PH-4)" />
                 )}
                 {group === 'Culture' && (
                   <ToggleRow k="culture_enabled" label="Culture" title="culture spreads to allied neighbours, can split into rival traditions; grants small collective bonus" />

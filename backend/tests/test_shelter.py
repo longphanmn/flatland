@@ -8,6 +8,7 @@ from app.simulation import HEALING_ENERGY_COST, METABOLIC_COST, Simulation
 
 
 def shelter_cfg(**kw) -> Config:
+    kw.setdefault("relief_enabled", False)
     zeros = dict(
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,
         num_priests=0, num_women=0, food_count=0, num_houses=0,

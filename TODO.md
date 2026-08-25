@@ -1445,12 +1445,12 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [x] [P2] **Dam construction & failure** — builders react to rising water with masonry (`DAM_HP` 3600): dams halve the rain gain while intact but grind down `DAM_STRESS_DAMAGE` 30/flood-tick; failure releases a flash flood (`DAM_FLASH_SPIKE` ×1.8 band spike, chronicle `flash_flood`). (Deliberate war-targeting of enemy dams deferred — needs the §AS command system.)
 - [x] [P2] **Drowning damage** — floodwater drains `RIVER_DROWN_DAMAGE` 1.5 HP/tick, softened by foraging skill (1/(1+skill/20)) — swimming is foraging-adjacent; death cause `drowning`.
 
-### Phase PH-4: Gravity & Terrain Topology  [P1]
-- [ ] [P1] **Elevation / height map** — terrain has a height field; affects movement cost (uphill = more energy, downhill = faster), water flow direction, and resource spawn altitude bands.
-- [ ] [P1] **Cliff edges** — sharp height discontinuities; creatures who walk off a cliff take fall damage proportional to height; cannot pass through creatures below (2D column constraint from The Planiverse).
-- [ ] [P1] **Soil compaction & emergent roads** — heavily-trafficked tiles become compacted: faster movement but no plant growth; clans naturally create road networks over time.
-- [ ] [P2] **Avalanche / landslide** — steep terrain after heavy rain slides, sweeping entities downstream and reshaping terrain.
-- [ ] [P2] **Ramps / staircases** — sloped tiles enabling height transitions; builders can construct ramps connecting elevation levels.
+### Phase PH-4: Gravity & Terrain Topology  [P1] — ✅ implemented
+- [x] [P1] **Elevation / height map** — smooth seeded sinusoid height field on the `ELEV_CELL` 25 grid (`relief_enabled` law; dedicated geography rng), normalized to `ELEV_MAX_HEIGHT` 60 units; movement cost scales with grade (`SLOPE_ENERGY_COST` 0.05 × grade) and climbs slow the stride (≤35%), rivers spawn flowing toward lower ground, static field rides the keyframe as `elevation` and shades the map. (`simulation.py:_generate_elevation/_terrain_effects`, tests `tests/test_relief.py`)
+- [x] [P1] **Cliff edges** — a descent steeper than `CLIFF_DROP_UNITS` 9 per tick is a fall: damage `(excess + 4.5) × FALL_DAMAGE_PER_UNIT` 1.2, death cause `fall`. (The Planiverse "can't pass through creatures below" column constraint is not modelled — bodies are flat points here.)
+- [x] [P1] **Soil compaction & emergent roads** — every body-tick packs traffic into its coarse cell (decays `TRAFFIC_DECAY` 0.995/tick): packed earth speeds the stride up to +30% (`ROAD_SPEED_CAP`) and chokes plant growth (halted at `TRAFFIC_PLANT_BLOCK` 6) — clans carve real road networks just by commuting.
+- [x] [P2] **Avalanche / landslide** — climbing a grade steeper than `AVALANCHE_SLOPE` 0.5 in rain/storm risks a slide (0.002/tick): thrown back down the slope for 8–20 damage, death cause `landslide`.
+- [ ] [P2] **Ramps / staircases** — *deferred*: needs vertical layer semantics the flat-point body model doesn't have; grades already cost/slow so cliffs remain one-way hazards.
 
 ### Phase PH-5: Ecological & Biological Physics  [P1]
 - [x] [P1] **Nutrient cycle** — the §AM living-soil grid is exactly this: harvests deplete fertility cell by cell, corpses/withered plants/ash/compost restore it, plant growth scales with local soil. (`simulation.py` `_soil_at`/`_deplete_soil`/`_fertilize_soil`)

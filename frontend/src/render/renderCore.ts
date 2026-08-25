@@ -600,6 +600,22 @@ export function renderWorldFrame(
   }
   ctx.stroke()
 
+  // §AQ PH-4: the height of the land — subtle hillshade under everything
+  const elev = state.elevation
+  if (elev && elev.h?.length) {
+    const cw = elev.cell * cam.scale
+    for (let row = 0; row < elev.rows; row++) {
+      for (let col = 0; col < elev.cols; col++) {
+        const h = elev.h[row * elev.cols + col] ?? 0.5
+        const light = (elev.h[row * elev.cols + Math.max(0, col - 1)] ?? h) // west neighbour
+        const shade = h - light // lit from the west
+        const v = Math.round(18 + h * 26)
+        ctx.fillStyle = `rgba(${v + shade * 40},${v + 8 + shade * 30},${v - 4},0.55)`
+        ctx.fillRect(cam.ox + col * cw, cam.oy + row * cw, cw + 0.5, cw + 0.5)
+      }
+    }
+  }
+
   // Fertile grounds & Rocks
   for (const p of state.terrain_fertile ?? []) {
     ctx.fillStyle = 'rgba(80,160,90,0.10)'
