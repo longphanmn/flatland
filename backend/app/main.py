@@ -276,13 +276,14 @@ class SimEngine:
                             self.rt._cached_state_text = text  # type: ignore[attr-defined]
                         except Exception:
                             text = None
-                        # §AX P0: lockless snapshot caches for REST — publish
-                        # immutable payloads so polling never stalls the tick thread.
-                        try:
-                            self.rt._cached_clans_payload = _clans_payload()  # type: ignore[attr-defined]
-                            self.rt._cached_plots_payload = {"plots": self.rt.sim.get_plots(), "tick": self.rt.sim.tick}  # type: ignore[attr-defined]
-                        except Exception:
-                            pass
+                        # §AX P0: lockless snapshot caches for REST — throttle to every 10 ticks (1s)
+                        # so full clan/plots dictionaries are not built on every single tick inside the lock.
+                        if self.rt.sim.tick % 10 == 0 or getattr(self.rt, "_cached_clans_payload", None) is None:
+                            try:
+                                self.rt._cached_clans_payload = _clans_payload()  # type: ignore[attr-defined]
+                                self.rt._cached_plots_payload = {"plots": self.rt.sim.get_plots(), "tick": self.rt.sim.tick}  # type: ignore[attr-defined]
+                            except Exception:
+                                pass
             if text is not None:
                 asyncio.run_coroutine_threadsafe(
                     self.hub.broadcast_text(text), self._loop
@@ -498,7 +499,10 @@ async def apply_control(msg: ControlMessage) -> dict:
             base = getattr(RT, "saved_config", RT.config)
             new_cfg = replace(base, seed=random.SystemRandom().randint(0, 2**31 - 1))
             RT.config = new_cfg
-            RT.sim = Simulation(new_cfg, history=RT.sim.history)
+            RT.sim = Simulation(new_cfg)
+            RT._cached_clans_payload = None
+            RT._cached_plots_payload = None
+            RT._cached_state_text = None
             RT.paused = False
             start_world()
             payload = RT.sim.snapshot_payload()
