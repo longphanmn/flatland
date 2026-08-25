@@ -22,6 +22,7 @@ from app.simulation import (
 
 
 def dip_cfg(**kw) -> Config:
+    kw.setdefault("rivers_enabled", False)
     zeros = dict(
         seed=11, width=90.0, height=90.0,
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,

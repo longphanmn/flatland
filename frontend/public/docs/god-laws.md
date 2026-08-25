@@ -113,6 +113,9 @@ In Flatland, God sets **laws**, never touches individual lives. Every law has a 
 
 | `rest_recovery_mult` | 0.5–5.0 | **2.0** | Health regeneration speed multiplier while sleeping indoors. |
 | `door_clearance` | 1.0–4.0 | **1.5** | Doorway width relative to creature size (blocks oversized predators). |
+| `hearths_enabled` | Boolean | **true** | Kin buy hearth fuel from the clan larder; a lit hearth warms its house past comfort through winter — unfed, it goes dark (§AQ PH-1). |
+| `rivers_enabled` | Boolean | **true** | Horizontal channels: fords cost energy, the current sweeps the weak, rain floods banks and leaves silt; builders raise planks & dams (§AQ PH-3). |
+| `river_count` | 0–8 | **2** | Channel bands across the map at world creation (applies to new worlds). |
 
 ---
 

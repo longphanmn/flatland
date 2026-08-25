@@ -617,6 +617,51 @@ export function renderWorldFrame(
     ctx.stroke()
   }
 
+  // §AQ PH-3: rivers — horizontal channel bands with a flow direction
+  for (const rv of state.rivers ?? []) {
+    const cy = cam.oy + rv.cy * cam.scale
+    const hw = Math.max(1, rv.hw * cam.scale)
+    const grad = ctx.createLinearGradient(0, cy - hw, 0, cy + hw)
+    if (rv.flood) {
+      grad.addColorStop(0, 'rgba(60,120,190,0.10)')
+      grad.addColorStop(0.5, 'rgba(70,140,210,0.45)')
+      grad.addColorStop(1, 'rgba(60,120,190,0.10)')
+    } else {
+      grad.addColorStop(0, 'rgba(50,110,180,0.08)')
+      grad.addColorStop(0.5, 'rgba(60,130,200,0.32)')
+      grad.addColorStop(1, 'rgba(50,110,180,0.08)')
+    }
+    ctx.fillStyle = grad
+    ctx.fillRect(cam.ox, cy - hw, state.width * cam.scale, hw * 2)
+    // flow direction chevrons drift along the current
+    ctx.strokeStyle = rv.flood ? 'rgba(160,210,255,0.5)' : 'rgba(150,200,240,0.28)'
+    ctx.lineWidth = 1
+    const t = (state.tick % 90) / 90
+    ctx.beginPath()
+    for (let x = ((t * 40) % 40); x < state.width; x += 40) {
+      const px = cam.ox + x * cam.scale
+      const d = rv.dir >= 0 ? 1 : -1
+      ctx.moveTo(px - 3 * d, cy)
+      ctx.lineTo(px + 3 * d, cy)
+    }
+    ctx.stroke()
+  }
+
+  // §AQ PH-3: bridges & dams cross the channels
+  for (const b of state.bridges ?? []) {
+    const rv = (state.rivers ?? []).find((r) => r.cy === b.cy)
+    const hw = Math.max(2, (rv?.hw ?? 4) * cam.scale)
+    ctx.fillStyle = '#8a6d3b'
+    ctx.fillRect(cam.ox + (b.x - 1.5) * cam.scale, cam.oy + (b.cy * cam.scale - hw), 3 * cam.scale, hw * 2)
+    ctx.strokeStyle = 'rgba(227,179,65,0.8)'
+    ctx.strokeRect(cam.ox + (b.x - 1.5) * cam.scale, cam.oy + (b.cy * cam.scale - hw), 3 * cam.scale, hw * 2)
+  }
+  for (const d of state.dams ?? []) {
+    const h = 10 * cam.scale
+    ctx.fillStyle = `rgba(110,118,129,${0.5 + 0.5 * (d.hp_frac ?? 1)})`
+    ctx.fillRect(cam.ox + (d.x - 2) * cam.scale, cam.oy + d.cy * cam.scale - h / 2, 4 * cam.scale, h)
+  }
+
   // Territory circles
   for (const e of state.entities) {
     if (e.kind === 'house' && e.clan_id && !e.is_ruin && e.clan_color) {

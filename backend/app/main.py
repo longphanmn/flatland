@@ -592,6 +592,8 @@ LAW_FIELDS = (
     "rest_recovery_mult",
     "house_decay_ticks",
     "hearths_enabled",
+    "rivers_enabled",
+    "river_count",
     "predation_enabled",
     "predator_ratio",
     "hunt_radius",

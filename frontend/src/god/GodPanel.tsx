@@ -153,6 +153,8 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'door_clearance', label: 'Door clearance ×', min: 1, max: 4, step: 0.1, group: 'Bodies & Houses' },
   { key: 'house_min_size', label: 'House min size', min: 4, max: 30, step: 1, group: 'Bodies & Houses' },
   { key: 'house_max_size', label: 'House max size', min: 6, max: 60, step: 1, group: 'Bodies & Houses' },
+  // Rivers — channels, floods & crossings (§AQ PH-3)
+  { key: 'river_count', label: 'River count', min: 0, max: 8, step: 1, group: 'Rivers', gate: 'rivers_enabled' },
 ]
 
 const GROUP_ORDER = [
@@ -186,6 +188,7 @@ const GROUP_ORDER = [
   'Agriculture',
   'Theology',
   'Bodies & Houses',
+  'Rivers',
 ]
 
 // Backend Config defaults — switches render these until laws load.
@@ -234,6 +237,7 @@ const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
   markets_enabled: true,
   omens_enabled: true,
   dialect_drift_enabled: true,
+  rivers_enabled: true,
 }
 
 const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
@@ -279,6 +283,7 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   culture_spread_rate: 'allied clans within territory adopt same culture with this chance/tick (0.005)',
   trait_mutation_rate: 'chance mutation adds heritable trait greedy/peaceful/paranoid/bold (0.02) — bold war, paranoid flee, greedy food',
   fire_rate: 'chance a random mature plant ignites each tick (0.0005) — storm lightning raises to 0.002',
+  river_count: 'channel bands across the map at world creation (2) — fords, floods, bridges & dams (§AQ PH-3)',
   fire_spread_rate: 'spread to neighboring plants within 6 (0.08) — kills creatures/plants, ash fertilizes',
   disaster_rate: 'meteor/flood stochastic gated by this per tick (0.0003) — crater/water reshapes terrain',
   signal_radius: 'heard within this range (12) — clan-mates respond strongly, strangers weakly',
@@ -793,6 +798,9 @@ export default function GodPanel({ open, onClose }: Props) {
                     <ToggleRow k="wildfire_enabled" label="Wildfire" title="fire ignites via storm lightning / fire_rate and spreads grass→plant→house; ash fertilizes" />
                     <ToggleRow k="disaster_enabled" label="Disasters" title="meteor/flood stochastic — god sets frequency, never a specific strike" />
                   </>
+                )}
+                {group === 'Rivers' && (
+                  <ToggleRow k="rivers_enabled" label="Rivers" title="horizontal channels: fords cost energy, the current sweeps infants and the wounded, rain floods the banks and leaves silt; builders span planks and raise dams (§AQ PH-3)" />
                 )}
                 {group === 'Culture' && (
                   <ToggleRow k="culture_enabled" label="Culture" title="culture spreads to allied neighbours, can split into rival traditions; grants small collective bonus" />

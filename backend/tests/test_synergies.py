@@ -190,7 +190,7 @@ def test_flocking_is_double_edged():
     )
     # Two worlds: one flocking, one not — same seed, same initial positions
     def world(flock: bool):
-        c = Config(**{**cfg.__dict__, 'cohesion_weight': 1.5 if flock else 0.0, 'alignment_weight': 0.5 if flock else 0.0})
+        c = Config(**{**cfg.__dict__, 'cohesion_weight': 1.5 if flock else 0.0, 'alignment_weight': 0.5 if flock else 0.0, 'rivers_enabled': False})
         s = Simulation(c)
         # tight flock of 10 vs same 10 but with flocking
         for i in range(10):

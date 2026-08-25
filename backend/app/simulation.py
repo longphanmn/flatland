@@ -252,6 +252,30 @@ MUSHROOM_CORPSE_MULT = 1.6  # mushrooms fruit where things die
 HERB_BERRY_MULT = 1.35      # medicinal herbs thrive beside berries
 POISON_SUPPRESS = 0.55      # poisonous plants stunt their neighbours
 
+# §AQ PH-3 — fluid dynamics: rivers are horizontal 1D channels across the map
+# (the Planiverse constraint — water can only flow east or west). They cost
+# energy to ford, sweep the weak downstream, flood in the rain and leave silt.
+RIVER_BASE_HW = 4.0         # calm half-width of a channel band
+RIVER_FORD_COST = 0.06      # extra energy/tick while wading
+RIVER_SPEED_MULT = 0.6      # wading slows the body
+RIVER_SWEEP_SPEED = 0.4     # displacement downstream/tick for the weak
+RIVER_SWEEP_HEALTH = 30.0   # below this HP (or any infant) the current wins
+RIVER_RAIN_RATE = 0.0035    # water level gained per tick of rain (storm ×1.5)
+RIVER_DRY_RATE = 0.0012     # evaporation per tick
+RIVER_FLOOD_TICKS = 300     # a flood lasts this long once triggered
+RIVER_FLOOD_GROW = 0.05     # per-tick approach to the flooded half-width
+RIVER_FLOOD_EBB = 0.02      # per-tick return to the calm channel
+RIVER_FLOOD_HW_MULT = 2.2   # flooded half-width multiplier
+RIVER_SILT_TICKS = 600      # post-flood enrichment window on the banks
+RIVER_SILT_RADIUS = 6.0     # banks beyond the band that catch the silt
+RIVER_SILT_MULT = 1.5       # plant growth bonus on fresh silt
+RIVER_DROWN_DAMAGE = 1.5    # health/tick in floodwater; foraging skill softens
+BRIDGE_HALF_WIDTH = 1.5     # a plank crosses dry within this x-range of its post
+BRIDGE_HP = 2400            # ticks a plank bridge lasts without repair
+DAM_HP = 3600               # ticks a dam holds before rotting
+DAM_STRESS_DAMAGE = 30      # masonry lost per flood tick under pressure
+DAM_FLASH_SPIKE = 1.8       # flash-flood half-width spike on dam failure
+
 # §AE food decay — nothing lasts forever: variant lifespan multipliers (§AM)
 FOOD_LIFESPAN_MULT = {
     "grass": 1.0,
@@ -519,6 +543,9 @@ class Simulation:
         self._last_season: str | None = None  # season-change detector for miracles
         self.fertile: list[dict] = []  # {x,y,r} — food prefers these grounds
         self.rocks: list[dict] = []  # {x,y,r} — solid circles that block movement
+        self.rivers: list[dict] = []  # §AQ PH-3: horizontal channels {cy,hw,base_hw,dir,water,flood_ticks,silt_ticks}
+        self.bridges: list[dict] = []  # §AQ PH-3: planks {x,cy,hw,hp}
+        self.dams: list[dict] = []  # §AQ PH-3: stone dams {x,cy,hp}
         self.signals: list[dict] = []  # §Q: {x,y,kind,sender,clan_id,ttl}
         self.fires: list[dict] = []  # §S wildfire: {x,y,r,ttl}
         # §AQ PH-1: coarse ambient heat field (row-major, top-left origin)
@@ -545,6 +572,7 @@ class Simulation:
         # AJ: Delta compression tracking (Phase 1)
         self._last_broadcast_state: dict[int, tuple] = {}
         self._last_broadcast_entities: set[int] = set()
+        self._generate_rivers()  # §AQ PH-3: channels first, so life settles around them
         self._spawn_initial()
         self._generate_terrain()
         self._consecrate_initial_shrines()
@@ -831,6 +859,196 @@ class Simulation:
             clan["larder"] = stored - take
             h.hearth_fuel = min(HEARTH_FUEL_MAX, h.hearth_fuel + take * HEARTH_FUEL_PER_ENERGY)
             h.hearth_lit = True
+
+    # -------------------------------------------------- §AQ PH-3 rivers
+    def _generate_rivers(self) -> None:
+        """§AQ PH-3: seed the world's river channels — horizontal bands with a
+        flow direction each, spaced down the map so every bank stays reachable.
+        Runs before life spawns so houses and fields never root in the water.
+        Draws from a dedicated rng so geography never perturbs the life stream."""
+        if not self.config.rivers_enabled:
+            return
+        count = max(0, int(self.config.river_count))
+        if count == 0:
+            return
+        geo_rng = random.Random((self.config.seed * 100003) ^ 0x9E3779B9)
+        margin = 30.0
+        usable = max(10.0, self.config.height - 2 * margin)
+        for i in range(count):
+            cy = (margin + usable * (i + 1 + geo_rng.uniform(-0.2, 0.2)) / (count + 1)) % self.config.height
+            direction = 1.0 if geo_rng.random() < 0.5 else -1.0  # east or west
+            self.rivers.append({
+                "cy": round(cy, 2),
+                "hw": RIVER_BASE_HW,
+                "base_hw": RIVER_BASE_HW,
+                "dir": direction,
+                "water": 0.0,
+                "flood_ticks": 0,
+                "silt_ticks": 0,
+            })
+
+    def _river_dy(self, y: float, cy: float) -> float:
+        """Wrap-aware vertical distance to a channel centre line."""
+        dy = abs(y - cy)
+        return min(dy, self.config.height - dy)
+
+    def _river_at(self, x: float, y: float) -> dict | None:
+        """The channel band containing this point, if any."""
+        for r in self.rivers:
+            if self._river_dy(y, r["cy"]) <= r["hw"]:
+                return r
+        return None
+
+    def _in_river_band(self, x: float, y: float, pad: float = 0.0) -> bool:
+        """True when the point sits inside a channel plus margin — used by
+        worldgen so houses never straddle the water."""
+        for r in self.rivers:
+            if self._river_dy(y, r["cy"]) <= r["hw"] + pad:
+                return True
+        return False
+
+    def _on_bridge_or_dam(self, x: float, y: float) -> bool:
+        """Crossings are dry: planks span the band at their post's x."""
+        for b in self.bridges:
+            dx = abs(x - b["x"])
+            if dx > self.config.width / 2:
+                dx = self.config.width - dx
+            if dx <= BRIDGE_HALF_WIDTH and self._river_dy(y, b["cy"]) <= b["hw"] + 2.0:
+                return True
+        for d in self.dams:
+            dx = abs(x - d["x"])
+            if dx > self.config.width / 2:
+                dx = self.config.width - dx
+            r = next((r for r in self.rivers if r["cy"] == d["cy"]), None)
+            if r is not None and dx <= BRIDGE_HALF_WIDTH and self._river_dy(y, r["cy"]) <= r["hw"] + 3.0:
+                return True
+        return False
+
+    def _update_rivers(self) -> None:
+        """§AQ PH-3: rain swells the channels; a full channel bursts its banks;
+        floodwater widens the band, tears out plants and drowns the stubborn;
+        receded water leaves fertile silt on the banks. Dams hold back floods
+        until they fail. Planks rot; builders rebuild (see _update_builders)."""
+        raining = self.weather in ("rain", "storm")
+        for r in self.rivers:
+            dam = next((d for d in self.dams if d["cy"] == r["cy"] and d["hp"] > 0), None)
+            if raining:
+                gain = RIVER_RAIN_RATE * (1.5 if self.weather == "storm" else 1.0)
+                if dam is not None:
+                    gain *= 0.5  # the dam drinks the crest
+                r["water"] = min(1.5, r["water"] + gain)
+            else:
+                r["water"] = max(0.0, r["water"] - RIVER_DRY_RATE)
+            # flood pressure grinds the masonry down — dams hold, then burst
+            if dam is not None:
+                if r["flood_ticks"] > 0 or (raining and r["water"] >= 1.0):
+                    dam["hp"] -= DAM_STRESS_DAMAGE
+            if r["flood_ticks"] <= 0 and r["water"] >= 1.0:
+                r["flood_ticks"] = RIVER_FLOOD_TICKS
+                r["water"] = 0.0
+                self._emit(HistoryEvent(
+                    type="disaster", tick=self.tick + 1, entity_id=0,
+                    x=round(self.config.width / 2, 2), y=round(r["cy"], 2),
+                    payload={"kind": "river_flood", "river_cy": r["cy"]},
+                ))
+            if r["flood_ticks"] > 0:
+                r["flood_ticks"] -= 1
+                target_hw = RIVER_BASE_HW * RIVER_FLOOD_HW_MULT
+                r["hw"] += (target_hw - r["hw"]) * RIVER_FLOOD_GROW
+                # floodwater tears out rooted plants in the swollen band
+                if self._cached_foods and self.tick % 5 == 0:
+                    for f in list(self._cached_foods):
+                        if self._river_dy(f.y, r["cy"]) <= r["hw"] and self.rng.random() < 0.25:
+                            self.world.remove(f.id)
+                if r["flood_ticks"] == 0:
+                    r["silt_ticks"] = RIVER_SILT_TICKS  # the gift the water leaves
+            else:
+                r["hw"] += (r["base_hw"] - r["hw"]) * RIVER_FLOOD_EBB
+            if r["silt_ticks"] > 0:
+                r["silt_ticks"] -= 1
+        # dams fail catastrophically when ground away under pressure
+        for d in [d for d in self.dams if d["hp"] <= 0]:
+            self.dams.remove(d)
+            r = next((r for r in self.rivers if r["cy"] == d["cy"]), None)
+            if r is not None:
+                r["flood_ticks"] = max(r["flood_ticks"], RIVER_FLOOD_TICKS // 2)
+                r["hw"] = min(RIVER_BASE_HW * RIVER_FLOOD_HW_MULT * DAM_FLASH_SPIKE, r["hw"] * DAM_FLASH_SPIKE)
+                self._emit(HistoryEvent(
+                    type="disaster", tick=self.tick + 1, entity_id=0,
+                    x=round(d["x"], 2), y=round(d["cy"], 2),
+                    payload={"kind": "flash_flood", "river_cy": d["cy"]},
+                ))
+        # planks rot
+        for b in [b for b in self.bridges if b["hp"] <= 0]:
+            self.bridges.remove(b)
+        for b in self.bridges:
+            b["hp"] -= 1
+
+    def _river_effects(self, c: Creature) -> None:
+        """§AQ PH-3 applied to one body after it moves: wading costs energy and
+        speed, bridges cross dry, the current sweeps the weak downstream, and
+        floodwater drowns the stubborn (foraging skill doubles as swimming)."""
+        r = self._river_at(c.x, c.y)
+        if r is None or self._on_bridge_or_dam(c.x, c.y):
+            return
+        flooded = r["flood_ticks"] > 0
+        c.energy = max(0.0, c.energy - RIVER_FORD_COST)
+        weak = c.stage == "infant" or c.health < RIVER_SWEEP_HEALTH
+        if weak or flooded:
+            push = RIVER_SWEEP_SPEED * (2.0 if flooded else 1.0) * (0.6 if not weak else 1.0)
+            nx = c.x + r["dir"] * push
+            ny = c.y + (self.rng.uniform(-0.1, 0.1) if not weak else 0.0)
+            c.x, c.y = self.world.normalize(nx, ny)
+            c.angle = 0.0 if r["dir"] > 0 else math.pi  # headed downstream now
+        if flooded:
+            soften = 1.0 / (1.0 + c.skills.get("foraging", 0.0) / 20.0)
+            dmg = RIVER_DROWN_DAMAGE * soften
+            if c.health - dmg <= 0:
+                self._kill(c, "drowning")
+            else:
+                c.health -= dmg
+
+    def _update_builders(self) -> None:
+        """§AQ PH-3: builder-personality creatures span the channels they live
+        beside — planks first, dams when the water starts to rise."""
+        if not self.rivers or not self._cached_creatures or self.tick % 15 != 0:
+            return
+        builders = [c for c in self._cached_creatures
+                    if getattr(c, "personality", "") == "builder" and c.energy > 40.0]
+        for b in builders:
+            r = min(
+                (rv for rv in self.rivers if self._river_dy(b.y, rv["cy"]) <= 16.0),
+                key=lambda rv: self._river_dy(b.y, rv["cy"]),
+                default=None,
+            )
+            if r is None:
+                continue
+            def _dx(ax: float, bx2: float) -> float:
+                d = abs(ax - bx2)
+                return min(d, self.config.width - d)
+            near_crossing = any(
+                _dx(b.x, br["x"]) <= 14.0 and br["cy"] == r["cy"]
+                for br in self.bridges
+            )
+            rising = r["water"] > 0.5 or r["flood_ticks"] > 0
+            has_dam = any(d["cy"] == r["cy"] for d in self.dams)
+            if rising and not has_dam and len(self.dams) < 4:
+                b.energy -= 15.0
+                self.dams.append({"x": round(b.x, 2), "cy": r["cy"], "hp": DAM_HP})
+                self._emit(HistoryEvent(
+                    type="settlement", tick=self.tick + 1, entity_id=b.id, caste=b.caste,
+                    x=round(b.x, 2), y=round(b.y, 2),
+                    payload={"kind": "dam", "river_cy": r["cy"], "clan_id": b.clan_id},
+                ))
+                continue
+            if not near_crossing and len(self.bridges) < 12:
+                b.energy -= 10.0
+                self.bridges.append({"x": round(b.x, 2), "cy": r["cy"], "hw": r["hw"], "hp": BRIDGE_HP})
+                self._emit(HistoryEvent(
+                    type="settlement", tick=self.tick + 1, entity_id=b.id, caste=b.caste,
+                    x=round(b.x, 2), y=round(r["cy"], 2),
+                    payload={"kind": "bridge", "river_cy": r["cy"], "clan_id": b.clan_id},
+                ))
 
     # ------------------------------------------------ §AM living soil grid
     def _soil_index(self, x: float, y: float) -> int:
@@ -1865,7 +2083,9 @@ class Simulation:
                 )
             else:
                 pos = self._rand_pos()
-            if not self._is_in_rock(pos[0], pos[1]):
+            if not self._is_in_rock(pos[0], pos[1]) and not (
+                self.rivers and self._in_river_band(pos[0], pos[1], pad=1.0)
+            ):
                 return pos
         return self._rand_pos()
 
@@ -2109,6 +2329,9 @@ class Simulation:
             dist = self.world.distance(x, y, r["x"], r["y"])
             if dist < size / 2 + r["r"] + 1.0:
                 return True
+        # §AQ PH-3: no roof straddles the water — keep houses off the channels
+        if self._in_river_band(x, y, pad=size / 2 + 2.0):
+            return True
         return False
 
     def _find_non_overlapping_house_pos(self, size: float, near: Creature | None = None) -> tuple[float, float]:
@@ -2213,6 +2436,7 @@ class Simulation:
             self.truce_ticks -= 1
         self._update_weather()
         self._update_wind()  # §AQ PH-2: the sky's breath follows the weather
+        self._update_rivers()  # §AQ PH-3: rain swells the channels
         # §Q signals decay (ripples fade)
         self.signals = [sg for sg in self.signals if sg["ttl"] > 1]
         for sg in self.signals:
@@ -2324,6 +2548,7 @@ class Simulation:
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
+        self._update_builders()  # §AQ PH-3: planks & dams rise where builders wade
         self._update_hearths()  # §AQ PH-1 hearths burn & take fuel
         self._update_agriculture()  # §AM sowing, tending, granary feasts
         self._update_faith()  # §AP unified theology
@@ -4503,6 +4728,14 @@ class Simulation:
                             eco_mult *= HERB_BERRY_MULT
                         if poison_near and e.variant != "poisonous":
                             eco_mult *= POISON_SUPPRESS
+                    # §AQ PH-3: fresh silt on the banks feeds the next harvest
+                    for rv in self.rivers:
+                        if (
+                            rv["silt_ticks"] > 0
+                            and self._river_dy(e.y, rv["cy"]) <= rv["hw"] + RIVER_SILT_RADIUS
+                        ):
+                            eco_mult *= RIVER_SILT_MULT
+                            break
                     # §AM D: the soil gives what the soil has
                     soil = self._soil_at(e.x, e.y)
                     soil_f = max(0.5, min(1.4, 0.55 + 0.45 * soil))
@@ -4586,7 +4819,9 @@ class Simulation:
                     parent.x + vx / norm * rad,
                     parent.y + vy / norm * rad,
                 )
-                if not self._is_in_rock(x, y):
+                if not self._is_in_rock(x, y) and not (
+                    self.rivers and self._in_river_band(x, y, pad=1.0)
+                ):
                     self.world.add(self._new_food(x, y, growth=SPROUT_GROWTH))
                     total += 1
 
@@ -6431,6 +6666,11 @@ class Simulation:
                 c.angle = -c.angle
         c.x, c.y = w.normalize(nx, ny)
 
+        # §AQ PH-3: rivers — fording costs energy and speed, bridges cross dry,
+        # the current sweeps the weak downstream, floods drown the stubborn.
+        if self.rivers:
+            self._river_effects(c)
+
         # 4. House walls block movement except through the doorway.
         # The doorway is too small for the Carnivore caste (§L refuge) — predators see a closed wall.
         mdx, mdy = w.delta(c.x, c.y, px, py)
@@ -6978,6 +7218,17 @@ class Simulation:
             "boundary_stones": [dict(s) for s in self.boundary_stones],
             "markets": [dict(m, a=pair[0], b=pair[1]) for pair, m in self.markets.items()],
             "wind": {"angle": round(self.wind_angle, 3), "speed": round(self.wind_speed, 3)},
+            # §AQ PH-3: channels, planks & masonry ride every frame (tiny lists)
+            "rivers": [
+                {"cy": r["cy"], "hw": round(r["hw"], 2),
+                 "dir": r["dir"], "flood": r["flood_ticks"] > 0}
+                for r in self.rivers
+            ],
+            "bridges": [{"x": b["x"], "cy": b["cy"]} for b in self.bridges],
+            "dams": [
+                {"x": d["x"], "cy": d["cy"], "hp_frac": round(max(0.0, d["hp"]) / DAM_HP, 2)}
+                for d in self.dams
+            ],
             "age": self._age(),
             "age_tick": self._age_tick(),
             "age_day": self._age_day(),
@@ -7041,6 +7292,29 @@ class Simulation:
                 last_clans[s_cid] = sig
         self._last_broadcast_clans = last_clans
 
+        # §AQ PH-3: channels/planks/masonry ride deltas only when they change —
+        # the client keeps the last known layout otherwise (websocket.ts ??).
+        rivers_sig = (
+            tuple((r["cy"], round(r["hw"], 1), r["dir"], r["flood_ticks"] > 0) for r in self.rivers),
+            tuple((b["x"], b["cy"]) for b in self.bridges),
+            tuple((d["x"], d["cy"], d["hp"] // 60) for d in self.dams),
+        )
+        geo: dict = {}
+        if rivers_sig != getattr(self, "_last_rivers_sig", None):
+            self._last_rivers_sig = rivers_sig
+            geo = {
+                "rivers": [
+                    {"cy": r["cy"], "hw": round(r["hw"], 2),
+                     "dir": r["dir"], "flood": r["flood_ticks"] > 0}
+                    for r in self.rivers
+                ],
+                "bridges": [{"x": b["x"], "cy": b["cy"]} for b in self.bridges],
+                "dams": [
+                    {"x": d["x"], "cy": d["cy"], "hp_frac": round(max(0.0, d["hp"]) / DAM_HP, 2)}
+                    for d in self.dams
+                ],
+            }
+
         return {
             "type": "delta_state",
             "tick": self.tick,
@@ -7067,13 +7341,12 @@ class Simulation:
             "boundary_stones": [dict(s) for s in self.boundary_stones],
             "markets": [dict(m, a=pair[0], b=pair[1]) for pair, m in self.markets.items()],
             "wind": {"angle": round(self.wind_angle, 3), "speed": round(self.wind_speed, 3)},
+            **geo,
             "age": self._age(),
             "age_tick": self._age_tick(),
             "age_day": self._age_day(),
             "age_total_days": self._age_total_days(),
         }
-
-
 
     def snapshot(self) -> StateMessage:
         """Typed snapshot for cold paths (REST /api/state, tests)."""

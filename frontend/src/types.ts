@@ -126,6 +126,9 @@ export interface StateMessage {
   boundary_stones?: { x: number; y: number; clan_id: number }[]
   markets?: { x: number; y: number; a: number; b: number }[]
   wind?: { angle: number; speed: number }
+  rivers?: { cy: number; hw: number; dir: number; flood: boolean }[]
+  bridges?: { x: number; cy: number }[]
+  dams?: { x: number; cy: number; hp_frac: number }[]
   age: string | null
   age_tick: number
   age_day?: number
@@ -156,6 +159,9 @@ export interface DeltaStateMessage {
   boundary_stones?: { x: number; y: number; clan_id: number }[]
   markets?: { x: number; y: number; a: number; b: number }[]
   wind?: { angle: number; speed: number }
+  rivers?: { cy: number; hw: number; dir: number; flood: boolean }[]
+  bridges?: { x: number; cy: number }[]
+  dams?: { x: number; cy: number; hp_frac: number }[]
   age: string | null
   age_tick: number
   age_day?: number
@@ -342,6 +348,8 @@ export interface GodLaws {
   // Shelter — roofs against the sky
   shelter_enabled?: boolean
   hearths_enabled?: boolean
+  rivers_enabled?: boolean
+  river_count?: number
   exposure_drain?: number
   house_capacity?: number
   house_claim_enabled?: boolean

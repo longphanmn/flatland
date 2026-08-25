@@ -14,6 +14,7 @@ from app.simulation import Simulation
 
 
 def cann_cfg(**kw) -> Config:
+    kw.setdefault("rivers_enabled", False)
     zeros = dict(
         seed=77,
         width=60.0,

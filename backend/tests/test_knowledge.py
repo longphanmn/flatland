@@ -16,6 +16,7 @@ from app.simulation import Simulation
 
 
 def know_cfg(**kw) -> Config:
+    kw.setdefault("rivers_enabled", False)
     zeros = dict(
         seed=12,
         width=60.0,

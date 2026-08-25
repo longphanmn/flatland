@@ -209,6 +209,10 @@ class Config:
     rock_count: int = -1  # solid stone circles that block movement
     fertile_food_bias: float = 0.7  # fraction of food spawned on fertile ground
 
+    # Rivers (§AQ PH-3) — horizontal channels: fords, floods, bridges & dams
+    rivers_enabled: bool = True
+    river_count: int = 2  # channel bands across the map at world creation
+
     # Society — interaction & clan relations — war rare tuning
     cohesion_weight: float = 0.0  # pull toward same-clan flock centre
     alignment_weight: float = 0.0  # match neighbours' heading

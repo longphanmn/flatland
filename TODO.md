@@ -1436,14 +1436,14 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [ ] [P2] **Wind affects thrown weapon range** — spears/tools thrown downwind travel farther; upwind throws fall short.
 - [ ] [P2] **Sound propagation** — loud events (combat, collapse) emit 2D pressure waves triggering nearby creature alarm responses; houses block sound; wind carries sound farther downwind; sleeping creatures cannot hear outside alarms.
 
-### Phase PH-3: Fluid Dynamics & Rivers  [P1]
+### Phase PH-3: Fluid Dynamics & Rivers  [P1] — ✅ implemented
 > The most Planiverse-authentic feature — rivers are 1D channels, a radical 2D constraint.
-- [ ] [P1] **River entities** — horizontal channel bands across the map; water flows with a direction (east/west) driven by terrain slope; spawned at world creation, seeded by God law.
-- [ ] [P1] **Fording cost** — crossing a river tile costs extra energy; infants and injured creatures risk being swept downstream.
-- [ ] [P1] **Flood mechanics** — rain accumulates water → rivers expand width tick by tick; flood tiles destroy food patches, force creature evacuation; post-flood silt enriches nearby soil (plant growth bonus for N ticks).
-- [ ] [P1] **Bridge construction** — builders with high building skill can construct planks across river cells; bridges decay over time; destroyed bridges trap clans on one side.
-- [ ] [P2] **Dam construction & failure** — stone walls across rivers stop flood propagation; dam failure under heavy rain causes flash flood; deliberately destroying an enemy dam is a war action.
-- [ ] [P2] **Drowning damage** — creatures caught in flood tiles take health drain per tick; swimming skill (foraging-adjacent) reduces damage.
+- [x] [P1] **River entities** — horizontal channel bands (`RIVER_BASE_HW` 4 half-width) across the map with an east/west flow direction each; spawned at world creation from a dedicated geography rng (`river_count` law, `rivers_enabled`) so life settles around them — houses and plants never root in the water. On the wire as `rivers`/`bridges`/`dams`; renderer draws blue bands with flow chevrons. (`simulation.py:_generate_rivers`, tests `tests/test_rivers.py`)
+- [x] [P1] **Fording cost** — wading drains `RIVER_FORD_COST` 0.06 energy/tick; infants and creatures under 30 HP are swept downstream at `RIVER_SWEEP_SPEED`; planks cross dry.
+- [x] [P1] **Flood mechanics** — rain swells the channel (`RIVER_RAIN_RATE`, storm ×1.5); full channel bursts: flood widens the band ×2.2 over `RIVER_FLOOD_TICKS` 300, tears out rooted plants, pushes everyone downstream; receded water leaves `RIVER_SILT_TICKS` 600 of bank enrichment (`RIVER_SILT_MULT` 1.5 growth). Chronicle: `river_flood`.
+- [x] [P1] **Bridge construction** — builder-personality creatures raise planks across channels they live beside (`BRIDGE_HP` 2400 rot clock); crossings within `BRIDGE_HALF_WIDTH` pay no toll and feel no current.
+- [x] [P2] **Dam construction & failure** — builders react to rising water with masonry (`DAM_HP` 3600): dams halve the rain gain while intact but grind down `DAM_STRESS_DAMAGE` 30/flood-tick; failure releases a flash flood (`DAM_FLASH_SPIKE` ×1.8 band spike, chronicle `flash_flood`). (Deliberate war-targeting of enemy dams deferred — needs the §AS command system.)
+- [x] [P2] **Drowning damage** — floodwater drains `RIVER_DROWN_DAMAGE` 1.5 HP/tick, softened by foraging skill (1/(1+skill/20)) — swimming is foraging-adjacent; death cause `drowning`.
 
 ### Phase PH-4: Gravity & Terrain Topology  [P1]
 - [ ] [P1] **Elevation / height map** — terrain has a height field; affects movement cost (uphill = more energy, downhill = faster), water flow direction, and resource spawn altitude bands.

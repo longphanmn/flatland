@@ -108,6 +108,9 @@ class StateMessage(BaseModel):
     boundary_stones: list[dict[str, Any]] = Field(default_factory=list)  # §AN
     markets: list[dict[str, Any]] = Field(default_factory=list)  # §AN trading posts
     wind: dict[str, float] = Field(default_factory=dict)  # §AQ PH-2 {angle,speed}
+    rivers: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 channels
+    bridges: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 planks
+    dams: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 masonry
     age: Optional[str] = None
     age_tick: int = 0
     age_day: int = 1
@@ -138,6 +141,9 @@ class DeltaStateMessage(BaseModel):
     boundary_stones: list[dict[str, Any]] = Field(default_factory=list)  # §AN
     markets: list[dict[str, Any]] = Field(default_factory=list)  # §AN trading posts
     wind: dict[str, float] = Field(default_factory=dict)  # §AQ PH-2 {angle,speed}
+    rivers: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 channels
+    bridges: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 planks
+    dams: list[dict[str, Any]] = Field(default_factory=list)  # §AQ PH-3 masonry
     age: Optional[str] = None
     age_tick: int = 0
     age_day: int = 1
@@ -369,6 +375,10 @@ class GodLaws(BaseModel):
     markets_enabled: Optional[bool] = None
     omens_enabled: Optional[bool] = None
     dialect_drift_enabled: Optional[bool] = None
+
+    # Rivers (§AQ PH-3)
+    rivers_enabled: Optional[bool] = None
+    river_count: Optional[int] = Field(None, ge=0, le=8)
 
     # T: soften winter
     winter_food_mult: Optional[float] = Field(None, ge=0.1, le=2)

@@ -105,6 +105,9 @@ export class WorldSocket {
           age_tick: delta.age_tick,
           age_day: delta.age_day,
           age_total_days: delta.age_total_days,
+          rivers: delta.rivers ?? this.lastFullState?.rivers ?? [],
+          bridges: delta.bridges ?? this.lastFullState?.bridges ?? [],
+          dams: delta.dams ?? this.lastFullState?.dams ?? [],
           entities: Array.from(this.entitiesMap.values()),
         }
         this.lastFullState = reconstructed

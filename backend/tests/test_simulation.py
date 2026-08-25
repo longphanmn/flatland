@@ -11,6 +11,7 @@ from app.simulation import Simulation
 
 def minimal_cfg(**kw) -> Config:
     """Config with an empty world; tests spawn entities explicitly."""
+    kw.setdefault("rivers_enabled", False)
     base = dict(
         num_triangles=0,
         num_squares=0,
