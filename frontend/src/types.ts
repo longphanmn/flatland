@@ -85,6 +85,8 @@ export interface ClanInfo {
   coalition_id?: number | null
   larder?: number
   tribute_to?: number | null
+  faith?: number
+  shrine_level?: number
   specialization?: Record<string, number>
   history?: ClanHistoryEvent[]
 }
@@ -154,6 +156,7 @@ export interface HistoryEvent {
   id?: number
   type: 'death' | 'birth' | 'promotion' | 'demotion' | 'outbreak' | 'recovery' | 'bloom' | 'alliance' | 'rivalry' | 'predation' | 'war' | 'ruin' | 'settlement' | 'succession' | 'schism' | 'fire' | 'disaster' | 'conquest' | 'culture' | 'takeover' | 'coalition_formed' | 'coalition_joined' | 'coalition_dissolved' | 'peace' | 'tribute' | 'betrayal' | 'defection' | 'cannibalism' | 'exile' | 'wither'
     | 'coalition_formed' | 'coalition_joined' | 'coalition_dissolved' | 'peace' | 'tribute' | 'betrayal' | 'defection' | 'cannibalism' | 'exile' | 'wither'
+    | 'miracle' | 'sermon' | 'synod' | 'temple' | 'epiphany' | 'resonance'
   tick: number
   entity_id: number
   caste?: string | null
@@ -381,6 +384,11 @@ export interface GodLaws {
   // Food decay (§AE)
   food_decay_enabled?: boolean
   food_lifespan_ticks?: number
+
+  // Unified Theology (§AP) — shrines, tithes & the clan faith pool
+  theology_enabled?: boolean
+  tithe_rate?: number
+  temple_faith_cost?: number
 
   door_clearance?: number
   house_min_size?: number

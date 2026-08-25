@@ -58,6 +58,12 @@ function matchesCategory(ev: HistoryEvent, category: EventCategory): boolean {
       'tribute',
       'promotion',
       'demotion',
+      'miracle',
+      'sermon',
+      'synod',
+      'temple',
+      'epiphany',
+      'resonance',
     ].includes(ev.type)
   }
   if (category === 'deaths') {
@@ -540,6 +546,75 @@ export default function ChronicleFeed({
                     <b>{String(p.personal_name ?? '')}{String(p.glyph ?? '')}</b> #{ev.entity_id}
                   </button>{' '}
                   cast out of {p.former_name ?? clanLabel(p.former_clan)} at tick {ev.tick}
+                </li>
+              )
+            }
+
+            if (ev.type === 'miracle') {
+              return (
+                <li key={key} className="ev-bloom" style={{ color: '#7ee787' }}>
+                  miracle: the {String(p.avatar ?? 'avatar')} grants{' '}
+                  <button className="chronicle-name" onClick={() => p.clan_id != null && onSelectClan(p.clan_id)} title="show clan">
+                    {p.clan_name ?? clanLabel(p.clan_id)}
+                  </button>{' '}
+                  a bounty — food blooms around the shrine at tick {ev.tick}
+                </li>
+              )
+            }
+
+            if (ev.type === 'sermon') {
+              return (
+                <li key={key} className="ev-alliance" style={{ color: '#d2a8ff' }}>
+                  sermon:{' '}
+                  <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show priest">
+                    <b>{ev.caste} #{ev.entity_id}</b>
+                  </button>{' '}
+                  of{' '}
+                  <button className="chronicle-name" onClick={() => p.clan_id != null && onSelectClan(p.clan_id)} title="show clan">
+                    {p.clan_name ?? clanLabel(p.clan_id)}
+                  </button>{' '}
+                  interprets the new law — {String(p.text ?? '')} at tick {ev.tick}
+                </li>
+              )
+            }
+
+            if (ev.type === 'synod') {
+              return (
+                <li key={key} className="ev-alliance" style={{ color: '#e3b341' }}>
+                  ⛪ synod of the Sphere: priests of {(p.clans as number[] | undefined)?.length ?? '?'} clans convene during the {String(p.age ?? 'crisis')} age —
+                  a sacred truce stills all strife at tick {ev.tick}
+                </li>
+              )
+            }
+
+            if (ev.type === 'temple') {
+              return (
+                <li key={key} className="ev-settlement" style={{ color: '#e3b341' }}>
+                  temple:{' '}
+                  <button className="chronicle-name" onClick={() => p.clan_id != null && onSelectClan(p.clan_id)} title="show clan">
+                    {p.clan_name ?? clanLabel(p.clan_id)}
+                  </button>{' '}
+                  raises its {String(p.avatar ?? 'avatar')} shrine into a glowing Temple of the Sphere at tick {ev.tick}
+                </li>
+              )
+            }
+
+            if (ev.type === 'epiphany') {
+              return (
+                <li key={key} className="ev-miracle" style={{ color: '#bc8cff' }}>
+                  ✦ epiphany: elder priest{' '}
+                  <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show priest">
+                    <b>{String(p.personal_name ?? '')}{String(p.glyph ?? '')}</b> #{ev.entity_id}
+                  </button>{' '}
+                  beholds the Sphere in three dimensions — sectarian strife stills at tick {ev.tick}
+                </li>
+              )
+            }
+
+            if (ev.type === 'resonance') {
+              return (
+                <li key={key} className="ev-alliance" style={{ color: '#e3b341' }}>
+                  🔔 resonance: god alters {String(((p.laws as string[]) ?? []).join(', ') || 'the laws')} — every shrine chimes ({String(p.chimes ?? 0)}), {String(p.sermons ?? 0)} sermons ring out at tick {ev.tick}
                 </li>
               )
             }

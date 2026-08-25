@@ -621,6 +621,9 @@ LAW_FIELDS = (
     "exile_on_kin_eat",
     "food_decay_enabled",
     "food_lifespan_ticks",
+    "theology_enabled",
+    "tithe_rate",
+    "temple_faith_cost",
 )
 
 
@@ -863,6 +866,12 @@ def apply_laws(laws: GodLaws, persist: bool = True) -> dict:
                 RT.saved_config = replace(RT.saved_config, **updates)
         if "house_claim_enabled" in updates:
             RT.sim._refresh_house_claims()
+        # §AP Divine Law Resonance: the shrines chime, the priests preach.
+        if updates:
+            try:
+                RT.sim.on_law_change(sorted(updates.keys()))
+            except Exception:
+                pass  # theology must never reject a law
         if updates and RT.world_id is not None:
             for name, value in updates.items():
                 DB.add_law_change(RT.world_id, RT.sim.tick, name, value)
@@ -1213,6 +1222,8 @@ def _clan_details(clan_id: int) -> dict:
         "coalition_id": info.get("coalition_id"),  # §AB
         "larder": round(float(info.get("larder", 0.0)), 1),  # §AB clan store
         "tribute_to": info.get("tribute_to"),  # §AB subjugation
+        "faith": round(float(info.get("faith", 0.0)), 1),  # §AP clan faith pool
+        "shrine_level": int(info.get("shrine_level", 0)),  # §AP shrine/temple
         "governance": info.get("governance", "republic"),  # §AL
         "bylaws": info.get("bylaws", {}),  # §AL
         "task_board": info.get("task_board", {}),  # §AL
@@ -1287,6 +1298,8 @@ def _clans_payload() -> dict:
             "coalition_id": info.get("coalition_id"),  # §AB
             "larder": round(float(info.get("larder", 0.0)), 1),  # §AB clan store
             "tribute_to": info.get("tribute_to"),  # §AB subjugation
+            "faith": round(float(info.get("faith", 0.0)), 1),  # §AP clan faith pool
+            "shrine_level": int(info.get("shrine_level", 0)),  # §AP shrine/temple
             "governance": info.get("governance", "republic"),  # §AL
             "bylaws": info.get("bylaws", {}),  # §AL
             "task_board": info.get("task_board", {}),  # §AL
@@ -1296,7 +1309,6 @@ def _clans_payload() -> dict:
     clans.sort(key=lambda c: (-c["population"], c["id"]))
     clans = clans[:100]
     return {"clans": clans, "tick": RT.sim.tick}
-
 
 @app.get("/api/plots")
 async def get_plots() -> dict:

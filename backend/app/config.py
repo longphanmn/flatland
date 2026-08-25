@@ -103,6 +103,12 @@ class Config:
     food_decay_enabled: bool = True  # mature plants wither, fertilise, vanish
     food_lifespan_ticks: int = 9000  # ticks a mature plant lives (× variant mult)
 
+    # Unified Theology (§AP) — the 8 Sacred Avatars of the Sphere, shrines,
+    # dawn & dusk tithes, seasonal miracles, law resonance and temples
+    theology_enabled: bool = True  # shrines/tithes/miracles/sermons/synods
+    tithe_rate: float = 0.04  # fraction of energy_max offered at each devotion
+    temple_faith_cost: float = 400.0  # clan faith needed to raise a temple
+
     # Behaviour tuning
     perceive_radius: float = 20.0
     eat_radius: float = 1.4

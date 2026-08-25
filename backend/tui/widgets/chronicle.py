@@ -15,7 +15,7 @@ MAX_LOG = 400
 # blooms and withers churn by the tick, ruins are just old age for houses.
 HIDDEN_EVENTS = {"bloom", "wither", "ruin"}
 
-CATEGORIES = ["all", "birth", "death", "war", "politics", "settlement"]
+CATEGORIES = ["all", "birth", "death", "war", "politics", "settlement", "faith"]
 
 EVENT_CATEGORIES: dict[str, set[str]] = {
     "birth": {"birth"},
@@ -27,6 +27,8 @@ EVENT_CATEGORIES: dict[str, set[str]] = {
         "schism", "succession",
     },
     "settlement": {"settlement", "conquest", "takeover", "culture", "disaster", "fire", "outbreak", "recovery"},
+    # §AP unified theology
+    "faith": {"miracle", "sermon", "synod", "temple", "epiphany", "resonance"},
 }
 
 
@@ -215,6 +217,34 @@ def format_event(ev: HistoryEvent, clans: dict | None = None) -> Text:
     elif t == "exile":
         line.append(f"{mark} exiled from ", style=color)
         line.append(str(p.get("former_name") or _clan_label(clans, p.get("former_clan"))))
+    elif t == "miracle":
+        line.append("miracle: the ", style=color)
+        line.append(str(p.get("avatar") or "avatar"), style="bold " + color)
+        line.append(" grants ")
+        line.append(_clan_label(clans, p.get("clan_id")))
+        line.append(" a bounty — food blooms around the shrine")
+    elif t == "sermon":
+        line.append("sermon: ", style=color)
+        line.append(f"#{ev.entity_id} of ")
+        line.append(str(p.get("clan_name") or _clan_label(clans, p.get("clan_id"))))
+        laws = p.get("laws") or []
+        line.append(f" interprets the law of {', '.join(map(str, laws[:3]))}", style="dim")
+    elif t == "synod":
+        clans_n = len(p.get("clans") or [])
+        line.append(f"synod of the Sphere: priests of {clans_n} clans convene", style="bold " + color)
+        line.append(f" — sacred truce during the {p.get('age', 'crisis')} age", style="dim")
+    elif t == "temple":
+        line.append("temple: ", style=color)
+        line.append(str(p.get("clan_name") or _clan_label(clans, p.get("clan_id"))))
+        line.append(" raises its shrine into a glowing Temple of the Sphere")
+    elif t == "epiphany":
+        line.append("epiphany: ", style=color)
+        line.append(mark, style="bold " + color)
+        line.append(" beholds the Sphere in three dimensions — strife stills")
+    elif t == "resonance":
+        laws = p.get("laws") or []
+        line.append("resonance: shrines chime for ", style=color)
+        line.append(", ".join(map(str, laws[:3])) or "the laws")
     elif t == "outbreak":
         line.append(f"{mark} outbreak", style=color)
     elif t == "recovery":

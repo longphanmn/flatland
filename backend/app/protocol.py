@@ -145,6 +145,7 @@ class HistoryEvent(BaseModel):
         "coalition_formed", "coalition_joined", "coalition_dissolved",
         "peace", "tribute", "betrayal", "defection", "cannibalism", "exile",
         "wither", "takeover",
+        "miracle", "sermon", "synod", "temple", "epiphany", "resonance",
     ] = ("death")
     tick: int
     entity_id: int
@@ -335,6 +336,11 @@ class GodLaws(BaseModel):
     # Food decay (§AE)
     food_decay_enabled: Optional[bool] = None
     food_lifespan_ticks: Optional[int] = Field(None, ge=100, le=1000000)
+
+    # Unified Theology (§AP) — shrines, tithes & the clan faith pool
+    theology_enabled: Optional[bool] = None
+    tithe_rate: Optional[float] = Field(None, ge=0, le=1)
+    temple_faith_cost: Optional[float] = Field(None, ge=0, le=100000)
 
     # T: soften winter
     winter_food_mult: Optional[float] = Field(None, ge=0.1, le=2)

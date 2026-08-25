@@ -45,6 +45,8 @@ interface ClanDetailsData {
   members: ClanMember[]
   events: any[]
   history?: ClanHistoryEvent[]
+  faith?: number
+  shrine_level?: number
 }
 
 function Bar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
@@ -159,10 +161,18 @@ export default function ClanDetails({
         }}
       >
         <span>
-          {data.totem ? `${totemEmoji(data.totem)} ${data.totem} Totem` : 'No Totem'} · Born tick {data.born_tick}
+          {data.totem ? `${totemEmoji(data.totem)} ${data.totem}` : 'No Avatar'} · Born tick {data.born_tick}
         </span>
         <span style={{ color: data.color, fontWeight: 700 }}>{data.population} alive</span>
       </div>
+
+      {/* §AP Theology — avatar dogma + faith pool */}
+      {(data.faith != null || (data.shrine_level ?? 0) >= 1) && (
+        <div className="chip" title="§AP Theology — the Sacred Avatar watches this clan; dawn & dusk tithes fill its faith pool and the shrine aura mends the faithful">
+          {(data.shrine_level ?? 0) >= 2 ? '⛪ Temple of the Sphere' : (data.shrine_level ?? 0) >= 1 ? '🕯️ Shrine consecrated' : 'No shrine'}
+          {typeof data.faith === 'number' && data.faith > 0 ? ` · ⛲ ${Math.round(data.faith)} faith` : ''}
+        </div>
+      )}
 
       {/* Totem & Clan Emblem Box */}
       <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 2px' }}>

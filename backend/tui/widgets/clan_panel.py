@@ -20,7 +20,7 @@ class ClanPanel(DataTable):
         self._rows: dict[int, int] = {}  # clan_id -> row index
 
     def on_mount(self) -> None:
-        self.add_columns("clan", "pop", "totem", "wars", "settled")
+        self.add_columns("clan", "pop", "avatar", "faith", "wars", "settled")
         self.border_title = "Clans"
 
     def update_clans(self, clans: list[dict[str, Any]]) -> None:
@@ -31,6 +31,10 @@ class ClanPanel(DataTable):
                 continue  # extinct clans stay in the chronicle, not on the board
             name = Text(f"{c.get('name') or 'Clan ?'}", style=c.get("color") or "#8b949e")
             totem = str(c.get("totem") or "-")
+            shrine = int(c.get("shrine_level", 0) or 0)
+            faith = f"⛪{round(c['faith'])}" if shrine >= 2 else (
+                f"{round(c['faith'])}" if (c.get("faith") or 0) > 0 else "-"
+            )
             wars = f"{c.get('war_wins', 0)}W/{c.get('war_losses', 0)}L"
             house = c.get("house")
             settled = "-" if not house else ("ruin" if house.get("is_ruin") else f"({round(house['x'])},{round(house['y'])})")
@@ -39,6 +43,7 @@ class ClanPanel(DataTable):
                 name,
                 str(c.get("population", 0)),
                 totem,
+                faith,
                 wars,
                 settled,
                 key=key,

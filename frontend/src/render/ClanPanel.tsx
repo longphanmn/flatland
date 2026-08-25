@@ -28,6 +28,8 @@ interface ClanInfo {
   coalition_id?: number | null
   larder?: number
   tribute_to?: number | null
+  faith?: number
+  shrine_level?: number
 }
 
 export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelectClan?: (id: number) => void; onSelectCreature?: (id: number) => void }) {
@@ -114,6 +116,11 @@ export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelect
                 🏺 larder {Math.round(c.larder)}
               </div>
             )}
+            {(typeof c.faith === 'number' && c.faith > 0) || (c.shrine_level ?? 0) >= 1 ? (
+              <div className="chip" title="§AP Theology — the clan faith pool filled by dawn & dusk tithes; the shrine beside the main house mends the faithful, and high faith raises a Temple of the Sphere">
+                {(c.shrine_level ?? 0) >= 2 ? '⛪ temple' : '🕯️ shrine'}{typeof c.faith === 'number' ? ` · ⛲ faith ${Math.round(c.faith)}` : ''}
+              </div>
+            ) : null}
           </div>
         ))}
       </div>

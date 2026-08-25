@@ -624,6 +624,7 @@ export function renderWorldFrame(
       help: '#ffd166',
       knowledge: '#79c0ff',
       grief: '#8b949e',
+      chime: '#e3b341', // §AP divine law resonance
     }
     for (const sg of state.signals) {
       if (!visible0(sg.x, sg.y, 5)) continue
@@ -683,7 +684,8 @@ export function renderWorldFrame(
 
   const visibleHouses = drawBatchedEntities(ctx, state.entities, visible, cam.scale, selectedId)
 
-  // Totem Poles
+  // Totem Poles + §AP Shrines & Temples of the Sphere
+  const drawnShrines = new Set<string>()
   for (const e of visibleHouses) {
     if (!e.clan_id || e.is_ruin) continue
     const clan = state.clans?.[String(e.clan_id)]
@@ -708,6 +710,47 @@ export function renderWorldFrame(
       ctx.fillText('👑', 0, -3.4)
     }
     ctx.restore()
+
+    // §AP shrine beside the main house: a glowing avatar stone whose aura
+    // scales with faith; a temple (level 2) shines across the territory.
+    const shrineLevel = clan?.shrine_level ?? 0
+    if (isMain && shrineLevel >= 1 && !drawnShrines.has(String(e.clan_id))) {
+      drawnShrines.add(String(e.clan_id))
+      const faith = clan?.faith ?? 0
+      const sx = e.x + size / 2 + 1.5
+      const sy = e.y
+      const glowA = Math.min(0.55, 0.18 + faith / 800)
+      const auraR = shrineLevel >= 2 ? Math.max(10, 14) : 10
+      // blessing aura
+      ctx.globalAlpha = glowA * (shrineLevel >= 2 ? 0.5 : 0.35)
+      ctx.fillStyle = info?.color ?? '#e3b341'
+      ctx.beginPath()
+      ctx.arc(sx, sy, auraR, 0, TAU)
+      ctx.fill()
+      ctx.globalAlpha = 1
+      // the shrine stone itself
+      ctx.save()
+      ctx.translate(sx, sy)
+      ctx.fillStyle = shrineLevel >= 2 ? '#e3b341' : '#6e7681'
+      ctx.fillRect(-0.5, -1.4, 1.0, 2.8)
+      ctx.font = '1.9px ui-monospace, monospace'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(info?.emoji ?? '⭕', 0, -2.4)
+      if (shrineLevel >= 2) {
+        ctx.strokeStyle = '#e3b341'
+        ctx.lineWidth = 0.35
+        ctx.setLineDash([1.4, 1.0])
+        ctx.beginPath()
+        ctx.arc(0, 0, auraR, 0, TAU)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.font = '1.2px ui-monospace, monospace'
+        ctx.fillStyle = '#e3b341'
+        ctx.fillText('⛪', 0, -4.2)
+      }
+      ctx.restore()
+    }
   }
 
   // Selection Halo

@@ -46,8 +46,8 @@ def make_clan(s: Simulation, cid: int, leader: Creature | None = None) -> None:
     }
 
 
-def spawn(s: Simulation, x, y, *, clan=None, energy=100.0, trait=None, health=100.0):
-    c = s.world.add(Creature(x=x, y=y, sides=4, energy=energy, health=health,
+def spawn(s: Simulation, x, y, *, clan=None, energy=100.0, trait=None, health=100.0, sides=4):
+    c = s.world.add(Creature(x=x, y=y, sides=sides, energy=energy, health=health,
                              age=1000, lifespan=20000.0, speed=0.0, trait=trait))
     if clan is not None:
         c.clan_id = clan
@@ -151,6 +151,29 @@ def test_bold_leader_declares_war_on_remembered_enemy(monkeypatch):
 
     s.step()
 
+    assert s.relations.get(s._relation_pair(1, 2), 0) <= -45
+
+
+def test_war_declared_once_per_enemy(monkeypatch):
+    """§AB fix: a leader must not re-declare war on the same clan.
+
+    With the default rivalry threshold, one declaration (−50) leaves the pair
+    in the neutral zone — before the fix every later decision roll logged
+    another "Declared war" against the same enemy.
+    """
+    monkeypatch.setattr(simmod, "LEADER_DECISION_CHANCE", 1.0)
+    s = Simulation(pol_cfg(knowledge_enabled=True, relation_drift_rate=0))
+    leader = spawn(s, 20.0, 20.0, clan=1, trait="bold")
+    enemy = spawn(s, 40.0, 20.0, clan=2, sides=3)  # different caste: no diplomacy bumps
+    make_clan(s, 1, leader)
+    make_clan(s, 2)
+    leader.facts["enemies"] = {2: {"tick": s.tick, "conf": 1.0}}
+
+    for _ in range(10):
+        s.step()
+
+    decls = [h for h in s.clans[1]["history"] if h.get("event") == "war_declared"]
+    assert len(decls) == 1
     assert s.relations.get(s._relation_pair(1, 2), 0) <= -45
 
 

@@ -70,10 +70,25 @@ LEADER_DECISION_CHANCE = 0.01  # a leader acts (war/peace/betrayal/tribute)
 TRIBUTE_INTERVAL = 240  # ticks between vassal payments
 DEFECT_CHANCE = 0.03  # unhappy member defects per tick
 TREASON_RADIUS = 14.0  # false-knowledge seeding reach during betrayal
+WAR_DECLARE_COOLDOWN = 1200  # one active feud per pair; no re-declaring inside this window
 
 # §AC desperation cannibalism pacing
 CANNIBAL_COOLDOWN = 120  # ticks between desperate kills
 CANNIBAL_CORPSE_MULT = 0.5  # the body left after a cannibal feeds
+
+# §AP Unified Theology — shrines beside the main house, dawn & dusk tithes,
+# seasonal miracles, law resonance, holy synods and the rare 3D epiphany.
+SHRINE_AURA_RADIUS = 10.0   # blessing aura around a level-1 shrine
+TEMPLE_AURA_MULT = 3.0      # a temple extends the blessing across territory
+TITHE_WINDOW = 0.02         # fraction of a day on either side of sunrise/sunset
+BLESS_HEAL_RATE = 0.15      # health/tick the shrine's aura mends (costs faith)
+BLESS_FAITH_COST = 0.02     # faith spent per mended member per tick
+MIRACLE_FAITH_COST = 150.0  # faith burned per seasonal miracle
+MIRACLE_FOOD = 6            # plants gifted by one miracle
+SYNOD_INTERVAL = 3600       # crisis-age cadence for the Great Synod
+SYNOD_RELATION_BOOST = 4    # every pair warms this much at a synod
+EPIPHANY_PERIODS_GAP = 997  # hash modulus: an epiphany is a once-in-ages event
+TRUCE_TICKS = 600           # synods and epiphanies still all strife this long
 
 # §AT-4 H-0 — health is a real resource: regeneration demands a fed body,
 # weakness slows every stride, and sickly creatures cannot beget children.
@@ -246,46 +261,77 @@ CLAN_NOUNS = (
     "Wings", "Fangs", "Roots", "Branches", "Stars", "Sands", "Waters", "Fires",
 )
 
-TOTEMS = (
-    "Wolf", "Tree", "Shield", "Eye",
-    "Bear", "Stag", "Owl", "Rabbit", "Boar", "Fox", "Raven", "Serpent",
+# §AP Phase A — totems are no longer animals: each clan bears one of the
+# eight Sacred Avatars of the Sphere, a 2D projection of the One True God,
+# and with it a distinct divine aspect (buff).
+AVATARS = (
+    "Radiant Circle",       # ⭕ God's Abundance
+    "Celestial Strike",     # ⚡ God's Wrath & Justice
+    "All-Seeing Vertex",    # 👁️ God's Omniscience
+    "Indomitable Monolith", # 🛡️ God's Permanence
+    "Sacred Spiral",        # 🌿 God's Renewal
+    "Cosmic Scales",        # ⚖️ God's Equilibrium
+    "Dimensional Rift",     # 🌀 God's Ascent
+    "Eternal Hearth",       # 🕯️ God's Sanctuary
 )
 # Buff vocabulary (all optional keys, consumed generically via _totem_stat):
-#   speed        additive speed multiplier when hunting/fleeing (Wolf-style)
-#   hunt_radius  flat bonus to predator sight (Wolf-style)
+#   speed        additive speed multiplier when hunting/fleeing
+#   hunt_radius  flat bonus to predator sight
 #   harvest      fractional harvest bonus on plants (×1+h) and corpses (×1+0.4h)
 #   sight        fractional perceive-radius bonus (×1+s)
 #   defense      fractional damage reduction; sheltered healing scales ×(1+d)
 #   health       flat health gift at birth
 #   birth        fractional fertility bonus for the mother's clan
+#   damage       fractional combat-damage bonus for the attacker (Strike)
+#   clarity      fraction of the night-sight penalty recovered (Vertex)
+#   cold         fraction of chill build resisted (Monolith cold immunity)
+#   medicine     herb potency ×(1+m) (Spiral)
+#   recovery     disease recovery chance ×(1+r) (Spiral)
+#   compost      corpse nutrients near the shrine ×(1+c) (Spiral composting)
+#   peace        leader sues for peace harder; war hand stays sheathed (Scales)
+#   lawful       kin-eating is refused even while starving (Scales low crime)
+#   promote      Isosceles angle rises faster per generation (Rift ascent)
+#   mutate       child mutation chance ×(1+m) — adaptability (Rift)
+#   lore         elder oral-lore XP transfer ×(1+l) (Rift elder lore)
+#   calm         fear radius shaved at night (Hearth nocturnal calmness)
 TOTEM_BUFF = {
-    "Wolf": {"speed": 0.10, "hunt_radius": 2.0},
-    "Tree": {"harvest": 0.25},
-    "Shield": {"defense": 0.30, "health": 15.0},
-    "Eye": {"sight": 0.25},
-    "Bear": {"defense": 0.20, "health": 10.0},
-    "Stag": {"speed": 0.08, "birth": 0.15},
-    "Owl": {"sight": 0.35},
-    "Rabbit": {"birth": 0.25},
-    "Boar": {"harvest": 0.15, "defense": 0.10},
-    "Fox": {"hunt_radius": 3.0, "speed": 0.06},
-    "Raven": {"sight": 0.15, "harvest": 0.10},
-    "Serpent": {"defense": 0.15, "speed": 0.05},
+    "Radiant Circle": {"harvest": 0.30, "birth": 0.20},
+    "Celestial Strike": {"damage": 0.25, "speed": 0.06, "hunt_radius": 2.0},
+    "All-Seeing Vertex": {"sight": 0.40, "clarity": 1.0},
+    "Indomitable Monolith": {"defense": 0.30, "cold": 0.40, "health": 15.0},
+    "Sacred Spiral": {"medicine": 1.0, "recovery": 1.0, "compost": 0.5},
+    "Cosmic Scales": {"peace": 1.0, "lawful": 1.0},
+    "Dimensional Rift": {"promote": 1.0, "mutate": 1.0, "lore": 1.0},
+    "Eternal Hearth": {"calm": 1.5, "hearth": 1.0},
 }
-# Totem biases the clan's starting specialization drift (§P specialization)
+# Doctrinal kinship: complementary aspects sympathise (§AP holy alliances)
+AVATAR_ALLIES = {
+    "Radiant Circle": "Sacred Spiral",        # abundance ↔ renewal
+    "Celestial Strike": "All-Seeing Vertex",  # wrath ↔ omniscience
+    "Indomitable Monolith": "Eternal Hearth", # permanence ↔ sanctuary
+    "Cosmic Scales": "Dimensional Rift",      # equilibrium ↔ ascent
+}
+# Sermon dogma — how each avatar interprets God's law changes (§AP Phase C)
+AVATAR_DOGMA = {
+    "Radiant Circle": "God's Abundance flows through the law you have set",
+    "Celestial Strike": "God's Wrath strikes where the law now points",
+    "All-Seeing Vertex": "the All-Seeing Vertex has watched this law take shape",
+    "Indomitable Monolith": "God's Permanence sets this law in stone",
+    "Sacred Spiral": "God's Renewal turns all things toward this law",
+    "Cosmic Scales": "the Cosmic Scales weigh the world and find this law just",
+    "Dimensional Rift": "through the Rift, God's Ascent carries us along this law",
+    "Eternal Hearth": "the Eternal Hearth warms all who keep this law",
+}
+# Avatar biases the clan's starting specialization drift (§P specialization)
 TOTEM_SPEC = {
-    "Wolf": {"warrior": 0.50, "farmer": 0.25, "scavenger": 0.25},
-    "Tree": {"warrior": 0.20, "farmer": 0.60, "scavenger": 0.20},
-    "Shield": {"warrior": 0.45, "farmer": 0.25, "scavenger": 0.30},
-    "Eye": {"warrior": 0.25, "farmer": 0.25, "scavenger": 0.50},
-    "Bear": {"warrior": 0.45, "farmer": 0.30, "scavenger": 0.25},
-    "Stag": {"warrior": 0.25, "farmer": 0.45, "scavenger": 0.30},
-    "Owl": {"warrior": 0.25, "farmer": 0.35, "scavenger": 0.40},
-    "Rabbit": {"warrior": 0.20, "farmer": 0.50, "scavenger": 0.30},
-    "Boar": {"warrior": 0.35, "farmer": 0.40, "scavenger": 0.25},
-    "Fox": {"warrior": 0.30, "farmer": 0.25, "scavenger": 0.45},
-    "Raven": {"warrior": 0.20, "farmer": 0.25, "scavenger": 0.55},
-    "Serpent": {"warrior": 0.40, "farmer": 0.25, "scavenger": 0.35},
+    "Radiant Circle": {"warrior": 0.20, "farmer": 0.60, "scavenger": 0.20},
+    "Celestial Strike": {"warrior": 0.55, "farmer": 0.20, "scavenger": 0.25},
+    "All-Seeing Vertex": {"warrior": 0.25, "farmer": 0.25, "scavenger": 0.50},
+    "Indomitable Monolith": {"warrior": 0.45, "farmer": 0.25, "scavenger": 0.30},
+    "Sacred Spiral": {"warrior": 0.15, "farmer": 0.45, "scavenger": 0.40},
+    "Cosmic Scales": {"warrior": 0.30, "farmer": 0.35, "scavenger": 0.35},
+    "Dimensional Rift": {"warrior": 0.25, "farmer": 0.30, "scavenger": 0.45},
+    "Eternal Hearth": {"warrior": 0.35, "farmer": 0.40, "scavenger": 0.25},
 }
 
 # Personal identity — seeded adjective+noun table (§Q), deterministic id+seed
@@ -301,6 +347,21 @@ PERSONAL_LASTS = (
     "Ridge", "Brook", "Hearth", "Sable", "Wisp", "Bramble", "Harrow", "Tide", "Dell", "Echo",
 )
 GLYPH_TABLE = ("◈", "⬡", "⬢", "◉", "⬣", "⟡", "✦", "◆", "▲", "●", "✕", "∆", "◐", "◑", "⬔", "⬕", "⟐", "⧫")
+
+
+def _clan_sig(info: dict) -> tuple:
+    """Broadcast signature of a clan's wire-relevant state (AA delta tracking).
+
+    Faith is bucketed: it drifts by fractions every tick (blessings, tithes),
+    and an exact comparison would re-send the full clan dict each frame —
+    a 25-point step is plenty for the shrine glow and clan panel.
+    """
+    return (
+        info.get("name"), info.get("color"), info.get("totem"),
+        info.get("culture"), info.get("leader_id"), info.get("main_house_id"),
+        info.get("tribute_to"),
+        round(float(info.get("faith", 0.0)) / 25.0), int(info.get("shrine_level", 0)),
+    )
 
 
 def personal_name_for(entity_id: int, seed: int, generation: int = 0) -> str:
@@ -366,7 +427,14 @@ class Simulation:
         self.coalitions: dict[int, dict] = {}  # §AB: id -> {name, leader_clan, members}
         self._next_coalition_id = 1
         self._clan_coalition: dict[int, int] = {}  # clan id -> coalition id
+        # §AB: declared wars — pair -> tick of the last declaration. One active
+        # feud per pair; prevents leaders re-declaring war on the same clan
+        # while the feud is already open (or freshly concluded).
+        self._declared_wars: dict[tuple[int, int], int] = {}
         self._eaters_this_tick: list[int] = []
+        # §AP theology: sacred truces (synod/epiphany) still all strife while > 0
+        self.truce_ticks = 0
+        self._last_season: str | None = None  # season-change detector for miracles
         self.fertile: list[dict] = []  # {x,y,r} — food prefers these grounds
         self.rocks: list[dict] = []  # {x,y,r} — solid circles that block movement
         self.signals: list[dict] = []  # §Q: {x,y,kind,sender,clan_id,ttl}
@@ -383,6 +451,21 @@ class Simulation:
         self._last_broadcast_entities: set[int] = set()
         self._spawn_initial()
         self._generate_terrain()
+        self._consecrate_initial_shrines()
+
+    def _consecrate_initial_shrines(self) -> None:
+        """§AP: settled clans consecrate their shrine at founding, not on the
+        first tick afterwards — keeps the first delta frame free of an
+        all-clans burst (the keyframe already carries shrine_level)."""
+        if not self.config.theology_enabled:
+            return
+        living: set[int] = set()
+        for c in self.world.creatures():
+            if c.clan_id:
+                living.add(c.clan_id)
+        for cid, info in self.clans.items():
+            if cid in living and int(info.get("shrine_level", 0)) == 0:
+                info["shrine_level"] = 1
 
 
     # ------------------------------------------------------------- the sky
@@ -483,10 +566,11 @@ class Simulation:
             return FORAGE_MULT_HURT
         return 1.0
 
-    def _effective_fear_radius(self, c: Creature) -> float:
+    def _effective_fear_radius(self, c: Creature, is_night: bool = False) -> float:
         """§AR S-0: the fear threshold is a sense like any other — traits bend
         it (paranoid +4, bold −2.5) and starvation halves it: the desperate
-        walk toward death chasing scented food."""
+        walk toward death chasing scented food. §AP: the Eternal Hearth keeps
+        its people calm through the night."""
         r = self.config.fear_radius
         if c.trait == "paranoid":
             r += 4.0
@@ -495,6 +579,8 @@ class Simulation:
         ratio = c.energy / self.config.energy_max if self.config.energy_max > 0 else 1.0
         if ratio <= self.config.starving_ratio:
             r *= 0.5
+        if is_night:
+            r = max(2.0, r - self._totem_stat(c, "calm"))
         return r
 
     def _sun_factor(self) -> float:
@@ -821,7 +907,9 @@ class Simulation:
             name = f"{adj} {noun}"
         totem = None
         if self.config.totems_enabled:
-            totem = TOTEMS[(cid * 17 + self.config.seed) % len(TOTEMS)]
+            # §AP: the clan's avatar — a sacred 2D projection of the Sphere,
+            # assigned procedurally at founding (deterministic, no rng).
+            totem = AVATARS[(cid * 17 + self.config.seed) % len(AVATARS)]
         # specialization drift start — totem biases initial role.
         # COPY: TOTEM_SPEC entries are mutated in place by drift; sharing them
         # across clans (or worlds!) would couple their specializations.
@@ -865,6 +953,9 @@ class Simulation:
             "larder": 0.0,
             "tribute_to": None,
             "main_house_id": None,
+            # §AP theology: clan faith pool + shrine level (0 none, 1 shrine, 2 temple)
+            "faith": 0.0,
+            "shrine_level": 0,
             "history": [
                 {
                     "tick": self.tick,
@@ -1887,6 +1978,9 @@ class Simulation:
         self._beds.clear()  # beds are re-contested every tick, in id order
         self._events_this_tick = []
         self._eaters_this_tick = []
+        # §AP: a sacred truce (synod/epiphany) stills all strife while it lasts
+        if self.truce_ticks > 0:
+            self.truce_ticks -= 1
         self._update_weather()
         self._update_wind()  # §AQ PH-2: the sky's breath follows the weather
         # §Q signals decay (ripples fade)
@@ -2000,6 +2094,7 @@ class Simulation:
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
+        self._update_faith()  # §AP unified theology
         # Manual GC every 200 ticks to avoid stop-the-world at 1300c
         if self.tick % 200 == 0:
             gc.collect(1)
@@ -2088,6 +2183,9 @@ class Simulation:
         cfg = self.config
         if not cfg.war_enabled:
             return
+        # §AP: synods and epiphanies impose a sacred truce — strife is stilled.
+        if self.truce_ticks > 0:
+            return
         # AF: pre-sorted in _refresh_cache; fallback if called outside step()
         creatures = self._cached_creatures_sorted if self._cached_creatures_sorted else sorted(self.world.creatures(), key=lambda c: c.id)
         to_kill: list[tuple[Creature, Creature]] = []
@@ -2130,6 +2228,8 @@ class Simulation:
                     dmg *= 1.25
                 elif winner.trait == "peaceful":
                     dmg *= 0.65
+                # §AP: the Celestial Strike lends God's Wrath to its warriors
+                dmg *= 1.0 + self._totem_stat(winner, "damage")
                 if loser.trait == "paranoid":
                     # paranoid dodges? slight reduction
                     dmg *= 0.9
@@ -2401,6 +2501,17 @@ class Simulation:
             if da and da == db:
                 self._bump_relation(a, b, +1)
 
+        # §AP holy alliances: clans worshipping the same or a complementary
+        # avatar sympathise — doctrine draws the faithful together.
+        if self.config.totems_enabled and self.clans:
+            avatars = {cid: info.get("totem") for cid, info in self.clans.items()}
+            for (a, b) in list(self.relations.keys()):
+                ta, tb = avatars.get(a), avatars.get(b)
+                if not ta or not tb:
+                    continue
+                if ta == tb or AVATAR_ALLIES.get(ta) == tb or AVATAR_ALLIES.get(tb) == ta:
+                    self._bump_relation(a, b, +1)
+
     def _update_territory(self) -> None:
         """§P: clan territory — members prefer own ground, trespass sours relations."""
         cfg = self.config
@@ -2488,7 +2599,7 @@ class Simulation:
                 name = f"{adj} {noun}"
             totem = None
             if self.config.totems_enabled:
-                totem = TOTEMS[(new_cid * 17 + self.config.seed) % len(TOTEMS)]
+                totem = AVATARS[(new_cid * 17 + self.config.seed) % len(AVATARS)]
             # inherit parent specialization with slight drift
             parent_spec = self.clans.get(cid, {}).get("specialization", {"warrior": 0.33, "farmer": 0.33, "scavenger": 0.34})
             # small random drift
@@ -2703,6 +2814,15 @@ class Simulation:
         cfg = self.config
         if not cfg.leader_decisions_enabled:
             return
+        # Prune war markers for dead clans and cooled-down feuds so the map
+        # stays bounded and concluded wars can eventually be re-opened.
+        if self._declared_wars and self.tick % 500 == 0:
+            live = set(self.clans.keys())
+            self._declared_wars = {
+                p: t for p, t in self._declared_wars.items()
+                if p[0] in live and p[1] in live
+                and self.tick - t < WAR_DECLARE_COOLDOWN * 4
+            }
         pops = {cid: len(m) for cid, m in self._clan_members.items()}
         for cid in sorted(self.clans.keys()):
             info = self.clans[cid]
@@ -2757,14 +2877,20 @@ class Simulation:
             if acted:
                 continue
             # Peace: a weakened leader sues a rival for peace.
-            if trait == "peaceful" or pops.get(cid, 0) < 3:
+            # §AP: the Cosmic Scales keep reliable peace — any Scales leader,
+            # whatever their trait, may sue, and offers land harder.
+            scales_peace = self._totem_stat(leader, "peace") > 0
+            if trait == "peaceful" or scales_peace or pops.get(cid, 0) < 3:
                 for pair, score in sorted(self.relations.items()):
                     if self._zone_of(score) != -1 or cid not in pair:
                         continue
                     rival = pair[1] if pair[0] == cid else pair[0]
                     my_pop = pops.get(cid, 0)
                     if my_pop and my_pop <= pops.get(rival, 0):
-                        self.relations[pair] = min(100, score + 60)
+                        self.relations[pair] = min(100, score + (90 if scales_peace else 60))
+                        # §AP/§AB fix: peace closes the feud — the pair may only
+                        # be re-declared on after the full cooldown.
+                        self._declared_wars.pop(pair, None)
                         self._emit(
                             HistoryEvent(
                                 type="peace",
@@ -2795,17 +2921,26 @@ class Simulation:
                             enemy = rival
                             casus_belli = "famine_raid"
                             break
-                if enemy is not None and self._zone_of(
-                    self.relations.get(self._relation_pair(cid, enemy), 0)
-                ) != -1:
-                    self._bump_relation(cid, enemy, -50)
-                    enemy_name = self.clans.get(enemy, {}).get("name", f"Clan {enemy}")
-                    self._log_clan_history(
-                        cid,
-                        "war_declared",
-                        f"Declared war on {enemy_name} (Casus Belli: {casus_belli.replace('_', ' ').capitalize()}, Day {self.day})",
-                    )
-                    acted = True
+                if enemy is not None and enemy in self.clans and enemy != cid:
+                    pair = self._relation_pair(cid, enemy)
+                    score = self.relations.get(pair, 0)
+                    last_declared = self._declared_wars.get(pair)
+                    # One war per pair: skip clans we are already fighting
+                    # (zone -1) or that this clan declared on within the
+                    # cooldown — a declaration must not repeat itself.
+                    if (
+                        self._zone_of(score) != -1
+                        and (last_declared is None or self.tick - last_declared >= WAR_DECLARE_COOLDOWN)
+                    ):
+                        self._bump_relation(cid, enemy, -50)
+                        self._declared_wars[pair] = self.tick
+                        enemy_name = self.clans.get(enemy, {}).get("name", f"Clan {enemy}")
+                        self._log_clan_history(
+                            cid,
+                            "war_declared",
+                            f"Declared war on {enemy_name} (Casus Belli: {casus_belli.replace('_', ' ').capitalize()}, Day {self.day})",
+                        )
+                        acted = True
 
             if acted:
                 continue
@@ -3072,6 +3207,285 @@ class Simulation:
                     f"Celebrated the Annual Autumn Harvest Festival (Day {self.day})",
                 )
 
+    # ------------------------------------------------- §AP unified theology
+    def _shrine_pos(self, cid: int) -> tuple[float, float] | None:
+        """The shrine stands beside the clan's main house (east wall); faith
+        follows the people, so a clanless-of-roof clan falls back to any
+        claimed roof. None when the clan is homeless."""
+        info = self.clans.get(cid)
+        if not info:
+            return None
+        house = self.world.entities.get(info.get("main_house_id"))
+        if not isinstance(house, House) or house.is_ruin or house.clan_id != cid:
+            house = None
+            for h in self._functional_houses():
+                if isinstance(h, House) and h.clan_id == cid and not h.is_ruin:
+                    house = h
+                    break
+        if not isinstance(house, House):
+            return None
+        return (house.x + house.size / 2.0 + 1.5, house.y)
+
+    def _shrine_aura_radius(self, cid: int) -> float:
+        """A level-1 shrine blesses its immediate surroundings; a temple's
+        aura extends across the whole territory."""
+        if int(self.clans.get(cid, {}).get("shrine_level", 0)) >= 2:
+            return max(SHRINE_AURA_RADIUS, self.config.territory_radius)
+        return SHRINE_AURA_RADIUS
+
+    def _clan_priest(self, cid: int) -> Creature | None:
+        """First living priest of a clan — the voice of the avatar."""
+        for m in self._clan_members.get(cid, ()):
+            if m.caste == "Priest" and m.id in self.world.entities:
+                return m
+        for c in self.world.creatures():
+            if c.clan_id == cid and c.caste == "Priest":
+                return c
+        return None
+
+    def _update_faith(self) -> None:
+        """§AP Theology tick — tithes at dawn & dusk fill the clan faith pool,
+        the shrine aura mends the faithful, overflowing faith works seasonal
+        miracles and raises temples, crisis ages convene synods, and once in
+        an age an elder priest beholds the Sphere. Deterministic: hash-gates
+        instead of rng draws so the world's rng stream never moves."""
+        cfg = self.config
+        if not cfg.theology_enabled or not self.clans:
+            return
+        dl = max(1, cfg.day_length)
+        tod = self._time_of_day()
+        at_dawn = abs(tod - 0.25) < TITHE_WINDOW
+        at_dusk = abs(tod - 0.75) < TITHE_WINDOW
+        season_now = self._season()
+
+        for cid in sorted(self.clans.keys()):
+            clan = self.clans[cid]
+            members = [
+                m for m in self._clan_members.get(cid, ())
+                if m.id in self.world.entities and not m.is_predator and not m.is_herbivore
+            ]
+            if not members:
+                continue
+            shrine = self._shrine_pos(cid)
+            level = int(clan.get("shrine_level", 0))
+            faith = float(clan.get("faith", 0.0))
+            avatar = clan.get("totem")
+
+            # A settled clan consecrates its shrine beside the main house.
+            if shrine is not None and level == 0:
+                clan["shrine_level"] = 1
+                level = 1
+                self._log_clan_history(
+                    cid, "shrine",
+                    f"Consecrated a shrine to the {avatar} beside the main house (Day {self.day})",
+                )
+
+            if shrine is not None and level >= 1:
+                aura2 = self._shrine_aura_radius(cid) ** 2
+
+                # Morning & evening tithes: the devout offer energy at the totem base.
+                if (at_dawn or at_dusk) and cfg.tithe_rate > 0:
+                    gained = 0.0
+                    for m in members:
+                        if m.energy < cfg.energy_max * 0.6:
+                            continue
+                        if self.world.distance_sq(m.x, m.y, *shrine) > aura2:
+                            continue
+                        tithe = cfg.energy_max * cfg.tithe_rate * (2.0 if m.caste == "Priest" else 1.0)
+                        m.energy -= tithe
+                        gained += tithe
+                    faith += gained
+
+                # The blessing aura mends the faithful while the pool holds out.
+                for m in members:
+                    if faith <= BLESS_FAITH_COST:
+                        break
+                    if m.health >= m.max_health:
+                        continue
+                    if self.world.distance_sq(m.x, m.y, *shrine) > aura2:
+                        continue
+                    healed = min(m.max_health, m.health + BLESS_HEAL_RATE) - m.health
+                    if healed > 0:
+                        m.health += healed
+                        faith -= BLESS_FAITH_COST
+
+                # Seasonal miracle: faith overflowing at the turn of a season.
+                if (
+                    self._last_season is not None
+                    and season_now != self._last_season
+                    and faith >= MIRACLE_FAITH_COST
+                ):
+                    faith -= MIRACLE_FAITH_COST
+                    clan["faith"] = round(faith, 2)
+                    self._work_miracle(cid, clan, shrine)
+
+                # Temple upgrade: high faith raises stone to the Sphere.
+                if level == 1 and faith >= cfg.temple_faith_cost:
+                    faith -= cfg.temple_faith_cost
+                    clan["shrine_level"] = 2
+                    self._emit(HistoryEvent(
+                        type="temple", tick=self.tick + 1, entity_id=0,
+                        x=round(shrine[0], 2), y=round(shrine[1], 2),
+                        payload={"clan_id": cid, "clan_name": clan.get("name"), "avatar": avatar},
+                    ))
+                    self._log_clan_history(
+                        cid, "temple",
+                        f"Raised the {avatar} shrine into a glowing Temple of the Sphere (Day {self.day})",
+                    )
+
+            clan["faith"] = round(faith, 2)
+
+        self._last_season = season_now
+
+        # The Great Synod of the Sphere — crisis ages unify the clans (§AP Phase D).
+        age = self._age()
+        if age in ("Ice", "Plague") and self.tick % SYNOD_INTERVAL == (self.config.seed % SYNOD_INTERVAL):
+            self._hold_synod(age)
+
+        # The 3D Epiphany — rare enlightenment at a temple (§AP Phase E).
+        self._maybe_epiphany()
+
+    def _work_miracle(self, cid: int, clan: dict, shrine: tuple[float, float]) -> None:
+        """A seasonal miracle — the avatar gifts a mature bounty around the
+        shrine and mends its whole flock."""
+        cfg = self.config
+        for i in range(MIRACLE_FOOD):
+            ang = ((self.tick * 31 + i * 97 + self.config.seed + cid * 7) % 6283) / 1000.0
+            rad = 1.5 + (i % 3) * 1.3
+            x, y = self.world.normalize(
+                shrine[0] + math.cos(ang) * rad,
+                shrine[1] + math.sin(ang) * rad,
+            )
+            self.world.add(self._new_food(x, y, growth=1.0))
+        for m in self._clan_members.get(cid, ()):
+            if m.id not in self.world.entities or m.is_predator or m.is_herbivore:
+                continue
+            m.health = min(m.max_health, m.health + 20.0)
+            m.energy = min(cfg.energy_max, m.energy + 10.0)
+            m.emote = "cheer"
+            m.emote_ticks = 30
+        self._emit(HistoryEvent(
+            type="miracle", tick=self.tick + 1, entity_id=0,
+            x=round(shrine[0], 2), y=round(shrine[1], 2),
+            payload={"clan_id": cid, "clan_name": clan.get("name"), "avatar": clan.get("totem")},
+        ))
+        self._log_clan_history(
+            cid, "miracle",
+            f"The {clan.get('totem')} granted a miracle: food bloomed around the shrine (Day {self.day})",
+        )
+
+    def _hold_synod(self, age: str) -> None:
+        """§AP Phase D: during global crises the priests convene at a neutral
+        centre; every clan warms toward every other and strife is stilled."""
+        priest_clans = {
+            c.clan_id for c in self._get_creatures()
+            if c.caste == "Priest" and c.clan_id and c.id in self.world.entities
+        }
+        if len(priest_clans) < 2:
+            return
+        shrines = [p for p in (self._shrine_pos(c) for c in sorted(priest_clans)) if p]
+        cx = sum(p[0] for p in shrines) / len(shrines)
+        cy = sum(p[1] for p in shrines) / len(shrines)
+        for pair in list(self.relations.keys()):
+            self.relations[pair] = min(100, self.relations[pair] + SYNOD_RELATION_BOOST)
+        self.truce_ticks = TRUCE_TICKS
+        self._emit(HistoryEvent(
+            type="synod", tick=self.tick + 1, entity_id=0,
+            x=round(cx, 2), y=round(cy, 2),
+            payload={"age": age, "clans": sorted(priest_clans),
+                     "clan_names": [self.clans[c].get("name") for c in sorted(priest_clans)]},
+        ))
+
+    def _maybe_epiphany(self) -> None:
+        """§AP Phase E: once in a great age, an elder priest of a temple clan
+        perceives the true 3D nature of the Sphere — sectarian strife stills."""
+        day_index = self.tick // max(1, self.config.day_length)
+        key = (day_index, self.config.seed % EPIPHANY_PERIODS_GAP)
+        if getattr(self, "_epiphany_day_seen", None) == key:
+            return
+        for cid in sorted(self.clans.keys()):
+            clan = self.clans[cid]
+            if int(clan.get("shrine_level", 0)) < 2:
+                continue
+            if (self.config.seed * 31 + cid * 17 + day_index) % EPIPHANY_PERIODS_GAP != 0:
+                continue
+            priest = self._clan_priest(cid)
+            if priest is None or priest.stage != "elder":
+                continue
+            self._epiphany_day_seen = key
+            for pair in list(self.relations.keys()):
+                self.relations[pair] = min(100, self.relations[pair] + 10)
+            self.truce_ticks = TRUCE_TICKS * 2
+            priest.emote = "heal"
+            priest.emote_ticks = 60
+            priest.skills["healing"] = priest.skills.get("healing", 0.0) + 5.0
+            self._emit(HistoryEvent(
+                type="epiphany", tick=self.tick + 1, entity_id=priest.id,
+                caste=priest.caste, x=round(priest.x, 2), y=round(priest.y, 2),
+                payload={
+                    "clan_id": cid, "clan_name": clan.get("name"),
+                    "avatar": clan.get("totem"),
+                    "personal_name": personal_name_for(priest.id, self.config.seed, priest.generation),
+                    "glyph": glyph_for(priest.id, self.config.seed, priest.generation),
+                },
+            ))
+            self._log_clan_history(
+                cid, "epiphany",
+                f"An elder priest beheld the Sphere in three dimensions — strife stilled (Day {self.day})",
+            )
+            return
+
+    def on_law_change(self, names: list[str]) -> None:
+        """§AP Phase C: Divine Law Resonance — when God adjusts any law, every
+        Totem Shrine emits harmonic chimes and radiant pulses, and priests
+        deliver doctrinal sermons interpreting the change per their avatar's
+        dogma (morale rally within the aura). Called from the god-law endpoint;
+        never touches the rng."""
+        if not names or not self.config.theology_enabled:
+            return
+        chimes = 0
+        sermons = 0
+        for cid in sorted(self.clans.keys()):
+            clan = self.clans[cid]
+            if int(clan.get("shrine_level", 0)) < 1:
+                continue
+            shrine = self._shrine_pos(cid)
+            if shrine is None:
+                continue
+            self.signals.append({
+                "x": round(shrine[0], 2), "y": round(shrine[1], 2),
+                "kind": "chime", "sender": 0,
+                "clan_id": cid, "ttl": 15,
+            })
+            chimes += 1
+            priest = self._clan_priest(cid)
+            if priest is None:
+                continue
+            dogma = AVATAR_DOGMA.get(clan.get("totem"), "the Sphere reshapes the world")
+            law_txt = ", ".join(n.replace("_", " ") for n in names[:4])
+            self._emit(HistoryEvent(
+                type="sermon", tick=self.tick + 1, entity_id=priest.id,
+                caste=priest.caste, x=round(priest.x, 2), y=round(priest.y, 2),
+                payload={
+                    "clan_id": cid, "clan_name": clan.get("name"),
+                    "avatar": clan.get("totem"), "laws": names[:4],
+                    "text": f"{priest.caste} proclaims: '{dogma}' — the law of {law_txt} fulfils it",
+                },
+            ))
+            sermons += 1
+            # Rallying morale: the flock within the aura draws strength.
+            aura2 = self._shrine_aura_radius(cid) ** 2
+            for m in self._clan_members.get(cid, ()):
+                if m.id not in self.world.entities or m.is_predator or m.is_herbivore:
+                    continue
+                if self.world.distance_sq(m.x, m.y, *shrine) <= aura2:
+                    m.energy = min(self.config.energy_max, m.energy + 2.0)
+        if chimes or sermons:
+            self._emit(HistoryEvent(
+                type="resonance", tick=self.tick + 1, entity_id=0, x=0.0, y=0.0,
+                payload={"laws": names, "chimes": chimes, "sermons": sermons},
+            ))
+
     def _update_politics(self) -> None:
         """§AB orchestrator — fixed order keeps the rng stream deterministic."""
         self._update_coalitions()
@@ -3114,6 +3528,10 @@ class Simulation:
             if kin:
                 # only desperate need applies, and only when god allows it
                 if not cfg.eat_kin_enabled or not weak:
+                    continue
+                # §AP: the Cosmic Scales keep the law even while starving —
+                # eating kin is a crime their dogma refuses.
+                if self._totem_stat(c, "lawful"):
                     continue
             else:
                 if not cfg.eat_enemy_enabled:
@@ -3574,6 +3992,15 @@ class Simulation:
         boost = NUTRIENT_BOOST * self.config.nutrient_cycle_rate * mult
         if boost <= 0:
             return
+        # §AP: a Sacred Spiral shrine composts what dies beside it — death is
+        # folded back into life faster within the aura.
+        for cid, info in self.clans.items():
+            if info.get("totem") != "Sacred Spiral" or int(info.get("shrine_level", 0)) < 1:
+                continue
+            shrine = self._shrine_pos(cid)
+            if shrine and self.world.distance_sq(corpse.x, corpse.y, shrine[0], shrine[1]) <= NUTRIENT_RADIUS ** 2:
+                boost *= 1.0 + self._totem_stat_compost(info)
+                break
         # AF: spatial query around decaying entity instead of scanning all world entities
         for e in self.world.query_radius(corpse.x, corpse.y, NUTRIENT_RADIUS):
             if not isinstance(e, Food):
@@ -3582,6 +4009,9 @@ class Simulation:
             e.growth = min(1.0, e.growth + boost)
             if was < 1.0 <= e.growth:
                 self._emit_bloom(e)
+
+    def _totem_stat_compost(self, clan_info: dict) -> float:
+        return float(TOTEM_BUFF.get(clan_info.get("totem"), {}).get("compost", 0.0))
 
     # ---------------------------------------------------------------- disease
     def _emit(self, event: HistoryEvent) -> None:
@@ -3634,6 +4064,8 @@ class Simulation:
                 continue  # died or recovered earlier this tick
             # Recovery — wet/cold slows recovery (§R)
             eff_recovery = cfg.recovery_rate
+            # §AP: the Sacred Spiral hastens recovery from plagues
+            eff_recovery *= 1.0 + self._totem_stat(c, "recovery")
             if cfg.weather_sickness_enabled:
                 wet_c = (self.weather in ("rain", "storm") and not c.indoors) or c.chill >= cfg.chill_threshold * 0.5
                 if wet_c:
@@ -3845,8 +4277,9 @@ class Simulation:
         if self.rng.random() < cfg.sex_ratio:
             if father.sides == 3:
                 # Isosceles line: sons stay triangles, creeping toward Regular.
+                # §AP: the Dimensional Rift hastens God's Ascent through the castes.
                 sides = 3
-                iso = min(60.0, father.iso_angle + 0.5)
+                iso = min(60.0, father.iso_angle + 0.5 + 0.25 * self._totem_stat(father, "promote"))
                 promoted = iso >= 60.0 and father.iso_angle < 60.0
             else:
                 # Law of Nature: a son has one more side than his father.
@@ -3854,6 +4287,8 @@ class Simulation:
                 iso = 60.0
             irregularity = 0.0
             mut_rate = cfg.mutation_rate
+            # §AP: Rift clans breed adaptable children — mutation odds multiply.
+            mut_rate = min(1.0, mut_rate * (1.0 + self._totem_stat(mother, "mutate")))
             age = self._age()
             if age is not None:
                 mut_rate = min(1.0, mut_rate * AGE_MUTATION_MULT.get(age, 1.0))
@@ -4177,10 +4612,12 @@ class Simulation:
                     skills_dict = getattr(c, "skills", {})
                     if skills_dict:
                         best_skill = max(skills_dict, key=lambda k: skills_dict.get(k, 0.0))
+                        # §AP: the Dimensional Rift carries elder lore across generations
+                        lore_xp = 0.15 * (1.0 + self._totem_stat(c, "lore"))
                         for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, 6.0):
                             if isinstance(o, Creature) and o.clan_id == c.clan_id and o.stage in ("infant", "juvenile"):
                                 if hasattr(o, "skills") and isinstance(o.skills, dict):
-                                    o.skills[best_skill] = o.skills.get(best_skill, 0.0) + 0.15
+                                    o.skills[best_skill] = o.skills.get(best_skill, 0.0) + lore_xp
                 if cfg.knowledge_enabled:
                     self._learn(c, "safe", home.x, home.y)  # §X: this roof is safe
                 stage_mult = STAGE_ENERGY_MULT.get(c.stage, 1.0) if c.generation > 0 else 1.0
@@ -4348,6 +4785,11 @@ class Simulation:
         perceive = cfg.perceive_radius * c.sight_mult * stage_sight * env_sight
         # Totem sight (§P): Eye +25%, Owl +35%, Raven +15% …
         perceive *= 1.0 + self._totem_stat(c, "sight")
+        # §AP: the All-Seeing Vertex sees clearly even in the dark of the world —
+        # its clarity recovers the night/fog dimming.
+        clarity = self._totem_stat(c, "clarity")
+        if clarity and env_sight < 1.0:
+            perceive /= max(0.05, 1.0 - clarity * (1.0 - env_sight))
         speed_mult = 1.0
         if c.status == "hungry":
             perceive *= cfg.hungry_perceive_mult
@@ -4359,8 +4801,9 @@ class Simulation:
             speed_mult *= 1.0 + self._totem_stat(c, "speed")
 
         # trait paranoid/bold nudges flee threshold (§S); §AR S-0 starvation
-        # dulls fear (all in _effective_fear_radius).
-        fear_radius_eff = self._effective_fear_radius(c)
+        # dulls fear (all in _effective_fear_radius); §AP the Eternal Hearth
+        # calms its people through the night.
+        fear_radius_eff = self._effective_fear_radius(c, is_night=is_night)
 
         # §AS L-0 Morale aura — the leader's presence is a stat: kin within
         # LEADER_AURA_RADIUS see farther and burn less; a dead leader casts
@@ -5076,7 +5519,8 @@ class Simulation:
                     if target.variant == "medicinal_herb":
                         c.infected = False
                         c.disease_id = 0
-                        c.health = min(c.max_health, c.health + 20.0)
+                        # §AP: the Sacred Spiral doubles herbal potency
+                        c.health = min(c.max_health, c.health + 20.0 * (1.0 + self._totem_stat(c, "medicine")))
                         c.emote = "heal"
                         c.emote_ticks = 20
                     elif target.variant in ("sun_berry", "berry"):
@@ -5166,7 +5610,8 @@ class Simulation:
                 self._kill(c, "hyperthermia")
                 return
         if cfg.weather_sickness_enabled and c.body_temp < HYPOTHERMIA_TEMP:
-            c.chill = min(cfg.chill_threshold * 2, c.chill + CHILL_FROM_COLD_RATE)
+            cold_resist = 1.0 - self._totem_stat(c, "cold")  # §AP Monolith cold immunity
+            c.chill = min(cfg.chill_threshold * 2, c.chill + CHILL_FROM_COLD_RATE * cold_resist)
         if (
             cfg.shelter_enabled
             and not c.indoors
@@ -5180,6 +5625,8 @@ class Simulation:
             age = self._age()
             chill_mult = 1.4 if age == "Ice" else 1.0
             if not c.indoors and (is_wet or is_winter_night):
+                # §AP: the Indomitable Monolith resists the cold's bite
+                chill_mult *= 1.0 - self._totem_stat(c, "cold")
                 c.chill = min(cfg.chill_threshold * 2, c.chill + cfg.chill_rate * chill_mult)
             else:
                 shed = cfg.chill_rate * (2.5 if c.indoors else 1.0) * (0.8 if age == "Ice" else 1.0)
@@ -5408,7 +5855,7 @@ class Simulation:
         self._last_broadcast_state = new_state
         self._last_broadcast_entities = set(new_state.keys())
         self._last_broadcast_clans = {
-            str(cid): (info.get("name"), info.get("color"), info.get("totem"), info.get("culture"), info.get("leader_id"), info.get("main_house_id"), info.get("tribute_to"))
+            str(cid): _clan_sig(info)
             for cid, info in self.clans.items()
         }
 
@@ -5501,7 +5948,7 @@ class Simulation:
         for cid, info in curr_clans.items():
             s_cid = str(cid)
             # Compare representation against last broadcast
-            sig = (info.get("name"), info.get("color"), info.get("totem"), info.get("culture"), info.get("leader_id"), info.get("main_house_id"), info.get("tribute_to"))
+            sig = _clan_sig(info)
             if s_cid not in last_clans or last_clans[s_cid] != sig:
                 delta_clans[s_cid] = {kk: (dict(vv) if isinstance(vv, dict) else vv) for kk, vv in info.items()}
                 last_clans[s_cid] = sig

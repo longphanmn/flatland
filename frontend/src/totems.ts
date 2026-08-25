@@ -1,4 +1,6 @@
-/** Totem registry — mirrors backend TOTEM_BUFF/TOTEM_SPEC (simulation.py). */
+/** §AP Sacred Avatars of the Sphere — mirrors backend TOTEM_BUFF/TOTEM_SPEC
+ * (simulation.py). Each clan bears one avatar: a 2D projection of the One True
+ * God with a distinct divine aspect. */
 export interface TotemInfo {
   emoji: string
   color: string
@@ -6,18 +8,22 @@ export interface TotemInfo {
 }
 
 export const TOTEMS: Record<string, TotemInfo> = {
-  Wolf: { emoji: '🐺', color: '#ff7b72', buff: 'hunts farther, faster in the chase' },
-  Tree: { emoji: '🌳', color: '#3fb950', buff: '+25% harvest' },
-  Shield: { emoji: '🛡️', color: '#79c0ff', buff: '-30% damage taken, heals faster' },
-  Eye: { emoji: '👁️', color: '#d2a8ff', buff: '+25% sight' },
-  Bear: { emoji: '🐻', color: '#a67c52', buff: '-20% damage, sturdy cubs' },
-  Stag: { emoji: '🦌', color: '#f2cc60', buff: 'quicker, +15% fertility' },
-  Owl: { emoji: '🦉', color: '#d29922', buff: '+35% sight' },
-  Rabbit: { emoji: '🐇', color: '#ff9bce', buff: '+25% fertility' },
-  Boar: { emoji: '🐗', color: '#f85149', buff: '+15% harvest, -10% damage' },
-  Fox: { emoji: '🦊', color: '#ffa657', buff: 'hunts much farther, a little quicker' },
-  Raven: { emoji: '🐦‍⬛', color: '#8b949e', buff: '+15% sight, +10% harvest' },
-  Serpent: { emoji: '🐍', color: '#56d364', buff: '-15% damage, a little quicker' },
+  'Radiant Circle': { emoji: '⭕', color: '#f2cc60', buff: "God's Abundance — +30% harvest, +20% fertility" },
+  'Celestial Strike': { emoji: '⚡', color: '#ffa657', buff: "God's Wrath & Justice — +25% warrior damage" },
+  'All-Seeing Vertex': { emoji: '👁️', color: '#d2a8ff', buff: "God's Omniscience — +40% sight, sees clearly at night" },
+  'Indomitable Monolith': { emoji: '🛡️', color: '#79c0ff', buff: "God's Permanence — -30% damage taken, resists the cold" },
+  'Sacred Spiral': { emoji: '🌿', color: '#3fb950', buff: "God's Renewal — herbs heal twice, faster plague recovery, composts the dead" },
+  'Cosmic Scales': { emoji: '⚖️', color: '#e6edf3', buff: "God's Equilibrium — reliable peace treaties; keeps the law even while starving" },
+  'Dimensional Rift': { emoji: '🌀', color: '#58a6ff', buff: "God's Ascent — faster Isosceles promotion, adaptive mutations, elder lore" },
+  'Eternal Hearth': { emoji: '🕯️', color: '#ff9bce', buff: "God's Sanctuary — warm hearths, calm through the night" },
+}
+
+/** Complementary aspects sympathise (§AP holy alliances) — mirrors AVATAR_ALLIES. */
+export const AVATAR_ALLIES: Record<string, string> = {
+  'Radiant Circle': 'Sacred Spiral',
+  'Celestial Strike': 'All-Seeing Vertex',
+  'Indomitable Monolith': 'Eternal Hearth',
+  'Cosmic Scales': 'Dimensional Rift',
 }
 
 export function totemEmoji(name: string | null | undefined): string {

@@ -144,6 +144,9 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'kin_stigma', label: 'Kin stigma', min: 0, max: 100, step: 5, group: 'Desperation', gate: ['cannibalism_enabled', 'exile_on_kin_eat'] },
   // Food decay — nothing lasts forever (§AE)
   { key: 'food_lifespan_ticks', label: 'Food lifespan (ticks)', min: 100, max: 100000, step: 100, group: 'Food Decay', gate: 'food_decay_enabled' },
+  // Unified Theology — shrines, tithes & faith (§AP)
+  { key: 'tithe_rate', label: 'Tithe rate', min: 0, max: 0.5, step: 0.01, group: 'Theology', gate: 'theology_enabled' },
+  { key: 'temple_faith_cost', label: 'Temple faith cost', min: 50, max: 5000, step: 50, group: 'Theology', gate: 'theology_enabled' },
   // Bodies & Houses — geometry of the flat world
   { key: 'door_clearance', label: 'Door clearance ×', min: 1, max: 4, step: 0.1, group: 'Bodies & Houses' },
   { key: 'house_min_size', label: 'House min size', min: 4, max: 30, step: 1, group: 'Bodies & Houses' },
@@ -177,6 +180,7 @@ const GROUP_ORDER = [
   'Politics',
   'Desperation',
   'Food Decay',
+  'Theology',
   'Bodies & Houses',
 ]
 
@@ -214,6 +218,7 @@ const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
   eat_kin_enabled: true,
   exile_on_kin_eat: true,
   food_decay_enabled: true,
+  theology_enabled: true,
 }
 
 const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
@@ -245,7 +250,7 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   house_capacity: 'beds in an 8×8 hall (12) — scales with floor area, so a small hut cannot hold a whole clan; overflow spills to the nearest roof with space',
   exposure_drain: 'energy lost per tick outdoors in rain/storm/night (0.03)',
   rest_recovery_mult: 'health regen multiplier when sleeping indoors (2.0)',
-  totems_enabled: 'each clan bears a totem with a subtle buff — Wolf 🐺 Tree 🌳 Shield 🛡️ Eye 👁️ Bear 🐻 Stag 🦌 Owl 🦉 Rabbit 🐇 Boar 🐗 Fox 🦊 Raven 🐦‍⬛ Serpent 🐍',
+  totems_enabled: 'each clan bears a Sacred Avatar of the Sphere with a subtle blessing — ⭕ Radiant Circle ⚡ Celestial Strike 👁️ All-Seeing Vertex 🛡️ Indomitable Monolith 🌿 Sacred Spiral ⚖️ Cosmic Scales 🌀 Dimensional Rift 🕯️ Eternal Hearth',
   succession_enabled: 'leader succession on death emits succession event',
   max_clans: 'society granularity: -1 = one clan per house; N ≥ 1 clusters founders into N spatial clans (applies at reset)',
   rain_growth_mult: 'rain/storm boost to plant growth (1.25) — soaked ground regrows faster',
@@ -276,6 +281,9 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   larder_capacity: 'energy a clan store at the settlement can hold (300) — surplus deposited, famine withdraws',
   aid_rate: 'chance/tick a full-bellied ally tops up a starving ally\'s larder (0.05)',
   food_lifespan_ticks: 'ticks a mature plant lives before it withers (9000) — mushroom 0.4×, grass ×1, berry 1.5×, poisonous 3×; withered plants fertilise the soil',
+  theology_enabled: 'the Sacred Avatars of the Sphere: settled clans consecrate shrines, the devout tithe at dawn & dusk, faith works miracles, chimes ring when laws change, and high faith raises temples',
+  tithe_rate: 'fraction of max energy offered at the shrine each dawn & dusk (0.04); priests tithe double — fills the clan faith pool',
+  temple_faith_cost: 'clan faith spent to raise a shrine into a glowing Temple whose blessing aura covers all territory (400)',
   cannibalism_hunger_ratio: 'only creatures below this energy fraction may eat the living (0.15)',
   cannibalism_energy: 'energy gained per desperate kill (45) — the victim leaves a partial corpse',
   kin_stigma: 'relation hit between a kin-eater\'s outcast band and their former clan (40) — they become rivals',
@@ -773,7 +781,7 @@ export default function GodPanel({ open, onClose }: Props) {
                 )}
                 {group === 'Clan' && (
                   <>
-                    <ToggleRow k="totems_enabled" label="Totems" title="each clan bears a totem (Wolf 🐺, Tree 🌳, Shield 🛡️, Eye 👁️, Bear 🐻, Stag 🦌, Owl 🦉, Rabbit 🐇, Boar 🐗, Fox 🦊, Raven 🐦‍⬛, Serpent 🐍) granting a subtle buff; disabling makes all clans plain" />
+                    <ToggleRow k="totems_enabled" label="Sacred Avatars" title="each clan bears one of the 8 Sacred Avatars of the Sphere (⭕ ⚡ 👁️ 🛡️ 🌿 ⚖️ 🌀 🕯️) granting a distinct divine blessing; disabling makes all clans plain" />
                     <ToggleRow k="succession_enabled" label="Succession" title="leader succession on death emits succession event; disabling keeps founder as eternal leader" />
                   </>
                 )}
@@ -806,6 +814,14 @@ export default function GodPanel({ open, onClose }: Props) {
                 )}
                 {group === 'Food Decay' && (
                   <ToggleRow k="food_decay_enabled" label="Food decay" title="mature plants wither after their lifespan (× variant pace), fertilise nearby soil, then vanish — nothing lasts forever" />
+                )}
+                {group === 'Theology' && (
+                  <>
+                    <ToggleRow k="theology_enabled" label="Theology of the Sphere" title="shrines beside main houses, dawn & dusk tithes fill the clan faith pool, the aura mends the faithful, seasonal miracles, law-change chimes & sermons, holy synods in crisis ages, temples at high faith" />
+                    <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>
+                      8 Sacred Avatars: ⭕ Abundance · ⚡ Wrath · 👁️ Omniscience · 🛡️ Permanence · 🌿 Renewal · ⚖️ Equilibrium · 🌀 Ascent · 🕯️ Sanctuary
+                    </div>
+                  </>
                 )}
               </>
             )

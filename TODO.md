@@ -1341,46 +1341,54 @@ Transformation of the Flatland night into an existential outdoor hazard and elev
 
 ---
 
-## AP. Unified Theology & Divine Totem Ecosystem Roadmap  [P1]
+## AP. Unified Theology & Divine Totem Ecosystem Roadmap  [P1] — ✅ implemented
 Reimagining totems as sacred 2D avatars / manifestations of the One True God (The Sphere from Spaceland), capturing distinct divine aspects with living shrines, daily tithes, divine law resonance, and theological geopolitics.
 
-### Phase A: The 8 Sacred Avatars of the Sphere  [P1]
+### Phase A: The 8 Sacred Avatars of the Sphere  [P1] — ✅ implemented
 - **Task A.1: The 8 Geometric Projections of the Sphere**
-  - [ ] [P1] Refactor totem archetypes from generic animals into the 8 Sacred Avatars of the Sphere:
-    - ⭕ *The Radiant Circle*: God's Abundance (agricultural yield $+30\%$, fertility $+20\%$, communal banquets).
-    - ⚡ *The Celestial Strike*: God's Wrath & Justice (soldier combat damage $+25\%$, anti-bandit crusade aura).
-    - 👁️ *The All-Seeing Vertex*: God's Omniscience (heightened sight $+40\%$, storm foresight, nocturnal clarity).
-    - 🛡️ *The Indomitable Monolith*: God's Permanence (structural wall strength, cold immunity $+40\%$, door defense).
-    - 🌿 *The Sacred Spiral*: God's Renewal (herbal medicine potency $2.0\times$, rapid recovery from plagues, composting).
-    - ⚖️ *The Cosmic Scales*: God's Equilibrium (fair cross-clan barter, reliable peace treaties, low social crime).
-    - 🌀 *The Dimensional Rift*: God's Ascent (rapid Isosceles angle promotion, high mutation adaptability, elder lore).
-    - 🕯️ *The Eternal Hearth*: God's Sanctuary (house hearth brightness, campfire mastery, nocturnal calmness).
+  - [x] [P1] Totems refactored from animals into the 8 Sacred Avatars (`simulation.py` `AVATARS`/`TOTEM_BUFF`):
+    - ⭕ *The Radiant Circle*: God's Abundance (+30% harvest, +20% fertility).
+    - ⚡ *The Celestial Strike*: God's Wrath & Justice (+25% warrior damage via new `damage` buff key).
+    - 👁️ *The All-Seeing Vertex*: God's Omniscience (+40% sight; `clarity` recovers night/fog dimming).
+    - 🛡️ *The Indomitable Monolith*: God's Permanence (−30% damage, +15 birth health; `cold` 0.4 chill immunity).
+    - 🌿 *The Sacred Spiral*: God's Renewal (herbs heal ×2 via `medicine`, plague recovery ×2, composts corpses near shrine).
+    - ⚖️ *The Cosmic Scales*: God's Equilibrium (`peace`: any Scales leader sues for peace at +90; `lawful`: refuses kin-eating even while starving).
+    - 🌀 *The Dimensional Rift*: God's Ascent (iso_angle +0.75/generation, mutation odds ×2, elder oral-lore XP ×2).
+    - 🕯️ *The Eternal Hearth*: God's Sanctuary (`calm` shaves fear radius at night).
 - **Task A.2: Totem Avatar Assignment & Crest Symbology**
-  - [ ] [P1] Procedural assignment of avatars upon clan founding, binding geometric dogma and visual icons to clan identity.
+  - [x] [P1] Procedural assignment preserved at founding — deterministic `cid*17+seed` hash, zero rng (`simulation.py:_new_clan`, schism branch).
 
-### Phase B: Physical Totem Shrines, Tithes & Clan Faith  [P2]
+### Phase B: Physical Totem Shrines, Tithes & Clan Faith  [P2] — ✅ implemented
 - **Task B.1: Physical Totem Monoliths & Settlement Shrines**
-  - [ ] [P2] Inhabited settlements construct a central Totem Shrine adjacent to their Main House providing a localized blessing aura.
+  - [x] [P2] Settled clans consecrate a shrine beside their main house at founding (`_consecrate_initial_shrines` at world creation, `_update_faith` for later settlements); glowing avatar stone + faith-scaled aura on the canvas (`renderCore.ts`), temple ring at level 2.
 - **Task B.2: Morning & Evening Tithes and the Clan Faith Pool**
-  - [ ] [P2] Devout creatures offer portions of harvested crops at the Totem base at dawn and dusk, accumulating a Clan Faith Pool that unlocks seasonal miracles.
+  - [x] [P2] At dawn & dusk windows (tod 0.25/0.75 ±0.02) members within the aura tithe `tithe_rate`×energy_max into the clan faith pool (priests double); the aura mends injured faithful while faith holds (`BLESS_HEAL_RATE`/`BLESS_FAITH_COST`). Season-turn overflow works a `miracle`: mature food blooms around the shrine + flock mended (`_work_miracle`, `miracle` event).
 
-### Phase C: Divine Law Resonance & Priestly Preaching  [P2]
+### Phase C: Divine Law Resonance & Priestly Preaching  [P2] — ✅ implemented
 - **Task C.1: Synchronized Law Resonance**
-  - [ ] [P2] When God adjusts any World Law, all Totem Shrines emit synchronized harmonic chimes and radiant visual pulses.
+  - [x] [P2] Every `POST /api/laws` change calls `Simulation.on_law_change()` → each shrine emits a golden `chime` ripple; single `resonance` chronicle event summarises.
 - **Task C.2: Priestly Doctrinal Sermons**
-  - [ ] [P2] Priests deliver sermons interpreting God's law modifications according to their Avatar's dogma, rallying clan morale and behavior.
+  - [x] [P2] Each shrine's first priest delivers a `sermon` interpreting the law per its avatar's dogma (`AVATAR_DOGMA`); flock inside the aura gains morale energy.
 
-### Phase D: Theological Geopolitics & The Holy Synod  [P2]
+### Phase D: Theological Geopolitics & The Holy Synod  [P2] — ✅ implemented
 - **Task D.1: Doctrinal Compatibility & Holy Alliances**
-  - [ ] [P2] Clans worshipping complementary avatars form natural holy leagues and shared trade networks.
+  - [x] [P2] Same/complementary-avatar pairs (`AVATAR_ALLIES`: Circle↔Spiral, Strike↔Vertex, Monolith↔Hearth, Scales↔Rift) gain +1 relation per tick in `_update_relations`.
 - **Task D.2: The Great Synod of the Sphere**
-  - [ ] [P2] During global crises (Ice Age, Plague), Priests convene at a neutral center to hold an Ecumenical Synod to unify the clans.
+  - [x] [P2] During Ice/Plague ages every `SYNOD_INTERVAL` ticks priests convene at a neutral centre (`_hold_synod`): all relations +4, sacred truce (`truce_ticks`) stills `_update_war`, `synod` event.
 
-### Phase E: Temple Architecture & Sphere Revelations  [P2]
+### Phase E: Temple Architecture & Sphere Revelations  [P2] — ✅ implemented
 - **Task E.1: Monumental Temple Upgrades**
-  - [ ] [P2] High-faith clans upgrade shrines into glowing Temples of the Sphere, extending protective auras across their entire territory.
+  - [x] [P2] Faith ≥ `temple_faith_cost` raises the shrine into a Temple (`temple` event, ⛪ marker): blessing aura extends across the whole territory.
 - **Task E.2: The 3D Epiphany (Vision of the Sphere)**
-  - [ ] [P2] Rare enlightenment events where an elder priest perceives the true 3D nature of the Sphere, transcending sectarian conflict.
+  - [x] [P2] Hash-gated once-per-age event (`EPIPHANY_PERIODS_GAP`): an elder priest of a temple clan beholds the Sphere (`epiphany` event) — all relations +10, double truce, healing emote.
+- [x] GodLaws: theology_enabled, tithe_rate, temple_faith_cost ("Theology" group, enabled by default)
+      (`config.py`, `protocol.py`, `main.py` LAW_FIELDS + apply_laws hook, GodPanel/TUI groups,
+      wiki hints, docs/god-laws.md §10, guide §C/P). Deterministic throughout —
+      rare events are hash-gated so the world's rng stream never moves. Tests:
+      `tests/test_theology.py` (avatar determinism + buffs, shrine consecration,
+      dawn tithes incl. priest-double/exemptions, miracle bloom+heal, temple
+      raising, resonance chimes+sermons+morale, doctrinal kinship, synod truce
+      stops-and-resumes war, epiphany vision, laws roundtrip).
 
 
 

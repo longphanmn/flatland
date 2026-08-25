@@ -156,4 +156,31 @@ In Flatland, God sets **laws**, never touches individual lives. Every law has a 
 
 ---
 
+## 10. Unified Theology of the Sphere
+
+Each clan bears one of the **8 Sacred Avatars** — 2D projections of the One True God, each with a distinct divine aspect:
+
+| Avatar | Aspect | Blessing |
+|---|---|---|
+| ⭕ Radiant Circle | Abundance | +30% harvest, +20% fertility |
+| ⚡ Celestial Strike | Wrath & Justice | +25% warrior damage |
+| 👁️ All-Seeing Vertex | Omniscience | +40% sight, nocturnal clarity |
+| 🛡️ Indomitable Monolith | Permanence | −30% damage, resists the cold |
+| 🌿 Sacred Spiral | Renewal | herbs heal ×2, faster plague recovery, composts the dead |
+| ⚖️ Cosmic Scales | Equilibrium | reliable peace; keeps the law even while starving |
+| 🌀 Dimensional Rift | Ascent | rapid Isosceles promotion, adaptive mutations, elder lore |
+| 🕯️ Eternal Hearth | Sanctuary | calm through the night |
+
+Settled clans consecrate a **shrine** beside their main house; its aura mends the faithful while faith holds out.
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `theology_enabled` | Boolean | **true** | Master switch for shrines, tithes, miracles, law resonance, sermons and synods. |
+| `tithe_rate` | 0–1.0 | **0.04** | Fraction of max energy offered at the shrine at dawn & dusk (priests tithe double); fills the clan faith pool. |
+| `temple_faith_cost` | 0–100000 | **400.0** | Faith spent to raise the shrine into a glowing Temple whose blessing aura extends across all territory. |
+
+Faith overflowing at the turn of a season works a **miracle** (food blooms around the shrine, the flock is mended). When God adjusts any law, every shrine emits harmonic **chimes** and priests deliver doctrinal **sermons** interpreting the change per their avatar's dogma. During crisis ages (Ice, Plague) priests convene in the **Great Synod**, warming relations between all clans under a sacred truce; and once in an age an elder priest may receive the **3D Epiphany** — beholding the true nature of the Sphere.
+
+---
+
 *Maintained and developed by **Long Phan** ([long@minhnhan.in](mailto:long@minhnhan.in)) · [https://minhnhan.in](https://minhnhan.in) · World [https://world.minhnhan.in](https://world.minhnhan.in)*

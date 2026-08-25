@@ -86,9 +86,16 @@ EVENT_COLORS: dict[str, str] = {
     "cannibalism": "#ff6b6b",
     "exile": "#db6d28",
     "wither": "#a67c52",
+    # §AP unified theology
+    "miracle": "#7ee787",
+    "sermon": "#d2a8ff",
+    "synod": "#e3b341",
+    "temple": "#e3b341",
+    "epiphany": "#bc8cff",
+    "resonance": "#e3b341",
 }
 
-SIGNAL_COLORS = {"food": "#3fb950", "alarm": "#f85149", "help": "#f85149"}
+SIGNAL_COLORS = {"food": "#3fb950", "alarm": "#f85149", "help": "#f85149", "chime": "#e3b341"}
 
 SEASON_ICONS = {"spring": "*", "summer": "S", "autumn": "%", "winter": "W"}
 WEATHER_ICONS = {"clear": "O", "rain": ",", "fog": "=", "storm": "/"}
@@ -124,14 +131,14 @@ EMOTE_ICONS: dict[str, str] = {
 }
 
 TOTEM_ICONS: dict[str, str] = {
-    "Sun": "☀️ Sun",
-    "Shield": "🛡️ Shield",
-    "Harvest": "🌾 Harvest",
-    "Moon": "🌙 Moon",
-    "Eye": "👁️ Eye",
-    "Tree": "🌳 Tree",
-    "Fire": "🔥 Fire",
-    "Serpent": "🐍 Serpent",
+    "Radiant Circle": "⭕ Radiant Circle",
+    "Celestial Strike": "⚡ Celestial Strike",
+    "All-Seeing Vertex": "👁️ All-Seeing Vertex",
+    "Indomitable Monolith": "🛡️ Indomitable Monolith",
+    "Sacred Spiral": "🌿 Sacred Spiral",
+    "Cosmic Scales": "⚖️ Cosmic Scales",
+    "Dimensional Rift": "🌀 Dimensional Rift",
+    "Eternal Hearth": "🕯️ Eternal Hearth",
 }
 
 SKILL_ICONS: dict[str, str] = {
