@@ -40,6 +40,7 @@ export interface EntityState {
   scale_jitter?: number
   angle_jitter?: number
   chill?: number
+  body_temp?: number
   trait?: string | null
   equipped_item?: 'spear' | 'basket' | 'torch' | 'herb_poultice' | 'crown' | null
   food_basket?: number
@@ -54,6 +55,7 @@ export interface EntityState {
   is_ruin?: boolean
   abandoned_ticks?: number
   takeover_age?: number | null
+  material?: 'straw' | 'wood' | 'stone'
   growth?: number
   variant?: 'grass' | 'grain' | 'berry' | 'medicinal_herb' | 'mushroom' | 'poisonous'
   withering?: boolean

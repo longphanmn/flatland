@@ -1404,10 +1404,10 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [x] [P0] **Energy conservation loop** — sunlight (day cycle) is the world's only income: `_sun_factor()` arcs from zero at night to 1.0 at noon and gates both plant growth and seed spread — no free growth in the dark; mending converts energy into health (`HEALING_ENERGY_COST` 0.5 per healed point, charged only on actual healing); death already returns energy via corpses + nutrient cycle; winter's bite stays the season table. (`simulation.py` `_sun_factor`, `_update_plants`, regen branches; tests `tests/test_physics_core.py`)
 - [x] [P0] **Metabolic cost by caste** — upkeep scales with body complexity (`METABOLIC_COST`, `_metabolic_cost`): Triangle/Soldier 1.0×, Square/Gentleman 1.1×, Pentagon/Professional 1.2×, Hexagon/Noble 1.3×, Woman & Priest/Circle 1.5× (priests burn energy maintaining the aura); applied to per-tick energy decay awake and asleep.
 
-### Phase PH-1: Thermodynamics & Heat  [P0]
-- [ ] [P0] **Temperature field** — per-cell heat map updated each tick by weather/season/fire; seasons sweep temperature across the map from opposing edges.
-- [ ] [P0] **Body temperature** — creature temp drifts toward ambient; too cold → chill (exists), too hot → **hyperthermia** (new) draining health; houses insulate against both extremes.
-- [ ] [P0] **Insulation ratings** — structures have insulation by material: stone > wood > straw; larger houses lose heat faster (perimeter/area ratio in 2D).
+### Phase PH-1: Thermodynamics & Heat  [P0] — ✅ implemented
+- [x] [P0] **Temperature field** — coarse per-cell heat map (`TEMP_CELL` 25) updated each tick by season (base swept across the map from an edge: cold from the west, warmth from the east), day cycle (`DAY_HEAT_AMPLITUDE`), weather bumps, and open flame (`FIRE_HEAT` 60° within 8 units, circle-vs-cell overlap). (`simulation.py` `_update_temperature`/`ambient_at`, tests `tests/test_temperature.py`)
+- [x] [P0] **Body temperature** — `Creature.body_temp` drifts toward ambient (`BODY_TEMP_DRIFT`); too cold (<2°) builds §R chill under the weather-sickness law; too hot (>36°) is always physics — health drains with the excess until death cause `hyperthermia`. Exposed on the wire as `body_temp`.
+- [x] [P0] **Insulation ratings** — houses get a seeded material (`_pick_house_material`: stone > wood > straw, `INSULATION_BY_MATERIAL` 0.55/0.35/0.15) that pulls indoor air toward `HOUSE_COMFORT_TEMP` 18°; larger houses lose heat faster (`HOUSE_REF_SIDE/size` factor). `material` on the wire.
 - [ ] [P1] **Hearths** — permanent fire installations inside houses that warm all occupants; require fuel (food/wood); extinguish if unfed; critical winter survival infrastructure.
 - [ ] [P1] **Heat radiation from fire** — fire emits a 2D radial heat field; creatures near fire take heat damage; fire also provides warmth in winter (double-edged tool).
 

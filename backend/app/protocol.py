@@ -66,6 +66,7 @@ class EntityState(BaseModel):
     scale_jitter: Optional[float] = None
     angle_jitter: Optional[float] = None
     chill: Optional[float] = None
+    body_temp: Optional[float] = None  # §AQ PH-1: body temperature (°C-ish)
     trait: Optional[str] = None
     door_width: Optional[float] = None
     door_offset: Optional[float] = None
@@ -73,6 +74,7 @@ class EntityState(BaseModel):
     is_ruin: Optional[bool] = None
     abandoned_ticks: Optional[int] = None
     takeover_age: Optional[int] = None  # §AT-3: ticks since last hostile takeover
+    material: Optional[Literal["straw", "wood", "stone"]] = None  # §AQ PH-1
 
 
 class StateMessage(BaseModel):

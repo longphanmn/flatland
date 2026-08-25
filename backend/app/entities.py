@@ -153,6 +153,8 @@ class Creature(Entity):
     trust: dict = field(default_factory=dict)  # target_id -> trust_score (-100..+100)
     # §AS L-0: panic window right after the clan leader's death — flee urge spikes
     panic_ticks: int = 0
+    # §AQ PH-1: body temperature (°C-ish) — drifts toward the ambient heat field
+    body_temp: float = 20.0
 
 
     def __post_init__(self) -> None:
@@ -228,3 +230,4 @@ class House(Entity):
     abandoned_ticks: int = 0  # how long this house has been without a living clan
     is_ruin: bool = False  # crumbled — no shelter, visually distinct
     takeover_tick: int = -1  # §AT-3: tick of the last hostile takeover (render flash)
+    material: str = "wood"  # §AQ PH-1: straw | wood | stone — sets the insulation

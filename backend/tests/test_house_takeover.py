@@ -13,6 +13,7 @@ def clan_cfg(**kw) -> Config:
     zeros = dict(
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,
         num_priests=0, num_women=0, food_count=0, num_houses=-1,
+        house_density=0.0,  # no random houses: tests place their own roofs
         day_length=8,
         adult_age=0.0,
         weather_change_rate=0.0,
@@ -222,7 +223,7 @@ def test_orphan_house_claim_cleared_when_clan_dies():
 def test_settlement_tick_runs_takeover_end_to_end():
     """Integration through step(): expansion block every 50 ticks picks up the
     invasion when the growing clan has nowhere else to sleep."""
-    cfg = clan_cfg(seed=37, house_capacity=4, house_density=0.0)  # no auto houses
+    cfg = clan_cfg(seed=37, house_capacity=4)  # density 0: no auto houses
     s = Simulation(cfg)
     invaders = [
         s.world.add(Creature(x=30.0 + i * 0.4, y=30.0, energy=500.0, lifespan=100000.0))

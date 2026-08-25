@@ -75,7 +75,9 @@ def test_anchor_claims_match_nearest_house_not_round_robin():
     expected = roster_by_house(s)  # house id -> founder ids
     actual: dict[int, set[int]] = {}
     for h in houses:
-        if h.clan_id:
+        # ghost settlements (no founder landed here) legitimately found
+        # leaderless clans that decay with §L abandonment — skip them
+        if h.clan_id and expected.get(h.id):
             actual.setdefault(h.clan_id, set()).update(expected.get(h.id, set()))
     real_roster: dict[int, set[int]] = {}
     for c in s.world.creatures():

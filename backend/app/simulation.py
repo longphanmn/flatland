@@ -119,6 +119,23 @@ METABOLIC_COST = {
 DEFAULT_METABOLIC_COST = 1.0
 HEALING_ENERGY_COST = 0.5  # energy burned per point of health regenerated
 
+# §AQ PH-1 — thermodynamics: a coarse heat field over the land, bodies that
+# drift toward it, and houses that keep the world outside at arm's length.
+TEMP_CELL = 25.0          # grid units per temperature cell
+TEMP_RATE = 0.08          # per-tick relaxation of a cell toward its target
+SEASON_BASE_TEMP = {"spring": 12.0, "summer": 24.0, "autumn": 8.0, "winter": -4.0}
+DAY_HEAT_AMPLITUDE = 5.0  # extra degrees at noon (negative in the deep night)
+FIRE_HEAT = 60.0          # target temp near open flame
+FIRE_HEAT_RADIUS = 8.0
+BODY_TEMP_DRIFT = 0.06    # fraction of the gap closed per tick
+HYPOTHERMIA_TEMP = 2.0    # below this the body builds chill (§R)
+CHILL_FROM_COLD_RATE = 0.06
+HYPERTHERMIA_TEMP = 36.0  # above this the body cooks
+HYPERTHERMIA_DRAIN = 0.15  # health per degree of excess per tick
+HOUSE_COMFORT_TEMP = 18.0  # what insulation pulls the indoors toward
+INSULATION_BY_MATERIAL = {"straw": 0.15, "wood": 0.35, "stone": 0.55}
+HOUSE_REF_SIDE = 8.0      # a reference hall; bigger houses shed heat faster
+
 # §AE food decay — nothing lasts forever: variant lifespan multipliers (§AM)
 FOOD_LIFESPAN_MULT = {
     "grass": 1.0,
@@ -323,6 +340,11 @@ class Simulation:
         self.rocks: list[dict] = []  # {x,y,r} — solid circles that block movement
         self.signals: list[dict] = []  # §Q: {x,y,kind,sender,clan_id,ttl}
         self.fires: list[dict] = []  # §S wildfire: {x,y,r,ttl}
+        # §AQ PH-1: coarse ambient heat field (row-major, top-left origin)
+        self._temp_cols = max(1, math.ceil(self.config.width / TEMP_CELL))
+        self._temp_rows = max(1, math.ceil(self.config.height / TEMP_CELL))
+        base0 = SEASON_BASE_TEMP[SEASONS[0]]
+        self.temperature_grid = [base0] * (self._temp_cols * self._temp_rows)
         # AJ: Delta compression tracking (Phase 1)
         self._last_broadcast_state: dict[int, tuple] = {}
         self._last_broadcast_entities: set[int] = set()
@@ -426,6 +448,74 @@ class Simulation:
         """§AQ PH-0: upkeep scales with body complexity — a priest's aura is
         expensive, a woman's line burns hot, triangles run lean."""
         return METABOLIC_COST.get(c.caste, DEFAULT_METABOLIC_COST)
+
+    # -------------------------------------------------- §AQ PH-1 thermodynamics
+    def _pick_house_material(self) -> str:
+        """Seeded material mix: straw common, stone rare (insulation: straw <
+        wood < stone). Consumes the rng only at house creation."""
+        r = self.rng.random()
+        if r < 0.20:
+            return "stone"
+        if r < 0.55:
+            return "wood"
+        return "straw"
+
+    def _update_temperature(self) -> None:
+        """§AQ PH-1 heat field: each cell relaxes toward its target — the
+        seasonal base swept across the map from an edge, bent by the day
+        cycle, weather, and any open flame."""
+        cfg = self.config
+        sl = max(1, cfg.season_length)
+        p = (self.tick % sl) / sl  # progress through the current season
+        s_idx = SEASONS.index(self._season())
+        cur = SEASON_BASE_TEMP[SEASONS[s_idx]]
+        nxt = SEASON_BASE_TEMP[SEASONS[(s_idx + 1) % 4]]
+        cold_front = nxt < cur  # cold enters from the west, warmth from the east
+        diurnal = DAY_HEAT_AMPLITUDE * (self._sun_factor() * 2.0 - 1.0)
+        weather_bump = {"rain": -2.0, "storm": -3.0, "fog": -1.0}.get(self.weather, 0.0)
+        w_cols = self._temp_cols
+        for row in range(self._temp_rows):
+            for col in range(w_cols):
+                xn = (col + 0.5) / w_cols
+                if cold_front:
+                    sweep = min(1.0, max(0.0, p * 1.6 - xn * 0.6))
+                else:
+                    sweep = min(1.0, max(0.0, p * 1.6 - (1.0 - xn) * 0.6))
+                target = cur + (nxt - cur) * sweep + diurnal + weather_bump
+                i = row * w_cols + col
+                self.temperature_grid[i] += (target - self.temperature_grid[i]) * TEMP_RATE
+        # Open flame dominates its neighbourhood (circle-vs-cell overlap).
+        if self.fires:
+            cell_w = cfg.width / w_cols
+            cell_h = cfg.height / self._temp_rows
+            for f in self.fires:
+                c0 = max(0, int((f["x"] - FIRE_HEAT_RADIUS) / cell_w))
+                c1 = min(w_cols - 1, int((f["x"] + FIRE_HEAT_RADIUS) / cell_w))
+                r0 = max(0, int((f["y"] - FIRE_HEAT_RADIUS) / cell_h))
+                r1 = min(self._temp_rows - 1, int((f["y"] + FIRE_HEAT_RADIUS) / cell_h))
+                for row in range(r0, r1 + 1):
+                    for col in range(c0, c1 + 1):
+                        qx = min(max(f["x"], col * cell_w), (col + 1) * cell_w)
+                        qy = min(max(f["y"], row * cell_h), (row + 1) * cell_h)
+                        dx = qx - f["x"]
+                        dy = qy - f["y"]
+                        if dx * dx + dy * dy <= FIRE_HEAT_RADIUS * FIRE_HEAT_RADIUS:
+                            i = row * w_cols + col
+                            self.temperature_grid[i] += (FIRE_HEAT - self.temperature_grid[i]) * TEMP_RATE
+
+    def ambient_at(self, x: float, y: float) -> float:
+        """Ambient temperature at a point on the heat field (§AQ PH-1)."""
+        col = min(self._temp_cols - 1, max(0, int(x / self.config.width * self._temp_cols)))
+        row = min(self._temp_rows - 1, max(0, int(y / self.config.height * self._temp_rows)))
+        return self.temperature_grid[row * self._temp_cols + col]
+
+    def indoor_ambient(self, house: House) -> float:
+        """Inside air: insulation pulls the room toward comfort; bigger floors
+        shed heat faster (perimeter/area bites in 2D)."""
+        ins = INSULATION_BY_MATERIAL.get(house.material, INSULATION_BY_MATERIAL["wood"])
+        size_factor = max(0.4, min(1.0, HOUSE_REF_SIDE / max(1.0, house.size)))
+        amb = self.ambient_at(house.x, house.y)
+        return amb + (HOUSE_COMFORT_TEMP - amb) * ins * size_factor
 
     def distance(self, ax: float, ay: float, bx: float, by: float) -> float:
         """Proxy to world distance (convenience for tests)."""
@@ -639,6 +729,7 @@ class Simulation:
                     size=size,
                     door_width=door_width,
                     door_side=self.rng.choice(("north", "east", "south", "west")),
+                    material=self._pick_house_material(),
                 )
             )
         self._found_founding_clans()
@@ -988,6 +1079,7 @@ class Simulation:
         house = House(
             x=x, y=y, size=size, door_width=door_width,
             door_side=self.rng.choice(("north", "east", "south", "west")),
+            material=self._pick_house_material(),
         )
         if clan_id is not None and self.config.house_claim_enabled:
             house.clan_id = clan_id
@@ -1738,6 +1830,7 @@ class Simulation:
             sg["ttl"] -= 1
         self._update_fires()
         self._update_disasters()
+        self._update_temperature()  # §AQ PH-1: the heat field breathes
         self._update_plants()
         self.world.rebuild_index()
         self._refresh_cache()
@@ -4915,6 +5008,21 @@ class Simulation:
             elif leaderless:
                 decay_mult *= LEADERLESS_DECAY_MULT
         c.energy -= cfg.energy_decay_per_tick * decay_mult
+        # §AQ PH-1: the body drifts toward the world's heat; houses insulate
+        # against both extremes. Extreme cold feeds §R chill, extreme heat cooks.
+        amb = self.ambient_at(c.x, c.y)
+        if inside_house_obj is not None:
+            amb = self.indoor_ambient(inside_house_obj)
+        c.body_temp += (amb - c.body_temp) * BODY_TEMP_DRIFT
+        if c.body_temp > HYPERTHERMIA_TEMP:
+            # §AQ PH-1: too hot is always lethal physics — no law gates it.
+            excess = c.body_temp - HYPERTHERMIA_TEMP
+            c.health -= HYPERTHERMIA_DRAIN * excess
+            if c.health <= 0:
+                self._kill(c, "hyperthermia")
+                return
+        if cfg.weather_sickness_enabled and c.body_temp < HYPOTHERMIA_TEMP:
+            c.chill = min(cfg.chill_threshold * 2, c.chill + CHILL_FROM_COLD_RATE)
         if (
             cfg.shelter_enabled
             and not c.indoors
@@ -5328,6 +5436,7 @@ class Simulation:
                 "scale_jitter": scale_jitter,
                 "angle_jitter": angle_jitter,
                 "chill": round(e.chill, 2),
+                "body_temp": round(getattr(e, "body_temp", 20.0), 1),
                 "trait": e.trait,
                 "equipped_item": getattr(e, "equipped_item", None),
                 "food_basket": getattr(e, "food_basket", 0) or None,
@@ -5353,6 +5462,7 @@ class Simulation:
                 "is_ruin": e.is_ruin or None,
 
                 "abandoned_ticks": e.abandoned_ticks or None,
+                "material": e.material,  # §AQ PH-1 insulation tier
                 # §AT-3: recent hostile takeover — renderer flashes the crest
                 "takeover_age": (self.tick - e.takeover_tick) if getattr(e, "takeover_tick", -1) >= 0 else None,
             }
