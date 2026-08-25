@@ -3557,6 +3557,7 @@ class Simulation:
         clan_house_map: dict[int, House] = {
             h.clan_id: h for h in houses if isinstance(h, House) and h.clan_id and not h.is_ruin
         }
+        self._sync_wind_cache()
         for creature in list(self._cached_creatures):
             if creature.id in self.world.entities:
                 self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
@@ -3576,7 +3577,7 @@ class Simulation:
         self._reproduce()
         # N150 hotfix: throttle heavy clan/politics work when pop >800 — staggered offsets to avoid 15-tick pileup
         c_n = len(self._cached_creatures)
-        if c_n > 800:
+        if c_n > 400:
             if self.tick % 3 == 1:
                 self._update_relations()
                 self._update_territory()
@@ -3589,6 +3590,14 @@ class Simulation:
                 self._update_schism()
             if self.config.culture_enabled and self.tick % 10 == 3:
                 self._update_culture()
+            if self.tick % 5 == 1:
+                self._update_builders()
+                self._update_structures()
+            if self.tick % 5 == 3:
+                self._update_hearths()
+                self._update_agriculture()
+            if self.tick % 5 == 4:
+                self._update_faith()
         else:
             self._update_relations()
             self._update_territory()
@@ -3596,14 +3605,14 @@ class Simulation:
             self._update_politics()
             self._update_clan_specialization()
             self._update_culture()
+            self._update_builders()
+            self._update_structures()
+            self._update_hearths()
+            self._update_agriculture()
+            self._update_faith()
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
-        self._update_builders()  # §AQ PH-3: planks & dams rise where builders wade
-        self._update_structures()  # §AQ PH-6: storms wear, builders mend
-        self._update_hearths()  # §AQ PH-1 hearths burn & take fuel
-        self._update_agriculture()  # §AM sowing, tending, granary feasts
-        self._update_faith()  # §AP unified theology
         # Manual GC every 200 ticks to avoid stop-the-world at 1300c
         if self.tick % 200 == 0:
             gc.collect(1)
@@ -3612,12 +3621,6 @@ class Simulation:
         if dur > 0.15:
             print(f"[sim] slow tick={self.tick} {dur*1000:.1f}ms c={len(self.world.creatures())} food={len(self._cached_foods)} houses={len(self._cached_houses)}", flush=True)
         self.tick += 1
-        self._cached_creatures = []
-        self._cached_creatures_sorted = []
-        self._cached_foods = []
-        self._cached_houses = []
-        self._cached_corpses = []
-        self._clan_members = {}
 
     # ---------------------------------------------------------------- society
     @staticmethod
@@ -7057,7 +7060,6 @@ class Simulation:
         clan_house_map: dict[int, House] | None = None,
     ) -> None:
         cfg, w = self.config, self.world
-        self._sync_wind_cache()  # §AU O-1: honest wind trig even mid-mutation
         if tod is None:
             tod = self._time_of_day()
         if is_night is None:
@@ -7218,15 +7220,15 @@ class Simulation:
             ):
                 home = assigned
             else:
-                for h in houses:
-                    hh = cast(House, h)
+                for h in w.query_radius(c.x, c.y, 14.0):
                     if (
-                        hh.is_ruin is False
-                        and (not self.config.house_claim_enabled or hh.clan_id == 0 or hh.clan_id == c.clan_id)
-                        and self._inside_house(c, hh)
-                        and self._beds.get(hh.id, 0) < self._house_beds(hh)
+                        isinstance(h, House)
+                        and not h.is_ruin
+                        and (not self.config.house_claim_enabled or h.clan_id == 0 or h.clan_id == c.clan_id)
+                        and self._inside_house(c, h)
+                        and self._beds.get(h.id, 0) < self._house_beds(h)
                     ):
-                        home = hh
+                        home = h
                         break
             if home is not None and self._claim_bed(home):
                 c.indoors = True
@@ -7664,7 +7666,8 @@ class Simulation:
                 # as far as any honest shadow.
                 torch_glow_r2 = (hunt_r * 2.0) ** 2 if hunt_r > 0 else 0.0
                 sight_r2 = hunt_r * hunt_r if hunt_r > 0 else math.inf
-                for o, d2 in w.query_radius_with_dist_sq_list(c.x, c.y, max(fear_radius_eff, cfg.fear_radius) * (1.0 + scent_boost)):
+                # AY fix: reuse batched query (_batch_list already contains all prey within max search radius)
+                for o, d2 in _batch_list:
                     if not isinstance(o, Creature) or o.id == c.id or o.is_predator:
                         continue
                     if o.id not in w.entities or o.indoors:
@@ -8141,7 +8144,23 @@ class Simulation:
             best_alarm_sq = math.inf
             my_dialect = float(self.clans.get(c.clan_id, {}).get("dialect", 0.0)) if c.clan_id else 0.0
             for sg in self.signals:
-                d2 = w.distance_sq(c.x, c.y, sg["x"], sg["y"])
+                dxw = sg["x"] - c.x
+                if dxw > half_w:
+                    dxw -= cfg.width
+                elif dxw < -half_w:
+                    dxw += cfg.width
+                adx = dxw if dxw >= 0 else -dxw
+                if adx > max_hear_d:
+                    continue
+                dyw = sg["y"] - c.y
+                if dyw > half_h:
+                    dyw -= cfg.height
+                elif dyw < -half_h:
+                    dyw += cfg.height
+                ady = dyw if dyw >= 0 else -dyw
+                if ady > max_hear_d:
+                    continue
+                d2 = dxw * dxw + dyw * dyw
                 if d2 > max_hear_d2:
                     continue  # beyond every reach: no wavefront math needed
                 # §AQ PH-8: news travels at finite speed — the wavefront
@@ -8150,17 +8169,7 @@ class Simulation:
                 born = sg.get("born_tick")
                 if born is not None and cfg.signal_speed > 0.0:
                     age_t = self.tick - born
-                    dxw = sg["x"] - c.x
-                    if dxw > half_w:
-                        dxw -= cfg.width
-                    elif dxw < -half_w:
-                        dxw += cfg.width
-                    dyw = sg["y"] - c.y
-                    if dyw > half_h:
-                        dyw -= cfg.height
-                    elif dyw < -half_h:
-                        dyw += cfg.height
-                    dl = math.sqrt(dxw * dxw + dyw * dyw) or 1e-6
+                    dl = math.sqrt(d2) or 1e-6
                     tail = (dxw * self._cos_wind + dyw * self._sin_wind) / dl
                     if tail <= 0.0:
                         # no tailwind: plain radius check, squared
@@ -8638,9 +8647,9 @@ class Simulation:
         # Check if creature is inside a house (§L indoor/outdoor navigation)
         inside_house_obj: House | None = None
         if houses and not c.is_predator:
-            for h in houses:
-                if self._is_inside_house(c, cast(House, h)):
-                    inside_house_obj = cast(House, h)
+            for h in w.query_radius(c.x, c.y, 14.0):
+                if isinstance(h, House) and not h.is_ruin and self._is_inside_house(c, h):
+                    inside_house_obj = h
                     break
 
         if inside_house_obj is not None:
@@ -8941,8 +8950,8 @@ class Simulation:
             c.blocked_ticks = 0
         # Predator refuge safety net: even if a predator spawns inside a house, push it out
         if c.is_predator and houses:
-            for h in [e for e in w.query_radius(c.x, c.y, 14.0) if isinstance(e, House)]:
-                if self._inside_house(c, h):
+            for h in w.query_radius(c.x, c.y, 14.0):
+                if isinstance(h, House) and not h.is_ruin and self._inside_house(c, h):
                     # push to doorway, then one step outside
                     dx, dy = self._door_pos(h)
                     # move predator just outside the door
