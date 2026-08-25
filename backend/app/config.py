@@ -201,6 +201,9 @@ class Config:
     rest_recovery_mult: float = 2.0  # indoor sleeping health regen multiplier
     house_decay_ticks: int = 2400  # abandoned house stands this many ticks before crumbling to ruin
 
+    # Hearths (§AQ PH-1) — permanent fires that warm the roofs that feed them
+    hearths_enabled: bool = True  # clan members buy hearth fuel from the larder
+
     # Terrain (-1 => auto-scale from area)
     fertile_patches: int = -1  # green grounds where food prefers to grow
     rock_count: int = -1  # solid stone circles that block movement

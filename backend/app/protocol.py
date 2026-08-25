@@ -78,6 +78,7 @@ class EntityState(BaseModel):
     takeover_age: Optional[int] = None  # §AT-3: ticks since last hostile takeover
     material: Optional[Literal["straw", "wood", "stone"]] = None  # §AQ PH-1
     murals: Optional[int] = None  # §AN: painted chronicle inscribed on the walls
+    hearth_lit: Optional[bool] = None  # §AQ PH-1: fire burns on this hearth
 
 
 class StateMessage(BaseModel):
@@ -306,6 +307,9 @@ class GodLaws(BaseModel):
     house_claim_enabled: Optional[bool] = None
     rest_recovery_mult: Optional[float] = Field(None, ge=0, le=10)
     house_decay_ticks: Optional[int] = Field(None, ge=100, le=100000)
+
+    # Hearths (§AQ PH-1)
+    hearths_enabled: Optional[bool] = None
 
     # Predation (§I)
     predation_enabled: Optional[bool] = None

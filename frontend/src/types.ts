@@ -56,6 +56,7 @@ export interface EntityState {
   abandoned_ticks?: number
   takeover_age?: number | null
   material?: 'straw' | 'wood' | 'stone'
+  hearth_lit?: boolean | null
   murals?: number
   growth?: number
   variant?: 'grass' | 'grain' | 'berry' | 'medicinal_herb' | 'mushroom' | 'poisonous'
@@ -340,6 +341,7 @@ export interface GodLaws {
 
   // Shelter — roofs against the sky
   shelter_enabled?: boolean
+  hearths_enabled?: boolean
   exposure_drain?: number
   house_capacity?: number
   house_claim_enabled?: boolean

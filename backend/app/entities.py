@@ -276,3 +276,7 @@ class House(Entity):
     takeover_tick: int = -1  # §AT-3: tick of the last hostile takeover (render flash)
     material: str = "wood"  # §AQ PH-1: straw | wood | stone — sets the insulation
     murals: int = 0  # §AN: painted chronicle of the clan's great days
+    # §AQ PH-1 hearths: a permanent fire installation; fuel is bought from the
+    # clan larder and burns down every tick — an unfed hearth goes dark.
+    hearth_lit: bool = False
+    hearth_fuel: float = 0.0  # ticks of burn remaining

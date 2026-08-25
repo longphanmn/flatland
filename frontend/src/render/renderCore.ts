@@ -70,6 +70,7 @@ export function drawBatchedEntities(
   visible: (x: number, y: number, r?: number) => boolean,
   camScale: number,
   selectedId: number | null,
+  tick = 0,
 ): EntityState[] {
   const isZoomedOut = camScale < 4.0
   const isVeryZoomedOut = camScale < 2.2
@@ -203,6 +204,22 @@ export function drawBatchedEntities(
         ctx.arc(h.x, h.y, size / 2 + 1.5 + tAge * 0.06, 0, TAU)
         ctx.stroke()
         ctx.globalAlpha = 1
+      }
+      // §AQ PH-1: a lit hearth — warm glow and a flame dot on the floor
+      if (h.hearth_lit) {
+        const flick = 0.85 + 0.3 * Math.sin(tick * 0.7 + h.x)
+        ctx.fillStyle = 'rgba(255,158,60,0.16)'
+        ctx.beginPath()
+        ctx.arc(h.x, h.y, size * 0.42 * flick, 0, TAU)
+        ctx.fill()
+        ctx.fillStyle = '#ffa657'
+        ctx.beginPath()
+        ctx.arc(h.x, h.y, 0.9 * flick, 0, TAU)
+        ctx.fill()
+        ctx.fillStyle = '#ffe08a'
+        ctx.beginPath()
+        ctx.arc(h.x, h.y - 0.2, 0.45, 0, TAU)
+        ctx.fill()
       }
     }
   }
@@ -731,7 +748,7 @@ export function renderWorldFrame(
     }
   }
 
-  const visibleHouses = drawBatchedEntities(ctx, state.entities, visible, cam.scale, selectedId)
+  const visibleHouses = drawBatchedEntities(ctx, state.entities, visible, cam.scale, selectedId, state.tick)
 
   // Totem Poles + §AP Shrines & Temples of the Sphere
   const drawnShrines = new Set<string>()

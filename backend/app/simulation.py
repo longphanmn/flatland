@@ -227,6 +227,30 @@ WIND_RATE = 0.05          # relaxation toward the weather's target speed
 # prevailing direction by season (radians); re-rolls land near these
 WIND_SEASON_BIAS = {"spring": 0.0, "summer": 1.3, "autumn": 2.5, "winter": 4.0}
 WIND_FIRE_MULT = 0.8      # extra spread chance per unit of tailwind speed
+# §AQ PH-2: the wind carries more than flame — seeds and scent ride it too.
+WIND_SEED_BIAS = 0.65     # how strongly seed drift bends downwind (× speed)
+WIND_SCENT_MULT = 0.5     # noses reach this much farther toward UPWIND targets
+
+# §AQ PH-1 — hearths & radiant fire: warmth is infrastructure, and open
+# flame is a double-edged tool (it warms the winter roof AND cooks the unwary).
+HEARTH_COMFORT_TEMP = 26.0  # a lit hearth pulls the indoors toward this
+HEARTH_PULL = 0.6           # strength of that pull (× size_factor)
+HEARTH_FUEL_PER_ENERGY = 60.0  # ticks of burn bought per larder unit
+HEARTH_FUEL_MAX = 1200.0    # the woodpile caps out here
+HEARTH_BURN_RATE = 1.0      # fuel ticks consumed per tick while lit
+HEARTH_REFUEL_INTERVAL = 10  # pacing: kin top up the hearth every N ticks
+HEARTH_REFUEL_CHUNK = 0.25  # larder units per top-up
+FIRE_SCALD_RADIUS = 4.0     # radiant scalding beyond the flame core
+FIRE_SCALD_DAMAGE = 2.2     # health/tick at the flame's edge, fading to zero
+
+# §AQ PH-5 — ecological physics: roots contest the soil, and plants help
+# and hinder their neighbours (mushrooms fruit on decay, herbs shelter in
+# berry thickets, toxins stunt everything near).
+ROOT_COMPETITION = 0.45     # growth divisor per mature neighbour
+SYMBIOSIS_RADIUS = 3.5      # root/reach range for neighbour effects
+MUSHROOM_CORPSE_MULT = 1.6  # mushrooms fruit where things die
+HERB_BERRY_MULT = 1.35      # medicinal herbs thrive beside berries
+POISON_SUPPRESS = 0.55      # poisonous plants stunt their neighbours
 
 # §AE food decay — nothing lasts forever: variant lifespan multipliers (§AM)
 FOOD_LIFESPAN_MULT = {
@@ -736,11 +760,77 @@ class Simulation:
 
     def indoor_ambient(self, house: House) -> float:
         """Inside air: insulation pulls the room toward comfort; bigger floors
-        shed heat faster (perimeter/area bites in 2D)."""
+        shed heat faster (perimeter/area bites in 2D). A lit hearth (§AQ PH-1)
+        pulls the room past comfort toward hearth-warm."""
         ins = INSULATION_BY_MATERIAL.get(house.material, INSULATION_BY_MATERIAL["wood"])
         size_factor = max(0.4, min(1.0, HOUSE_REF_SIDE / max(1.0, house.size)))
         amb = self.ambient_at(house.x, house.y)
-        return amb + (HOUSE_COMFORT_TEMP - amb) * ins * size_factor
+        indoor = amb + (HOUSE_COMFORT_TEMP - amb) * ins * size_factor
+        if getattr(house, "hearth_lit", False):
+            indoor += (HEARTH_COMFORT_TEMP - indoor) * HEARTH_PULL * size_factor
+        return indoor
+
+    def _update_hearths(self) -> None:
+        """§AQ PH-1: hearths — permanent fire installations inside claimed
+        houses. Kin buy fuel from the clan larder when the roof (or the cold)
+        calls for it; the pile burns down every tick and an unfed hearth goes
+        dark. Winter survival infrastructure."""
+        if not self.config.hearths_enabled:
+            for h in self._cached_houses:
+                if h.hearth_lit:  # withdraw the law — every flame gutters out
+                    h.hearth_lit = False
+                    h.hearth_fuel = 0.0
+            return
+        tod = self._time_of_day()
+        want_warmth = (
+            self._season() in ("autumn", "winter")
+            or self._is_night(tod)
+            or self.weather in ("rain", "storm")
+        )
+        # Burn first — every lit hearth eats its woodpile this tick.
+        for h in self._cached_houses:
+            if not h.hearth_lit:
+                continue
+            h.hearth_fuel -= HEARTH_BURN_RATE
+            if h.hearth_fuel <= 0.0:
+                h.hearth_fuel = 0.0
+                h.hearth_lit = False
+        if not want_warmth or self.tick % HEARTH_REFUEL_INTERVAL != 0:
+            return
+        # Kin at home top up the hearth from the clan larder.
+        members_by_clan: dict[int, list[Creature]] = {}
+        for c in self._cached_creatures:
+            if c.clan_id:
+                members_by_clan.setdefault(c.clan_id, []).append(c)
+        reach_sq: dict[float, float] = {}
+        for h in self._cached_houses:
+            if h.is_ruin or not h.clan_id:
+                continue
+            kin = members_by_clan.get(h.clan_id)
+            if not kin:
+                continue
+            r2 = (h.size * 0.5 + 3.0) ** 2
+            near = False
+            for c in kin:
+                dx, dy = self.world.delta(c.x, c.y, h.x, h.y)
+                if dx * dx + dy * dy <= r2:
+                    near = True
+                    break
+            if not near:
+                continue
+            clan = self.clans.get(h.clan_id)
+            if clan is None:
+                continue
+            stored = float(clan.get("larder", 0.0))
+            if stored < HEARTH_REFUEL_CHUNK:
+                continue  # the larder is bare — the hearth dies tonight
+            take = min(HEARTH_REFUEL_CHUNK, stored,
+                       max(0.0, (HEARTH_FUEL_MAX - h.hearth_fuel)) / HEARTH_FUEL_PER_ENERGY)
+            if take <= 0:
+                continue
+            clan["larder"] = stored - take
+            h.hearth_fuel = min(HEARTH_FUEL_MAX, h.hearth_fuel + take * HEARTH_FUEL_PER_ENERGY)
+            h.hearth_lit = True
 
     # ------------------------------------------------ §AM living soil grid
     def _soil_index(self, x: float, y: float) -> int:
@@ -2234,6 +2324,7 @@ class Simulation:
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
+        self._update_hearths()  # §AQ PH-1 hearths burn & take fuel
         self._update_agriculture()  # §AM sowing, tending, granary feasts
         self._update_faith()  # §AP unified theology
         # Manual GC every 200 ticks to avoid stop-the-world at 1300c
@@ -4118,6 +4209,23 @@ class Simulation:
                 elif isinstance(e, Food) and e.id in self.world.entities:
                     if self.world.distance(e.x, e.y, f["x"], f["y"]) < f["r"] and self.rng.random() < 0.25:
                         self.world.remove(e.id)
+            # §AQ PH-1: radiant heat beyond the flame core — the fire warms the
+            # winter grove AND cooks whoever lingers too close (double-edged).
+            scald_r = f["r"] + FIRE_SCALD_RADIUS
+            for e in self.world.query_radius(f["x"], f["y"], scald_r):
+                if not isinstance(e, Creature) or e.id not in self.world.entities:
+                    continue
+                d = self.world.distance(e.x, e.y, f["x"], f["y"])
+                if d <= f["r"] + 1.2:
+                    continue  # core burn handled above
+                frac = 1.0 - (d - f["r"]) / FIRE_SCALD_RADIUS
+                dmg = FIRE_SCALD_DAMAGE * max(0.0, frac)
+                if dmg <= 0 or self.rng.random() >= 0.5:
+                    continue
+                if e.health - dmg <= 0:
+                    self._kill(e, "hyperthermia")
+                else:
+                    e.health -= dmg
             # also burn houses? small chance to ignite house (is_ruin)
             for h in (self._cached_houses if self._cached_houses else self._functional_houses()):
                 if not h.is_ruin and self.world.distance(h.x, h.y, f["x"], f["y"]) < f["r"] + h.size/2:
@@ -4363,10 +4471,45 @@ class Simulation:
                         if e.irrigated:
                             vm *= IRRIGATED_GROWTH_MULT
                             wm = max(wm, 1.0)  # drought-proof through the dry heat
+                    # §AQ PH-5: roots contest the soil; symbiosis tips the balance.
+                    # Mature neighbours crowd the sprout, corpses feed mushrooms,
+                    # berries shelter herbs, toxins stunt everything near.
+                    near_mature = 0
+                    corpse_near = False
+                    berry_near = False
+                    poison_near = False
+                    for o in self.world.query_radius(e.x, e.y, SYMBIOSIS_RADIUS):
+                        if o.id == e.id or o.id not in self.world.entities:
+                            continue
+                        if isinstance(o, Food):
+                            if o.growth >= 1.0:
+                                if o.variant == "poisonous":
+                                    poison_near = True
+                                elif (
+                                    cfg.plant_variants_enabled
+                                    and e.variant == "medicinal_herb"
+                                    and o.variant == "berry"
+                                ):
+                                    berry_near = True  # thicket shelter, not rivalry
+                                else:
+                                    near_mature += 1
+                        elif isinstance(o, Corpse):
+                            corpse_near = True
+                    eco_mult = 1.0 / (1.0 + ROOT_COMPETITION * near_mature)
+                    if cfg.plant_variants_enabled:
+                        if e.variant == "mushroom" and corpse_near:
+                            eco_mult *= MUSHROOM_CORPSE_MULT
+                        elif e.variant == "medicinal_herb" and berry_near:
+                            eco_mult *= HERB_BERRY_MULT
+                        if poison_near and e.variant != "poisonous":
+                            eco_mult *= POISON_SUPPRESS
                     # §AM D: the soil gives what the soil has
                     soil = self._soil_at(e.x, e.y)
                     soil_f = max(0.5, min(1.4, 0.55 + 0.45 * soil))
-                    gained = min(1.0 - e.growth, cfg.plant_growth_rate * vm * sm * wm * sun * soil_f)
+                    gained = min(
+                        1.0 - e.growth,
+                        cfg.plant_growth_rate * vm * sm * wm * sun * soil_f * eco_mult,
+                    )
                     e.growth += gained
                     self._deplete_soil(e.x, e.y, gained)  # the harvest draws on the land
                     if e.growth >= 1.0:
@@ -4422,6 +4565,8 @@ class Simulation:
         if cfg.plant_spread_rate > 0 and sun > 0.0:
             target = round(cfg.food_count * _season_food_mult(self._season(), cfg.winter_food_mult))
             total = sum(1 for e in self.world.entities.values() if e.kind == "food")
+            wx, wy = math.cos(self.wind_angle), math.sin(self.wind_angle)
+            seed_blend = min(0.7, WIND_SEED_BIAS * self.wind_speed)
             for parent in list(self.world.entities.values()):
                 if not isinstance(parent, Food) or parent.growth < 1.0:
                     continue  # only mature plants carry seeds
@@ -4431,9 +4576,15 @@ class Simulation:
                     continue  # the land holds exactly god's seasonal bounty
                 ang = self.rng.uniform(0, 2 * math.pi)
                 rad = self.rng.uniform(0, SPREAD_RADIUS)
+                # §AQ PH-2: seeds ride the wind — the drift bends downwind, so
+                # groves creep with the prevailing breeze and upwind ground
+                # stays clear.
+                vx = math.cos(ang) * (1.0 - seed_blend) + wx * seed_blend
+                vy = math.sin(ang) * (1.0 - seed_blend) + wy * seed_blend
+                norm = math.hypot(vx, vy) or 1.0
                 x, y = self.world.normalize(
-                    parent.x + math.cos(ang) * rad,
-                    parent.y + math.sin(ang) * rad,
+                    parent.x + vx / norm * rad,
+                    parent.y + vy / norm * rad,
                 )
                 if not self._is_in_rock(x, y):
                     self.world.add(self._new_food(x, y, growth=SPROUT_GROWTH))
@@ -5514,21 +5665,35 @@ class Simulation:
         # §AT-4 H-1: sickness dims the eyes.
         perceive *= self._health_sight_mult(c.health)
         # 1. Predation: hunt (predator) / flee (prey) — highest priority after sleep
+        # §AQ PH-2: scent rides the wind — a nose reaches farther toward UPWIND
+        # targets (the smell travels downwind to the sniffer), so approaching
+        # from downwind is the stealth play for hunter and hunted alike.
         hunt_target: Creature | None = None
         flee_target: Creature | None = None
         if cfg.predation_enabled:
+            scent_boost = WIND_SCENT_MULT * self.wind_speed if cfg.scent_enabled else 0.0
+            wx_s, wy_s = math.cos(self.wind_angle), math.sin(self.wind_angle)
             if c.is_predator and c.bite_cooldown <= 0:
                 # Find nearest non-predator prey within hunt_radius (+2 Wolf totem)
                 hunt_r = cfg.hunt_radius + self._totem_stat(c, "hunt_radius")
                 best_prey: Creature | None = None
                 best_prey_d_sq = hunt_r * hunt_r + 1e-9
-                for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, hunt_r):
+                for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, hunt_r * (1.0 + scent_boost)):
                     if not isinstance(o, Creature) or o.id == c.id or o.is_predator:
                         continue
                     if o.id not in w.entities or o.indoors:
                         continue  # indoors prey are safe (predator refuge)
-                    if d2 < best_prey_d_sq:
-                        best_prey_d_sq, best_prey = d2, o
+                    if d2 >= best_prey_d_sq:
+                        # §AQ PH-2: beyond base sight only UPWIND prey is smelled
+                        if scent_boost <= 0.0:
+                            continue
+                        d = math.sqrt(d2) or 1e-6
+                        dx, dy = w.delta(o.x, o.y, c.x, c.y)  # prey relative to predator
+                        upwind = max(0.0, -(dx * wx_s + dy * wy_s) / d)
+                        eff = hunt_r * (1.0 + scent_boost * upwind)
+                        if d > eff:
+                            continue
+                    best_prey_d_sq, best_prey = d2, o
                 if best_prey is not None:
                     if best_prey_d_sq <= cfg.eat_radius * cfg.eat_radius:
                         # Bite — instant kill, predator feeds
@@ -5555,13 +5720,22 @@ class Simulation:
                 # Find nearest predator within fear_radius to flee from
                 best_pred: Creature | None = None
                 best_pred_d_sq = fear_radius_eff * fear_radius_eff + 1e-9
-                for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, fear_radius_eff):
+                for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, fear_radius_eff * (1.0 + scent_boost)):
                     if not isinstance(o, Creature) or not o.is_predator:
                         continue
                     if o.id not in w.entities:
                         continue
-                    if d2 < best_pred_d_sq:
-                        best_pred_d_sq, best_pred = d2, o
+                    if d2 >= best_pred_d_sq:
+                        # §AQ PH-2: beyond base fear only an UPWIND predator reeks
+                        if scent_boost <= 0.0:
+                            continue
+                        d = math.sqrt(d2) or 1e-6
+                        dx, dy = w.delta(o.x, o.y, c.x, c.y)  # predator relative to prey
+                        upwind = max(0.0, -(dx * wx_s + dy * wy_s) / d)
+                        eff = fear_radius_eff * (1.0 + scent_boost * upwind)
+                        if d > eff:
+                            continue
+                    best_pred_d_sq, best_pred = d2, o
                 flee_target = best_pred
 
         # 2. Perceive the nearest meal — food or the fallen. Diet strictness (§O) filters.
@@ -6661,7 +6835,7 @@ class Simulation:
                 is_withering = True
             return (1, round(e.x, 1), round(e.y, 1), round(e.growth, 1), is_withering)
         if isinstance(e, House):
-            return (2, round(e.x, 1), round(e.y, 1), e.clan_id, bool(getattr(e, "is_ruin", False)))
+            return (2, round(e.x, 1), round(e.y, 1), e.clan_id, bool(getattr(e, "is_ruin", False)), e.hearth_lit)
         if isinstance(e, Corpse):
             return (3, round(e.x, 1), round(e.y, 1), e.ttl // 30)
         return (4, round(e.x, 1), round(e.y, 1))
@@ -6728,6 +6902,9 @@ class Simulation:
                 "is_main": bool(e.clan_id and self.clans.get(e.clan_id, {}).get("main_house_id") == e.id),
                 "takeover_age": (self.tick - e.takeover_tick) if getattr(e, "takeover_tick", -1) >= 0 else None,
                 "is_ruin": e.is_ruin or None,
+                # §AQ PH-1: the hearth's state rides the delta so the flame
+                # lights and gutters without a keyframe
+                "hearth_lit": e.hearth_lit or None,
             }
         return {
             "id": e.id,
@@ -6978,6 +7155,8 @@ class Simulation:
                 "takeover_age": (self.tick - e.takeover_tick) if getattr(e, "takeover_tick", -1) >= 0 else None,
                 # §AN: painted chronicle of great days on the walls
                 "murals": e.murals or None,
+                # §AQ PH-1: fire burns on this hearth
+                "hearth_lit": e.hearth_lit or None,
             }
         if isinstance(e, Food):
             is_withering = False

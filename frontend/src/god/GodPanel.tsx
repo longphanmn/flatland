@@ -196,6 +196,7 @@ const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
   sleep_enabled: true,
   shelter_enabled: true,
   house_claim_enabled: true,
+  hearths_enabled: true,
   territory_enabled: true,
   weather_sickness_enabled: false,
   communication_enabled: true,
@@ -769,6 +770,7 @@ export default function GodPanel({ open, onClose }: Props) {
                   <>
                     <ToggleRow k="shelter_enabled" label="Shelter allowed" title="creatures may claim roofs; disabling leaves all exposed and hides the shelter dials" />
                     <ToggleRow k="house_claim_enabled" label="Clan house claims" title="clans claim houses as settlements" hideIfOff="shelter_enabled" />
+                    <ToggleRow k="hearths_enabled" label="Hearths" title="kin buy hearth fuel from the larder — a lit hearth warms the roof through winter; unfed, it goes dark (§AQ PH-1)" hideIfOff="shelter_enabled" />
                   </>
                 )}
                 {group === 'Territory' && (

@@ -395,6 +395,8 @@ LAW_HINTS_MD = {
     "markets_enabled": "allied neighbours found neutral trading posts at shared borders and barter surplus every 240 ticks; peddler caravans carry goods and news between distant settlements",
     "omens_enabled": "at each season turn a shrine priest proclaims what comes; worshippers who hear it head home prepared",
     "dialect_drift_enabled": "isolated clans drift apart in speech — strangers understand each other less the further their dialects split; allies converge on a shared tongue",
+    # §AQ physics ecosystem
+    "hearths_enabled": "kin buy hearth fuel from the clan larder; a lit hearth warms its roof past comfort through winter and night — unfed, the fire goes dark",
 }
 
 def get_wiki_json(app: Any) -> dict:

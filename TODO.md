@@ -1425,14 +1425,14 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [x] [P0] **Temperature field** — coarse per-cell heat map (`TEMP_CELL` 25) updated each tick by season (base swept across the map from an edge: cold from the west, warmth from the east), day cycle (`DAY_HEAT_AMPLITUDE`), weather bumps, and open flame (`FIRE_HEAT` 60° within 8 units, circle-vs-cell overlap). (`simulation.py` `_update_temperature`/`ambient_at`, tests `tests/test_temperature.py`)
 - [x] [P0] **Body temperature** — `Creature.body_temp` drifts toward ambient (`BODY_TEMP_DRIFT`); too cold (<2°) builds §R chill under the weather-sickness law; too hot (>36°) is always physics — health drains with the excess until death cause `hyperthermia`. Exposed on the wire as `body_temp`.
 - [x] [P0] **Insulation ratings** — houses get a seeded material (`_pick_house_material`: stone > wood > straw, `INSULATION_BY_MATERIAL` 0.55/0.35/0.15) that pulls indoor air toward `HOUSE_COMFORT_TEMP` 18°; larger houses lose heat faster (`HOUSE_REF_SIDE/size` factor). `material` on the wire.
-- [ ] [P1] **Hearths** — permanent fire installations inside houses that warm all occupants; require fuel (food/wood); extinguish if unfed; critical winter survival infrastructure.
-- [ ] [P1] **Heat radiation from fire** — fire emits a 2D radial heat field; creatures near fire take heat damage; fire also provides warmth in winter (double-edged tool).
+- [x] [P1] **Hearths** — permanent fire installations inside claimed houses: kin buy fuel from the clan larder every 10 ticks when cold/night/storm calls for it (`HEARTH_FUEL_PER_ENERGY` 60 ticks per larder unit, woodpile caps 1200); burns `HEARTH_BURN_RATE` 1/tick and gutters out unfed; a lit hearth pulls indoor air past comfort toward `HEARTH_COMFORT_TEMP` 26° (`HEARTH_PULL` × size factor); `hearths_enabled` law (Shelter group), flame dot + warm glow on the wire as `hearth_lit`. (`simulation.py:_update_hearths`, `indoor_ambient`; tests `tests/test_hearth.py`)
+- [x] [P1] **Heat radiation from fire** — radiant scald beyond the flame core: creatures between `r+1.2` and `r+FIRE_SCALD_RADIUS` 4 lose up to `FIRE_SCALD_DAMAGE` 2.2 HP/tick scaled by proximity (50% gate/tick), death cause `hyperthermia`; warmth side was already the `FIRE_HEAT` field. Fire is officially double-edged. (`simulation.py:_update_fires`, tests `tests/test_hearth.py`)
 
 ### Phase PH-2: Atmospheric Physics & Wind  [P0 items done]
 - [x] [P0] **Wind vector field** — `wind_angle`/`wind_speed` on the snapshot; magnitude follows weather severity (calm 0.25 / rain 0.55 / storm 1.0, relaxed per tick), direction re-rolls near the season's prevailing bearing (`WIND_SEASON_BIAS`) on every weather transition. (`simulation.py` `_update_weather`/`_update_wind`, payload, types.ts; tests `tests/test_wind.py`)
 - [x] [P0] **Wind affects fire spread** — random ignition and plant-to-plant spread both multiply by a tailwind factor (`WIND_FIRE_MULT` 0.8 × speed × downwind alignment): flame propagates faster downwind and downwind groves ignite first.
-- [ ] [P1] **Wind affects seed dispersal** — food plants spread seeds farther downwind; creates natural forest clustering with prevailing wind patterns.
-- [ ] [P1] **Scent signals on wind** — olfactory signals travel downwind (predators scent prey downwind; prey detects predators upwind); directional stealth layer.
+- [x] [P1] **Wind affects seed dispersal** — seed drift bends downwind by `WIND_SEED_BIAS` 0.65 × wind speed (blended into the spread vector): groves creep with the prevailing breeze, upwind ground stays clear. (`simulation.py:_update_plants` spread, tests `tests/test_hearth.py`)
+- [x] [P1] **Scent signals on wind** — noses reach farther toward UPWIND targets: hunt/fear radii extend ×(1 + `WIND_SCENT_MULT` 0.5 × wind speed × upwind alignment) — smell travels downwind to the sniffer, so approaching from downwind is the stealth play for hunter and hunted alike; gated by the §AN scent law. (`simulation.py:_update_creature` predation block, tests `tests/test_hearth.py`)
 - [ ] [P2] **Wind affects thrown weapon range** — spears/tools thrown downwind travel farther; upwind throws fall short.
 - [ ] [P2] **Sound propagation** — loud events (combat, collapse) emit 2D pressure waves triggering nearby creature alarm responses; houses block sound; wind carries sound farther downwind; sleeping creatures cannot hear outside alarms.
 
@@ -1453,10 +1453,10 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [ ] [P2] **Ramps / staircases** — sloped tiles enabling height transitions; builders can construct ramps connecting elevation levels.
 
 ### Phase PH-5: Ecological & Biological Physics  [P1]
-- [ ] [P1] **Nutrient cycle** — dead creatures and decaying food leave nutrient deposits; plants grow faster on nutrient-rich tiles; overgrazing depletes nutrients → barren patches.
-- [ ] [P1] **Root competition** — mature plants suppress sprouting neighbors in adjacent tiles; creates natural clearings and groves without explicit spawn rules.
-- [ ] [P1] **Composting** — builders bury corpses to enrich nearby soil (farming skill action); converts death into growth.
-- [ ] [P2] **Plant symbiosis & parasitism** — mushrooms only grow on decaying matter; medicinal herbs grow faster near berries; poisonous plants exude toxins suppressing all plant neighbors in a small radius.
+- [x] [P1] **Nutrient cycle** — the §AM living-soil grid is exactly this: harvests deplete fertility cell by cell, corpses/withered plants/ash/compost restore it, plant growth scales with local soil. (`simulation.py` `_soil_at`/`_deplete_soil`/`_fertilize_soil`)
+- [x] [P1] **Root competition** — every mature non-poison neighbour within `SYMBIOSIS_RADIUS` 3.5 divides a sprout's growth by `1 + ROOT_COMPETITION 0.45 × n`: clearings and groves emerge from spread rules alone. Berry thickets exempt their herb symbionts. (`simulation.py:_update_plants`, tests `tests/test_hearth.py`)
+- [x] [P1] **Composting** — §AM farmers already compost: `_sow_and_tend` buries corpses into farm soil (compost event) and the living soil rewards it. Covered.
+- [x] [P2] **Plant symbiosis & parasitism** — mushrooms fruit on decay (×1.6 near corpses), medicinal herbs shelter in berry thickets (×1.35), poisonous plants stunt all neighbours (×0.55). (`simulation.py:_update_plants`, tests `tests/test_hearth.py`)
 
 ### Phase PH-6: Material Physics & Building  [P1]
 - [ ] [P1] **Material types** — four materials with distinct stats:

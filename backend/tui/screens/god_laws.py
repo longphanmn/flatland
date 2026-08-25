@@ -193,6 +193,7 @@ BOOL_LAWS: dict[str, list[tuple[str, str]]] = {
     "Shelter": [
         ("shelter_enabled", "Shelter law"),
         ("house_claim_enabled", "Clan house claims"),
+        ("hearths_enabled", "Hearths"),
     ],
     "Territory": [("territory_enabled", "Territory law")],
     "Clan": [
