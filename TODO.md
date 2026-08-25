@@ -1573,11 +1573,11 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 
 ## AT. Four Immediate Issues  [P0–P1]
 
-### AT-1. Clan History Incomplete — Cannot See Full History  [P1]
+### AT-1. Clan History Incomplete — Cannot See Full History  [P1] — ✅ implemented
 > `GET /api/clans/{id}` returns only the last 20 events (`[-20:]` hard-slice on `RT.sim.history`), and `clan["history"]` is the internal log list with no pagination.
-- [ ] [P1] **Paginated clan history endpoint** — `GET /api/clans/{id}/history?page=N&size=50` returning the full filtered event stream for a clan (as attacker, defender, or `clan_id` in payload), paginated; also expose the clan's internal `info["history"]` log (leader changes, war declarations, festivals, schisms) in the same response.
-- [ ] [P1] **Clan history UI** — ClanDetails modal adds a "Full History" tab (or scroll panel) that loads all pages of clan events; currently shows only the last 20 in-memory events; older events that rolled off `RT.sim.history` but are in the DB chronicle must also be queryable.
-- [ ] [P1] **Chronicle DB query by clan** — `GET /api/chronicle?clan_id=N` filter: SQL-level query on the `chronicle` table by `clan_id` in payload JSON, so events persisted to DB before they rolled off in-memory history are still retrievable.
+- [x] [P1] **Paginated clan history endpoint** — `GET /api/clans/{id}/history?page=N&size=50` returns the full filtered event stream for a clan (any clan-bearing payload key: a/b/clan_id/parent/new_clan/invader/victim/winner/loser), newest-first with `total` + `has_more`; the response also carries the clan's internal `history` milestone log. (`main.py`, tests `tests/test_clan_history.py`)
+- [x] [P1] **Clan history UI** — ClanDetails gains a lazy "📚 Full History" panel that pages through all clan events with a `load older` button, next to the existing Recent Activity slice.
+- [x] [P1] **Chronicle DB query by clan** — `GET /api/history?clan_id=N` filters at the SQL level via `json_extract(payload,'$.key')` over every clan-bearing key (`db.py` `CLAN_PAYLOAD_KEYS`), so events persisted to the DB before rolling off in-memory history remain retrievable; RAM log drained on read (§AD policy).
 
 ### AT-2. Clan Bed Shortage — Members Sleep in Enemy Houses  [P0] — ✅ implemented
 > When total clan beds < population, `_house_for()` falls back to the nearest house with a free bed, which may belong to another clan. The expansion logic at `_update_settlements()` only claims `clan_id == 0` (unclaimed) free houses — it never takes occupied-but-underpopulated rival houses.

@@ -19,7 +19,7 @@ from pydantic import ValidationError
 
 from .auth import PasskeyAuth, SetupPasskey, require_god
 from .config import Config
-from .db import Database
+from .db import CLAN_PAYLOAD_KEYS, Database
 from .protocol import ControlAction, ControlMessage, GodLaws, HelloMessage, StateMessage
 from .entities import Creature
 from .simulation import Simulation, glyph_for, personal_name_for, variation_for
@@ -1066,8 +1066,13 @@ async def get_history(
     limit: int = 500,
     type: str | None = None,
     entity_id: int | None = None,
+    clan_id: int | None = None,
 ) -> dict:
-    """The durable chronicle for the current world (paginated by event id)."""
+    """The durable chronicle for the current world (paginated by event id).
+
+    §AT-1: `clan_id=N` filters at the SQL level — events whose payload names
+    the clan (a/b/clan_id/conquest/schism/takeover pairs) stay queryable even
+    after they rolled off the in-memory chronicle."""
     # AD: drain the RAM log so a fresh reader sees the full tail
     # (the flush runs here, on the HTTP thread — never on the sim thread).
     DB.flush()
@@ -1081,10 +1086,40 @@ async def get_history(
             limit=limit,
             type_filter=type,
             entity_id=entity_id,
+            clan_id=clan_id,
         )
         if RT.world_id
         else [],
     }
+
+
+@app.get("/api/clans/{clan_id}/history")
+async def get_clan_history(clan_id: int, page: int = 0, size: int = 50) -> dict:
+    """§AT-1: the FULL filtered event stream for a clan — paginated over the
+    in-memory chronicle (newest page first), plus the clan's own internal log
+    (leader changes, takeovers, wars, schisms)."""
+    with RT.lock:
+        if clan_id not in RT.sim.clans:
+            raise HTTPException(404, "clan not found")
+        size = max(1, min(size, 200))
+        page = max(0, page)
+        matching = [
+            e for e in RT.sim.history
+            if any(e.payload.get(k) == clan_id for k in CLAN_PAYLOAD_KEYS)
+        ]
+        matching.reverse()  # newest first
+        start = page * size
+        slice_ = matching[start:start + size]
+        return {
+            "clan_id": clan_id,
+            "page": page,
+            "size": size,
+            "total": len(matching),
+            "has_more": start + size < len(matching),
+            "events": [e.model_dump(mode="json") for e in slice_],
+            # the clan's internal milestone log (capped at 30 in-memory)
+            "log": RT.sim.clans[clan_id].get("history", []),
+        }
 
 
 @app.get("/api/worlds")

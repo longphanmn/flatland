@@ -19,6 +19,13 @@ from collections import deque
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
+
+# §AT-1: every event payload key that may name a clan (used by the SQL-level
+# clan filter and the paginated clan history endpoint).
+CLAN_PAYLOAD_KEYS = (
+    "a", "b", "clan_id", "parent", "new_clan",
+    "invader_clan", "victim_clan", "winner_clan", "loser_clan",
+)
 from typing import Any
 
 from .config import Config
@@ -352,6 +359,7 @@ class Database:
         limit: int = 500,
         type_filter: str | None = None,
         entity_id: int | None = None,
+        clan_id: int | None = None,
     ) -> list[dict[str, Any]]:
         conditions = ["world_id=?"]
         params: list[Any] = [world_id]
@@ -364,6 +372,13 @@ class Database:
         if entity_id is not None:
             conditions.append("entity_id=?")
             params.append(entity_id)
+        if clan_id is not None:
+            # §AT-1: SQL-level clan filter — any payload key that names a clan.
+            ors = " OR ".join(
+                f"json_extract(payload,'$.{k}')=?" for k in CLAN_PAYLOAD_KEYS
+            )
+            conditions.append(f"({ors})")
+            params.extend([clan_id] * len(CLAN_PAYLOAD_KEYS))
         params.append(limit)
 
         query = f"SELECT * FROM events WHERE {' AND '.join(conditions)} ORDER BY id DESC LIMIT ?"

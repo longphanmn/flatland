@@ -378,6 +378,79 @@ export default function ClanDetails({
           </ul>
         )}
       </Collapsible>
+
+      {/* §AT-1 Full History — every clan event, paginated from the server */}
+      <FullHistory clanId={data.id} color={data.color} />
     </aside>
+  )
+}
+
+function FullHistory({ clanId, color }: { clanId: number; color: string }) {
+  const [open, setOpen] = useState(false)
+  const [events, setEvents] = useState<any[]>([])
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(false)
+
+  const loadPage = (p: number, replace: boolean) => {
+    setLoading(true)
+    fetch(`/api/clans/${clanId}/history?page=${p}&size=50`)
+      .then((r) => r.json())
+      .then((d) => {
+        setEvents((prev) => (replace ? d.events : [...prev, ...d.events]))
+        setHasMore(d.has_more)
+        setTotal(d.total)
+        setPage(p)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="chip"
+        style={{ margin: '4px 0', cursor: 'pointer', textAlign: 'left', borderLeft: `3px solid ${color}` }}
+        onClick={() => {
+          setOpen(true)
+          loadPage(0, true)
+        }}
+      >
+        📚 Full History (all pages)
+      </button>
+    )
+  }
+  return (
+    <div style={{ marginTop: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <span className="chip">📚 Full History · {total} events</span>
+        <button type="button" className="chip" style={{ cursor: 'pointer' }} onClick={() => setOpen(false)}>
+          close
+        </button>
+      </div>
+      <ul className="insp-events" style={{ maxHeight: 220, overflowY: 'auto', margin: 0, padding: 0 }}>
+        {events.map((ev: any, i: number) => (
+          <li key={`${ev.tick}-${ev.entity_id}-${i}`} className={`ev-${ev.type}`} style={{ fontSize: 11.5 }}>
+            tick {ev.tick}: <b>{ev.type}</b> {ev.caste ? `· ${ev.caste}` : ''} {ev.cause ? `· ${ev.cause}` : ''}
+          </li>
+        ))}
+        {events.length === 0 && !loading && (
+          <li className="chip" style={{ fontSize: 11.5 }}>No recorded clan events.</li>
+        )}
+      </ul>
+      {hasMore && (
+        <button
+          type="button"
+          className="chip"
+          style={{ margin: '4px auto 0', display: 'block', cursor: 'pointer' }}
+          disabled={loading}
+          onClick={() => loadPage(page + 1, false)}
+        >
+          {loading ? 'loading…' : 'load older'}
+        </button>
+      )}
+    </div>
   )
 }
