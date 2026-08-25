@@ -41,6 +41,7 @@ export interface EntityState {
   angle_jitter?: number
   chill?: number
   body_temp?: number
+  torpid?: boolean | null
   trait?: string | null
   equipped_item?: 'spear' | 'basket' | 'torch' | 'herb_poultice' | 'crown' | null
   food_basket?: number

@@ -183,6 +183,8 @@ class Creature(Entity):
     heal_bonus_ticks: int = 0  # countdown for the bonus above
     # §AM agriculture: seed pouches gathered from wild harvests, sown at farm plots
     seeds: int = 0
+    # §AQ PH-7 metabolic extremes: sustained cooking collapses the body
+    heat_stroke_ticks: int = 0
     # §AN voice & ritual: chant-calm window, omen preparation, greeting pacing,
     # and an active diplomatic mission (emissary)
     calm_ticks: int = 0

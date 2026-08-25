@@ -93,6 +93,7 @@ export function drawBatchedEntities(
   const starvingCreatures: EntityState[] = []
   const infectedCreatures: EntityState[] = []
   const chilledCreatures: EntityState[] = []
+  const torpidCreatures: EntityState[] = []
   const glyphCreatures: EntityState[] = []
   const visibleCreatures: EntityState[] = []
 
@@ -154,8 +155,8 @@ export function drawBatchedEntities(
       if (e.status === 'starving') starvingCreatures.push(e)
       else if (e.status === 'hungry') hungryCreatures.push(e)
       if ((e.chill ?? 0) >= 12) chilledCreatures.push(e)
-    }
-    if (e.glyph && ((camScale >= 6.0 && !isDense) || selectedId === e.id)) glyphCreatures.push(e)
+      if (e.torpid) torpidCreatures.push(e)
+    }    if (e.glyph && ((camScale >= 6.0 && !isDense) || selectedId === e.id)) glyphCreatures.push(e)
   }
 
   // Draw Houses
@@ -424,6 +425,21 @@ export function drawBatchedEntities(
     ctx.beginPath()
     for (const c of chilledCreatures) {
       const r = (c.radius ?? 1.2) + 0.5
+      ctx.moveTo(c.x + r, c.y)
+      ctx.arc(c.x, c.y, r, 0, TAU)
+    }
+    ctx.stroke()
+    ctx.globalAlpha = 1
+  }
+
+  // §AQ PH-7: torpid bodies — a faint frost-blue halo, unconscious where they fell
+  if (torpidCreatures.length > 0) {
+    ctx.globalAlpha = 0.4
+    ctx.strokeStyle = '#a5d8ff'
+    ctx.lineWidth = 0.3
+    ctx.beginPath()
+    for (const c of torpidCreatures) {
+      const r = (c.radius ?? 1.2) + 0.9
       ctx.moveTo(c.x + r, c.y)
       ctx.arc(c.x, c.y, r, 0, TAU)
     }
@@ -740,7 +756,9 @@ export function renderWorldFrame(
       if (!visible0(sg.x, sg.y, 5)) continue
       const sx = cam.ox + sg.x * cam.scale
       const sy = cam.oy + sg.y * cam.scale
-      const age = 15 - (sg.ttl ?? 0)
+      // long-lived signals (§AN scent trails outlive the 15-tick ripple
+      // window) must never push the radius negative — arc() throws on that
+      const age = Math.max(0, 15 - (sg.ttl ?? 0))
       const radius = (4 + age * 2.2) * (cam.scale / 12)
       const alpha = Math.max(0, 0.45 - age * 0.03)
       if (alpha <= 0) continue

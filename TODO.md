@@ -1464,9 +1464,9 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
 - [x] [P2] **Rubble blocking** — collapsed lots pile `rubble` that blocks movement like rock (`RUBBLE_RADIUS_FRAC` 0.35 of the floor) until a builder clears it (0.10/tick), which removes the ruin entirely; `rubble_blocking_enabled` law.
 - [ ] [P2] **Weight & load-bearing** — *deferred*: Planiverse beam mechanics (one-point supports, wall-climbing rules) need a structural graph the flat-point body model doesn't have; walls already block except doors.
 
-### Phase PH-7: Metabolic & Biological Extremes  [P2]
-- [ ] [P2] **Torpor / hibernation** — at very low energy + very cold ambient, creatures enter torpor (0.05× energy burn/tick), unconscious and vulnerable to predators; exit when temperature rises.
-- [ ] [P2] **Heat exhaustion** — sustained hyperthermia above threshold forces involuntary rest; creature cools passively; fatal if unshaded.
+### Phase PH-7: Metabolic & Biological Extremes  [P2] — ✅ implemented
+- [x] [P2] **Torpor / hibernation** — a body below `TORPOR_ENERGY_RATIO` 10% energy in air under `HYPOTHERMIA_TEMP` 2° shuts down where it stands: `TORPOR_BURN_MULT` 0.05× burn, no movement, no perception — unconscious and defenceless until the air warms or starvation wins; on the wire as `torpid` (frost halo in the renderer). (`simulation.py:_update_creature`, tests `tests/test_metabolism.py`)
+- [x] [P2] **Heat exhaustion** — every tick spent above 36° builds `heat_stroke_ticks`; at `HEAT_STROKE_TICKS` 60 the body drops into heat prostration (stride zeroed, sleep emote) and keeps cooking until ambient falls 4° below threshold — fatal if shade never comes, exactly as before but now the victim stops sprinting through the fire.
 
 ### Phase PH-8: Seismic & Wave Physics  [P2]
 - [ ] [P2] **Earthquake events** — rare seismic events displace entities, collapse weakened structures, crack rock formations opening or blocking paths.

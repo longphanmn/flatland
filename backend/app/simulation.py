@@ -215,6 +215,13 @@ HYPOTHERMIA_TEMP = 2.0    # below this the body builds chill (§R)
 CHILL_FROM_COLD_RATE = 0.06
 HYPERTHERMIA_TEMP = 36.0  # above this the body cooks
 HYPERTHERMIA_DRAIN = 0.15  # health per degree of excess per tick
+
+# §AQ PH-7 — metabolic extremes: a frozen, starving body shuts down to
+# near-nothing; sustained cooking drops the body where it stands.
+TORPOR_ENERGY_RATIO = 0.10  # energy fraction below which the cold can claim a body
+TORPOR_BURN_MULT = 0.05     # torpid metabolism: 5% of the awake burn
+HEAT_STROKE_TICKS = 60      # ticks of cooking before the body gives out
+HEAT_STROKE_HYST = 4.0      # degrees of cooling before the body rises again
 HOUSE_COMFORT_TEMP = 18.0  # what insulation pulls the indoors toward
 # §AQ PH-6 — material physics: four build materials with distinct stats.
 MATERIAL_STATS = {
@@ -757,6 +764,16 @@ class Simulation:
             return 0.0
         x = (tod - 0.5) / 0.28  # −1..1 across the daylight window
         return max(0.15, 1.0 - x * x)
+
+    def _is_torpid(self, c: Creature) -> bool:
+        """§AQ PH-7: a starving body in killing cold has shut down."""
+        em = self.config.energy_max
+        ratio = c.energy / em if em > 0 else 1.0
+        return (
+            not c.is_predator
+            and ratio <= TORPOR_ENERGY_RATIO
+            and self.ambient_at(c.x, c.y) < HYPOTHERMIA_TEMP
+        )
 
     @staticmethod
     def _metabolic_cost(c: Creature) -> float:
@@ -5959,6 +5976,24 @@ class Simulation:
                 # the body does not move again until dawn (or death).
                 return
 
+        # §AQ PH-7: torpor — a starving body in killing cold shuts down:
+        # 5% burn, unconscious and defenceless until the air warms or it dies.
+        if (
+            not c.is_predator
+            and ratio <= TORPOR_ENERGY_RATIO
+            and self.ambient_at(c.x, c.y) < HYPOTHERMIA_TEMP
+        ):
+            stage_mult_t = STAGE_ENERGY_MULT.get(c.stage, 1.0)
+            c.energy -= cfg.energy_decay_per_tick * TORPOR_BURN_MULT * stage_mult_t * self._metabolic_cost(c)
+            if not c.emote or c.emote == "hungry":
+                c.emote = "sleep"
+                c.emote_ticks = 15
+            if c.energy <= 0:
+                self._kill(c, "starvation")
+            elif c.age >= c.lifespan:
+                self._kill(c, "old_age")
+            return
+
         # Clan bylaws and task board modifiers (§AL). §AS L-0: with no living
         # leader the institutions pause — no rationing, no duty weights.
         clan_info = self.clans.get(c.clan_id) if c.clan_id else None
@@ -6943,7 +6978,14 @@ class Simulation:
             speed_mult *= WOUND_SPEED_MULT.get(c.wound_severity, 1.0)
         # §AQ PH-4: roads carry the stride; the grade ahead slows the climb
         stride_mult = 1.0
-        if cfg.relief_enabled:
+        if c.heat_stroke_ticks >= HEAT_STROKE_TICKS:
+            # §AQ PH-7: heat prostration — the body refuses to move; it cools
+            # where it fell, and dies there if shade never comes.
+            stride_mult = 0.0
+            if not c.emote or c.emote == "hungry":
+                c.emote = "sleep"
+                c.emote_ticks = 10
+        elif cfg.relief_enabled:
             stride_mult *= self._road_speed_mult(c.x, c.y)
             here_h = self._elev_units(c.x, c.y)
             ahead_x = c.x + math.cos(c.angle) * 2.0
@@ -7228,9 +7270,13 @@ class Simulation:
             # §AQ PH-1: too hot is always lethal physics — no law gates it.
             excess = c.body_temp - HYPERTHERMIA_TEMP
             c.health -= HYPERTHERMIA_DRAIN * excess
+            # §AQ PH-7: sustained cooking collapses the body — heat stroke
+            c.heat_stroke_ticks += 1
             if c.health <= 0:
                 self._kill(c, "hyperthermia")
                 return
+        elif c.body_temp < HYPERTHERMIA_TEMP - HEAT_STROKE_HYST:
+            c.heat_stroke_ticks = 0
         if cfg.weather_sickness_enabled and c.body_temp < HYPOTHERMIA_TEMP:
             cold_resist = 1.0 - self._totem_stat(c, "cold")  # §AP Monolith cold immunity
             c.chill = min(cfg.chill_threshold * 2, c.chill + CHILL_FROM_COLD_RATE * cold_resist)
@@ -7362,6 +7408,7 @@ class Simulation:
                 getattr(e, "equipped_item", None),
                 getattr(e, "food_basket", 0),
                 getattr(e, "title", None),
+                self._is_torpid(e),
             )
         if isinstance(e, Food):
             is_withering = False
@@ -7387,6 +7434,7 @@ class Simulation:
             d: dict[str, Any] = {
                 "id": e.id,
                 "kind": e.kind,
+                "torpid": self._is_torpid(e) or None,
                 "x": round(e.x, 2),
                 "y": round(e.y, 2),
                 "angle": round(e.angle, 3),
@@ -7713,6 +7761,8 @@ class Simulation:
                 "angle_jitter": angle_jitter,
                 "chill": round(e.chill, 2),
                 "body_temp": round(getattr(e, "body_temp", 20.0), 1),
+                # §AQ PH-7: cold-torpor collapses the body in place
+                "torpid": self._is_torpid(e) or None,
                 "trait": e.trait,
                 "equipped_item": getattr(e, "equipped_item", None),
                 "food_basket": getattr(e, "food_basket", 0) or None,

@@ -69,6 +69,7 @@ class EntityState(BaseModel):
     angle_jitter: Optional[float] = None
     chill: Optional[float] = None
     body_temp: Optional[float] = None  # §AQ PH-1: body temperature (°C-ish)
+    torpid: Optional[bool] = None  # §AQ PH-7: cold-torpor shutdown
     trait: Optional[str] = None
     door_width: Optional[float] = None
     door_offset: Optional[float] = None
