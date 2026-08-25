@@ -30,6 +30,16 @@ from .entities import (
 from .protocol import EntityState, HistoryEvent, StateMessage
 from .world import World, segments_intersect
 
+# AY: native hot-path & parallel domain decomposition (optional, deterministic fallback)
+try:
+    from . import native_core as _native_core  # type: ignore
+except Exception:
+    _native_core = None  # type: ignore
+try:
+    from . import parallel as _parallel  # type: ignore
+except Exception:
+    _parallel = None  # type: ignore
+
 
 # Life-stage multipliers (speed, sight) — the young are small and dim-sighted,
 # the elders slow. Fertility multiplier lives on Creature.FERTILITY_MULT.
@@ -7819,7 +7829,9 @@ class Simulation:
         # (production incident @ tick 34k: 800 predators, zero clan members).
         target: Entity | None = None
         best_sq = perceive * perceive
-        for e, d2 in w.query_radius_with_dist_sq_list(c.x, c.y, perceive):
+        # AY fix: reuse batched query (_batch_r >= perceive) to avoid second spatial scan per creature
+        _food_iter = _batch_list if _batch_r >= perceive - 1e-9 else w.query_radius_with_dist_sq_list(c.x, c.y, perceive)
+        for e, d2 in _food_iter:
             if e.kind not in ("food", "corpse") or e.id in self._eaten:
                 continue
             if c.is_predator and e.kind == "food":
@@ -7882,7 +7894,8 @@ class Simulation:
             and not c.is_predator
         ):
             scent_sq = FOOD_SCENT_RADIUS * FOOD_SCENT_RADIUS
-            for e, d2 in w.query_radius_with_dist_sq(c.x, c.y, FOOD_SCENT_RADIUS):
+            _scent_iter = _batch_list if _batch_r >= FOOD_SCENT_RADIUS - 1e-9 else w.query_radius_with_dist_sq(c.x, c.y, FOOD_SCENT_RADIUS)
+            for e, d2 in _scent_iter:
                 if e.kind != "food" or e.id in self._eaten:
                     continue
                 f = cast(Food, e)

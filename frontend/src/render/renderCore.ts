@@ -4,7 +4,8 @@ import { TOTEMS } from '../totems'
 
 export const TAU = Math.PI * 2
 const _riverGradCacheGlobal = new Map<string, CanvasGradient>()
-const _riverGradCache: Map<string, CanvasGradient> = _riverGradCacheGlobal
+// @ts-ignore unused alias kept for type compat
+const _riverGradCache: Map<string, CanvasGradient> = _riverGradCacheGlobal as Map<string, CanvasGradient>
 // §AO E: matches backend CAMPFIRE_LIGHT_RADIUS
 const CAMPFIRE_LIGHT_RADIUS = 3.5
 export const PRIEST_SIDES = 24
