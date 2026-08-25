@@ -5820,11 +5820,13 @@ class Simulation:
                     father, best_d2 = m, d2
             if father is None:
                 continue
+            m_fert = 0.5 if mother.stage == "elder" else 1.0
+            f_fert = 0.5 if father.stage == "elder" else 1.0
             fert = (
                 traits_for(mother.caste).fertility
-                * Creature.FERTILITY_MULT[mother.stage]
+                * m_fert
                 * traits_for(father.caste).fertility
-                * Creature.FERTILITY_MULT[father.stage]
+                * f_fert
                 * room
             )
             rate = cfg.birth_rate
