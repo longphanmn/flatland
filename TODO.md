@@ -594,6 +594,20 @@ by_caste). Replace with spatial settlement seeding so any caste can share a clan
       test_reproduction.py founding test rewritten for settlements.)
 
 ## X. Fixes
+- [x] Predator monoculture — world died into 800 clanless wolves (prod incident
+      @ tick ~34k): `can_eat` had an explicit `is_predator` bypass and the §O
+      diet gate defaults off, so the Carnivore caste grazed living plants on
+      top of hunting — a double income that out-competed every clan caste,
+      drove them extinct (predators breed true, daughters clanless lines),
+      then sat at the population cap forever: no clans had members, every
+      creature showed clanless, nobody was ever hungry. Fix: predators hunt
+      the living and scavenge corpses — they never perceive Food as prey
+      (`simulation.py` perception gate), so their survival couples strictly to
+      prey abundance again (Lotka–Volterra restored). Tests:
+      `tests/test_predator_ecology.py` (no grazing beside a ripe field,
+      corpse scavenging kept, starve-out under full bounty, lone wolf cannot
+      clear a breeding village). Note: worlds already past the collapse need
+      a Reset — the fix changes the laws of nature, not the dead.
 - [x] Silent world freeze at random ticks (recurring, "fixed" by restart) — the
       tick task died on any exception escaping `step()` (prime suspect: DB event
       sink hitting `sqlite3.OperationalError: database is locked` — connection

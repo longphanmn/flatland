@@ -4874,10 +4874,16 @@ class Simulation:
                 flee_target = best_pred
 
         # 2. Perceive the nearest meal — food or the fallen. Diet strictness (§O) filters.
+        # §X-fix: the Carnivore caste hunts the living and scavenges the dead —
+        # it never grazes fields. A predator that eats plants out-competes every
+        # caste for the bounty and the world dies into a wolf monoculture
+        # (production incident @ tick 34k: 800 predators, zero clan members).
         target: Entity | None = None
         best_sq = perceive * perceive
         for e, d2 in w.query_radius_with_dist_sq(c.x, c.y, perceive):
             if e.kind not in ("food", "corpse") or e.id in self._eaten:
+                continue
+            if c.is_predator and e.kind == "food":
                 continue
             # A meal given up on (unreachable behind stone or wall) is ignored
             # until its memory fades — the hungry look elsewhere instead of
