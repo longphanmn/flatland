@@ -120,8 +120,8 @@ class World:
                 dy -= h
         return dx * dx + dy * dy
 
-    def query_radius(self, x: float, y: float, radius: float) -> Iterator[Entity]:
-        """Yield entities within `radius` of (x, y); requires a fresh index.
+    def query_radius(self, x: float, y: float, radius: float) -> list[Entity]:
+        """Return list of entities within `radius` of (x, y); requires a fresh index.
 
         T: toroidal dx iteration for fixed 8; correct wrap handling.
         AF: inlined squared distance check eliminates math.hypot / math.sqrt and tuple allocation overhead.
@@ -136,6 +136,7 @@ class World:
         half_w = w * 0.5
         half_h = h * 0.5
         is_wrap = self.config.boundary == "wrap"
+        res: list[Entity] = []
 
         if is_wrap:
             cx_center = int(x // cs) % cols if cols else 0
@@ -149,8 +150,7 @@ class World:
                     cx = (cx_center + dx_grid) % cols
                     for dy_grid in range(-ry, ry + 1):
                         cy = (cy_center + dy_grid) % rows
-                        bucket = buckets[cy * cols + cx]
-                        for e in bucket:
+                        for e in buckets[cy * cols + cx]:
                             if e.id in seen:
                                 continue
                             seen.add(e.id)
@@ -161,14 +161,13 @@ class World:
                             if edy > half_h:
                                 edy -= h
                             if edx * edx + edy * edy <= r2:
-                                yield e
-                return
+                                res.append(e)
+                return res
             for dx_grid in range(-rx, rx + 1):
                 cx = (cx_center + dx_grid) % cols
                 for dy_grid in range(-ry, ry + 1):
                     cy = (cy_center + dy_grid) % rows
-                    bucket = buckets[cy * cols + cx]
-                    for e in bucket:
+                    for e in buckets[cy * cols + cx]:
                         edx = abs(x - e.x)
                         if edx > half_w:
                             edx -= w
@@ -176,8 +175,8 @@ class World:
                         if edy > half_h:
                             edy -= h
                         if edx * edx + edy * edy <= r2:
-                            yield e
-            return
+                            res.append(e)
+            return res
         # clamp: no wrap
         x0 = max(0, int((x - radius) // cs))
         x1 = min(cols - 1, int((x + radius) // cs))
@@ -186,15 +185,15 @@ class World:
         for cy in range(y0, y1 + 1):
             row_off = cy * cols
             for cx in range(x0, x1 + 1):
-                bucket = buckets[row_off + cx]
-                for e in bucket:
+                for e in buckets[row_off + cx]:
                     edx = x - e.x
                     edy = y - e.y
                     if edx * edx + edy * edy <= r2:
-                        yield e
+                        res.append(e)
+        return res
 
-    def query_radius_with_dist_sq(self, x: float, y: float, radius: float) -> Iterator[tuple[Entity, float]]:
-        """Yield (entity, dist_sq) within `radius` of (x, y) without recomputing distances."""
+    def query_radius_with_dist_sq(self, x: float, y: float, radius: float) -> list[tuple[Entity, float]]:
+        """Return list of (entity, dist_sq) within `radius` of (x, y) without recomputing distances."""
         cs = self.cell_size
         r2 = radius * radius
         cols = self.cols
@@ -205,6 +204,7 @@ class World:
         half_w = w * 0.5
         half_h = h * 0.5
         is_wrap = self.config.boundary == "wrap"
+        res: list[tuple[Entity, float]] = []
 
         if is_wrap:
             cx_center = int(x // cs) % cols if cols else 0
@@ -213,15 +213,13 @@ class World:
             ry = int(math.ceil(radius / cs)) + 1
             need_seen = (rx * 2 + 1 >= cols) or (ry * 2 + 1 >= rows)
 
-
             if need_seen:
                 seen: set[int] = set()
                 for dx_grid in range(-rx, rx + 1):
                     cx = (cx_center + dx_grid) % cols
                     for dy_grid in range(-ry, ry + 1):
                         cy = (cy_center + dy_grid) % rows
-                        bucket = buckets[cy * cols + cx]
-                        for e in bucket:
+                        for e in buckets[cy * cols + cx]:
                             if e.id in seen:
                                 continue
                             seen.add(e.id)
@@ -233,14 +231,13 @@ class World:
                                 edy -= h
                             d2 = edx * edx + edy * edy
                             if d2 <= r2:
-                                yield e, d2
-                return
+                                res.append((e, d2))
+                return res
             for dx_grid in range(-rx, rx + 1):
                 cx = (cx_center + dx_grid) % cols
                 for dy_grid in range(-ry, ry + 1):
                     cy = (cy_center + dy_grid) % rows
-                    bucket = buckets[cy * cols + cx]
-                    for e in bucket:
+                    for e in buckets[cy * cols + cx]:
                         edx = abs(x - e.x)
                         if edx > half_w:
                             edx -= w
@@ -249,8 +246,8 @@ class World:
                             edy -= h
                         d2 = edx * edx + edy * edy
                         if d2 <= r2:
-                            yield e, d2
-            return
+                            res.append((e, d2))
+            return res
         # clamp: no wrap
         x0 = max(0, int((x - radius) // cs))
         x1 = min(cols - 1, int((x + radius) // cs))
@@ -259,25 +256,21 @@ class World:
         for cy in range(y0, y1 + 1):
             row_off = cy * cols
             for cx in range(x0, x1 + 1):
-                bucket = buckets[row_off + cx]
-                for e in bucket:
+                for e in buckets[row_off + cx]:
                     edx = x - e.x
                     edy = y - e.y
                     d2 = edx * edx + edy * edy
                     if d2 <= r2:
-                        yield e, d2
+                        res.append((e, d2))
+        return res
 
     def query_radius_list(self, x: float, y: float, radius: float) -> list[Entity]:
-        """Fast list-returning variant of query_radius — bypasses generator frame overhead.
-
-        Use for high-frequency call sites (~34.7k calls/tick) where the caller
-        immediately materializes the result. Eliminates generator instantiation.
-        """
-        return list(self.query_radius(x, y, radius))
+        """Direct list-returning alias of query_radius."""
+        return self.query_radius(x, y, radius)
 
     def query_radius_with_dist_sq_list(self, x: float, y: float, radius: float) -> list[tuple[Entity, float]]:
-        """Fast list-returning variant of query_radius_with_dist_sq."""
-        return list(self.query_radius_with_dist_sq(x, y, radius))
+        """Direct list-returning alias of query_radius_with_dist_sq."""
+        return self.query_radius_with_dist_sq(x, y, radius)
 
     # -------------------------------------------------------------- boundaries
     def normalize(self, x: float, y: float) -> tuple[float, float]:
