@@ -6569,6 +6569,9 @@ class Simulation:
         if not females:
             return
 
+        if room <= 0.0:
+            return
+
         mate_r2 = cfg.mate_radius * cfg.mate_radius
         for mother in females:
             father = None
@@ -7940,7 +7943,8 @@ class Simulation:
         ):
             er2 = max(8.0, cfg.fear_radius)
             best_enemy_d = er2 * er2 + 1e-9
-            for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, er2):
+            _war_chirp_iter = ((o, d2) for o, d2 in _batch_list if d2 <= er2 * er2) if _batch_r >= er2 else w.query_radius_with_dist_sq(c.x, c.y, er2)
+            for o, d2 in _war_chirp_iter:
                 if not isinstance(o, Creature) or o.clan_id == c.clan_id or not o.clan_id:
                     continue
                 pair_z = self.relations.get(self._relation_pair(c.clan_id, o.clan_id), 0)
