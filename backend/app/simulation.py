@@ -8809,8 +8809,9 @@ class Simulation:
                 # High-trust buddy attraction (§AL): steer towards trusted kin when idle
                 buddy_found = False
                 if getattr(c, "trust", None) and isinstance(c.trust, dict) and not c.is_predator and not c.is_herbivore:
-                    for o in w.query_radius(c.x, c.y, cfg.flock_radius):
-                        if isinstance(o, Creature) and o.id in c.trust and c.trust[o.id] >= 15.0 and o.id != c.id:
+                    _buddy_iter = [o for o, _ in _batch_list if isinstance(o, Creature)] if _batch_r >= cfg.flock_radius else [o for o in w.query_radius(c.x, c.y, cfg.flock_radius) if isinstance(o, Creature)]
+                    for o in _buddy_iter:
+                        if o.id in c.trust and c.trust[o.id] >= 15.0 and o.id != c.id:
                             dx, dy = w.delta(o.x, o.y, c.x, c.y)
                             desired = math.atan2(dy, dx)
                             diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
@@ -8826,7 +8827,8 @@ class Simulation:
             # 2b. Social yielding: the lowly give way to their betters.
             my_rank = YIELD_RANK.get(c.caste, 0)
             if my_rank < 6:
-                for o, _ in w.query_radius_with_dist_sq(c.x, c.y, YIELD_RADIUS):
+                _yield_iter = ((o, d2) for o, d2 in _batch_list if d2 <= YIELD_RADIUS * YIELD_RADIUS) if _batch_r >= YIELD_RADIUS else w.query_radius_with_dist_sq(c.x, c.y, YIELD_RADIUS)
+                for o, _ in _yield_iter:
                     if o is c or o.kind != "creature":
                         continue
                     if YIELD_RANK.get(o.caste, 0) > my_rank:  # type: ignore[union-attr]
@@ -8840,8 +8842,9 @@ class Simulation:
             # 2c. Flock instincts: keep your distance, and hold formation with kin.
             if cfg.cohesion_weight or cfg.alignment_weight or cfg.separation_weight:
                 fx = fy = 0.0
-                for o in w.query_radius(c.x, c.y, cfg.flock_radius):
-                    if not isinstance(o, Creature) or o.id == c.id:
+                _flock_iter = [o for o, _ in _batch_list if isinstance(o, Creature)] if _batch_r >= cfg.flock_radius else [o for o in w.query_radius(c.x, c.y, cfg.flock_radius) if isinstance(o, Creature)]
+                for o in _flock_iter:
+                    if o.id == c.id:
                         continue
                     dxo, dyo = w.delta(o.x, o.y, c.x, c.y)
                     d = math.hypot(dxo, dyo) or 1e-6
