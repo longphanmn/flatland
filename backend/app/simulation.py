@@ -3378,6 +3378,14 @@ class Simulation:
         self._houses_by_clan = houses_by_clan
         self._unclaimed_houses = unclaimed_houses
         self._house_by_pos = {(round(h.x, 2), round(h.y, 2)): h for h in houses}
+        # Spatial house grid (50x50 cells) for O(1) near-house lookups without touching world entities
+        house_grid: dict[tuple[int, int], list[House]] = {}
+        for h in houses:
+            gx, gy = int(h.x // 50), int(h.y // 50)
+            for dgx in (-1, 0, 1):
+                for dgy in (-1, 0, 1):
+                    house_grid.setdefault((gx + dgx, gy + dgy), []).append(h)
+        self._house_grid = house_grid
 
         # Compute sleeping house occupancy cache in single pass O(N)
         house_occ: dict[int, int] = {}
@@ -8671,8 +8679,9 @@ class Simulation:
         # Check if creature is inside a house (§L indoor/outdoor navigation)
         inside_house_obj: House | None = None
         if houses and not c.is_predator:
-            for h in w.query_radius(c.x, c.y, 14.0):
-                if isinstance(h, House) and not h.is_ruin and self._is_inside_house(c, h):
+            h_candidates = getattr(self, "_house_grid", {}).get((int(c.x // 50), int(c.y // 50)), houses)
+            for h in h_candidates:
+                if not h.is_ruin and abs(c.x - h.x) <= 14.0 and abs(c.y - h.y) <= 14.0 and self._is_inside_house(c, h):
                     inside_house_obj = h
                     break
 
@@ -8949,7 +8958,7 @@ class Simulation:
         mdx, mdy = w.delta(c.x, c.y, px, py)
         was_blocked = False
         if houses and mdx * mdx + mdy * mdy <= step_len * step_len * 2.25:  # skip wrap teleports
-            near_houses = [e for e in w.query_radius(px, py, 14.0) if isinstance(e, House)]
+            near_houses = [h for h in getattr(self, "_house_grid", {}).get((int(px // 50), int(py // 50)), houses) if abs(px - h.x) <= 14.0 and abs(py - h.y) <= 14.0]
             for h in near_houses:
                 crosses = (
                     _path_crosses_wall(px, py, px + mdx, py + mdy, h, predator_blocked=c.is_predator)
