@@ -3420,11 +3420,13 @@ class Simulation:
 
         # §AT-4 H-2 + §AU O-2: bodies physically under each roof
         bodies: dict[int, int] = {}
-        for h in houses:
-            half = h.size / 2
-            cnt = sum(1 for c in self.world.query_radius(h.x, h.y, half + 1.5) if isinstance(c, Creature) and abs(c.x - h.x) < half and abs(c.y - h.y) < half)
-            if cnt:
-                bodies[h.id] = cnt
+        for c in creatures:
+            if getattr(c, "indoors", False):
+                for h in house_grid.get((int(c.x // 50), int(c.y // 50)), []):
+                    half = h.size / 2
+                    if abs(c.x - h.x) < half and abs(c.y - h.y) < half:
+                        bodies[h.id] = bodies.get(h.id, 0) + 1
+                        break
         self._house_bodies = bodies
 
         # Precompute shrine positions for instant O(1) lookups (§AP)
@@ -7271,10 +7273,9 @@ class Simulation:
             ):
                 home = assigned
             else:
-                for h in w.query_radius(c.x, c.y, 14.0):
+                for h in self._house_grid.get((int(c.x // 50), int(c.y // 50)), []):
                     if (
-                        isinstance(h, House)
-                        and not h.is_ruin
+                        not h.is_ruin
                         and (not self.config.house_claim_enabled or h.clan_id == 0 or h.clan_id == c.clan_id)
                         and self._inside_house(c, h)
                         and self._beds.get(h.id, 0) < self._house_beds(h)
@@ -7446,9 +7447,9 @@ class Simulation:
             main_house = None
             if c.clan_id:
                 main_hid = self.clans.get(c.clan_id, {}).get("main_house_id")
-                if main_hid and houses:
-                    mh = next((h for h in houses if isinstance(h, House) and h.id == main_hid), None)
-                    if mh is not None and w.distance(c.x, c.y, mh.x, mh.y) <= cfg.territory_radius:
+                if main_hid:
+                    mh = self.world.entities.get(main_hid)
+                    if isinstance(mh, House) and not mh.is_ruin and w.distance_sq(c.x, c.y, mh.x, mh.y) <= cfg.territory_radius * cfg.territory_radius:
                         main_house = mh
             heal_radius = LEADER_AURA_RADIUS if main_house is not None else 4.0
             heal_amount = 15.0 * (1.0 + c.skills.get("healing", 0.0) / 20.0)
@@ -9007,8 +9008,8 @@ class Simulation:
             c.blocked_ticks = 0
         # Predator refuge safety net: even if a predator spawns inside a house, push it out
         if c.is_predator and houses:
-            for h in w.query_radius(c.x, c.y, 14.0):
-                if isinstance(h, House) and not h.is_ruin and self._inside_house(c, h):
+            for h in self._house_grid.get((int(c.x // 50), int(c.y // 50)), []):
+                if not h.is_ruin and self._inside_house(c, h):
                     # push to doorway, then one step outside
                     dx, dy = self._door_pos(h)
                     # move predator just outside the door

@@ -153,8 +153,8 @@ class World:
         if is_wrap:
             cx_center = int(x // cs) % cols if cols else 0
             cy_center = int(y // cs) % rows if rows else 0
-            rx = int(math.ceil(radius / cs))
-            ry = int(math.ceil(radius / cs))
+            rx = int(radius / cs) + 1
+            ry = rx
             need_seen = (rx * 2 + 1 >= cols) or (ry * 2 + 1 >= rows)
             if need_seen:
                 seen: set[int] = set()
@@ -190,10 +190,14 @@ class World:
                             res.append(e)
             return res
         # clamp: no wrap
-        x0 = max(0, int((x - radius) // cs))
-        x1 = min(cols - 1, int((x + radius) // cs))
-        y0 = max(0, int((y - radius) // cs))
-        y1 = min(rows - 1, int((y + radius) // cs))
+        x0 = int((x - radius) // cs)
+        if x0 < 0: x0 = 0
+        x1 = int((x + radius) // cs)
+        if x1 >= cols: x1 = cols - 1
+        y0 = int((y - radius) // cs)
+        if y0 < 0: y0 = 0
+        y1 = int((y + radius) // cs)
+        if y1 >= rows: y1 = rows - 1
         for cy in range(y0, y1 + 1):
             row_off = cy * cols
             for cx in range(x0, x1 + 1):
@@ -221,8 +225,8 @@ class World:
         if is_wrap:
             cx_center = int(x // cs) % cols if cols else 0
             cy_center = int(y // cs) % rows if rows else 0
-            rx = int(math.ceil(radius / cs))
-            ry = int(math.ceil(radius / cs))
+            rx = int(radius / cs) + 1
+            ry = rx
             need_seen = (rx * 2 + 1 >= cols) or (ry * 2 + 1 >= rows)
 
             if need_seen:
@@ -261,10 +265,14 @@ class World:
                             res.append((e, d2))
             return res
         # clamp: no wrap
-        x0 = max(0, int((x - radius) // cs))
-        x1 = min(cols - 1, int((x + radius) // cs))
-        y0 = max(0, int((y - radius) // cs))
-        y1 = min(rows - 1, int((y + radius) // cs))
+        x0 = int((x - radius) // cs)
+        if x0 < 0: x0 = 0
+        x1 = int((x + radius) // cs)
+        if x1 >= cols: x1 = cols - 1
+        y0 = int((y - radius) // cs)
+        if y0 < 0: y0 = 0
+        y1 = int((y + radius) // cs)
+        if y1 >= rows: y1 = rows - 1
         for cy in range(y0, y1 + 1):
             row_off = cy * cols
             for cx in range(x0, x1 + 1):
