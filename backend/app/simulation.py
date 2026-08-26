@@ -3563,8 +3563,8 @@ class Simulation:
         }
         self._sync_wind_cache()
         # M-4: OpenMP parallel batch kernel (zero-GIL, 8 cores, ~3-5ms @1000c, GIL released via ctypes)
-        # Threshold 300 – runs as co-processor for verification, does NOT replace Python _update_creature
-        # so age/health/food/basket/houses/energy still via Python and creatures never stall (fixes one-way move, bypass house, no eat)
+        # Threshold 100 – 4× CPU when >100, runs as co-processor for verification (does NOT replace Python)
+        # so age/health/food/house steering stay via Python and creatures never stall (fixes one-way, bypass, no eat)
         if _native_core is not None and hasattr(_native_core, "native_batch_update") and self.config.omp_enabled and len(self._cached_creatures) > self.config.omp_threshold:
             try:
                 sorted_c = sorted(self._cached_creatures, key=lambda c: c.id)
@@ -3577,8 +3577,8 @@ class Simulation:
             except Exception:
                 pass
         for creature in list(self._cached_creatures):
-            if creature.id in self.world.entities:
-                self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
+                if creature.id in self.world.entities:
+                    self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
         # §AX P0: single consolidated cache — positions moved but clan membership
         # unchanged; defer full rebuild until after war/prune to avoid triplicate.
         # _update_disease and _update_war handle stale cache via w.entities checks
