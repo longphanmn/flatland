@@ -2736,7 +2736,7 @@ class Simulation:
             # A house is abandoned if unclaimed, or its clan has no living members
             is_abandoned = (h.clan_id == 0) or (h.clan_id not in living_clans)
             if is_abandoned:
-                h.abandoned_ticks += 1
+                h.abandoned_ticks = (getattr(h, "abandoned_ticks", 0) or 0) + 1
             else:
                 h.abandoned_ticks = 0
             if h.abandoned_ticks >= cfg.house_decay_ticks:
@@ -6166,7 +6166,7 @@ class Simulation:
                 if not isinstance(e, Food) or e.growth < 1.0:
                     continue
                 life = max(1, round(cfg.food_lifespan_ticks * FOOD_LIFESPAN_MULT.get(e.variant, 1.0)))
-                e.mature_ticks += 1
+                e.mature_ticks = (getattr(e, "mature_ticks", 0) or 0) + 1
                 if e.mature_ticks >= life:
                     self._release_nutrients(e, mult=WITHER_NUTRIENT_MULT)  # death feeds life
                     self.world.remove(e.id)

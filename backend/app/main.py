@@ -351,7 +351,7 @@ def _try_restore_snapshot() -> bool:
             elif kind == "house":
                 h = House(x=float(ent.get("x") or 0), y=float(ent.get("y") or 0), size=float(ent.get("size") or 6), door_width=float(ent.get("door_width") or 4), door_side=ent.get("door_side") or "south")
                 for k in ("clan_id", "clan_color", "is_main", "is_ruin", "abandoned_ticks"):
-                    if k in ent:
+                    if k in ent and ent[k] is not None:
                         setattr(h, k, ent[k])
                 h.id = eid
                 RT.sim.world.entities[eid] = h
