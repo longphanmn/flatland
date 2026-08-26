@@ -176,6 +176,9 @@ EXPORT void c_boids_separation(
 ) {
     float half_w = width * 0.5f;
     float half_h = height * 0.5f;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
     for (int i = 0; i < num_creatures; i++) {
         float px = x[i];
         float py = y[i];
@@ -184,10 +187,8 @@ EXPORT void c_boids_separation(
         for (int j = 0; j < num_creatures; j++) {
             if (i == j) continue;
             if (clan_ids[j] != clan) continue;
-            float dx = wrap_delta(px, x[j], half_w, width, is_wrap);
-            float dy = wrap_delta(py, y[j], half_h, height, is_wrap);
-            dx = px - x[j]; // undo | we want px - ox with wrap
-            dy = py - y[j];
+            float dx = px - x[j];
+            float dy = py - y[j];
             if (is_wrap) {
                 if (dx > half_w) dx -= width; else if (dx < -half_w) dx += width;
                 if (dy > half_h) dy -= height; else if (dy < -half_h) dy += height;
@@ -217,6 +218,9 @@ EXPORT void c_boids_alignment(
     float half_w = width * 0.5f;
     float half_h = height * 0.5f;
     float r2 = radius * radius;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
     for (int i = 0; i < n; i++) {
         float px = x[i], py = y[i];
         int clan = clan_ids[i];
@@ -249,6 +253,9 @@ EXPORT void c_boids_cohesion(
     float half_w = width * 0.5f;
     float half_h = height * 0.5f;
     float r2 = radius * radius;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
     for (int i = 0; i < n; i++) {
         float px = x[i], py = y[i];
         int clan = clan_ids[i];
@@ -281,6 +288,9 @@ EXPORT int c_collision_sweep(
     float half_w = width * 0.5f;
     float half_h = height * 0.5f;
     int count = 0;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
     for (int i = 0; i < n; i++) {
         for (int j = i+1; j < n; j++) {
             float dx = fabsf(x[i] - x[j]);
@@ -288,11 +298,16 @@ EXPORT int c_collision_sweep(
             if (is_wrap) { if (dx > half_w) dx = width - dx; if (dy > half_h) dy = height - dy; }
             float rr = radius[i] + radius[j];
             if (dx*dx + dy*dy < rr*rr) {
-                if (count*2+1 < max_pairs) {
-                    out_pairs[count*2] = ids[i];
-                    out_pairs[count*2+1] = ids[j];
+#ifdef _OPENMP
+#pragma omp critical
+#endif
+                {
+                    if (count*2+1 < max_pairs) {
+                        out_pairs[count*2] = ids[i];
+                        out_pairs[count*2+1] = ids[j];
+                    }
+                    count++;
                 }
-                count++;
             }
         }
     }
