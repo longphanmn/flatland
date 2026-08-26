@@ -153,8 +153,8 @@ class World:
         if is_wrap:
             cx_center = int(x // cs) % cols if cols else 0
             cy_center = int(y // cs) % rows if rows else 0
-            rx = int(math.ceil(radius / cs)) + 1
-            ry = int(math.ceil(radius / cs)) + 1
+            rx = int(math.ceil(radius / cs))
+            ry = int(math.ceil(radius / cs))
             need_seen = (rx * 2 + 1 >= cols) or (ry * 2 + 1 >= rows)
             if need_seen:
                 seen: set[int] = set()
@@ -221,8 +221,8 @@ class World:
         if is_wrap:
             cx_center = int(x // cs) % cols if cols else 0
             cy_center = int(y // cs) % rows if rows else 0
-            rx = int(math.ceil(radius / cs)) + 1
-            ry = int(math.ceil(radius / cs)) + 1
+            rx = int(math.ceil(radius / cs))
+            ry = int(math.ceil(radius / cs))
             need_seen = (rx * 2 + 1 >= cols) or (ry * 2 + 1 >= rows)
 
             if need_seen:

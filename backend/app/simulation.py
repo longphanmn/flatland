@@ -3397,10 +3397,22 @@ class Simulation:
         bodies: dict[int, int] = {}
         for h in houses:
             half = h.size / 2
-            cnt = sum(1 for c in creatures if abs(c.x - h.x) < half and abs(c.y - h.y) < half)
+            cnt = sum(1 for c in self.world.query_radius(h.x, h.y, half + 1.5) if isinstance(c, Creature) and abs(c.x - h.x) < half and abs(c.y - h.y) < half)
             if cnt:
                 bodies[h.id] = cnt
         self._house_bodies = bodies
+
+        # Precompute shrine positions for instant O(1) lookups (§AP)
+        shrine_pos: dict[int, tuple[float, float]] = {}
+        for cid, info in self.clans.items():
+            mhid = info.get("main_house_id")
+            house = self.world.entities.get(mhid) if mhid else None
+            if not isinstance(house, House) or house.is_ruin or house.clan_id != cid:
+                c_houses = houses_by_clan.get(cid, [])
+                house = c_houses[0] if c_houses else None
+            if isinstance(house, House):
+                shrine_pos[cid] = (house.x + house.size / 2.0 + 1.5, house.y)
+        self._shrine_pos_by_clan = shrine_pos
 
         # §AS L-0: living leader positions per clan (for the morale aura)
         leader_pos: dict[int, tuple[float, float]] = {}
@@ -5263,6 +5275,9 @@ class Simulation:
         """The shrine stands beside the clan's main house (east wall); faith
         follows the people, so a clanless-of-roof clan falls back to any
         claimed roof. None when the clan is homeless."""
+        cached = getattr(self, "_shrine_pos_by_clan", None)
+        if cached is not None:
+            return cached.get(cid)
         info = self.clans.get(cid)
         if not info:
             return None
