@@ -1407,30 +1407,51 @@ class Simulation:
                     payload={"kind": "flash_flood", "river_cy": d["cy"]},
                 ))
         # planks rot
+        # planks rot gracefully (decay every 20 ticks for realistic longevity)
         for b in [b for b in self.bridges if b["hp"] <= 0]:
             self.bridges.remove(b)
-        for b in self.bridges:
-            b["hp"] -= 1
+        if self.tick % 20 == 0:
+            for b in self.bridges:
+                b["hp"] -= 1
 
     def _river_effects(self, c: Creature) -> None:
-        """§AQ PH-3 applied to one body after it moves: wading costs energy and
-        speed, bridges cross dry, the current sweeps the weak downstream, and
-        floodwater drowns the stubborn (foraging skill doubles as swimming)."""
+        """§AQ PH-3 applied to one body after it moves: wading costs gentle energy,
+        bridges cross dry, current carries gentle downstream drift,
+        cools overheating creatures, washes disease, and rewards river foraging."""
         r = self._river_at(c.x, c.y)
         if r is None or self._on_bridge_or_dam(c.x, c.y):
             return
         flooded = r["flood_ticks"] > 0
-        c.energy = max(0.0, c.energy - RIVER_FORD_COST)
+        c.energy = max(0.0, c.energy - (RIVER_FORD_COST * 1.5 if flooded else RIVER_FORD_COST))
+
+        # 1. Hydration & Thermal Cooling: cool hyperthermia towards comfort 20°C
+        if getattr(c, "body_temp", 20.0) > 20.5:
+            c.body_temp = max(20.0, getattr(c, "body_temp", 20.0) - 0.4)
+        # 2. Hygiene & Cleanliness: freshwater washes contagion risk
+        if getattr(c, "infected", False) and self.rng.random() < 0.02:
+            c.infected = False  # river bath washes sickness
+            c.emote = "cheer"
+            c.emote_ticks = 15
+        if getattr(c, "chill", 0.0) > 0 and self.weather not in ("rain", "storm", "snow"):
+            c.chill = max(0.0, c.chill - 0.1)
+
+        # 3. Downstream current drift without locking creature's steering angle
         weak = c.stage == "infant" or c.health < RIVER_SWEEP_HEALTH
         if weak or flooded:
-            push = RIVER_SWEEP_SPEED * (2.0 if flooded else 1.0) * (0.6 if not weak else 1.0)
+            push = RIVER_SWEEP_SPEED * (1.5 if flooded else 0.8) * (0.5 if not weak else 1.0)
             nx = c.x + r["dir"] * push
-            ny = c.y + (self.rng.uniform(-0.1, 0.1) if not weak else 0.0)
+            ny = c.y + (self.rng.uniform(-0.05, 0.05) if not weak else 0.0)
             c.x, c.y = self.world.normalize(nx, ny)
-            c.angle = 0.0 if r["dir"] > 0 else math.pi  # headed downstream now
+            # Gentle drift nudge rather than 100% hard override:
+            if weak and self.rng.random() < 0.2:
+                current_ang = 0.0 if r["dir"] > 0 else math.pi
+                diff = (current_ang - c.angle + math.pi) % (2 * math.pi) - math.pi
+                c.angle += max(-0.2, min(0.2, diff))
+
+        # 4. Flood water damage: survival skill softens damage
         if flooded:
             soften = 1.0 / (1.0 + c.skills.get("foraging", 0.0) / 20.0)
-            dmg = RIVER_DROWN_DAMAGE * soften
+            dmg = RIVER_DROWN_DAMAGE * soften * 0.2
             if c.health - dmg <= 0:
                 self._kill(c, "drowning")
             else:
@@ -1921,6 +1942,19 @@ class Simulation:
                     payload={"kind": "dam", "river_cy": r["cy"], "clan_id": b.clan_id},
                 ))
                 continue
+            # Mend existing damaged bridge nearby
+            repaired = False
+            for br in self.bridges:
+                if br["cy"] == r["cy"] and _dx(b.x, br["x"]) <= 10.0 and br["hp"] < BRIDGE_HP - 40:
+                    br["hp"] = min(BRIDGE_HP, br["hp"] + 60)
+                    b.energy -= 4.0
+                    b.emote = "craft"
+                    b.emote_ticks = 15
+                    repaired = True
+                    break
+            if repaired:
+                continue
+
             if not near_crossing and len(self.bridges) < 12:
                 b.energy -= 10.0
                 self.bridges.append({"x": round(b.x, 2), "cy": r["cy"], "hw": r["hw"], "hp": BRIDGE_HP})
@@ -3421,12 +3455,11 @@ class Simulation:
         # §AT-4 H-2 + §AU O-2: bodies physically under each roof
         bodies: dict[int, int] = {}
         for c in creatures:
-            if getattr(c, "indoors", False):
-                for h in house_grid.get((int(c.x // 50), int(c.y // 50)), []):
-                    half = h.size / 2
-                    if abs(c.x - h.x) < half and abs(c.y - h.y) < half:
-                        bodies[h.id] = bodies.get(h.id, 0) + 1
-                        break
+            for h in house_grid.get((int(c.x // 50), int(c.y // 50)), []):
+                half = h.size / 2
+                if abs(c.x - h.x) < half and abs(c.y - h.y) < half:
+                    bodies[h.id] = bodies.get(h.id, 0) + 1
+                    break
         self._house_bodies = bodies
 
         # Precompute shrine positions for instant O(1) lookups (§AP)
@@ -8613,10 +8646,11 @@ class Simulation:
                     thermal_target = near_heat
                     u_thermal = THERMAL_SEEK_UTILITY * (1.0 + sens * 0.25)
             elif c.body_temp > HYPERTHERMIA_TEMP - 2.0 and self.rivers:
-                # overheated: make for the nearest water
-                ry = min((r["cy"] for r in self.rivers), key=lambda cy_: min(abs(cy_ - c.y), cfg.height - abs(cy_ - c.y)))
-                if abs(ry - c.y) > 1.0:
-                    thermal_target = (c.x, ry)
+                # overheated: make for the nearest riverbank (safe cooling)
+                best_rv = min(self.rivers, key=lambda rv: self._river_dy(c.y, rv["cy"]))
+                bank_y = best_rv["cy"] - best_rv["hw"] - 1.0 if c.y < best_rv["cy"] else best_rv["cy"] + best_rv["hw"] + 1.0
+                if abs(bank_y - c.y) > 1.0:
+                    thermal_target = (c.x, bank_y)
                     u_thermal = THERMAL_SEEK_UTILITY
 
         # Purposeful Waypoint Navigation (§AL)
@@ -8850,10 +8884,19 @@ class Simulation:
                             buddy_found = True
                             break
                 if not buddy_found:
-                    wander = cfg.wander_turn
-                    if self.weather == "storm":
-                        wander += cfg.storm_wander_bonus
-                    c.angle += self.rng.uniform(-wander, wander)
+                    in_rv = self._river_at(c.x, c.y) if self.rivers else None
+                    if in_rv is not None and not self._on_bridge_or_dam(c.x, c.y):
+                        # steer out of the water to the nearest dry bank
+                        bank_y = in_rv["cy"] - in_rv["hw"] - 1.5 if c.y < in_rv["cy"] else in_rv["cy"] + in_rv["hw"] + 1.5
+                        dx, dy = w.delta(c.x, bank_y, c.x, c.y)
+                        escape_ang = math.atan2(dy, dx)
+                        diff = (escape_ang - c.angle + math.pi) % (2 * math.pi) - math.pi
+                        c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
+                    else:
+                        wander = cfg.wander_turn
+                        if self.weather == "storm":
+                            wander += cfg.storm_wander_bonus
+                        c.angle += self.rng.uniform(-wander, wander)
 
             # 2b. Social yielding: the lowly give way to their betters.
             my_rank = YIELD_RANK.get(c.caste, 0)
