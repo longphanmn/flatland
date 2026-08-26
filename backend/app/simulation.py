@@ -3614,11 +3614,15 @@ class Simulation:
         # unchanged; defer full rebuild until after war/prune to avoid triplicate.
         # _update_disease and _update_war handle stale cache via w.entities checks
         # and rebuilt spatial index; next tick's _refresh_cache will be fresh.
-        self._update_disease()
+        # M-4: stagger heavy post-creature work at >700c (saves ~30ms at 800c, keeps 300c single-core)
+        _do_heavy_post = not (len(self._cached_creatures) > 700 and self.tick % 2 == 1)
+        if _do_heavy_post:
+            self._update_disease()
         # AA: positions moved this tick; re-bucket so the spatial war/mob
         # queries below see where everyone actually stands now.
         self.world.rebuild_index()
-        self._update_war()
+        if _do_heavy_post:
+            self._update_war()
         self._update_night_watch()  # §AO C: spearmen guard the thresholds
         self._update_leader_orders()  # §AS L-2: retreat, ritual, harvest, evacuate
         self._prune_extinct_clans()  # §P0: keep clan bookkeeping bounded
