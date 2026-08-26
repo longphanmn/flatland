@@ -166,6 +166,31 @@ EXPORT int c_path_crosses_wall(
     return 0;
 }
 
+/* Fast bilinear elevation interpolation in compiled C */
+EXPORT float c_elev_at(
+    float x, float y,
+    const float* grid, int cols, int rows,
+    float width, float height
+) {
+    float gx = x / width * cols - 0.5f;
+    float gy = y / height * rows - 0.5f;
+    int c0 = (int)floorf(gx);
+    int r0 = (int)floorf(gy);
+    float fx = gx - (float)c0;
+    float fy = gy - (float)r0;
+    int cc0 = c0 < 0 ? 0 : (c0 > cols - 1 ? cols - 1 : c0);
+    int cc1 = c0 + 1 < 0 ? 0 : (c0 + 1 > cols - 1 ? cols - 1 : c0 + 1);
+    int rr0 = r0 < 0 ? 0 : (r0 > rows - 1 ? rows - 1 : r0);
+    int rr1 = r0 + 1 < 0 ? 0 : (r0 + 1 > rows - 1 ? rows - 1 : r0 + 1);
+    float h00 = grid[rr0 * cols + cc0];
+    float h10 = grid[rr0 * cols + cc1];
+    float h01 = grid[rr1 * cols + cc0];
+    float h11 = grid[rr1 * cols + cc1];
+    float top = h00 * (1.0f - fx) + h10 * fx;
+    float bot = h01 * (1.0f - fx) + h11 * fx;
+    return top * (1.0f - fy) + bot * fy;
+}
+
 /* ------------------------------------------------------------------ */
 /* Fast batch Boids separation force computation                      */
 /* ------------------------------------------------------------------ */

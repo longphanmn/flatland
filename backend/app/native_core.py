@@ -149,6 +149,16 @@ def _init_native_lib():
             ]
             lib.c_collision_sweep.restype = ctypes.c_int
 
+            try:
+                lib.c_elev_at.argtypes = [
+                    ctypes.c_float, ctypes.c_float,
+                    ctypes.POINTER(ctypes.c_float), ctypes.c_int, ctypes.c_int,
+                    ctypes.c_float, ctypes.c_float,
+                ]
+                lib.c_elev_at.restype = ctypes.c_float
+            except Exception:
+                pass
+
             # M-4 OpenMP batch kernel — releases GIL via ctypes
             try:
                 lib.c_batch_update_creatures_omp.argtypes = [
@@ -380,3 +390,15 @@ def native_batch_update(creatures, entities, width: float, height: float, is_wra
     except Exception:
         return None
     return [(int(out_buf[i].target_eaten_id), float(out_buf[i].next_x), float(out_buf[i].next_y), float(out_buf[i].next_angle), float(out_buf[i].delta_energy), float(out_buf[i].delta_health)) for i in range(n_c)]
+
+
+def native_elev_at(x: float, y: float, grid_buf: Any, cols: int, rows: int, width: float, height: float) -> float:
+    """Fast bilinear elevation query in compiled C."""
+    if _C_LIB is not None and hasattr(_C_LIB, "c_elev_at"):
+        return float(_C_LIB.c_elev_at(
+            ctypes.c_float(x), ctypes.c_float(y),
+            grid_buf, ctypes.c_int(cols), ctypes.c_int(rows),
+            ctypes.c_float(width), ctypes.c_float(height)
+        ))
+    return 0.5
+

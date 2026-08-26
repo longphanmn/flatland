@@ -1145,6 +1145,11 @@ class Simulation:
         lo, hi = min(vals), max(vals)
         span = (hi - lo) or 1.0
         self.elev_grid = [round((v - lo) / span, 4) for v in vals]
+        try:
+            import ctypes
+            self._elev_c_buf = (ctypes.c_float * len(self.elev_grid))(*self.elev_grid)
+        except Exception:
+            self._elev_c_buf = None
 
     def _elev_at(self, x: float, y: float) -> float:
         """Normalised ground height (0..1) under a point; 0.5 flat worlds.
@@ -1153,6 +1158,10 @@ class Simulation:
         §AU O-1: closure inlined — clamped grid reads straight off the buffer."""
         if not self.config.relief_enabled:
             return 0.5
+        if getattr(self, "_elev_c_buf", None) is not None and _native_core and hasattr(_native_core, "native_elev_at"):
+            return _native_core.native_elev_at(
+                x, y, self._elev_c_buf, self._elev_cols, self._elev_rows, self.config.width, self.config.height
+            )
         cols = self._elev_cols
         rows = self._elev_rows
         grid = self.elev_grid
@@ -3148,13 +3157,15 @@ class Simulation:
         return f
 
     def _maintain_facts(self, c: Creature) -> None:
-        """§AR S-3 memory housekeeping, run once per creature tick:
+        """§AR S-3 memory housekeeping, staggered across creatures:
         continuous confidence decay, spatial drift of stale rumours, and a
         working-memory capacity with lowest-confidence eviction."""
         if not self.config.knowledge_enabled or not c.facts:
             return
+        if (self.tick + c.id) % 5 != 0:
+            return
         ttl = max(1, self.config.knowledge_ttl)
-        decay = 1.0 / ttl
+        decay = 5.0 / ttl
         # capacity: hunger, wounds and age reshape the mind's workspace
         cap = WORKING_MEMORY_CAP
         if c.stage == "elder" and max(c.skills.values(), default=0.0) >= 6.0:
@@ -3395,11 +3406,17 @@ class Simulation:
                 if hid is not None:
                     house_occ[hid] = house_occ.get(hid, 0) + 1
                 else:
-                    for h in self.world.query_radius(c.x, c.y, 14.0):
-                        if isinstance(h, House) and self._inside_house(c, h):
+                    for h in house_grid.get((int(c.x // 50), int(c.y // 50)), []):
+                        if self._inside_house(c, h):
                             house_occ[h.id] = house_occ.get(h.id, 0) + 1
                             break
         self._house_occupants = house_occ
+        if getattr(self, "_elev_c_buf", None) is None and getattr(self, "elev_grid", None):
+            try:
+                import ctypes
+                self._elev_c_buf = (ctypes.c_float * len(self.elev_grid))(*self.elev_grid)
+            except Exception:
+                self._elev_c_buf = None
 
         # §AT-4 H-2 + §AU O-2: bodies physically under each roof
         bodies: dict[int, int] = {}
