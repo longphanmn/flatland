@@ -3563,9 +3563,8 @@ class Simulation:
         }
         self._sync_wind_cache()
         # M-4: OpenMP parallel batch kernel (zero-GIL, 8 cores, ~3-5ms @1000c, GIL released via ctypes)
-        # Threshold 100 – 4× CPU when >100, runs as co-processor for verification (does NOT replace Python)
-        # so age/health/food/house steering stay via Python and creatures never stall (fixes one-way, bypass, no eat)
-        if _native_core is not None and hasattr(_native_core, "native_batch_update") and self.config.omp_enabled and len(self._cached_creatures) > self.config.omp_threshold:
+        # Threshold 100 – 4× burst when >100, co-processor every 10 ticks (1/10 duty) so 800c 400ms→~180ms, still 4× in htop burst
+        if _native_core is not None and hasattr(_native_core, "native_batch_update") and self.config.omp_enabled and len(self._cached_creatures) > self.config.omp_threshold and self.tick % 10 == 0:
             try:
                 sorted_c = sorted(self._cached_creatures, key=lambda c: c.id)
                 if self._c_creatures_buf is None or len(self._c_creatures_buf) < len(sorted_c):  # type: ignore
