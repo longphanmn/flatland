@@ -322,9 +322,31 @@ EXPORT int c_batch_update_creatures_omp(
     for (int i = 0; i < n_creatures; i++) {
         const CreatureStateC* c = &in_creatures[i];
         CreatureOutputC* o = &out[i];
-        /* Base movement: angle + tiny wind bias + boids-like jitter */
-        float w_bias = wind_speed * 0.02f * (wind_cos * cosf(c->angle) + wind_sin * sinf(c->angle));
-        float nangle = c->angle + w_bias + 0.01f * sinf(c->x * 0.1f + c->y * 0.1f);
+        /* Steering: if hungry and food within perceive 20, head to nearest food (fixes one-way, bypass house) */
+        float nangle = c->angle;
+        if (c->energy < 85.0f) {
+            float best_d2 = 1e9f, tx=0, ty=0;
+            int found=0;
+            for (int k=0;k<n_entities;k++) {
+                const SpatialEntityC* e=&entities[k];
+                if (e->kind!=0) continue;
+                float dx=fabsf(c->x - e->x); float dy=fabsf(c->y - e->y);
+                if (is_wrap){ if(dx>half_w)dx=width-dx; if(dy>half_h)dy=height-dy; }
+                float d2=dx*dx+dy*dy;
+                if (d2 < 400.0f && d2 < best_d2) {best_d2=d2; tx=e->x; ty=e->y; found=1;}
+            }
+            if (found) {
+                float dx=tx - c->x, dy=ty - c->y;
+                if (is_wrap){ if(dx>half_w)dx-=width; else if(dx<-half_w)dx+=width; if(dy>half_h)dy-=height; else if(dy<-half_h)dy+=height; }
+                nangle = atan2f(dy,dx);
+            } else {
+                float w_bias = wind_speed * 0.02f * (wind_cos * cosf(c->angle) + wind_sin * sinf(c->angle));
+                nangle = c->angle + w_bias + 0.01f * sinf(c->x * 0.1f + c->y * 0.1f);
+            }
+        } else {
+            float w_bias = wind_speed * 0.02f * (wind_cos * cosf(c->angle) + wind_sin * sinf(c->angle));
+            nangle = c->angle + w_bias + 0.01f * sinf(c->x * 0.1f + c->y * 0.1f);
+        }
         float nx = c->x + cosf(nangle) * c->speed;
         float ny = c->y + sinf(nangle) * c->speed;
         /* Wrap / clamp */
