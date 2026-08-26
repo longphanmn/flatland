@@ -10089,13 +10089,13 @@ def _path_crosses_wall(
         return False  # crumbled ruins don't block
     # Broad phase — bounding-box reject. Most creature-house pairs are far
     # apart; this cheap test skips the expensive per-segment math below.
-    half = h.size / 2
-    if (
-        max(px, qx) < h.x - half
-        or min(px, qx) > h.x + half
-        or max(py, qy) < h.y - half
-        or min(py, qy) > h.y + half
-    ):
+    half = h.size * 0.5
+    hx, hy = h.x, h.y
+    min_x = px if px < qx else qx
+    max_x = qx if px < qx else px
+    min_y = py if py < qy else qy
+    max_y = qy if py < qy else py
+    if max_x < hx - half or min_x > hx + half or max_y < hy - half or min_y > hy + half:
         return False
     path = ((px, py), (qx, qy))
     segments = _house_wall_segments_closed(h) if predator_blocked else _house_wall_segments(h)
