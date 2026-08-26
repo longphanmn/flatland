@@ -120,8 +120,9 @@ class RuntimeState:
         self._cached_plots_payload: dict | None = None
         self._cached_state_text: str | None = None
         # Tick timing ring buffer for /healthz diagnostics (true rate vs target)
-        self._tick_times: list[float] = []  # monotonic timestamps of last 50 ticks
-        self._tick_durs: list[float] = []  # durations (ms) of last 50 steps
+        self._tick_times: list[float] = []  # monotonic timestamps of last 300 ticks
+        self._tick_durs: list[float] = []  # durations (ms) of last 300 steps
+        self._tick_creature_counts: list[int] = []  # creature count at each tick
 
 
 CONFIG = Config.from_env()
@@ -202,9 +203,11 @@ def advance_world(rt: RuntimeState, hub: Hub | None = None, force_keyframe: bool
         try:
             rt._tick_durs.append(dur_ms)
             rt._tick_times.append(time.monotonic())
-            if len(rt._tick_durs) > 50:
+            rt._tick_creature_counts.append(len(rt.sim._cached_creatures) if getattr(rt.sim, "_cached_creatures", None) is not None else len(rt.sim.world.entities))
+            if len(rt._tick_durs) > 300:
                 rt._tick_durs.pop(0)
                 rt._tick_times.pop(0)
+                rt._tick_creature_counts.pop(0)
             # Warn when a single tick overruns the target interval
             interval_ms = 1000.0 / max(rt.speed, MIN_SPEED)
             if dur_ms > interval_ms * 1.2:
@@ -1624,7 +1627,7 @@ async def healthz() -> dict:
         "interval_ms": round(1000.0 / max(RT.speed, MIN_SPEED), 1),
         "clients": len(HUB.clients),
         "db_pending": DB.pending,  # §AD ops still in the RAM log
-        "creatures": len(RT.sim.world.creatures()),
+        "creatures": len(RT.sim._cached_creatures) if getattr(RT.sim, "_cached_creatures", None) is not None else len(RT.sim.world.creatures()),
     }
     if RT.last_tick_error:
         out["ok"] = False
@@ -1632,6 +1635,68 @@ async def healthz() -> dict:
     if avg_dur > out["interval_ms"] * 1.1:
         out["overrun"] = True
     return out
+
+
+@app.get("/api/perf/telemetry")
+async def get_telemetry(window_seconds: int = 60) -> dict:
+    """Return rolling performance telemetry over recent ticks and CPU core load."""
+    now = time.monotonic()
+    durs = list(RT._tick_durs)
+    times = list(RT._tick_times)
+    counts = list(RT._tick_creature_counts)
+
+    # Filter to window
+    filtered_durs = [d for d, t in zip(durs, times) if now - t <= window_seconds] if times else durs
+    filtered_counts = [c for c, t in zip(counts, times) if now - t <= window_seconds] if times else counts
+
+    actual_tps = 0.0
+    if len(times) >= 2:
+        span = times[-1] - times[0]
+        if span > 0:
+            actual_tps = round((len(times) - 1) / span, 2)
+
+    # Compute percentiles
+    s_durs = sorted(filtered_durs) if filtered_durs else [0.0]
+    p50 = round(s_durs[len(s_durs) // 2], 2)
+    p95 = round(s_durs[int(len(s_durs) * 0.95)], 2)
+    p99 = round(s_durs[int(len(s_durs) * 0.99)], 2)
+
+    # Read per-core CPU usage
+    cores_usage = []
+    try:
+        with open("/proc/stat", "r") as f:
+            for line in f:
+                parts = line.split()
+                if parts and parts[0].startswith("cpu") and parts[0] != "cpu":
+                    t = [int(x) for x in parts[1:]]
+                    idle = t[3] + (t[4] if len(t) > 4 else 0)
+                    total = sum(t)
+                    cores_usage.append({"core": parts[0], "idle": idle, "total": total})
+    except Exception:
+        pass
+
+    return {
+        "tick": RT.sim.tick,
+        "speed_target": RT.speed,
+        "actual_tps": actual_tps,
+        "sample_count": len(filtered_durs),
+        "duration_stats_ms": {
+            "min": round(min(filtered_durs), 2) if filtered_durs else 0.0,
+            "avg": round(sum(filtered_durs) / len(filtered_durs), 2) if filtered_durs else 0.0,
+            "max": round(max(filtered_durs), 2) if filtered_durs else 0.0,
+            "p50": p50,
+            "p95": p95,
+            "p99": p99,
+        },
+        "creatures": {
+            "current": len(RT.sim._cached_creatures) if getattr(RT.sim, "_cached_creatures", None) is not None else 0,
+            "min": min(filtered_counts) if filtered_counts else 0,
+            "avg": round(sum(filtered_counts) / len(filtered_counts), 1) if filtered_counts else 0,
+            "max": max(filtered_counts) if filtered_counts else 0,
+        },
+        "overruns": sum(1 for d in filtered_durs if d > (1000.0 / max(RT.speed, MIN_SPEED)) * 1.1),
+        "proc_cores": cores_usage,
+    }
 
 
 @app.get("/api/version")
