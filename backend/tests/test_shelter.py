@@ -173,3 +173,33 @@ def test_sleeping_creature_does_not_move():
         assert (c.x, c.y) == (x0, y0)
         steps += 1
     assert steps >= 1
+
+
+def test_clan_shelter_and_food_invasion():
+    """A growing clan with shelter/food shortages invades rival shelter and plunders food."""
+    s = Simulation(shelter_cfg(seed=18, house_claim_enabled=True))
+    s.clans[1] = {"name": "Invaders", "color": "#ff0000", "main_house_id": 1, "granary": 0.0}
+    s.clans[2] = {"name": "Defenders", "color": "#0000ff", "main_house_id": 2, "granary": 100.0}
+
+    # Clan 1 has 1 house (1 bed) but 4 members (shortage!)
+    h1 = s.world.add(House(x=20.0, y=20.0, size=6.0))
+    h1.clan_id = 1
+    h1.is_main = True
+    invaders = [s.world.add(Creature(x=20.0, y=20.0, energy=40.0, clan_id=1)) for _ in range(4)]
+
+    # Clan 2 has main house and a spare house with 1 member
+    h2_main = s.world.add(House(x=80.0, y=80.0, size=6.0))
+    h2_main.clan_id = 2
+    h2_main.is_main = True
+    h2_spare = s.world.add(House(x=30.0, y=20.0, size=6.0))
+    h2_spare.clan_id = 2
+    h2_spare.is_main = False
+    s.world.add(Creature(x=80.0, y=80.0, energy=90.0, clan_id=2))
+
+    s._refresh_cache()
+    taken = s._try_house_takeover(1, invaders, [h1, h2_main, h2_spare])
+    assert taken is not None
+    assert taken.id == h2_spare.id
+    assert taken.clan_id == 1
+    assert s.clans[1]["granary"] > 0.0  # plundered food transferred
+    assert s.clans[2]["granary"] < 100.0

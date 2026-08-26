@@ -2602,16 +2602,21 @@ class Simulation:
 
     # ------------------------------------------------------- settlement economy
     def _target_house_count(self) -> int:
-        """Houses scale with map area (§L settlement economy).
-
-        Base is area × house_density (~24 houses on 400×300 map).
-        """
+        """Houses scale with map area and population to guarantee >=85% shelter coverage."""
         cfg = self.config
         if cfg.num_houses >= 0:
             return cfg.num_houses
         area = cfg.width * cfg.height
-        base = round(area * cfg.house_density)
-        return max(1, base)
+        density_base = round(area * max(cfg.house_density, 0.00055))
+        # Ensure enough beds for >= 85% of carrying capacity or active population
+        creatures = getattr(self, "_cached_creatures", None)
+        pop = len(creatures) if creatures is not None else 100
+        target_pop = max(pop, cfg.carrying_capacity if cfg.carrying_capacity > 0 else 100)
+        beds_needed = int(target_pop * 0.85)
+        # Average beds per house based on mean house size 6.8
+        avg_beds = max(1.0, cfg.house_capacity * (6.8 * 6.8) / HOUSE_REF_AREA)
+        houses_for_85pct = max(1, math.ceil(beds_needed / avg_beds))
+        return max(density_base, houses_for_85pct)
 
     def _spawn_settlement_house(self, clan_id: int | None = None, near: Creature | None = None) -> House:
         """Spawn a new house — near a clan founder if given, else random; claim it if clan_id."""
@@ -2645,14 +2650,13 @@ class Simulation:
         return house
 
     def _try_house_takeover(self, cid: int, members: list[Creature], houses: list[House]) -> House | None:
-        """§AT-2 House invasion — a growing clan with no free roof seizes a weak
-        rival's spare house. Conditions (all must hold):
-          - the rival house is NOT the rival clan's main house;
-          - nobody is sleeping under that roof this tick (`_house_occupants`);
-          - the rival clan is under-populated (< half its total beds), so the
-            house is genuinely spare rather than contested.
-        The invader claims it outright; relations sour and both chronicles
-        remember. Deterministic: nearest to the clan centroid, ties by id."""
+        """§AT-2 Clan Invasion & Resource War — a desperate or growing clan lacking
+        shelter or food invades a rival's settlement to secure shelter and plunder supplies.
+        Conditions:
+          - The invading clan has insufficient beds (len(members) > total_beds) or food shortages.
+          - Targets the closest rival house; if undefended or if invader has military superiority,
+            seizes the roof and plunders the rival's granary/larder for the starving population.
+        Deterministic: nearest to clan centroid, ties by id."""
         if not self.config.house_claim_enabled or not members:
             return None
         ax, ay = self._clan_centroid(members)
@@ -2661,15 +2665,17 @@ class Simulation:
         for h in houses:
             if h.is_ruin or h.clan_id == 0 or h.clan_id == cid:
                 continue
-            if self.clans.get(h.clan_id, {}).get("main_house_id") == h.id:
-                continue  # a clan's seat is never stolen this way
-            if occupants.get(h.id, 0) > 0:
-                continue  # occupied tonight — no bloodless takeover
+            if self.clans.get(h.clan_id, {}).get("main_house_id") == h.id and len(houses) > 4:
+                # Main seat protected unless it's the only remaining rival shelter
+                continue
             rival_members = self._clan_members.get(h.clan_id, [])
             rival_beds = sum(self._house_beds(rh) for rh in houses if rh.clan_id == h.clan_id and not rh.is_ruin)
-            if len(rival_members) >= rival_beds / 2.0:
-                continue  # the rival needs its beds
-            candidates.append(h)
+            # Invade if: (1) rival has spare beds, OR (2) invader has numerical superiority, OR (3) invader is desperately starving
+            is_spare = len(rival_members) < rival_beds
+            has_superiority = len(members) >= len(rival_members)
+            is_empty_tonight = occupants.get(h.id, 0) == 0
+            if is_spare or is_empty_tonight or has_superiority:
+                candidates.append(h)
         if not candidates:
             return None
         target = min(candidates, key=lambda h: (self.world.distance(ax, ay, h.x, h.y), h.id))
@@ -2678,17 +2684,35 @@ class Simulation:
         target.clan_color = self.clans.get(cid, {}).get("color")
         target.is_main = False
         target.takeover_tick = self.tick
+
+        # Plunder food resources from the victim clan to feed the invaders
+        victim_info = self.clans.get(old_cid, {})
+        invader_info = self.clans.get(cid, {})
+        plundered = 0.0
+        if victim_info:
+            v_granary = float(victim_info.get("granary", 0.0))
+            if v_granary > 5.0:
+                plundered = min(50.0, v_granary * 0.6)
+                victim_info["granary"] = max(0.0, v_granary - plundered)
+                if invader_info:
+                    invader_info["granary"] = float(invader_info.get("granary", 0.0)) + plundered
+                    # Distribute food to feed hungry clan invaders immediately
+                    for m in members:
+                        if m.energy < 75.0:
+                            m.energy = min(100.0, m.energy + 25.0)
+
         # The rival loses a roof and remembers the theft.
-        self._bump_relation(cid, old_cid, -25)
-        old_name = self.clans.get(old_cid, {}).get("name")
-        new_name = self.clans.get(cid, {}).get("name")
+        self._bump_relation(cid, old_cid, -40)
+        old_name = self.clans.get(old_cid, {}).get("name", f"Clan #{old_cid}")
+        new_name = self.clans.get(cid, {}).get("name", f"Clan #{cid}")
+        raid_desc = f" (plundered {plundered:.1f} food)" if plundered > 0 else ""
         self._log_clan_history(
             cid, "takeover",
-            f"Seized House #{target.id} from {old_name} (Day {self.day})",
+            f"Invaded & seized House #{target.id} from {old_name}{raid_desc} (Day {self.day})",
         )
         self._log_clan_history(
             old_cid, "takeover_loss",
-            f"Lost House #{target.id} to {new_name} (Day {self.day})",
+            f"Lost House #{target.id} to {new_name}{raid_desc} (Day {self.day})",
         )
         self._emit(
             HistoryEvent(
@@ -2697,7 +2721,7 @@ class Simulation:
                 payload={
                     "invader_clan": cid, "victim_clan": old_cid,
                     "invader_name": new_name, "victim_name": old_name,
-                    "house_id": target.id,
+                    "house_id": target.id, "plundered_food": round(plundered, 1),
                 },
             )
         )

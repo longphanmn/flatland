@@ -33,7 +33,7 @@ class Config:
 
     # World generation densities (per grid unit²) and spawn jitter.
     creature_density: float = 0.0013  # ~156 creatures on the 400×300 map — at least 50 as requested
-    house_density: float = 0.0002  # ~24 houses for 150+ pop
+    house_density: float = 0.00065  # ~78 houses covering >=85% population beds on 400x300 map
     spawn_variance: float = 0.25  # ±25% around the density target
 
     food_count: int = 210  # was 70 on 200x200 — scales x3 with the 400x300 map
@@ -277,8 +277,8 @@ class Config:
     exile_on_kin_eat: bool = True  # kin-eater cast out, founding an outcast band
 
     # Houses
-    house_min_size: float = 6.0
-    house_max_size: float = 10.0
+    house_min_size: float = 5.5
+    house_max_size: float = 8.0
     door_clearance: float = 1.5  # door width = clearance * largest creature diameter
     house_gap: float = 6.0  # min clear gap between house walls — keeps alleys passable so creatures never wedge between shelters
 
