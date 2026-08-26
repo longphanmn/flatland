@@ -285,9 +285,9 @@ class Config:
     # Chronicle
     history_max: int = 200  # death events kept in the chronicle
 
-    # M-4 OpenMP multi-core — disabled by default to keep single-core deterministic behavior (enable via FLATWORLD_OMP_ENABLED=true)
-    omp_enabled: bool = False  # use 8-core OpenMP batch when pop exceeds threshold
-    omp_threshold: int = 5000  # min creatures to trigger parallel batch (tunable via FLATWORLD_OMP_THRESHOLD)
+    # M-4 OpenMP multi-core — enabled at >100 for 4× CPU verification
+    omp_enabled: bool = True  # use 8-core OpenMP batch when pop exceeds threshold
+    omp_threshold: int = 100  # min creatures to trigger parallel batch (tunable via FLATWORLD_OMP_THRESHOLD)
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -327,8 +327,8 @@ class Config:
             schism_threshold=_env("FLATWORLD_SCHISM_THRESHOLD", float, 0.6),
             schism_min_pop=_env("FLATWORLD_SCHISM_MIN_POP", int, 8),
             communication_enabled=_env("FLATWORLD_COMMUNICATION_ENABLED", bool, True),
-            omp_enabled=_env("FLATWORLD_OMP_ENABLED", bool, False),
-            omp_threshold=_env("FLATWORLD_OMP_THRESHOLD", int, 5000),
+            omp_enabled=_env("FLATWORLD_OMP_ENABLED", bool, True),
+            omp_threshold=_env("FLATWORLD_OMP_THRESHOLD", int, 100),
         )
 
     @property
