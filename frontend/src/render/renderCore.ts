@@ -12,6 +12,38 @@ export const PRIEST_SIDES = 24
 export const MIN_SCALE_FACTOR = 0.4
 export const MAX_SCALE = 80
 
+export function clusterEntities<T extends { x: number; y: number }>(entities: T[], maxDist: number = 38.0): T[][] {
+  if (entities.length === 0) return []
+  const clusters: T[][] = []
+  const visited = new Set<number>()
+
+  for (let i = 0; i < entities.length; i++) {
+    if (visited.has(i)) continue
+    const cluster: T[] = []
+    const queue: number[] = [i]
+    visited.add(i)
+
+    while (queue.length > 0) {
+      const currIdx = queue.pop()!
+      const curr = entities[currIdx]
+      cluster.push(curr)
+
+      for (let j = 0; j < entities.length; j++) {
+        if (visited.has(j)) continue
+        const other = entities[j]
+        const dx = curr.x - other.x
+        const dy = curr.y - other.y
+        if (dx * dx + dy * dy <= maxDist * maxDist) {
+          visited.add(j)
+          queue.push(j)
+        }
+      }
+    }
+    clusters.push(cluster)
+  }
+  return clusters
+}
+
 export const CASTE_COLORS: Record<string, string> = {
   Soldier: '#ff7b72',
   Artisan: '#f2cc60',
@@ -1109,45 +1141,61 @@ export function renderWorldFrame(
 
     const clanEntities = clanHouses.length > 0 ? clanHouses : clanMembers
     if (clanEntities.length > 0) {
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
-      for (const e of clanEntities) {
-        minX = Math.min(minX, e.x)
-        maxX = Math.max(maxX, e.x)
-        minY = Math.min(minY, e.y)
-        maxY = Math.max(maxY, e.y)
+      // Spatial clustering: group nearby houses/settlements within 40 units
+      const clusters = clusterEntities(clanEntities, 40.0)
+
+      for (let ci = 0; ci < clusters.length; ci++) {
+        const cluster = clusters[ci]
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+        let hasMain = false
+        for (const e of cluster) {
+          minX = Math.min(minX, e.x)
+          maxX = Math.max(maxX, e.x)
+          minY = Math.min(minY, e.y)
+          maxY = Math.max(maxY, e.y)
+          if ((e as any).is_main) hasMain = true
+        }
+
+        const padC = cluster.length === 1 ? 8 : 12
+        minX -= padC; maxX += padC
+        minY -= padC; maxY += padC
+
+        ctx.strokeStyle = clanColor
+        ctx.lineWidth = 0.55
+        ctx.setLineDash([3.0, 2.0])
+        ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
+        ctx.fillStyle = clanColor
+        ctx.globalAlpha = 0.06
+        ctx.fillRect(minX, minY, maxX - minX, maxY - minY)
+        ctx.globalAlpha = 1
+        ctx.setLineDash([])
+
+        const midX = (minX + maxX) / 2
+        const bannerY = minY - 2.8
+        let bannerText = `${totemChar} ${clanName}`
+        if (clusters.length === 1) {
+          bannerText = `${totemChar} ${clanName} (${clanMembers.length} members · ${clanHouses.length} houses)`
+        } else if (hasMain) {
+          bannerText = `👑 ${clanName} (Main Village · ${cluster.length} ${cluster.length === 1 ? 'house' : 'houses'})`
+        } else {
+          bannerText = `📍 ${clanName} (Outpost · ${cluster.length} ${cluster.length === 1 ? 'house' : 'houses'})`
+        }
+
+        ctx.font = '2.2px ui-monospace, monospace'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        const bw = Math.max(24, (bannerText.length * 1.35) + 4)
+        const bh = 3.8
+
+        ctx.fillStyle = 'rgba(13,17,23,0.92)'
+        ctx.strokeStyle = clanColor
+        ctx.lineWidth = 0.35
+        ctx.fillRect(midX - bw / 2, bannerY - bh / 2, bw, bh)
+        ctx.strokeRect(midX - bw / 2, bannerY - bh / 2, bw, bh)
+
+        ctx.fillStyle = '#e6edf3'
+        ctx.fillText(bannerText, midX, bannerY + 0.1)
       }
-      const padC = 16
-      minX -= padC; maxX += padC
-      minY -= padC; maxY += padC
-
-      ctx.strokeStyle = clanColor
-      ctx.lineWidth = 0.55
-      ctx.setLineDash([3.0, 2.0])
-      ctx.strokeRect(minX, minY, maxX - minX, maxY - minY)
-      ctx.fillStyle = clanColor
-      ctx.globalAlpha = 0.06
-      ctx.fillRect(minX, minY, maxX - minX, maxY - minY)
-      ctx.globalAlpha = 1
-      ctx.setLineDash([])
-
-      const midX = (minX + maxX) / 2
-      const bannerY = minY - 2.8
-      const bannerText = `${totemChar} ${clanName} (${clanMembers.length} members · ${clanHouses.length} houses)`
-
-      ctx.font = '2.2px ui-monospace, monospace'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      const bw = Math.max(30, (bannerText.length * 1.35) + 4)
-      const bh = 3.8
-
-      ctx.fillStyle = 'rgba(13,17,23,0.92)'
-      ctx.strokeStyle = clanColor
-      ctx.lineWidth = 0.35
-      ctx.fillRect(midX - bw / 2, bannerY - bh / 2, bw, bh)
-      ctx.strokeRect(midX - bw / 2, bannerY - bh / 2, bw, bh)
-
-      ctx.fillStyle = '#e6edf3'
-      ctx.fillText(bannerText, midX, bannerY + 0.1)
     }
   }
 

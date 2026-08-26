@@ -1,6 +1,7 @@
 import type { StateMessage } from '../types'
 import {
   Camera,
+  clusterEntities,
   MAX_SCALE,
   MIN_SCALE_FACTOR,
   pickCreatureAt,
@@ -107,19 +108,31 @@ function renderLoop() {
       const clanMembers = currentState.entities.filter((e) => e.kind === 'creature' && e.clan_id === selectedClanId)
       const clanEntities = clanHouses.length > 0 ? clanHouses : clanMembers
 
-      if (clanEntities.length > 0) {
+      const clusters = clusterEntities(clanEntities, 40.0)
+      let primaryCluster = clusters[0]
+      for (const cl of clusters) {
+        if (cl.some((e: any) => e.is_main)) {
+          primaryCluster = cl
+          break
+        }
+        if (cl.length > primaryCluster.length) {
+          primaryCluster = cl
+        }
+      }
+
+      if (primaryCluster && primaryCluster.length > 0) {
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
-        for (const e of clanEntities) {
+        for (const e of primaryCluster) {
           if (e.x < minX) minX = e.x
           if (e.x > maxX) maxX = e.x
           if (e.y < minY) minY = e.y
           if (e.y > maxY) maxY = e.y
         }
-        const pad = 24
+        const pad = 20
         minX -= pad; maxX += pad
         minY -= pad; maxY += pad
-        const spanX = Math.max(50, maxX - minX)
-        const spanY = Math.max(50, maxY - minY)
+        const spanX = Math.max(45, maxX - minX)
+        const spanY = Math.max(45, maxY - minY)
         const centerX = (minX + maxX) / 2
         const centerY = (minY + maxY) / 2
 
