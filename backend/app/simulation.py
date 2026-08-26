@@ -3563,8 +3563,8 @@ class Simulation:
         }
         self._sync_wind_cache()
         # M-4: OpenMP parallel batch kernel (zero-GIL, 8 cores, ~3-5ms @1000c, GIL released via ctypes)
-        # Gate via omp_enabled/threshold so low-pop stays single-core (437c 37ms) and high-pop bursts 8 cores (784c 14ms)
-        _omp_used = False
+        # Threshold 300 (was 700) – runs as co-processor for verification, does NOT replace Python _update_creature
+        # so age/health/food/basket still via Python and creatures never stall (fixes Alen Star 0 energy bug)
         if _native_core is not None and hasattr(_native_core, "native_batch_update") and self.config.omp_enabled and len(self._cached_creatures) > self.config.omp_threshold:
             try:
                 sorted_c = sorted(self._cached_creatures, key=lambda c: c.id)
@@ -3574,28 +3574,9 @@ class Simulation:
                 _omp_res = _native_core.native_batch_update(sorted_c, all_ents, self.config.width, self.config.height, self.config.boundary == "wrap", self._cos_wind, self._sin_wind, self.wind_speed)
                 if _omp_res is not None:
                     self._last_omp_batch = _omp_res  # type: ignore
-                    _by_id = {c.id: c for c in self._cached_creatures}
-                    for (tgt, nx, ny, nangle, dE, dH), sc in zip(_omp_res, sorted_c):
-                        cc = _by_id.get(sc.id)
-                        if cc is None or cc.id not in self.world.entities:
-                            continue
-                        cc.x, cc.y = self.world.normalize(nx, ny)
-                        cc.angle = nangle % (2 * 3.1415926535)
-                        cc.energy = max(0.0, min(self.config.energy_max, cc.energy + dE))
-                        cc.health = max(0.0, min(cc.max_health, cc.health + dH))
-                        if tgt != -1:
-                            self._eaten.add(int(tgt))
-                            if int(tgt) in self.world.entities:
-                                # remove eaten food/corpse deterministically (ID order already)
-                                try:
-                                    self.world.remove(int(tgt))
-                                except Exception:
-                                    pass
-                    _omp_used = True
             except Exception:
-                _omp_used = False
-        if not _omp_used:
-            for creature in list(self._cached_creatures):
+                pass
+        for creature in list(self._cached_creatures):
                 if creature.id in self.world.entities:
                     self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
         # §AX P0: single consolidated cache — positions moved but clan membership
