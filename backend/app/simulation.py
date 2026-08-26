@@ -3563,9 +3563,8 @@ class Simulation:
         }
         self._sync_wind_cache()
         # M-4: OpenMP parallel batch kernel (zero-GIL, 8 cores, ~3-5ms @1000c, GIL released via ctypes)
-        # Threshold 300 – when >300, OMP does movement+eat in parallel and Python loop is skipped (deterministic ID-order reduction)
-        # so creatures keep updating (age+1, ticks_since_meal, energy, health) even in multi-core mode
-        _omp_used = False
+        # Threshold 300 – runs as co-processor for verification, does NOT replace Python _update_creature
+        # so age/health/food/basket/houses/energy still via Python and creatures never stall (fixes one-way move, bypass house, no eat)
         if _native_core is not None and hasattr(_native_core, "native_batch_update") and self.config.omp_enabled and len(self._cached_creatures) > self.config.omp_threshold:
             try:
                 sorted_c = sorted(self._cached_creatures, key=lambda c: c.id)
@@ -3575,41 +3574,11 @@ class Simulation:
                 _omp_res = _native_core.native_batch_update(sorted_c, all_ents, self.config.width, self.config.height, self.config.boundary == "wrap", self._cos_wind, self._sin_wind, self.wind_speed)
                 if _omp_res is not None:
                     self._last_omp_batch = _omp_res  # type: ignore
-                    _by_id = {c.id: c for c in self._cached_creatures}
-                    for (tgt, nx, ny, nangle, dE, dH), sc in zip(_omp_res, sorted_c):
-                        cc = _by_id.get(sc.id)
-                        if cc is None or cc.id not in self.world.entities:
-                            continue
-                        # per-tick increments that Python _update_creature would have done (so age/health never stall)
-                        cc.age += 1
-                        cc.ticks_since_meal += 1
-                        if cc.repro_cooldown > 0:
-                            cc.repro_cooldown -= 1
-                        if cc.bite_cooldown > 0:
-                            cc.bite_cooldown -= 1
-                        if cc.cannibal_cooldown > 0:
-                            cc.cannibal_cooldown -= 1
-                        cc.x, cc.y = self.world.normalize(nx, ny)
-                        cc.angle = nangle % (2 * 3.1415926535)
-                        cc.energy = max(0.0, min(self.config.energy_max, cc.energy + dE))
-                        cc.health = max(0.0, min(cc.max_health, cc.health + dH))
-                        if tgt != -1:
-                            self._eaten.add(int(tgt))
-                            if int(tgt) in self.world.entities:
-                                try:
-                                    self.world.remove(int(tgt))
-                                except Exception:
-                                    pass
-                            cc.meals += 1
-                            cc.ticks_since_meal = 0
-                            cc.give_ups.clear()
-                    _omp_used = True
             except Exception:
-                _omp_used = False
-        if not _omp_used:
-            for creature in list(self._cached_creatures):
-                if creature.id in self.world.entities:
-                    self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
+                pass
+        for creature in list(self._cached_creatures):
+            if creature.id in self.world.entities:
+                self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
         # §AX P0: single consolidated cache — positions moved but clan membership
         # unchanged; defer full rebuild until after war/prune to avoid triplicate.
         # _update_disease and _update_war handle stale cache via w.entities checks
