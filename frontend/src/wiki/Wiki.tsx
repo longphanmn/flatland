@@ -14,6 +14,7 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
   const [tab, setTab] = useState<'guide' | 'book' | 'api' | 'laws' | 'presets'>('guide')
   const [q, setQ] = useState('')
   const [laws, setLaws] = useState<Record<string, any> | null>(null)
+  const [presetFeedback, setPresetFeedback] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -22,8 +23,6 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
   }, [open])
 
   if (!open) return null
-
-  const [presetFeedback, setPresetFeedback] = useState<string | null>(null)
 
   const activePreset =
     (laws?.food_count === 240 && laws?.carrying_capacity === 350) || (laws?.food_count === 220 && laws?.carrying_capacity === 600)
