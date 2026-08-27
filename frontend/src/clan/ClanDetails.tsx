@@ -237,18 +237,21 @@ export default function ClanDetails({
         <span className="chip">
           War <b>{data.war_wins}W</b> / <b>{data.war_losses}L</b>
         </span>
-        <span className="chip" style={{ width: '100%' }}>
-          {data.house ? (
-            <>
-              👑 <b>Main House #{data.house.id}</b> ({Math.round(data.house.x)}, {Math.round(data.house.y)})
-              {data.leader_id ? (
-                <span style={{ color: data.color, fontWeight: 600, marginLeft: 4 }}>· Leader Residence</span>
-              ) : null}
-            </>
-          ) : (
-            <>🏕 Homeless</>
-          )}
-        </span>
+        <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px 8px', background: 'rgba(22, 27, 34, 0.6)', padding: '5px 8px', borderRadius: 4, border: '1px solid #30363d' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+            <span>👑</span>
+            {data.house ? (
+              <span><b style={{ color: '#e6edf3' }}>Main House #{data.house.id}</b> <span style={{ color: '#8b949e', fontSize: 11 }}>({Math.round(data.house.x)}, {Math.round(data.house.y)})</span></span>
+            ) : (
+              <span style={{ color: '#8b949e' }}>🏕 Homeless</span>
+            )}
+          </div>
+          {data.house && data.leader_id ? (
+            <span style={{ color: data.color, fontWeight: 600, fontSize: 11, background: `${data.color}22`, padding: '1px 6px', borderRadius: 3, border: `1px solid ${data.color}44`, whiteSpace: 'nowrap' }}>
+              👑 Leader Residence
+            </span>
+          ) : null}
+        </div>
         {((data.houses?.length ?? 0) > 1) && (
           <span className="chip">
             🏠 Houses <b>{data.houses!.length}</b> total
@@ -260,9 +263,9 @@ export default function ClanDetails({
           </span>
         )}
         {data.culture && (
-          <span className="chip" style={{ width: '100%' }}>
-            🎭 {data.culture}
-          </span>
+          <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 5, color: '#e6edf3', fontSize: 12, background: 'rgba(22, 27, 34, 0.6)', padding: '4px 8px', borderRadius: 4, border: '1px solid #30363d', wordBreak: 'break-word' }}>
+            <span>🎭</span> <span>{data.culture}</span>
+          </div>
         )}
       </div>
 
