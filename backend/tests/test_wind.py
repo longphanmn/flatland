@@ -97,7 +97,7 @@ def test_fire_spreads_downwind():
             east.append(s.world.add(fe))
         s.world.add(Food(x=90.0, y=150.0, growth=1.0))
         s.fires.append({"x": 90.0, "y": 150.0, "r": 2.5, "ttl": 10_000})
-        for _ in range(16):
+        for _ in range(40):
             s.step()
         alive_west = sum(1 for f in west if f.id in s.world.entities)
         alive_east = sum(1 for f in east if f.id in s.world.entities)

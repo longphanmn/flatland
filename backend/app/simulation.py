@@ -6429,8 +6429,9 @@ class Simulation:
                         if self.world.distance_sq(c.x, c.y, p["x"], p["y"]) <= 9.0
                         and not any(
                             isinstance(f, Food)
+                            and f.id in self.world.entities
                             and self.world.distance_sq(f.x, f.y, p["x"], p["y"]) <= 1.0
-                            for f in self._cached_foods
+                            for f in (self._cached_foods if self._cached_foods is not None else [e for e in self.world.entities.values() if isinstance(e, Food)])
                         )
                     ),
                     None,
@@ -9597,7 +9598,7 @@ class Simulation:
         age = self._age()
         if age is not None:
             target = round(target * AGE_FOOD_MULT.get(age, 1.0))
-        foods = [e for e in self.world.entities.values() if e.kind == "food"]
+        foods = [e for e in self.world.entities.values() if e.kind == "food" and not getattr(e, "cultivated", False)]
         deficit = target - len(foods)
         if deficit > 0:
             growth_init = 1.0

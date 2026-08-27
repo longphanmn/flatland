@@ -103,8 +103,7 @@ def require_god(request: Request) -> None:
     """FastAPI dependency guarding every god-touching endpoint."""
     auth: PasskeyAuth = request.app.state.god_auth
     if not auth.configured():
-        # Open / zero-friction mode: permit actions until passkey is configured
-        return
+        raise HTTPException(409, {"error": "god_key_not_configured", "detail": "first-time enrollment required via /api/auth/setup"})
     key = request.headers.get("X-God-Key") or request.query_params.get("key")
     if not auth.verify(key):
         raise HTTPException(401, {"error": "god_key_required", "detail": "valid X-God-Key header required"})

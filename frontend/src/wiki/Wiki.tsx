@@ -26,15 +26,19 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
   const [presetFeedback, setPresetFeedback] = useState<string | null>(null)
 
   const activePreset =
-    laws?.food_count === 220 && laws?.carrying_capacity === 600
+    (laws?.food_count === 240 && laws?.carrying_capacity === 350) || (laws?.food_count === 220 && laws?.carrying_capacity === 600)
       ? 'balance'
-      : laws?.food_count === 450 && laws?.carrying_capacity === 2200
+      : (laws?.food_count === 360 && laws?.carrying_capacity === 450) || (laws?.food_count === 450 && laws?.carrying_capacity === 2200)
       ? 'sustainable'
-      : laws?.food_count === 320 && laws?.carrying_capacity === 800
+      : laws?.food_count === 320 && laws?.carrying_capacity === 400
+      ? 'theocracy'
+      : laws?.food_count === 290 && laws?.carrying_capacity === 380
+      ? 'warlords'
+      : (laws?.food_count === 280 && laws?.carrying_capacity === 350) || (laws?.food_count === 320 && laws?.carrying_capacity === 800)
       ? 'chaos'
-      : laws?.food_count === 100 && laws?.carrying_capacity === 250
+      : (laws?.food_count === 120 && laws?.carrying_capacity === 180) || (laws?.food_count === 100 && laws?.carrying_capacity === 250)
       ? 'extinction'
-      : laws?.food_count === 650 && laws?.carrying_capacity === 3500
+      : (laws?.food_count === 500 && laws?.carrying_capacity === 800) || (laws?.food_count === 650 && laws?.carrying_capacity === 3500)
       ? 'boom'
       : null
 
@@ -283,6 +287,28 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
                 🌿 Sustainable {activePreset === 'sustainable' ? '✓' : ''}
               </button>
               <button
+                onClick={() => applyPreset('theocracy')}
+                style={{
+                  borderColor: '#bc8cff',
+                  color: '#bc8cff',
+                  background: activePreset === 'theocracy' ? 'rgba(188, 140, 255, 0.2)' : undefined,
+                  fontWeight: activePreset === 'theocracy' ? 700 : undefined,
+                }}
+              >
+                🔮 Theocracy {activePreset === 'theocracy' ? '✓' : ''}
+              </button>
+              <button
+                onClick={() => applyPreset('warlords')}
+                style={{
+                  borderColor: '#f0883e',
+                  color: '#f0883e',
+                  background: activePreset === 'warlords' ? 'rgba(240, 136, 62, 0.2)' : undefined,
+                  fontWeight: activePreset === 'warlords' ? 700 : undefined,
+                }}
+              >
+                ⚔️ Warlords {activePreset === 'warlords' ? '✓' : ''}
+              </button>
+              <button
                 onClick={() => applyPreset('chaos')}
                 style={{
                   borderColor: '#f85149',
@@ -296,9 +322,9 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
               <button
                 onClick={() => applyPreset('extinction')}
                 style={{
-                  borderColor: '#d29922',
-                  color: '#d29922',
-                  background: activePreset === 'extinction' ? 'rgba(210, 153, 34, 0.2)' : undefined,
+                  borderColor: '#ff7b72',
+                  color: '#ff7b72',
+                  background: activePreset === 'extinction' ? 'rgba(255, 123, 114, 0.2)' : undefined,
                   fontWeight: activePreset === 'extinction' ? 700 : undefined,
                 }}
               >

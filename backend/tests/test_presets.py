@@ -28,8 +28,8 @@ def client():
 
 
 def test_all_presets_defined_and_valid():
-    """Verify all 5 curated presets are present, valid under GodLaws, and comprehensive."""
-    expected_presets = {"balance", "sustainable", "chaos", "extinction", "boom"}
+    """Verify all curated presets are present, valid under GodLaws, and comprehensive."""
+    expected_presets = {"balance", "sustainable", "chaos", "extinction", "boom", "theocracy", "warlords"}
     assert set(PRESETS.keys()) == expected_presets
 
     for name, p_laws in PRESETS.items():
@@ -40,7 +40,7 @@ def test_all_presets_defined_and_valid():
 
 def test_preset_application_and_detection(client):
     """Applying any preset should update config, persist it, and detect_current_preset should identify it."""
-    for name in ["sustainable", "chaos", "extinction", "boom", "balance"]:
+    for name in ["sustainable", "chaos", "extinction", "boom", "theocracy", "warlords", "balance"]:
         resp = client.post(f"/api/presets/{name}?persist=true&reset=true")
         assert resp.status_code == 200
         data = resp.json()
@@ -57,36 +57,36 @@ def test_preset_transition_hygiene(client):
     assert RT.config.cannibalism_enabled is True
     assert RT.config.wildfire_enabled is True
     assert RT.config.earthquake_enabled is True
-    assert RT.config.attack_damage == 100.0
+    assert RT.config.attack_damage == 60.0
 
     # 2. Transition to Sustainable
     client.post("/api/presets/sustainable?persist=true&reset=true")
     assert RT.config.cannibalism_enabled is False
     assert RT.config.wildfire_enabled is False
     assert RT.config.earthquake_enabled is False
-    assert RT.config.attack_damage == 28.0
-    assert RT.config.trespass_decay == 0.0
+    assert RT.config.attack_damage == 25.0
+    assert RT.config.trespass_decay == 0.15
 
     # 3. Transition to Boom
     client.post("/api/presets/boom?persist=true&reset=true")
     assert RT.config.war_enabled is False
     assert RT.config.disease_enabled is False
     assert RT.config.predation_enabled is False
-    assert RT.config.birth_rate == 0.35
+    assert RT.config.birth_rate == 0.25
 
     # 4. Transition to Extinction
     client.post("/api/presets/extinction?persist=true&reset=true")
-    assert RT.config.food_count == 100
-    assert RT.config.energy_decay_per_tick == 0.08
-    assert RT.config.exposure_drain == 0.15
+    assert RT.config.food_count == 120
+    assert RT.config.energy_decay_per_tick == 0.05
+    assert RT.config.exposure_drain == 0.08
     assert RT.config.cannibalism_enabled is True
 
     # 5. Transition to Balance
     client.post("/api/presets/balance?persist=true&reset=true")
-    assert RT.config.food_count == 220
-    assert RT.config.carrying_capacity == 600
+    assert RT.config.food_count == 240
+    assert RT.config.carrying_capacity == 350
     assert RT.config.war_enabled is True
-    assert RT.config.attack_damage == 32.0
+    assert RT.config.attack_damage == 30.0
 
 
 def test_balance_deep_lifecycle(client):

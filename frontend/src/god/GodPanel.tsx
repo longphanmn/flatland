@@ -419,9 +419,9 @@ const PRESET_LIST: PresetItem[] = [
     color: '#e3b341',
     border: '#d29922',
     bg: 'rgba(227, 179, 65, 0.15)',
-    title: 'Goldilocks balance: 220 food, carrying 600, max 800 — gentle harmony for 500-800 population',
-    description: 'All 15+ simulation mechanics active in gentle harmony: 220 food, carrying capacity 600 (max 800), mild war, rare predation, mild plagues, gentle winters, and thriving multi-generational clans.',
-    tags: ['500-800 Pop', 'Everything Active', 'Harmonious'],
+    title: 'Goldilocks balance: 240 food, carrying 350, max 500 — gentle harmony for 200-350 population',
+    description: 'All 15+ simulation mechanics active in living harmony: balanced border skirmishes, mild predation, seasonal plagues, bridges, and thriving multi-generational clans.',
+    tags: ['200-350 Pop', 'Living Harmony', 'All Systems Active'],
   },
   {
     key: 'sustainable',
@@ -430,9 +430,31 @@ const PRESET_LIST: PresetItem[] = [
     color: '#3fb950',
     border: '#2ea043',
     bg: 'rgba(63, 185, 80, 0.15)',
-    title: '1000-day gentle: 450 food, carrying 2200, rare war/predation, calm society',
-    description: 'Plentiful food (450), calm diplomacy, rare conflict, and very gentle winter for flourishing multi-generational stability.',
-    tags: ['Abundant Food', 'Peaceful', 'Low Conflict'],
+    title: '1000-day gentle: 360 food, carrying 450, rare war, calm society',
+    description: 'Bountiful agriculture (360 food), rich granaries, seasonal banquets, glowing temples, and gentle winters for long flourishing dynasties.',
+    tags: ['300-500 Pop', 'Rich Granaries', 'Banquets & Peace'],
+  },
+  {
+    key: 'theocracy',
+    label: '🔮 Theocracy',
+    subtitle: 'Age of the Sphere',
+    color: '#bc8cff',
+    border: '#a371f7',
+    bg: 'rgba(188, 140, 255, 0.15)',
+    title: 'Theocracy: high faith tithes, glowing temples, avatar miracles, 3D epiphanies',
+    description: 'Spiritual civilization: devoted prayer to the 8 Sacred 2D Avatars, glowing Temples of the Sphere, divine miracles, and holy synods.',
+    tags: ['Sacred Avatars', 'Glowing Temples', '3D Epiphanies'],
+  },
+  {
+    key: 'warlords',
+    label: '⚔️ Warlords',
+    subtitle: 'Clash of Clans',
+    color: '#f0883e',
+    border: '#d26a1b',
+    bg: 'rgba(240, 136, 62, 0.15)',
+    title: 'Warlords: wide territories, defensive leagues, granary raids, house conquests',
+    description: 'High martial expansion: tactical clan warfare, defensive coalitions, granary plundering, territorial takeovers, and contested thrones.',
+    tags: ['Martial Skirmishes', 'Coalitions', 'Territory Conquest'],
   },
   {
     key: 'chaos',
@@ -442,39 +464,45 @@ const PRESET_LIST: PresetItem[] = [
     border: '#da3633',
     bg: 'rgba(248, 81, 73, 0.15)',
     title: 'Chaos: famine, predators, wars, plagues, fires',
-    description: 'Brutal stress test: high predator ratio, lethal wars, frequent plagues, wildfires, and rapid seasonal turnover.',
-    tags: ['Deadly Wars', 'Wildfires', 'Frequent Plagues'],
+    description: 'Brutal stress test: high predator packs, lethal wars, frequent plagues, wildfires, earthquakes, and rapid seasonal turnover.',
+    tags: ['Deadly Wars', 'Wildfires & Quakes', 'Frequent Plagues'],
   },
   {
     key: 'extinction',
     label: '💀 Extinction',
     subtitle: 'Cataclysmic Collapse',
-    color: '#bc8cff',
-    border: '#8957e5',
-    bg: 'rgba(188, 140, 255, 0.15)',
-    title: 'Extinction: 100 food, harsh winter 0.3, high decay',
-    description: 'Extreme famine (100 food), harsh winter (0.3x), rampant disease, and rapid decay. Tests how fast societies collapse.',
-    tags: ['Famine', 'Harsh Winter', 'Extinction Risk'],
+    color: '#ff7b72',
+    border: '#f85149',
+    bg: 'rgba(255, 123, 114, 0.15)',
+    title: 'Extinction: 120 food, harsh winter 0.3, high decay',
+    description: 'Extreme famine (120 food), freezing winter (0.3x), rampant disease, exposure drain, and desperate cannibalism.',
+    tags: ['Famine', 'Harsh Winter', 'Extinction Challenge'],
   },
   {
     key: 'boom',
     label: '🚀 Boom',
-    subtitle: 'High-Scale Growth',
+    subtitle: 'Monumental Growth',
     color: '#79c0ff',
     border: '#388bfd',
     bg: 'rgba(121, 192, 255, 0.15)',
-    title: 'Boom: 650 food, carrying 3500, max 5000 — massive population scale test',
-    description: 'Massive population scale test: rapid reproduction, food abundance (650), peace, and carrying capacity up to 5,000.',
-    tags: ['5000+ Pop', 'Rapid Births', 'Zero War/Plague'],
+    title: 'Boom: 500 food, carrying 800, max 1000 — massive population growth',
+    description: 'Massive urban growth: rapid reproduction, food abundance (500), giant granaries, bridges, and bustling settlements.',
+    tags: ['800-1000 Pop', 'Rapid Births', 'Bustling Cities'],
   },
 ]
 
 function detectPreset(laws: GodLaws): string | null {
+  if (laws.food_count === 240 && laws.carrying_capacity === 350) return 'balance'
   if (laws.food_count === 220 && laws.carrying_capacity === 600) return 'balance'
-  if (laws.food_count === 420 && laws.carrying_capacity === 2000) return 'balance'
+  if (laws.food_count === 360 && laws.carrying_capacity === 450) return 'sustainable'
   if (laws.food_count === 450 && laws.carrying_capacity === 2200) return 'sustainable'
+  if (laws.food_count === 320 && laws.carrying_capacity === 400) return 'theocracy'
+  if (laws.food_count === 290 && laws.carrying_capacity === 380) return 'warlords'
+  if (laws.food_count === 280 && laws.carrying_capacity === 350) return 'chaos'
   if (laws.food_count === 320 && laws.carrying_capacity === 800) return 'chaos'
+  if (laws.food_count === 120 && laws.carrying_capacity === 180) return 'extinction'
   if (laws.food_count === 100 && laws.carrying_capacity === 250) return 'extinction'
+  if (laws.food_count === 500 && laws.carrying_capacity === 800) return 'boom'
   if (laws.food_count === 650 && laws.carrying_capacity === 3500) return 'boom'
   return null
 }

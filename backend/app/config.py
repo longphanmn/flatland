@@ -242,8 +242,8 @@ class Config:
     rivalry_threshold: int = -75  # was -50 — more negative, feuds rarer
 
     # Predation (§I) — Carnivore caste
-    predation_enabled: bool = True  # predators hunt prey — enabled with gentle balance
-    predator_ratio: float = 0.02  # fraction of spawn that are predators
+    predation_enabled: bool = False
+    predator_ratio: float = 0.0
     hunt_radius: float = 8.0  # predator sight for prey
     bite_damage: float = 28.0  # damage on bite (gentle wound)
     bite_cooldown: int = 15  # ticks between bites

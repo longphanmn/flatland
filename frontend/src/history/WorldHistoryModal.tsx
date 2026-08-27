@@ -407,11 +407,27 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         highlights.push(`🌋 Cataclysm: ${disSnippets.join(', ')} struck landscape`)
       }
 
-      // Peaceful Day
+      // Peaceful / Flourishing Day variety based on seasonal cycles and clan activity
       if (highlights.length === 0) {
-        highlights.push('🌾 Peaceful flourishing: Population grew steadily with abundant harvests under calm skies')
-        d.primaryIcon = '🌾'
-        d.badgeColor = '#2ea043'
+        const seasonIndex = Math.floor((d.day % 12) / 3)
+        const seasonDesc = [
+          '🌱 Spring Thaw: Newborn polygons learned caste customs as clans gathered wild herbs',
+          '☀️ High Summer: Bumper grain harvests filled clan granaries under golden sunlit skies',
+          '🍂 Autumn Bounty: Grand seasonal feasts held beside hearths; trade caravans crossed river bridges',
+          '❄️ Deep Winter: Families sheltered within warm halls around glowing hearthstones during winter frost',
+        ][seasonIndex]
+
+        const flavorIndex = d.day % 4
+        const flavorDesc = [
+          'craftsmen maintained timber bridges & boundary stones',
+          'priests led twilight choral chimes to the Sacred Sphere',
+          'elders passed lineage lore & craft mastery to youth',
+          'allied neighbours exchanged grain & bartered supplies',
+        ][flavorIndex]
+
+        highlights.push(`${seasonDesc} · ${flavorDesc}`)
+        d.primaryIcon = ['🌱', '☀️', '🍂', '❄️'][seasonIndex]
+        d.badgeColor = ['#3fb950', '#e3b341', '#f0883e', '#79c0ff'][seasonIndex]
       }
 
       d.summaryLine = highlights.join(' · ')
