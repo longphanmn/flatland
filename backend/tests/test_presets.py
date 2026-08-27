@@ -72,7 +72,7 @@ def test_preset_transition_hygiene(client):
     assert RT.config.war_enabled is False
     assert RT.config.disease_enabled is False
     assert RT.config.predation_enabled is False
-    assert RT.config.birth_rate == 0.55
+    assert RT.config.birth_rate == 0.35
 
     # 4. Transition to Extinction
     client.post("/api/presets/extinction?persist=true&reset=true")

@@ -16,7 +16,7 @@ import os
 import sqlite3
 import threading
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
@@ -358,6 +358,7 @@ class Database:
         since_id: int = 0,
         limit: int = 500,
         type_filter: str | None = None,
+        types_filter: Sequence[str] | None = None,
         entity_id: int | None = None,
         clan_id: int | None = None,
     ) -> list[dict[str, Any]]:
@@ -369,6 +370,10 @@ class Database:
         if type_filter:
             conditions.append("type=?")
             params.append(type_filter)
+        elif types_filter:
+            placeholders = ",".join("?" * len(types_filter))
+            conditions.append(f"type IN ({placeholders})")
+            params.extend(types_filter)
         if entity_id is not None:
             conditions.append("entity_id=?")
             params.append(entity_id)

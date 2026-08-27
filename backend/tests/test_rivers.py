@@ -175,3 +175,27 @@ def test_dam_failure_releases_a_flash_flood():
 def test_no_law_no_rivers():
     s = Simulation(river_cfg(rivers_enabled=True, river_count=0))
     assert s.rivers == []
+
+
+def test_artisan_builds_and_repairs_bridges():
+    """Artisan caste members build and maintain bridges without needing builder personality."""
+    s = flat_sim()
+    artisan = s.world.add(Creature(x=210.0, y=160.0, energy=95.0,
+                                   caste="Artisan", sides=3,
+                                   lifespan=100000.0, speed=0.3))
+    artisan.personality = "cautious"  # Even if cautious, artisan caste builds bridges
+    s._refresh_cache()
+    s.world.rebuild_index()
+    for _ in range(40):
+        s.step()
+        if s.bridges:
+            break
+    assert s.bridges, "Artisan should build a bridge plank"
+    # Verify bridge repair
+    br = s.bridges[0]
+    br["hp"] = 1000  # Damaged bridge
+    for _ in range(40):
+        s.step()
+        if br["hp"] > 1000:
+            break
+    assert br["hp"] > 1000, "Artisan should repair decaying bridge nearby"

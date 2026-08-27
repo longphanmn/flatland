@@ -69,16 +69,16 @@ class Config:
     age_length: int = 12000  # ticks per age (5 seasons)
 
     # Culture & Traits (§S)
-    culture_enabled: bool = False  # clan culture spreads/splits, grants bonus
+    culture_enabled: bool = True  # clan culture spreads/splits, grants bonus
     trait_mutation_rate: float = 0.02  # chance mutation adds heritable behaviour trait
     culture_spread_rate: float = 0.005  # per tick ally culture spread
 
     # Wildfire & Disasters (§S)
-    wildfire_enabled: bool = False  # fire ignites via storm lightning, spreads
-    fire_rate: float = 0.0005  # chance/tick to ignite random plant
-    fire_spread_rate: float = 0.08  # spread to neighboring plants
-    disaster_enabled: bool = False  # meteor/flood stochastic
-    disaster_rate: float = 0.0003  # chance/tick for disaster
+    wildfire_enabled: bool = True  # fire ignites via storm lightning, spreads
+    fire_rate: float = 0.00008  # chance/tick to ignite random plant
+    fire_spread_rate: float = 0.035  # spread to neighboring plants
+    disaster_enabled: bool = True  # meteor/flood stochastic
+    disaster_rate: float = 0.00004  # chance/tick for disaster
 
     # Communication & Care (§Q) — enabled by default
     communication_enabled: bool = True  # food + alarm calls, clan recruitment — enabled
@@ -145,27 +145,27 @@ class Config:
 
     # Reproduction & inheritance (Nature's Law) — tuned for 30-day survival
     birth_enabled: bool = True
-    adult_age: float = 200.0  # ticks before a creature may mate
+    adult_age: float = 600.0  # ticks before a creature may mate (half a day)
     mate_radius: float = 10.0  # max distance between parents
     mate_energy_min: float = 30.0  # both parents must hold this much energy
-    birth_rate: float = 0.35  # chance per eligible pair per tick (× fertility)
+    birth_rate: float = 0.05  # chance per eligible pair per tick (× fertility)
     sex_ratio: float = 0.5  # probability a child is a son
     mutation_rate: float = 0.05  # chance a son's side count deviates ±1
     max_sides: int = 24  # sons stop gaining sides here (= Circle)
     birth_energy_cost: float = 20.0  # each parent pays
-    reproduction_cooldown: int = 200  # ticks both parents wait after a birth
+    reproduction_cooldown: int = 600  # ticks both parents wait after a birth
     carrying_capacity: int = -1  # soft cap: fertility fades above it; -1 => scale with map area
     max_population: int = -1  # hard cap: no births beyond it; -1 => scale with map area
     euthanasia_threshold: float = 0.7  # irregularity at/below -> demotion, above -> consumed
 
     # Health & disease
-    disease_enabled: bool = False
-    disease_outbreak_rate: float = 0.0005  # chance/tick a new outbreak begins
-    disease_rate: float = 0.08  # spread chance per healthy neighbour per tick
+    disease_enabled: bool = True
+    disease_outbreak_rate: float = 0.00006  # chance/tick a new outbreak begins
+    disease_rate: float = 0.035  # spread chance per healthy neighbour per tick
     disease_radius: float = 3.0  # contagion range
-    disease_energy_drain: float = 0.15  # extra energy loss while infected
-    recovery_rate: float = 0.01  # chance/tick an infected creature recovers
-    disease_lethality: float = 0.5  # scales how fast infection drains health
+    disease_energy_drain: float = 0.05  # extra energy loss while infected
+    recovery_rate: float = 0.03  # chance/tick an infected creature recovers
+    disease_lethality: float = 0.18  # scales how fast infection drains health
 
     # Environment: day/night, seasons, weather
     day_length: int = 1200  # ticks per day cycle
@@ -242,13 +242,13 @@ class Config:
     rivalry_threshold: int = -75  # was -50 — more negative, feuds rarer
 
     # Predation (§I) — Carnivore caste
-    predation_enabled: bool = False  # predators hunt prey — keep off by default (war is focus)
-    predator_ratio: float = 0.08  # fraction of spawn that are predators
+    predation_enabled: bool = True  # predators hunt prey — enabled with gentle balance
+    predator_ratio: float = 0.02  # fraction of spawn that are predators
     hunt_radius: float = 8.0  # predator sight for prey
-    bite_damage: float = 100.0  # damage on bite (100 = instant kill)
-    bite_cooldown: int = 10  # ticks between bites
+    bite_damage: float = 28.0  # damage on bite (gentle wound)
+    bite_cooldown: int = 15  # ticks between bites
     energy_from_prey: float = 40.0  # energy predator gains per kill
-    fear_radius: float = 10.0  # prey flee when predator within this range
+    fear_radius: float = 12.0  # prey flee when predator within this range
 
     # Clan war (§I) — rival clans fight on contact — enabled but rare
     war_enabled: bool = True  # enabled by default, but rare

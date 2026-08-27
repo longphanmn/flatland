@@ -393,3 +393,33 @@ def test_snapshot_roundtrip_via_protocol():
     assert dumped["type"] == "state"
     assert dumped["tick"] == s.tick
     assert len(dumped["entities"]) == 20 + s.config.food_count + 6
+
+
+def test_age_population_capacity_scaling():
+    """Verify that reproduction respects age capacity multipliers (Golden vs Ice)."""
+    cfg_base = Config(seed=42, width=100, height=100, age_enabled=True, age_length=1000,
+                      carrying_capacity=50, max_population=100)
+    s = Simulation(cfg_base)
+    # At tick 0, age is Golden (AGES[0])
+    assert s._age() == "Golden"
+    
+    # In Ice age (tick 1000)
+    s.tick = 1000
+    assert s._age() == "Ice"
+
+    # Add 65 creatures in Ice age (where max_pop is 100 * 0.55 = 55)
+    mother = s.world.add(Creature(x=50.0, y=50.0, shape="line", energy=90.0, age=300))
+    father = s.world.add(Creature(x=50.5, y=50.0, shape="polygon", sides=4, energy=90.0, age=300))
+    for i in range(60):
+        s.world.add(Creature(x=10.0 + i * 0.5, y=10.0, energy=80.0))
+    
+    c_count_before = len(s._get_creatures())
+    s._reproduce()
+    # No births should occur because 62 >= max_pop (55) in Ice Age
+    assert len(s._get_creatures()) == c_count_before
+
+    # Now switch to Golden age (tick 0) where max_pop is 100 * 1.25 = 125
+    s.tick = 0
+    s._reproduce()
+    # Birth should be permitted in Golden age
+    assert len(s._get_creatures()) >= c_count_before

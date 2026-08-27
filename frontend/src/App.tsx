@@ -11,6 +11,7 @@ import { AuthModal, ensureGodKey, forgetKey, getCachedKey } from './god/auth'
 import Wiki from './wiki/Wiki'
 import ClanDetails from './clan/ClanDetails'
 import WorldEndSummary from './summary/WorldEndSummary'
+import WorldHistoryModal from './history/WorldHistoryModal'
 import Inspector from './inspect/Inspector'
 import { WorldSocket, type ConnStatus } from './websocket'
 import type { HelloMessage, HistoryEvent, StateMessage, WorldSummary } from './types'
@@ -47,6 +48,7 @@ export default function App() {
   })
   const [helpOpen, setHelpOpen] = useState(false)
   const [wikiOpen, setWikiOpen] = useState(false)
+  const [worldHistoryOpen, setWorldHistoryOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768)
   const [statusExpanded, setStatusExpanded] = useState(false)
   const [sheetState, setSheetState] = useState<'hidden' | 'peek' | 'half' | 'full'>('hidden')
@@ -360,6 +362,9 @@ export default function App() {
         case 'KeyR':
           sendReset()
           break
+        case 'KeyH':
+          setWorldHistoryOpen((o) => !o)
+          break
         case 'KeyF':
           window.dispatchEvent(new Event('flatworld-fit'))
           break
@@ -562,6 +567,9 @@ export default function App() {
         {isMobile && <span className="chip" style={{ marginLeft: 'auto', fontSize: 10, color: '#58a6ff' }}>{statusExpanded ? '▲ Close' : '▼ More'}</span>}
 
         <div className="top-right-panel">
+          <button className="god-btn" onClick={() => setWorldHistoryOpen(true)} title="World History & AI Story Export (H)" data-hint="World History & AI Story Export (H)">
+            📜
+          </button>
           <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )" data-hint="Wiki — documentation & API ( /wiki )">
             📖
           </button>
@@ -745,6 +753,7 @@ export default function App() {
                   noMoreHistory={noMoreHistory}
                   archiveMode={archiveMode}
                   selectedRunId={selectedRunId}
+                  onOpenWorldHistory={() => setWorldHistoryOpen(true)}
                   compact
                 />
               </div>
@@ -893,6 +902,7 @@ export default function App() {
               noMoreHistory={noMoreHistory}
               archiveMode={archiveMode}
               selectedRunId={selectedRunId}
+              onOpenWorldHistory={() => setWorldHistoryOpen(true)}
             />
           </Collapsible>
         </div>
@@ -913,8 +923,22 @@ export default function App() {
         <ClanDetails clanId={selectedClanId} onClose={() => setSelectedClanId(null)} onSelectCreature={(id) => { setSelectedClanId(null); setSelectedId(id) }} />
       )}
       {showWorldEnd && state && (
-        <WorldEndSummary state={state} onReset={() => { sendReset(); setShowWorldEnd(false) }} onClose={() => setShowWorldEnd(false)} />
+        <WorldEndSummary
+          state={state}
+          onReset={() => { sendReset(); setShowWorldEnd(false) }}
+          onClose={() => setShowWorldEnd(false)}
+          onOpenWorldHistory={() => setWorldHistoryOpen(true)}
+        />
       )}
+      <WorldHistoryModal
+        open={worldHistoryOpen}
+        onClose={() => setWorldHistoryOpen(false)}
+        state={state}
+        worlds={worlds}
+        selectedRunId={selectedRunId}
+        onSelectClan={setSelectedClanId}
+        onSelectCreature={setSelectedId}
+      />
 
       {helpOpen && (
         <div className="help-backdrop" onClick={() => setHelpOpen(false)}>

@@ -66,6 +66,7 @@ AGE_FOOD_MULT = {"Golden": 1.25, "Ice": 0.55, "Chaos": 0.95, "Plague": 0.9}
 AGE_MUTATION_MULT = {"Golden": 0.9, "Ice": 1.1, "Chaos": 1.8, "Plague": 1.0}
 AGE_DISEASE_MULT = {"Golden": 0.8, "Ice": 1.1, "Chaos": 1.0, "Plague": 1.8}
 AGE_BIRTH_MULT = {"Golden": 1.3, "Ice": 0.85, "Chaos": 1.0, "Plague": 0.9}
+AGE_CAP_MULT = {"Golden": 1.25, "Chaos": 0.95, "Plague": 0.75, "Ice": 0.55}
 
 YIELD_RADIUS = 2.5  # lower castes step aside within this range
 
@@ -1914,11 +1915,18 @@ class Simulation:
         beside — planks first, dams when the water starts to rise."""
         if not self.rivers or not self._cached_creatures or self.tick % 15 != 0:
             return
-        builders = [c for c in self._cached_creatures
-                    if getattr(c, "personality", "") == "builder" and c.energy > 40.0]
+        builders = [
+            c for c in self._cached_creatures
+            if (
+                getattr(c, "personality", "") == "builder"
+                or c.caste == "Artisan"
+                or (isinstance(getattr(c, "skills", None), dict) and c.skills.get("foraging", 0.0) >= 10.0)
+            )
+            and c.energy > 35.0
+        ]
         for b in builders:
             r = min(
-                (rv for rv in self.rivers if self._river_dy(b.y, rv["cy"]) <= 16.0),
+                (rv for rv in self.rivers if self._river_dy(b.y, rv["cy"]) <= 24.0),
                 key=lambda rv: self._river_dy(b.y, rv["cy"]),
                 default=None,
             )
@@ -1945,8 +1953,8 @@ class Simulation:
             # Mend existing damaged bridge nearby
             repaired = False
             for br in self.bridges:
-                if br["cy"] == r["cy"] and _dx(b.x, br["x"]) <= 10.0 and br["hp"] < BRIDGE_HP - 40:
-                    br["hp"] = min(BRIDGE_HP, br["hp"] + 60)
+                if br["cy"] == r["cy"] and _dx(b.x, br["x"]) <= 18.0 and br["hp"] < BRIDGE_HP - 20:
+                    br["hp"] = min(BRIDGE_HP, br["hp"] + 120)
                     b.energy -= 4.0
                     b.emote = "craft"
                     b.emote_ticks = 15
@@ -1955,7 +1963,7 @@ class Simulation:
             if repaired:
                 continue
 
-            if not near_crossing and len(self.bridges) < 12:
+            if not near_crossing and len(self.bridges) < 16:
                 b.energy -= 10.0
                 self.bridges.append({"x": round(b.x, 2), "cy": r["cy"], "hw": r["hw"], "hp": BRIDGE_HP})
                 self._emit(HistoryEvent(
@@ -2211,13 +2219,13 @@ class Simulation:
                 )
             )
         self._found_founding_clans()
-        # Predators (§I) — spawn after clans so they don't get a clan crest; only if enabled
-        if cfg.predation_enabled and cfg.predator_ratio > 0:
+        # Predators (§I) — spawn after clans so they don't get a clan crest; only if auto-scaling
+        if cfg.predation_enabled and cfg.predator_ratio > 0 and cfg.num_triangles < 0:
             n_predators = self._jittered(area * cfg.creature_density * cfg.predator_ratio)
             for _ in range(n_predators):
                 self._spawn_predator()
         # Herbivores (§O) — wild grazers, clanless, compete for plants and feed predators
-        if cfg.beast_ratio > 0:
+        if cfg.beast_ratio > 0 and cfg.num_triangles < 0:
             n_herbivores = self._jittered(area * cfg.creature_density * cfg.beast_ratio)
             for _ in range(n_herbivores):
                 self._spawn_herbivore()
@@ -6233,9 +6241,11 @@ class Simulation:
                     # §AM D: the soil gives what the soil has
                     soil = self._soil_at(e.x, e.y)
                     soil_f = max(0.5, min(1.4, 0.55 + 0.45 * soil))
+                    age_now = self._age()
+                    am = 0.75 if age_now == "Ice" else (1.25 if age_now == "Golden" else 1.0)
                     gained = min(
                         1.0 - e.growth,
-                        cfg.plant_growth_rate * vm * sm * wm * sun * soil_f * eco_mult,
+                        cfg.plant_growth_rate * vm * sm * wm * am * sun * soil_f * eco_mult,
                     )
                     e.growth += gained
                     self._deplete_soil(e.x, e.y, gained)  # the harvest draws on the land
@@ -6626,6 +6636,11 @@ class Simulation:
         pop = len(live)
         max_pop = cfg.effective_max_population
         carrying = cfg.effective_carrying_capacity
+        age = self._age()
+        if age is not None:
+            cap_mult = AGE_CAP_MULT.get(age, 1.0)
+            max_pop = max(2, round(max_pop * cap_mult))
+            carrying = max(2, round(carrying * cap_mult))
         if pop >= max_pop:
             return
         room = 1.0  # fertility fades as the world crowds past carrying capacity
@@ -9567,10 +9582,16 @@ class Simulation:
         foods = [e for e in self.world.entities.values() if e.kind == "food"]
         deficit = target - len(foods)
         if deficit > 0:
+            growth_init = 1.0
+            if age == "Ice":
+                growth_init = 0.25
+            elif age == "Plague":
+                growth_init = 0.45
+            elif season == "winter":
+                growth_init = 0.4
             for _ in range(deficit):
                 x, y = self._food_pos()
-                # Law-respawned food also arrives mature; only SPREAD sprouts young.
-                self.world.add(self._new_food(x, y, growth=1.0))
+                self.world.add(self._new_food(x, y, growth=growth_init))
         elif deficit < 0:
             # Winter die-back takes the youngest shoots first.
             ordered = sorted(foods, key=lambda f: f.growth)

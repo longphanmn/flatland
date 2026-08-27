@@ -10,7 +10,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 _C_LIB = None  # type: ignore
 _LIB_DIR = Path(__file__).resolve().parent

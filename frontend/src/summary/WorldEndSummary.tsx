@@ -2,7 +2,17 @@ import { useEffect, useState } from 'react'
 import type { StateMessage } from '../types'
 import { totemEmoji } from '../totems'
 
-export default function WorldEndSummary({ state, onReset, onClose }: { state: StateMessage | null; onReset: () => void; onClose: () => void }) {
+export default function WorldEndSummary({
+  state,
+  onReset,
+  onClose,
+  onOpenWorldHistory,
+}: {
+  state: StateMessage | null
+  onReset: () => void
+  onClose: () => void
+  onOpenWorldHistory?: () => void
+}) {
   const [clans, setClans] = useState<any[]>([])
   const [history, setHistory] = useState<any[]>([])
 
@@ -65,9 +75,28 @@ export default function WorldEndSummary({ state, onReset, onClose }: { state: St
           {history.length === 0 && <div className="chip">No history.</div>}
         </div>
 
-        <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'center' }}>
-          <button onClick={onReset} style={{ background: '#238636', borderColor: '#2ea043', color: '#fff', padding: '10px 20px', fontSize: 14 }}>🔄 Reset World — New Seed</button>
-          <button onClick={onClose} style={{ padding: '10px 16px' }}>Close</button>
+        <div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+          {onOpenWorldHistory && (
+            <button
+              onClick={onOpenWorldHistory}
+              style={{
+                background: '#1f6feb',
+                borderColor: '#388bfd',
+                color: '#fff',
+                padding: '10px 18px',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span>📜</span> World History & Story Export
+            </button>
+          )}
+          <button onClick={onReset} style={{ background: '#238636', borderColor: '#2ea043', color: '#fff', padding: '10px 20px', fontSize: 14, cursor: 'pointer' }}>🔄 Reset World — New Seed</button>
+          <button onClick={onClose} style={{ padding: '10px 16px', cursor: 'pointer' }}>Close</button>
         </div>
 
         <p className="god-note" style={{ textAlign: 'center', marginTop: 8 }}>The world has fallen silent. God may set new laws or reset for a fresh seed. History remains in <code>/api/history</code> and <code>/api/worlds</code>.</p>

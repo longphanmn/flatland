@@ -752,15 +752,15 @@ PRESETS: dict[str, dict] = {
         food_giveup_ticks=240,
         lifespan_mult=1.0,
         birth_enabled=True,
-        adult_age=220.0,
+        adult_age=600.0,
         mate_radius=10.0,
         mate_energy_min=30.0,
-        birth_rate=0.28,
+        birth_rate=0.05,
         sex_ratio=0.5,
         mutation_rate=0.05,
         max_sides=24,
         birth_energy_cost=20.0,
-        reproduction_cooldown=200,
+        reproduction_cooldown=600,
         carrying_capacity=600,
         max_population=800,
         euthanasia_threshold=0.7,
@@ -914,15 +914,15 @@ PRESETS: dict[str, dict] = {
         food_giveup_ticks=240,
         lifespan_mult=1.0,
         birth_enabled=True,
-        adult_age=200.0,
+        adult_age=600.0,
         mate_radius=10.0,
         mate_energy_min=25.0,
-        birth_rate=0.32,
+        birth_rate=0.06,
         sex_ratio=0.5,
         mutation_rate=0.05,
         max_sides=24,
         birth_energy_cost=20.0,
-        reproduction_cooldown=180,
+        reproduction_cooldown=500,
         carrying_capacity=2200,
         max_population=3000,
         euthanasia_threshold=0.7,
@@ -1076,15 +1076,15 @@ PRESETS: dict[str, dict] = {
         food_giveup_ticks=180,
         lifespan_mult=0.9,
         birth_enabled=True,
-        adult_age=160.0,
+        adult_age=400.0,
         mate_radius=10.0,
         mate_energy_min=25.0,
-        birth_rate=0.35,
+        birth_rate=0.08,
         sex_ratio=0.5,
         mutation_rate=0.08,
         max_sides=24,
         birth_energy_cost=20.0,
-        reproduction_cooldown=150,
+        reproduction_cooldown=400,
         carrying_capacity=800,
         max_population=1200,
         euthanasia_threshold=0.65,
@@ -1238,15 +1238,15 @@ PRESETS: dict[str, dict] = {
         food_giveup_ticks=150,
         lifespan_mult=0.8,
         birth_enabled=True,
-        adult_age=250.0,
+        adult_age=800.0,
         mate_radius=8.0,
         mate_energy_min=35.0,
-        birth_rate=0.15,
+        birth_rate=0.03,
         sex_ratio=0.5,
         mutation_rate=0.06,
         max_sides=24,
         birth_energy_cost=30.0,
-        reproduction_cooldown=300,
+        reproduction_cooldown=800,
         carrying_capacity=250,
         max_population=400,
         euthanasia_threshold=0.60,
@@ -1400,10 +1400,10 @@ PRESETS: dict[str, dict] = {
         food_giveup_ticks=240,
         lifespan_mult=1.0,
         birth_enabled=True,
-        adult_age=100.0,
+        adult_age=80.0,
         mate_radius=12.0,
         mate_energy_min=15.0,
-        birth_rate=0.55,
+        birth_rate=0.35,
         sex_ratio=0.5,
         mutation_rate=0.05,
         max_sides=24,
@@ -1827,11 +1827,22 @@ async def apply_preset(name: str, persist: bool = True, reset: bool = False) -> 
     return {"preset": name, "laws": result, "reset": reset}
 
 
+MAJOR_EVENT_TYPES = (
+    "war", "conquest", "takeover", "schism", "betrayal", "alliance",
+    "coalition_formed", "coalition_joined", "coalition_dissolved",
+    "peace", "peace_envoy", "regicide", "succession", "outbreak",
+    "recovery", "disaster", "miracle", "synod", "temple", "epiphany",
+    "extinction", "defection", "cannibalism", "exile", "banquet", "settlement"
+)
+
+
 @app.get("/api/history")
 async def get_history(
     since: int = 0,
     limit: int = 500,
     type: str | None = None,
+    types: str | None = None,
+    major: bool = False,
     entity_id: int | None = None,
     clan_id: int | None = None,
 ) -> dict:
@@ -1844,6 +1855,11 @@ async def get_history(
     # (the flush runs here, on the HTTP thread — never on the sim thread).
     DB.flush()
     limit = max(1, min(limit, 2000))
+    types_list = None
+    if types:
+        types_list = [t.strip() for t in types.split(",") if t.strip()]
+    elif major:
+        types_list = list(MAJOR_EVENT_TYPES)
     return {
         "world_id": RT.world_id,
         "total_deaths": DB.death_count(RT.world_id) if RT.world_id else 0,
@@ -1852,6 +1868,7 @@ async def get_history(
             since_id=since,
             limit=limit,
             type_filter=type,
+            types_filter=types_list,
             entity_id=entity_id,
             clan_id=clan_id,
         )
