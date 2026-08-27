@@ -95,6 +95,13 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
   const [copied, setCopied] = useState(false)
   const [expandedDay, setExpandedDay] = useState<number | null>(null)
   const [storyStyle, setStoryStyle] = useState<'saga' | 'chronicle' | 'mythos' | 'tragedy'>('saga')
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768)
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   // Close on Escape key
   useEffect(() => {
@@ -568,142 +575,167 @@ ${stylePrompt}
   if (!open) return null
 
   return (
-    <div className="clan-details-backdrop" onClick={onClose} style={{ zIndex: 100 }}>
+    <div className="clan-details-backdrop" onClick={onClose} style={{ zIndex: 100, padding: isMobile ? 0 : undefined }}>
       <div
         className="clan-details-panel"
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 'min(900px, 96vw)',
-          maxHeight: '92vh',
+          width: isMobile ? '100vw' : 'min(900px, 96vw)',
+          height: isMobile ? '100vh' : 'auto',
+          maxHeight: isMobile ? '100vh' : '92vh',
           display: 'flex',
           flexDirection: 'column',
           padding: 0,
           background: '#0d1117',
-          border: '1px solid #30363d',
+          border: isMobile ? 'none' : '1px solid #30363d',
           boxShadow: '0 20px 48px rgba(0,0,0,0.8)',
-          borderRadius: 12,
+          borderRadius: isMobile ? 0 : 12,
           overflow: 'hidden',
         }}
       >
         {/* Header */}
         <header
           style={{
-            padding: '14px 18px',
+            padding: isMobile ? '10px 12px 8px' : '14px 18px',
             borderBottom: '1px solid #21262d',
             background: '#161b22',
             display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
             justifyContent: 'space-between',
-            alignItems: 'center',
+            alignItems: isMobile ? 'stretch' : 'center',
+            gap: isMobile ? 8 : 12,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 24 }}>📜</span>
-            <div>
-              <h2 style={{ fontSize: 16, margin: 0, color: '#e6edf3', fontWeight: 700 }}>
-                World History & Daily Chronicle
-              </h2>
-              <div style={{ fontSize: 11, color: '#8b949e', marginTop: 2 }}>
-                Seed {state?.seed ?? 42} · {dayRecords.length} Days recorded · {state?.creatures_alive ?? 0} alive
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: isMobile ? '100%' : 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 10 }}>
+              <span style={{ fontSize: isMobile ? 20 : 24 }}>📜</span>
+              <div>
+                <h2 style={{ fontSize: isMobile ? 14 : 16, margin: 0, color: '#e6edf3', fontWeight: 700 }}>
+                  World History & Chronicle
+                </h2>
+                <div style={{ fontSize: 10.5, color: '#8b949e', marginTop: 1 }}>
+                  Seed {state?.seed ?? 42} · {dayRecords.length} Days · {state?.creatures_alive ?? 0} alive
+                </div>
               </div>
             </div>
+            {isMobile && (
+              <button
+                className="god-close"
+                onClick={onClose}
+                style={{ fontSize: 22, cursor: 'pointer', color: '#8b949e', background: 'transparent', border: 'none', padding: '0 6px', minHeight: 28 }}
+              >
+                ×
+              </button>
+            )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: isMobile ? '100%' : 'auto' }}>
             <button
               onClick={() => setActiveTab('timeline')}
               className="chip"
               style={{
+                flex: isMobile ? 1 : 'none',
+                justifyContent: 'center',
                 background: activeTab === 'timeline' ? '#238636' : '#21262d',
                 color: activeTab === 'timeline' ? '#fff' : '#c9d1d9',
                 borderColor: activeTab === 'timeline' ? '#2ea043' : '#30363d',
-                padding: '6px 12px',
+                padding: isMobile ? '6px 8px' : '6px 12px',
                 cursor: 'pointer',
                 fontWeight: 600,
+                fontSize: isMobile ? 11 : 12,
               }}
             >
-              📅 Daily Chronicle ({filteredDays.length} Days)
+              📅 Daily Chronicle ({filteredDays.length})
             </button>
             <button
               onClick={() => setActiveTab('llm')}
               className="chip"
               style={{
+                flex: isMobile ? 1 : 'none',
+                justifyContent: 'center',
                 background: activeTab === 'llm' ? '#1f6feb' : '#21262d',
                 color: activeTab === 'llm' ? '#fff' : '#c9d1d9',
                 borderColor: activeTab === 'llm' ? '#388bfd' : '#30363d',
-                padding: '6px 12px',
+                padding: isMobile ? '6px 8px' : '6px 12px',
                 cursor: 'pointer',
                 fontWeight: 600,
+                fontSize: isMobile ? 11 : 12,
               }}
             >
-              🤖 AI Story Exporter
+              🤖 AI Story
             </button>
-            <button
-              className="god-close"
-              onClick={onClose}
-              style={{ fontSize: 20, cursor: 'pointer', color: '#8b949e', marginLeft: 8 }}
-            >
-              ×
-            </button>
+            {!isMobile && (
+              <button
+                className="god-close"
+                onClick={onClose}
+                style={{ fontSize: 20, cursor: 'pointer', color: '#8b949e', marginLeft: 8 }}
+              >
+                ×
+              </button>
+            )}
           </div>
         </header>
 
         {/* Major Stats Ticker */}
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+            display: 'flex',
+            overflowX: 'auto',
             gap: 6,
-            padding: '8px 16px',
+            padding: isMobile ? '6px 10px' : '8px 16px',
             background: 'rgba(110,118,129,0.06)',
             borderBottom: '1px solid #21262d',
-            fontSize: 11,
+            fontSize: isMobile ? 10.5 : 11,
+            scrollbarWidth: 'none',
+            whiteSpace: 'nowrap',
           }}
         >
-          <div className="chip" title="Major battles fought">
+          <div className="chip" style={{ flexShrink: 0 }} title="Major battles fought">
             ⚔️ <b>{totalStats.wars}</b> battles ({totalStats.lethalWars} fallen)
           </div>
-          <div className="chip" title="Plague outbreaks">
+          <div className="chip" style={{ flexShrink: 0 }} title="Plague outbreaks">
             ☣️ <b>{totalStats.outbreaks}</b> plagues
           </div>
-          <div className="chip" title="Internal rebellions">
+          <div className="chip" style={{ flexShrink: 0 }} title="Internal rebellions">
             ⚡ <b>{totalStats.schisms}</b> schisms
           </div>
-          <div className="chip" title="Ruler successions">
+          <div className="chip" style={{ flexShrink: 0 }} title="Ruler successions">
             👑 <b>{totalStats.successions}</b> successions
           </div>
-          <div className="chip" title="Temples of the Sphere">
+          <div className="chip" style={{ flexShrink: 0 }} title="Temples of the Sphere">
             🏛️ <b>{totalStats.temples}</b> temples
           </div>
-          <div className="chip" title="Avatar seasonal miracles">
+          <div className="chip" style={{ flexShrink: 0 }} title="Avatar seasonal miracles">
             🌸 <b>{totalStats.miracles}</b> miracles
           </div>
-          <div className="chip" title="Natural cataclysms">
+          <div className="chip" style={{ flexShrink: 0 }} title="Natural cataclysms">
             🌋 <b>{totalStats.disasters}</b> cataclysms
           </div>
         </div>
 
         {/* Main Body */}
-        <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px' }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? '10px 12px' : '16px 20px' }}>
           {activeTab === 'timeline' ? (
             <div>
               {/* Category Pills & Search */}
               <div
                 style={{
                   display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
                   justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
+                  alignItems: isMobile ? 'stretch' : 'center',
                   gap: 8,
-                  marginBottom: 14,
+                  marginBottom: 12,
                 }}
               >
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                <div style={{ display: 'flex', overflowX: 'auto', gap: 4, paddingBottom: isMobile ? 4 : 0, scrollbarWidth: 'none' }}>
                   {CATEGORY_TABS.map((tab) => (
                     <button
                       key={tab.key}
                       onClick={() => setCategory(tab.key)}
                       style={{
-                        padding: '4px 10px',
-                        fontSize: 11,
+                        padding: isMobile ? '3px 8px' : '4px 10px',
+                        fontSize: isMobile ? 10.5 : 11,
                         borderRadius: 20,
                         border: '1px solid',
                         background: category === tab.key ? '#388bfd' : '#21262d',
@@ -711,6 +743,8 @@ ${stylePrompt}
                         color: category === tab.key ? '#fff' : '#8b949e',
                         cursor: 'pointer',
                         fontWeight: category === tab.key ? 700 : 500,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
                       }}
                     >
                       {tab.icon} {tab.label}
@@ -727,10 +761,10 @@ ${stylePrompt}
                     background: '#161b22',
                     border: '1px solid #30363d',
                     color: '#c9d1d9',
-                    padding: '4px 10px',
+                    padding: '6px 10px',
                     borderRadius: 6,
                     fontSize: 12,
-                    width: 220,
+                    width: isMobile ? '100%' : 220,
                   }}
                 />
               </div>
@@ -915,7 +949,16 @@ ${stylePrompt}
                     </p>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      alignItems: isMobile ? 'stretch' : 'center',
+                      gap: 8,
+                      width: isMobile ? '100%' : 'auto',
+                      marginTop: isMobile ? 8 : 0,
+                    }}
+                  >
                     <select
                       value={storyStyle}
                       onChange={(e) => setStoryStyle(e.target.value as any)}
@@ -926,6 +969,7 @@ ${stylePrompt}
                         padding: '6px 10px',
                         borderRadius: 6,
                         fontSize: 12,
+                        width: isMobile ? '100%' : 'auto',
                       }}
                     >
                       <option value="saga">⚔️ Epic Novel Saga</option>
@@ -934,50 +978,56 @@ ${stylePrompt}
                       <option value="tragedy">💀 Tragic Extinction & Decline</option>
                     </select>
 
-                    <button
-                      onClick={copyToClipboard}
-                      style={{
-                        background: copied ? '#238636' : '#1f6feb',
-                        border: '1px solid',
-                        borderColor: copied ? '#2ea043' : '#388bfd',
-                        color: '#fff',
-                        padding: '6px 14px',
-                        borderRadius: 6,
-                        fontSize: 12,
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {copied ? '✓ Copied Prompt!' : '📋 Copy Prompt'}
-                    </button>
-                    <button
-                      onClick={downloadMarkdown}
-                      style={{
-                        background: '#21262d',
-                        border: '1px solid #30363d',
-                        color: '#c9d1d9',
-                        padding: '6px 12px',
-                        borderRadius: 6,
-                        fontSize: 12,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      ⬇️ .md
-                    </button>
-                    <button
-                      onClick={downloadJSON}
-                      style={{
-                        background: '#21262d',
-                        border: '1px solid #30363d',
-                        color: '#c9d1d9',
-                        padding: '6px 12px',
-                        borderRadius: 6,
-                        fontSize: 12,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      ⬇️ JSON
-                    </button>
+                    <div style={{ display: 'flex', gap: 6, width: isMobile ? '100%' : 'auto' }}>
+                      <button
+                        onClick={copyToClipboard}
+                        style={{
+                          flex: isMobile ? 1 : 'none',
+                          background: copied ? '#238636' : '#1f6feb',
+                          border: '1px solid',
+                          borderColor: copied ? '#2ea043' : '#388bfd',
+                          color: '#fff',
+                          padding: '6px 14px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          textAlign: 'center',
+                        }}
+                      >
+                        {copied ? '✓ Copied Prompt!' : '📋 Copy Prompt'}
+                      </button>
+                      <button
+                        onClick={downloadMarkdown}
+                        style={{
+                          background: '#21262d',
+                          border: '1px solid #30363d',
+                          color: '#c9d1d9',
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          cursor: 'pointer',
+                        }}
+                        title="Download Markdown"
+                      >
+                        ⬇️ .md
+                      </button>
+                      <button
+                        onClick={downloadJSON}
+                        style={{
+                          background: '#21262d',
+                          border: '1px solid #30363d',
+                          color: '#c9d1d9',
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          cursor: 'pointer',
+                        }}
+                        title="Download JSON"
+                      >
+                        ⬇️ JSON
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -988,14 +1038,15 @@ ${stylePrompt}
                   background: '#090d13',
                   border: '1px solid #21262d',
                   borderRadius: 6,
-                  padding: 14,
-                  maxHeight: 440,
+                  padding: isMobile ? 10 : 14,
+                  maxHeight: isMobile ? 300 : 440,
                   overflow: 'auto',
                   fontFamily: 'ui-monospace, monospace',
-                  fontSize: 11,
+                  fontSize: isMobile ? 10 : 11,
                   lineHeight: 1.5,
                   color: '#c9d1d9',
                   whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
                 }}
               >
                 {llmPrompt}
@@ -1007,26 +1058,27 @@ ${stylePrompt}
         {/* Footer */}
         <footer
           style={{
-            padding: '10px 18px',
+            padding: isMobile ? '8px 12px' : '10px 18px',
             borderTop: '1px solid #21262d',
             background: '#161b22',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            fontSize: 11,
+            fontSize: isMobile ? 10.5 : 11,
             color: '#8b949e',
           }}
         >
-          <span>Detailed daily chronicle synthesized from SQLite (<code>/api/history?major=true</code>)</span>
+          <span>{isMobile ? 'Synthesized from world history' : 'Detailed daily chronicle synthesized from SQLite (/api/history?major=true)'}</span>
           <button
             onClick={onClose}
             style={{
-              padding: '6px 16px',
+              padding: isMobile ? '5px 14px' : '6px 16px',
               background: '#21262d',
               border: '1px solid #30363d',
               borderRadius: 6,
               color: '#c9d1d9',
               cursor: 'pointer',
+              fontSize: isMobile ? 11 : 12,
             }}
           >
             Close
