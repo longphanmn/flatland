@@ -2019,8 +2019,17 @@ class Simulation:
         """Geometric containment inside the four walls of house h."""
         if h is None or h.is_ruin:
             return False
-        half = h.size / 2
+        half = h.size * 0.5
         return abs(c.x - h.x) < half and abs(c.y - h.y) < half
+
+    def _is_point_inside_any_house(self, x: float, y: float, pad: float = 0.5) -> bool:
+        """Check if (x, y) falls inside any non-ruin house structure."""
+        for e in self.world.entities.values():
+            if isinstance(e, House) and not e.is_ruin:
+                half = e.size * 0.5 + pad
+                if abs(x - e.x) < half and abs(y - e.y) < half:
+                    return True
+        return False
 
 
     def _claim_bed(self, house: House) -> bool:
@@ -2193,10 +2202,6 @@ class Simulation:
             self._spawn_creature("polygon", PRIEST_SIDES)
         for _ in range(n_women):
             self._spawn_creature("line", 2)
-        for _ in range(cfg.food_count):
-            x, y = self._food_pos()
-            # World-spawned plants arrive mature: the food law promises harvest.
-            self.world.add(self._new_food(x, y, growth=1.0))
         max_radius = max(
             (c.radius for c in self.world.creatures()), default=DEFAULT_RADIUS
         )
@@ -2219,6 +2224,10 @@ class Simulation:
                     material=self._pick_house_material(x, y),
                 )
             )
+        for _ in range(cfg.food_count):
+            x, y = self._food_pos()
+            # World-spawned plants arrive mature: the food law promises harvest.
+            self.world.add(self._new_food(x, y, growth=1.0))
         self._found_founding_clans()
         # Predators (§I) — spawn after clans so they don't get a clan crest; only if auto-scaling
         if cfg.predation_enabled and cfg.predator_ratio > 0 and cfg.num_triangles < 0:
@@ -2649,6 +2658,12 @@ class Simulation:
             else:
                 house.is_main = False
         self.world.add(house)
+        # Clear any wild plants on the new house foundation
+        for fid in [
+            e.id for e in self.world.entities.values()
+            if e.kind == "food" and abs(e.x - x) < size * 0.5 + 0.5 and abs(e.y - y) < size * 0.5 + 0.5
+        ]:
+            self.world.remove(fid)
         self._emit(
             HistoryEvent(
                 type="settlement", tick=self.tick + 1, entity_id=house.id,
@@ -3059,9 +3074,9 @@ class Simulation:
         return False
 
     def _food_pos(self) -> tuple[float, float]:
-        """New food prefers fertile ground (god law sets the bias), avoiding solid stone."""
+        """New food prefers fertile ground (god law sets the bias), strictly avoiding rocks and shelters."""
         cfg = self.config
-        for _ in range(16):
+        for _ in range(32):
             if self.fertile and self.rng.random() < cfg.fertile_food_bias:
                 patch = self.rng.choice(self.fertile)
                 ang = self.rng.uniform(0, 2 * math.pi)
@@ -3072,9 +3087,15 @@ class Simulation:
                 )
             else:
                 pos = self._rand_pos()
-            if not self._is_in_rock(pos[0], pos[1]) and not (
-                self.rivers and self._in_river_band(pos[0], pos[1], pad=1.0)
+            if (
+                not self._is_in_rock(pos[0], pos[1])
+                and not (self.rivers and self._in_river_band(pos[0], pos[1], pad=1.0))
+                and not self._is_point_inside_any_house(pos[0], pos[1], pad=0.8)
             ):
+                return pos
+        for _ in range(30):
+            pos = self._rand_pos()
+            if not self._is_in_rock(pos[0], pos[1]) and not self._is_point_inside_any_house(pos[0], pos[1], pad=0.8):
                 return pos
         return self._rand_pos()
 
@@ -6342,8 +6363,10 @@ class Simulation:
                     parent.x + vx / norm * rad,
                     parent.y + vy / norm * rad,
                 )
-                if not self._is_in_rock(x, y) and not (
-                    self.rivers and self._in_river_band(x, y, pad=1.0)
+                if (
+                    not self._is_in_rock(x, y)
+                    and not (self.rivers and self._in_river_band(x, y, pad=1.0))
+                    and not self._is_point_inside_any_house(x, y, pad=0.8)
                 ):
                     self.world.add(self._new_food(x, y, growth=SPROUT_GROWTH))
                     total += 1
@@ -9602,6 +9625,14 @@ class Simulation:
         if age is not None:
             target = round(target * AGE_FOOD_MULT.get(age, 1.0))
         foods = [e for e in self.world.entities.values() if e.kind == "food" and not getattr(e, "cultivated", False)]
+        # Ensure no wild plants exist inside any shelter structure
+        inside_shelter_ids = [
+            f.id for f in foods if self._is_point_inside_any_house(f.x, f.y, pad=0.2)
+        ]
+        for f_id in inside_shelter_ids:
+            self.world.remove(f_id)
+        if inside_shelter_ids:
+            foods = [f for f in foods if f.id not in inside_shelter_ids]
         deficit = target - len(foods)
         if deficit > 0:
             growth_init = 1.0

@@ -423,3 +423,27 @@ def test_age_population_capacity_scaling():
     s._reproduce()
     # Birth should be permitted in Golden age
     assert len(s._get_creatures()) >= c_count_before
+
+
+def test_food_never_grows_inside_shelter():
+    """Verify that food never spawns or spreads inside house shelters."""
+    cfg = Config(seed=42, width=200, height=200, food_count=50, num_houses=10, house_min_size=10.0, house_max_size=14.0)
+    sim = Simulation(cfg)
+
+    # 1. Verify initial world: zero food items inside any house
+    houses = [e for e in sim.world.entities.values() if isinstance(e, House) and not e.is_ruin]
+    assert len(houses) >= 8
+
+    for e in sim.world.entities.values():
+        if isinstance(e, Food):
+            for h in houses:
+                assert not (abs(e.x - h.x) < h.size * 0.5 and abs(e.y - h.y) < h.size * 0.5), \
+                    f"Food {e.id} at ({e.x}, {e.y}) is inside house {h.id} at ({h.x}, {h.y}, size={h.size})"
+
+    # 2. Run simulation steps across seasons and verify food remains strictly outside houses
+    for _ in range(150):
+        sim.step()
+        for e in sim.world.entities.values():
+            if isinstance(e, Food):
+                for h in houses:
+                    assert not (abs(e.x - h.x) < h.size * 0.5 and abs(e.y - h.y) < h.size * 0.5)
