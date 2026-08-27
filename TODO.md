@@ -1681,3 +1681,23 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
   - Verify with `htop` / `top` on `root@192.168.1.21` that `uvicorn` utilizes >400–700% CPU across all 8 cores during high-density ticks (OpenMP `num_threads(8)` + GIL release).
   - Verify `/healthz` reports `avg_tick_ms < 15ms` and `actual_tps >= 20.0` at 1,000+ creatures (batch kernel ~3-5ms vs Python 168ms).
 
+## AY. World Simulation Presets, Chronicles & Clan Profiles [P0] — ✅ implemented
+- [x] [P0] **All 7 Curated World Presets Live & Balanced**:
+  - `balance`: Goldilocks harmony tuned for 200–350 population (`food_count=240, carrying=350, max_pop=500, attack_damage=30.0, rivalry_threshold=-45`).
+  - `sustainable`: 1000-day prosperous peace (`food_count=360, carrying=450, max_pop=600, banquets=True, granaries=True`).
+  - `theocracy`: Age of the Sphere & Sacred Avatars (`food_count=320, temple_faith_cost=180.0, tithe_rate=0.06`).
+  - `warlords`: Clash of Clans & Imperial Conquest (`food_count=290, territory_radius=18.0, attack_damage=50.0`).
+  - `chaos`: Total Turmoil (`food_count=280, season_length=4000, attack_damage=60.0, disease_outbreak_rate=0.001`).
+  - `extinction`: Cataclysmic Collapse (`food_count=120, winter_food_mult=0.30, exposure_drain=0.08, cannibalism=True`).
+  - `boom`: Monumental Metropolis (`food_count=500, adult_age=80, birth_rate=0.25, carrying=800, max_pop=1000`).
+- [x] [P0] **Rich Daily Chronicle Digest**:
+  - Replaced repetitive fallback text with seasonal cycles (Spring Thaw, High Summer, Autumn Bounty, Deep Winter) and dynamic clan milestones (boundary stones, bridge maintenance, choral hymns, elder craft mastery).
+  - Preserved concise single-line digests with named clans for wars, conquests, outbreaks, and avatar miracles.
+- [x] [P1] **Clan Profile Enhancements**:
+  - Added `founded_day` (`born_tick // day_length`) and `dead_count` to `/api/clans` and `/api/clans/{id}`.
+  - Rendered `🌱 Founded Day N` and `💀 Dead <N>` badges on Clan Profile and Clan list cards.
+  - Implemented responsive flex card layout for Main House coordinates and `👑 Leader Residence` badge.
+- [x] [P1] **UI & Wiki Cleanup**:
+  - Cleaned top-right menu to **📜 World History**, **📖 Wiki**, and **⚖ The Sphere (God Panel)**.
+  - Resolved React hook order in `Wiki.tsx` for instant modal responsiveness.
+

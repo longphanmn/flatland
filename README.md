@@ -25,12 +25,13 @@
 In Flatland, The Sphere (God) sets the **laws of nature** from Spaceland but never touches an individual life. The Sphere cannot kill, heal, or move a single creature; the simulation advances deterministically under physical and biological rules.
 - **The Sphere Panel (`⚖ The Sphere`)**: Adjust carrying capacity, food growth, energy metabolism, weather volatility, disease virulence, or clan aggression in real-time.
 - **Curated World Presets**:
-
-  - **⚖️ Balance (Default)**: Goldilocks harmony tuned for **500–800 inhabitants** with 220 food, carrying capacity 600 (max 800), gentle wars, rare predation, and flourishing multi-generational clans.
-  - **🌿 Sustainable**: Abundant food (450), carrying capacity 2200 (max 3000), low conflict, 1000-day peace.
-  - **🔥 Chaos**: High predator ratio, lethal wars, wildfires, frequent plagues, and fast seasonal turnover.
-  - **💀 Extinction**: Famine (100 food), harsh winter (0.3×), high decay, testing societal resilience under collapse.
-  - **🚀 Boom**: High reproduction, 650 food, carrying capacity 3500 (max 5000) for high-scale performance testing.
+  - **⚖️ Balance (Default)**: Goldilocks harmony tuned for **200–350 inhabitants** with 240 food, carrying capacity 350 (max 500), gentle wars, rare predation, agriculture, and flourishing multi-generational clans.
+  - **🌿 Sustainable**: 1000-day prosperous peace, abundant food (360), carrying capacity 450 (max 600), rich granaries, and banquets.
+  - **🔮 Theocracy**: Age of the Sphere, divine avatars, glowing temples, avatar miracles, 3D epiphanies, and holy synods.
+  - **⚔️ Warlords**: Clash of clans, imperial conquests, granary raids, house takeovers, and defensive coalitions.
+  - **🔥 Chaos**: High predator ratio, lethal wars, wildfires, frequent plagues, earthquakes, and fast seasonal turnover.
+  - **💀 Extinction**: Famine (120 food), harsh winter (0.3×), high exposure decay, testing societal resilience under collapse.
+  - **🚀 Boom**: High reproduction, 500 food, carrying capacity 800 (max 1000) for high-scale urban expansion.
 
 ### 2. Biology, Castes & Nature's Law
 - **Geometric Hierarchy**: Higher side counts perceive farther and live longer (Women shortest → Isosceles Soldiers → Equilateral Artisans → Squares/Pentagons → Polygons → Priests/Circles longest).
@@ -157,28 +158,34 @@ ws/
 │   │   ├── entities.py     # Creature castes, traits, food variants, and houses
 │   │   ├── world.py        # Entity spatial hash index & wrap-aware proximity queries
 │   │   ├── simulation.py   # Deterministic step pipeline: perceive, steer, eat, reproduce
+│   │   ├── auth.py         # Passkey authentication dependency & cryptographic verification
 │   │   ├── protocol.py     # Pydantic schemas shared between backend & frontend
 │   │   ├── db.py           # SQLite persistence for worlds, events, and lineage
 │   │   ├── guide.py        # Backend-rendered HTML Living Guide
 │   │   ├── wiki.py         # Living Wiki & API documentation
 │   │   └── main.py         # FastAPI app, WebSocket broadcaster, and REST endpoints
 │   ├── tui/                # Textual terminal client
-│   └── tests/              # Pytest test suite (231+ automated tests)
+│   └── tests/              # Pytest test suite (450+ automated tests)
 └── frontend/
     └── src/
         ├── render/
-        │   ├── CanvasRenderer.tsx  # High-performance 60 FPS batched HTML5 Canvas renderer
-        │   ├── ClanPanel.tsx       # Live clan settlements, totems, and war records
-        │   ├── ChronicleFeed.tsx   # Filterable, scrollable real-time event log
-        │   ├── PlotsPanel.tsx      # Multi-metric population and caste sparklines
-        │   └── Collapsible.tsx     # Dynamic flex collapsible accordion component
+        │   ├── CanvasRenderer.tsx    # High-performance 60 FPS batched HTML5 Canvas renderer
+        │   ├── ClanPanel.tsx         # Live clan settlements, totems, and war records
+        │   ├── ChronicleFeed.tsx     # Filterable, scrollable real-time event log
+        │   ├── PlotsPanel.tsx        # Multi-metric population and caste sparklines
+        │   └── Collapsible.tsx       # Dynamic flex collapsible accordion component
+        ├── clan/
+        │   └── ClanDetails.tsx       # Clan profile, leader residence, founded day & casualty stats
+        ├── history/
+        │   └── WorldHistoryModal.tsx # Daily chronicle digest, wars, and AI Story export
         ├── god/
-        │   └── GodPanel.tsx        # Interactive Laws of Nature control drawer
+        │   ├── GodPanel.tsx          # Interactive Laws of Nature control drawer
+        │   └── auth.tsx              # Passkey dialog and authorized godFetch client
         ├── inspect/
-        │   └── Inspector.tsx       # Creature dossier, vitals, inventory & family tree
+        │   └── Inspector.tsx         # Creature dossier, vitals, inventory & family tree
         ├── wiki/
-        │   └── Wiki.tsx            # In-app interactive wiki & API playground
-        └── App.tsx                 # Main application layout, HUD, and WebSocket synchronization
+        │   └── Wiki.tsx              # In-app interactive wiki & API playground
+        └── App.tsx                   # Main application layout, HUD, and WebSocket synchronization
 ```
 
 ---

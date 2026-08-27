@@ -12,7 +12,7 @@ In Flatland, God sets **laws**, never touches individual lives. Every law has a 
 
 | Law Parameter | Range | Default | Ecological Effect & Hint |
 |---|:---:|:---:|---|
-| `food_count` | 0–1000 | **220** | Target living food abundance across the world (winter reduces, summer boosts). |
+| `food_count` | 0–1000 | **240** | Target living food abundance across the world (winter reduces, summer boosts). |
 | `energy_max` | 10–500 | **100** | Maximum energy capacity an organism can store. |
 | `energy_decay_per_tick` | 0–2.0 | **0.025** | Baseline metabolic burn rate per tick without food intake. |
 | `energy_from_food` | 0–100 | **32** | Energy yield from harvesting a mature plant (Berry: 48, Grass: 32, Mushroom: 24). |
@@ -63,8 +63,8 @@ In Flatland, God sets **laws**, never touches individual lives. Every law has a 
 | `max_sides` | 3–64 | **24** | Maximum side count cap (= Circle / Priest caste). |
 | `birth_energy_cost` | 0–100 | **20.0** | Energy invested by each parent upon successful birth. |
 | `reproduction_cooldown`| 0–3000 | **200** | Ticks parents must wait before becoming eligible to mate again. |
-| `carrying_capacity` | 2–10000 | **600** | Soft population cap: reproduction fertility gradually fades above this threshold. |
-| `max_population` | 2–15000 | **800** | Hard population cap: births halt completely beyond this number. |
+| `carrying_capacity` | 2–10000 | **350** | Soft population cap: reproduction fertility gradually fades above this threshold. |
+| `max_population` | 2–15000 | **500** | Hard population cap: births halt completely beyond this number. |
 | `euthanasia_threshold` | 0.3–1.0 | **0.70** | Irregularity threshold where mutated adults are judged and absorbed. |
 
 ---
@@ -223,6 +223,56 @@ Every caste has a voice: the priest's sonorous **liturgy** calms panic; moving w
 | `markets_enabled` | Boolean | **true** | Neutral trading posts between allies + travelling caravans. |
 | `omens_enabled` | Boolean | **true** | Priests proclaim the turning season; hearers prepare. |
 | `dialect_drift_enabled` | Boolean | **true** | Isolated clans drift apart in speech; cross-clan signals fade with distance. |
+
+---
+
+## 13. Curated World Simulation Presets
+
+Flatland includes 7 balanced environmental presets applicable in real-time via `POST /api/presets/{name}` or the **⚖ God Panel** / **📖 Wiki**:
+
+| Preset | Target Pop | Focus & Dynamics | Key Law Tuning |
+|---|:---:|---|---|
+| ⚖️ **Balance** *(Default)* | 200–350 | **Goldilocks Harmony**: Balanced ecosystem with agriculture, moderate border disputes, non-fatal skirmishes, survivable plagues, predators, bridges, and glowing shrines. | `food_count=240`, `carrying_capacity=350`, `max_pop=500`, `trespass_decay=0.45`, `rivalry_threshold=-45`, `attack_damage=30.0` |
+| 🌿 **Sustainable** | 300–500 | **1000-Day Prosperous Civilization**: High agricultural yields, full granaries, autumn banquets, non-lethal sparring, and stable multi-generational civilization. | `food_count=360`, `carrying_capacity=450`, `max_pop=600`, `attack_damage=20.0`, `banquets_enabled=true`, `granaries_enabled=true` |
+| 🔮 **Theocracy** | 300–550 | **Age of the Sphere & Sacred Avatars**: High devotion, frequent tithes, glowing temples, avatar miracles, 3D epiphanies, and holy synods. | `food_count=320`, `carrying_capacity=400`, `max_pop=550`, `temple_faith_cost=180.0`, `tithe_rate=0.06`, `faith_cost=180` |
+| ⚔️ **Warlords** | 250–500 | **Clash of Clans & Imperial Conquest**: Wide clan domains, frequent border skirmishes, granary raids, house takeovers, defensive coalitions, and martial succession. | `food_count=290`, `carrying_capacity=380`, `max_pop=500`, `territory_radius=18.0`, `attack_damage=50.0`, `schism_threshold=0.45` |
+| 🔥 **Chaos** | 150–350 | **Total Turmoil**: High predator density, deadly wars, rapid 4-season shifts, wildfires, earthquakes, lightning strikes, and cannibalism under crisis. | `food_count=280`, `carrying_capacity=350`, `max_pop=500`, `season_length=4000`, `attack_damage=60.0`, `disease_outbreak_rate=0.001` |
+| 💀 **Extinction** | 30–180 | **Cataclysmic Collapse**: Severe food scarcity, freezing winters ($0.3\times$), harsh exposure drain, rampant sickness, and desperate cannibalism survival. | `food_count=120`, `carrying_capacity=180`, `max_pop=300`, `winter_food_mult=0.30`, `exposure_drain=0.08`, `cannibalism_enabled=true` |
+| 🚀 **Boom** | 600–1,000 | **Monumental Metropolis**: High food abundance, rapid maturation, dense granaries, extensive bridge networks, zero disease/war. | `food_count=500`, `carrying_capacity=800`, `max_pop=1000`, `adult_age=80.0`, `birth_rate=0.25`, `reproduction_cooldown=80` |
+
+---
+
+## 14. World History, Daily Digests & Clan Dossiers
+
+- **Daily Chronicle Digest ($1\text{ Day} = 1200\text{ ticks}$)**:
+  - Consolidates real-time events into narrative single-line daily summaries.
+  - Generates seasonal descriptions (Spring Thaw, High Summer, Autumn Bounty, Deep Winter) combined with clan infrastructure milestones (boundary stones, bridge repairs, Sacred Sphere choral hymns, elder craft transmissions).
+  - Highlights major conflicts with named clans (e.g. `⚔️ War: Clan of the River Roots vs Clan of the Silver Monolith (8 fallen)`), house takeovers, great synods, avatar epiphanies, and epidemic sweeps.
+- **Clan Profiles & Lineage Dossiers**:
+  - Live population count alongside cumulative deceased casualties (`💀 Dead`).
+  - Recorded founding day (`🌱 Founded Day N`) and birth tick.
+  - Detailed Main House residence coordinates and dedicated `👑 Leader Residence` badge.
+  - Full clan milestone archive (`founded`, `leader_change`, `schism`, `temple_raised`, `war_declared`).
+- **AI Story Prompt & Export**:
+  - Export complete historical chronicles as rich structured prompts for Large Language Models or standalone Markdown/JSON dossiers.
+
+---
+
+## 15. God Passkey Authentication & REST API
+
+To protect running worlds from unauthorized intervention, all god-touching endpoints are guarded by SHA-256 passkey authentication:
+
+| Endpoint | Method | Description |
+|---|:---:|---|
+| `/api/auth/status` | `GET` | Returns whether a god passkey has been enrolled (`{"configured": bool}`). |
+| `/api/auth/setup` | `POST` | First-time enrollment of the master god passkey (`{"passkey": "..."}`). |
+| `/api/auth/verify` | `POST` | Verifies a passkey candidate. |
+| `/api/laws` | `GET` / `POST` | Reads or applies universal laws of nature (requires `X-God-Key` header if configured). |
+| `/api/presets/{name}` | `POST` | Applies a named environmental preset (supports `?persist=true` and `&reset=true`). |
+| `/api/control` | `POST` | Simulation control: `pause`, `resume`, `step`, `reset` (requires `X-God-Key`). |
+| `/api/clans` | `GET` | Live clan settlements with alive population, dead counts, and founded days. |
+| `/api/clans/{id}` | `GET` | Detailed clan dossier with member rosters, history events, and main house coordinates. |
+| `/api/history` | `GET` | Paginated chronicle events with caste, cause, and clan metadata. |
 
 ---
 
