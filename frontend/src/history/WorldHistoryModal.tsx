@@ -12,20 +12,34 @@ interface Props {
   onSelectClan?: (id: number) => void
 }
 
-export type MajorCategory = 'all' | 'war' | 'plague' | 'politics' | 'faith' | 'disaster' | 'foundation'
+export type MajorCategory = 'all' | 'war' | 'plague' | 'politics' | 'faith' | 'disaster'
 
 const CATEGORY_TABS: Array<{ key: MajorCategory; label: string; icon: string }> = [
-  { key: 'all', label: 'All Major', icon: '🌟' },
+  { key: 'all', label: 'All Turning Points', icon: '🌟' },
   { key: 'war', label: 'Wars & Conquest', icon: '⚔️' },
-  { key: 'plague', label: 'Plagues & Disease', icon: '☣️' },
+  { key: 'plague', label: 'Plagues & Outbreaks', icon: '☣️' },
   { key: 'politics', label: 'Dynasties & Schisms', icon: '👑' },
-  { key: 'faith', label: 'Faith & Miracles', icon: '🏛️' },
+  { key: 'faith', label: 'Wonders & Epiphanies', icon: '🏛️' },
   { key: 'disaster', label: 'Cataclysms', icon: '🌋' },
-  { key: 'foundation', label: 'Foundations & Bridges', icon: '🏗️' },
 ]
 
+export interface AggregatedMilestone {
+  id: string
+  startTick: number
+  endTick: number
+  day: string
+  type: string
+  category: MajorCategory
+  title: string
+  detail: string
+  icon: string
+  badgeColor: string
+  casualtyCount: number
+  primaryClanId?: number
+}
+
 export default function WorldHistoryModal({ open, onClose, state, selectedRunId }: Props) {
-  const [events, setEvents] = useState<any[]>([])
+  const [rawEvents, setRawEvents] = useState<any[]>([])
   const [clans, setClans] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'timeline' | 'llm'>('timeline')
@@ -53,7 +67,7 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
       fetch('/api/clans').then((r) => r.json()),
     ])
       .then(([histData, clanData]) => {
-        setEvents(histData.events ?? [])
+        setRawEvents(histData.events ?? [])
         const clanMap: Record<string, any> = {}
         for (const c of clanData.clans ?? []) {
           clanMap[String(c.id)] = c
@@ -69,34 +83,363 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
     return clans[String(id)]?.name ?? state?.clans?.[String(id)]?.name ?? `Clan #${id}`
   }
 
-  // Filter events
-  const filteredEvents = useMemo(() => {
-    return events.filter((ev) => {
-      // Category filter
-      if (category === 'war') {
-        if (!['war', 'conquest', 'takeover', 'regicide', 'peace', 'peace_envoy', 'betrayal', 'rivalry'].includes(ev.type)) return false
-      } else if (category === 'plague') {
-        if (!['outbreak', 'recovery'].includes(ev.type) && !(ev.type === 'death' && ev.cause === 'disease')) return false
-      } else if (category === 'politics') {
-        if (!['succession', 'schism', 'alliance', 'coalition_formed', 'coalition_joined', 'coalition_dissolved', 'defection', 'tribute', 'banquet'].includes(ev.type)) return false
-      } else if (category === 'faith') {
-        if (!['temple', 'miracle', 'synod', 'epiphany', 'sermon', 'resonance'].includes(ev.type)) return false
-      } else if (category === 'disaster') {
-        if (!['disaster', 'fire', 'earthquake', 'extinction'].includes(ev.type)) return false
-      } else if (category === 'foundation') {
-        if (!['settlement'].includes(ev.type)) return false
+  // Deduplicate and aggregate raw events into high-value milestones
+  const milestones = useMemo<AggregatedMilestone[]>(() => {
+    if (!rawEvents.length) return []
+
+    // Sort chronologically (oldest first for grouping)
+    const sorted = [...rawEvents].sort((a, b) => a.tick - b.tick)
+    const result: AggregatedMilestone[] = []
+
+    let i = 0
+    while (i < sorted.length) {
+      const ev = sorted[i]
+      const p = ev.payload ?? {}
+      const tick = ev.tick
+      const day = (tick / 1200).toFixed(1)
+
+      // 1. Group consecutive war skirmishes between the same clan pair
+      if (ev.type === 'war') {
+        const a = p.a
+        const b = p.b
+        const pairKey = [Math.min(a, b), Math.max(a, b)].join(':')
+        let totalDamage = p.damage ?? 0
+        let lethalCount = p.lethal ? 1 : 0
+        let count = 1
+        let lastTick = tick
+        let j = i + 1
+
+        while (j < sorted.length) {
+          const nextEv = sorted[j]
+          const np = nextEv.payload ?? {}
+          if (nextEv.type === 'war' && nextEv.tick - lastTick <= 240) {
+            const nextPairKey = [Math.min(np.a, np.b), Math.max(np.a, np.b)].join(':')
+            if (nextPairKey === pairKey) {
+              totalDamage += np.damage ?? 0
+              if (np.lethal) lethalCount++
+              count++
+              lastTick = nextEv.tick
+              j++
+              continue
+            }
+          }
+          break
+        }
+
+        const clanAName = clanName(a)
+        const clanBName = clanName(b)
+        result.push({
+          id: `war:${tick}:${pairKey}`,
+          startTick: tick,
+          endTick: lastTick,
+          day,
+          type: 'war',
+          category: 'war',
+          title: `War Campaign · ${clanAName} vs ${clanBName}`,
+          detail: count > 1
+            ? `${count} engagements fought (${lethalCount} fallen, ${totalDamage.toFixed(1)} total damage dealt)`
+            : `Border clash (${p.lethal ? '1 casualty' : 'non-lethal'}, ${p.damage?.toFixed(1) ?? 'N/A'} damage)`,
+          icon: '⚔️',
+          badgeColor: '#f85149',
+          casualtyCount: lethalCount,
+          primaryClanId: a,
+        })
+
+        i = j
+        continue
       }
 
-      // Search filter
+      // 2. House Takeovers & Territory Conquests
+      if (ev.type === 'takeover' || ev.type === 'conquest') {
+        const invader = p.invader_clan ?? p.clan_id
+        const victim = p.victim_clan ?? p.rival
+        const houseId = p.house_id ?? ev.entity_id
+        const invaderName = clanName(invader)
+        const victimName = clanName(victim)
+
+        result.push({
+          id: `takeover:${ev.id ?? tick}:${houseId}`,
+          startTick: tick,
+          endTick: tick,
+          day,
+          type: 'conquest',
+          category: 'war',
+          title: `Territory Conquered · ${invaderName}`,
+          detail: `Seized settlement Hall #${houseId} from ${victimName}${p.plundered_food ? ` (plundered ${p.plundered_food} food)` : ''}`,
+          icon: '🚩',
+          badgeColor: '#d29922',
+          casualtyCount: 0,
+          primaryClanId: invader,
+        })
+        i++
+        continue
+      }
+
+      // 3. Regicide
+      if (ev.type === 'regicide') {
+        const victimClan = clanName(p.victim_clan ?? p.clan_id)
+        result.push({
+          id: `regicide:${ev.id ?? tick}`,
+          startTick: tick,
+          endTick: tick,
+          day,
+          type: 'regicide',
+          category: 'war',
+          title: `Chieftain Slain (Regicide)`,
+          detail: `The ruler of ${victimClan} was struck down in battle`,
+          icon: '👑',
+          badgeColor: '#f85149',
+          casualtyCount: 1,
+          primaryClanId: p.victim_clan ?? p.clan_id,
+        })
+        i++
+        continue
+      }
+
+      // 4. Outbreak (Pestilence)
+      if (ev.type === 'outbreak') {
+        const diseaseId = p.disease_id ?? 1
+        result.push({
+          id: `outbreak:${ev.id ?? tick}:${diseaseId}`,
+          startTick: tick,
+          endTick: tick,
+          day,
+          type: 'outbreak',
+          category: 'plague',
+          title: `Plague Outbreak #${diseaseId}`,
+          detail: `A virulent contagion erupted in the settlement (Patient Zero: #${ev.entity_id}, ${ev.caste ?? 'citizen'})`,
+          icon: '☣️',
+          badgeColor: '#3fb950',
+          casualtyCount: 0,
+        })
+        i++
+        continue
+      }
+
+      // 5. Dynastic Succession
+      if (ev.type === 'succession') {
+        const cName = clanName(p.clan_id)
+        result.push({
+          id: `succession:${ev.id ?? tick}`,
+          startTick: tick,
+          endTick: tick,
+          day,
+          type: 'succession',
+          category: 'politics',
+          title: `Ruler Succession · ${cName}`,
+          detail: `New chieftain #${p.new_leader} ascended following the death of #${p.prev_leader}`,
+          icon: '👑',
+          badgeColor: '#e3b341',
+          casualtyCount: 0,
+          primaryClanId: p.clan_id,
+        })
+        i++
+        continue
+      }
+
+      // 6. Schism & Rebellion
+      if (ev.type === 'schism') {
+        const fromName = clanName(p.from_clan)
+        result.push({
+          id: `schism:${ev.id ?? tick}`,
+          startTick: tick,
+          endTick: tick,
+          day,
+          type: 'schism',
+          category: 'politics',
+          title: `Civil Rebellion & Schism`,
+          detail: `Dissidents fractured away from ${fromName} to found an independent rebel clan`,
+          icon: '⚡',
+          badgeColor: '#ff7b72',
+          casualtyCount: 0,
+          primaryClanId: p.from_clan,
+        })
+        i++
+        continue
+      }
+
+      // 7. Betrayal & Broken Alliances
+      if (ev.type === 'betrayal') {
+        const cName = clanName(p.clan_id)
+        const targetName = clanName(p.target_clan)
+        result.push({
+          id: `betrayal:${ev.id ?? tick}`,
+          startTick: tick,
+          endTick: tick,
+          day,
+          type: 'betrayal',
+          category: 'politics',
+          title: `Treachery & Broken Treaty`,
+          detail: `${cName} betrayed their sacred alliance with ${targetName}`,
+          icon: '🗡️',
+          badgeColor: '#f85149',
+          casualtyCount: 0,
+          primaryClanId: p.clan_id,
+        })
+        i++
+        continue
+      }
+
+      // 8. Holy Alliance & Coalition
+      if (ev.type === 'alliance' || ev.type === 'coalition_formed') {
+        const cAName = clanName(p.a ?? p.founder)
+        const cBName = p.b ? clanName(p.b) : ''
+        result.push({
+          id: `alliance:${ev.id ?? tick}`,
+          startTick: tick,
+          endTick: tick,
+          day,
+          type: 'alliance',
+          category: 'politics',
+          title: ev.type === 'coalition_formed' ? `Defensive Coalition Formed` : `Sacred Peace Treaty`,
+          detail: ev.type === 'coalition_formed'
+            ? `${cAName} established the defensive league "${p.name ?? 'Grand Alliance'}"`
+            : `${cAName} and ${cBName} signed a binding non-aggression pact`,
+          icon: '🕊️',
+          badgeColor: '#58a6ff',
+          casualtyCount: 0,
+        })
+        i++
+        continue
+      }
+
+      // 9. Temples & Spiritual Wonders
+      if (ev.type === 'temple') {
+        const cName = clanName(p.clan_id)
+        result.push({
+          id: `temple:${ev.id ?? tick}`,
+          startTick: tick,
+          endTick: tick,
+          day,
+          type: 'temple',
+          category: 'faith',
+          title: `Temple of the Sphere Consecrated`,
+          detail: `${cName} consecrated a great glowing Temple of the Sphere with community faith`,
+          icon: '🏛️',
+          badgeColor: '#bc8cff',
+          casualtyCount: 0,
+          primaryClanId: p.clan_id,
+        })
+        i++
+        continue
+      }
+
+      // 10. Avatar Miracle
+      if (ev.type === 'miracle') {
+        const cName = clanName(p.clan_id)
+        result.push({
+          id: `miracle:${ev.id ?? tick}`,
+          startTick: tick,
+          endTick: tick,
+          day,
+          type: 'miracle',
+          category: 'faith',
+          title: `Seasonal Avatar Miracle`,
+          detail: `The Sacred Avatar answered prayers of ${cName}, bestowing divine harvest and vitality`,
+          icon: '🌸',
+          badgeColor: '#bc8cff',
+          casualtyCount: 0,
+          primaryClanId: p.clan_id,
+        })
+        i++
+        continue
+      }
+
+      // 11. 3D Epiphany Revelation
+      if (ev.type === 'epiphany') {
+        result.push({
+          id: `epiphany:${ev.id ?? tick}`,
+          startTick: tick,
+          endTick: tick,
+          day,
+          type: 'epiphany',
+          category: 'faith',
+          title: `Divine 3D Epiphany`,
+          detail: `An elder priest was touched by the 3D Sphere, beholding the sacred third dimension beyond Flatland`,
+          icon: '✨',
+          badgeColor: '#f0883e',
+          casualtyCount: 0,
+        })
+        i++
+        continue
+      }
+
+      // 12. Great Synod
+      if (ev.type === 'synod') {
+        result.push({
+          id: `synod:${ev.id ?? tick}`,
+          startTick: tick,
+          endTick: tick,
+          day,
+          type: 'synod',
+          category: 'faith',
+          title: `The Great Synod of the Sphere`,
+          detail: `Chieftains and priests of all clans gathered in council, proclaiming a general truce`,
+          icon: '🕊️',
+          badgeColor: '#58a6ff',
+          casualtyCount: 0,
+        })
+        i++
+        continue
+      }
+
+      // 13. Cataclysms & Natural Disasters
+      if (ev.type === 'disaster') {
+        result.push({
+          id: `disaster:${ev.id ?? tick}`,
+          startTick: tick,
+          endTick: tick,
+          day,
+          type: 'disaster',
+          category: 'disaster',
+          title: `Natural Cataclysm (${p.kind ?? 'Disaster'})`,
+          detail: `Catastrophe swept across coordinates (${ev.x}, ${ev.y}), reshaping the landscape`,
+          icon: '🌋',
+          badgeColor: '#f85149',
+          casualtyCount: 0,
+        })
+        i++
+        continue
+      }
+
+      // 14. Extinction
+      if (ev.type === 'extinction') {
+        result.push({
+          id: `extinction:${ev.id ?? tick}`,
+          startTick: tick,
+          endTick: tick,
+          day,
+          type: 'extinction',
+          category: 'disaster',
+          title: `World Extinction Epoch`,
+          detail: `The final geometric citizen perished; civilization fell silent`,
+          icon: '💀',
+          badgeColor: '#f85149',
+          casualtyCount: 0,
+        })
+        i++
+        continue
+      }
+
+      i++
+    }
+
+    // Return newest first for timeline viewing
+    return result.reverse()
+  }, [rawEvents, clans])
+
+  // Filter milestones by category and search
+  const filteredMilestones = useMemo(() => {
+    return milestones.filter((m) => {
+      if (category !== 'all' && m.category !== category) return false
       if (search.trim()) {
         const q = search.toLowerCase().trim()
-        const p = ev.payload ?? {}
-        const textToSearch = `${ev.type} ${ev.caste ?? ''} ${ev.cause ?? ''} ${p.personal_name ?? ''} ${p.kind ?? ''} ${clanName(p.clan_id)} ${clanName(p.a)} ${clanName(p.b)} ${p.winner_name ?? ''}`.toLowerCase()
-        if (!textToSearch.includes(q)) return false
+        const text = `${m.title} ${m.detail} ${m.type}`.toLowerCase()
+        if (!text.includes(q)) return false
       }
       return true
     })
-  }, [events, category, search, clans])
+  }, [milestones, category, search])
 
   // Aggregate stats
   const stats = useMemo(() => {
@@ -108,27 +451,25 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
     let temples = 0
     let miracles = 0
     let successions = 0
-    let bridges = 0
 
-    for (const ev of events) {
-      if (ev.type === 'war') {
+    for (const m of milestones) {
+      if (m.type === 'war') {
         wars++
-        if (ev.payload?.lethal) lethalWars++
-      } else if (ev.type === 'outbreak') outbreaks++
-      else if (ev.type === 'schism') schisms++
-      else if (ev.type === 'disaster') disasters++
-      else if (ev.type === 'temple') temples++
-      else if (ev.type === 'miracle') miracles++
-      else if (ev.type === 'succession') successions++
-      else if (ev.type === 'settlement' && ev.payload?.kind === 'bridge') bridges++
+        if (m.casualtyCount > 0) lethalWars++
+      } else if (m.type === 'outbreak') outbreaks++
+      else if (m.type === 'schism') schisms++
+      else if (m.type === 'disaster') disasters++
+      else if (m.type === 'temple') temples++
+      else if (m.type === 'miracle') miracles++
+      else if (m.type === 'succession') successions++
     }
 
-    return { wars, lethalWars, outbreaks, schisms, disasters, temples, miracles, successions, bridges }
-  }, [events])
+    return { wars, lethalWars, outbreaks, schisms, disasters, temples, miracles, successions }
+  }, [milestones])
 
   const totalDays = state ? (state.tick / 1200).toFixed(1) : '0'
 
-  // Build the LLM Story Prompt
+  // Build the LLM Story Prompt (Chronological digest of turning points)
   const llmPrompt = useMemo(() => {
     const seed = state?.seed ?? 42
     const aliveCount = state?.creatures_alive ?? 0
@@ -141,58 +482,10 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
     }).join('\n')
 
     // Chronological ordering (oldest first for storytelling)
-    const chronologicalEvents = [...events].sort((a, b) => a.tick - b.tick)
+    const chronological = [...milestones].reverse()
 
-    const eventTimeline = chronologicalEvents.slice(0, 400).map((ev) => {
-      const day = (ev.tick / 1200).toFixed(1)
-      const p = ev.payload ?? {}
-      let desc = ''
-
-      if (ev.type === 'war') {
-        const clanA = clanName(p.a)
-        const clanB = clanName(p.b)
-        desc = `[WAR CLASH] Conflict erupted between ${clanA} and ${clanB}. (Winner: ${p.winner ? '#' + p.winner : 'Inconclusive'}, Damage: ${p.damage?.toFixed(1) ?? 'N/A'}${p.lethal ? ', LETHAL' : ''})`
-      } else if (ev.type === 'conquest' || ev.type === 'takeover') {
-        desc = `[CONQUEST] ${clanName(p.invader ?? p.clan_id)} seized shelter territory from ${clanName(p.rival ?? p.victim_clan)}.`
-      } else if (ev.type === 'schism') {
-        desc = `[REBELLION & SCHISM] Internal strife splintered ${clanName(p.from_clan)}, birthing a rebel faction.`
-      } else if (ev.type === 'betrayal') {
-        desc = `[TREACHERY] ${clanName(p.clan_id)} betrayed former ally ${clanName(p.target_clan)}!`
-      } else if (ev.type === 'outbreak') {
-        desc = `[PLAGUE OUTBREAK #${p.disease_id ?? 1}] A virulent contagion infected patient #${ev.entity_id} (${ev.caste ?? 'citizen'}), sweeping through local settlements.`
-      } else if (ev.type === 'recovery') {
-        desc = `[PLAGUE RECOVERY] Patient #${ev.entity_id} successfully overcame disease #${p.disease_id ?? 1}.`
-      } else if (ev.type === 'succession') {
-        desc = `[DYNASTIC SUCCESSION] Following the death of Chieftain #${p.prev_leader}, Ruler #${p.new_leader} took the helm of ${clanName(p.clan_id)}.`
-      } else if (ev.type === 'regicide') {
-        desc = `[REGICIDE] Chieftain of ${clanName(p.clan_id)} was slain in battle!`
-      } else if (ev.type === 'alliance') {
-        desc = `[HOLY ALLIANCE] ${clanName(p.a)} and ${clanName(p.b)} forged a sacred peace pact.`
-      } else if (ev.type === 'coalition_formed') {
-        desc = `[COALITION FORMED] Defensive bloc "${p.name ?? 'Alliance'}" established under ${clanName(p.founder)}.`
-      } else if (ev.type === 'temple') {
-        desc = `[TEMPLE OF THE SPHERE] ${clanName(p.clan_id)} consecrated a grand Temple of the Sphere.`
-      } else if (ev.type === 'miracle') {
-        desc = `[DIVINE MIRACLE] The Sacred Avatar worked a seasonal miracle for ${clanName(p.clan_id)}, healing the faithful.`
-      } else if (ev.type === 'synod') {
-        desc = `[GREAT SYNOD] The Great Synod convened across all clans during the ${p.age ?? 'crisis'} era, declaring sacred truce.`
-      } else if (ev.type === 'epiphany') {
-        desc = `[3D EPIPHANY] An elder priest received the divine revelation of the 3D Sphere from Spaceland.`
-      } else if (ev.type === 'disaster') {
-        desc = `[NATURAL DISASTER] Cataclysm: ${p.kind ?? 'Catastrophe'} struck at (${ev.x}, ${ev.y}).`
-      } else if (ev.type === 'settlement' && p.kind === 'bridge') {
-        desc = `[CIVIL ENGINEERING] ${clanName(p.clan_id)} built a river plank bridge spanning channel cy=${p.river_cy}.`
-      } else if (ev.type === 'defection') {
-        desc = `[DEFECTION] Dissatisfied ${ev.caste ?? 'member'} defected from ${p.from_name ?? 'Clan'} to ${p.to_name ?? 'Clan'}.`
-      } else if (ev.type === 'cannibalism') {
-        desc = `[DESPERATION CANNIBALISM] Starving citizen consumed fallen kin; kin-eater exiled into wilderness.`
-      } else if (ev.type === 'death') {
-        desc = `[MORTALITY] ${ev.caste ?? 'Citizen'} #${ev.entity_id} (${p.personal_name ?? ''}) perished due to ${ev.cause ?? 'unknown'}.`
-      } else {
-        desc = `[${ev.type.toUpperCase()}] Event occurred involving #${ev.entity_id}.`
-      }
-
-      return `- **Day ${day} (Tick ${ev.tick})**: ${desc}`
+    const turningPoints = chronological.map((m) => {
+      return `- **Day ${m.day} (Tick ${m.startTick})**: ${m.title} — ${m.detail}`
     }).join('\n')
 
     let stylePrompt = ''
@@ -219,13 +512,13 @@ You are an epic historian and bard recording the true history of a simulated 2D 
 - **World Seed**: ${seed}
 - **Current Population**: ${aliveCount} Alive | ${deadCount} Fallen
 - **Mortality Breakdown**: ${Object.entries(deadByCause).map(([k, v]) => `${k}: ${v}`).join(', ') || 'None recorded'}
-- **Major Milestone Tallies**: ${stats.wars} Wars (${stats.lethalWars} lethal), ${stats.outbreaks} Pandemics, ${stats.schisms} Rebellions, ${stats.temples} Temples Raised, ${stats.disasters} Cataclysms, ${stats.bridges} Bridges Built.
+- **Major Milestone Tallies**: ${stats.wars} War Campaigns (${stats.lethalWars} lethal), ${stats.outbreaks} Pandemics, ${stats.schisms} Rebellions, ${stats.temples} Temples Raised, ${stats.disasters} Cataclysms.
 
 ## Clan Roster & Avatars
 ${clanSummary || 'No formal clans recorded.'}
 
-## Chronological Major Milestones & Epochs
-${eventTimeline || 'No major events recorded yet.'}
+## Chronological Major Historical Turning Points (${chronological.length} Curated Milestones)
+${turningPoints || 'No major historical turning points recorded yet.'}
 
 ---
 
@@ -235,9 +528,9 @@ ${stylePrompt}
 **Guidelines**:
 1. Ground the narrative strictly in the real recorded events and clan names above.
 2. Portray the unique geometric nature of Flatland characters (angles, vertex sharpness, fog perception, line speed).
-3. Weave the historical milestones (wars, plagues, bridges, temples, schisms) into pivotal plot turns.
+3. Weave the historical milestones (wars, plagues, temples, schisms) into pivotal plot turns.
 4. Structure the response into structured chronological chapters or epochs.`
-  }, [state, clans, events, stats, totalDays, storyStyle])
+  }, [state, clans, milestones, stats, totalDays, storyStyle])
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(llmPrompt)
@@ -256,11 +549,11 @@ ${stylePrompt}
   }
 
   const downloadJSON = () => {
-    const blob = new Blob([JSON.stringify({ state, stats, clans, events }, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify({ state, stats, clans, milestones }, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `flatland_history_events_seed_${state?.seed ?? 42}.json`
+    a.download = `flatland_history_milestones_seed_${state?.seed ?? 42}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -303,7 +596,7 @@ ${stylePrompt}
                 World History & Epic Chronicle
               </h2>
               <div style={{ fontSize: 11, color: '#8b949e', marginTop: 2 }}>
-                Seed {state?.seed ?? 42} · Day {totalDays} ({state?.tick ?? 0} ticks) · {state?.creatures_alive ?? 0} alive · {state?.creatures_dead ?? 0} fallen
+                Seed {state?.seed ?? 42} · Day {totalDays} ({state?.tick ?? 0} ticks) · {milestones.length} major turning points · {state?.creatures_alive ?? 0} alive
               </div>
             </div>
           </div>
@@ -320,7 +613,7 @@ ${stylePrompt}
                 fontWeight: 600,
               }}
             >
-              📜 Timeline ({filteredEvents.length})
+              📜 Milestones ({filteredMilestones.length})
             </button>
             <button
               onClick={() => setActiveTab('llm')}
@@ -334,7 +627,7 @@ ${stylePrompt}
                 fontWeight: 600,
               }}
             >
-              🤖 LLM Story Exporter
+              🤖 AI Story Exporter
             </button>
             <button
               className="god-close"
@@ -350,7 +643,7 @@ ${stylePrompt}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
             gap: 6,
             padding: '8px 16px',
             background: 'rgba(110,118,129,0.06)',
@@ -358,29 +651,26 @@ ${stylePrompt}
             fontSize: 11,
           }}
         >
-          <div className="chip" title="Total war clashes & casualties">
+          <div className="chip" title="Major war campaigns fought">
             ⚔️ <b>{stats.wars}</b> wars ({stats.lethalWars} lethal)
           </div>
-          <div className="chip" title="Plague outbreaks recorded">
+          <div className="chip" title="Plague epidemic outbreaks">
             ☣️ <b>{stats.outbreaks}</b> plagues
           </div>
           <div className="chip" title="Internal rebellions & schisms">
             ⚡ <b>{stats.schisms}</b> schisms
           </div>
-          <div className="chip" title="Dynastic ruler successions">
+          <div className="chip" title="Ruler successions">
             👑 <b>{stats.successions}</b> successions
           </div>
-          <div className="chip" title="Great Temples raised">
+          <div className="chip" title="Temples of the Sphere raised">
             🏛️ <b>{stats.temples}</b> temples
           </div>
-          <div className="chip" title="Seasonal Avatar Miracles">
+          <div className="chip" title="Avatar seasonal miracles">
             🌸 <b>{stats.miracles}</b> miracles
           </div>
-          <div className="chip" title="Natural cataclysms & floods">
+          <div className="chip" title="Natural cataclysms">
             🌋 <b>{stats.disasters}</b> cataclysms
-          </div>
-          <div className="chip" title="River plank bridges constructed">
-            🏗️ <b>{stats.bridges}</b> bridges
           </div>
         </div>
 
@@ -423,7 +713,7 @@ ${stylePrompt}
 
                 <input
                   type="text"
-                  placeholder="Filter by clan, event, casualty..."
+                  placeholder="Filter milestones..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   style={{
@@ -433,7 +723,7 @@ ${stylePrompt}
                     padding: '4px 10px',
                     borderRadius: 6,
                     fontSize: 12,
-                    width: 200,
+                    width: 180,
                   }}
                 />
               </div>
@@ -441,140 +731,52 @@ ${stylePrompt}
               {/* Event Feed */}
               {loading ? (
                 <div style={{ textAlign: 'center', padding: 40, color: '#8b949e' }}>
-                  Loading world historical records...
+                  Analyzing historical milestones...
                 </div>
-              ) : filteredEvents.length === 0 ? (
+              ) : filteredMilestones.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 40, color: '#8b949e' }}>
-                  No major historical events recorded for this category yet.
+                  No major turning points recorded for this category yet.
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {filteredEvents.map((ev, i) => {
-                    const day = (ev.tick / 1200).toFixed(1)
-                    const p = ev.payload ?? {}
-
-                    let badgeColor = '#58a6ff'
-                    let icon = '📜'
-                    let title = ev.type.toUpperCase()
-                    let detail = ''
-
-                    if (ev.type === 'war') {
-                      badgeColor = '#f85149'
-                      icon = '⚔️'
-                      title = `War Clash · ${clanName(p.a)} vs ${clanName(p.b)}`
-                      detail = `Damage: ${p.damage?.toFixed(1) ?? 'N/A'}${p.lethal ? ' (LETHAL)' : ''} · Winner: ${p.winner ? '#' + p.winner : 'Inconclusive'}`
-                    } else if (ev.type === 'conquest' || ev.type === 'takeover') {
-                      badgeColor = '#d29922'
-                      icon = '🚩'
-                      title = `Territorial Conquest · ${clanName(p.invader ?? p.clan_id)}`
-                      detail = `Seized hall from ${clanName(p.rival ?? p.victim_clan)}`
-                    } else if (ev.type === 'schism') {
-                      badgeColor = '#ff7b72'
-                      icon = '⚡'
-                      title = `Rebellion & Schism · ${clanName(p.from_clan)}`
-                      detail = 'Dissidents fractured away to establish a rival clan'
-                    } else if (ev.type === 'betrayal') {
-                      badgeColor = '#f85149'
-                      icon = '🗡️'
-                      title = `Treachery & Betrayal`
-                      detail = `${clanName(p.clan_id)} struck former ally ${clanName(p.target_clan)}`
-                    } else if (ev.type === 'outbreak') {
-                      badgeColor = '#3fb950'
-                      icon = '☣️'
-                      title = `Plague Outbreak #${p.disease_id ?? 1}`
-                      detail = `Contagion gripped Patient #${ev.entity_id} (${ev.caste ?? 'citizen'})`
-                    } else if (ev.type === 'recovery') {
-                      badgeColor = '#3fb950'
-                      icon = '🌿'
-                      title = `Plague Recovery`
-                      detail = `Patient #${ev.entity_id} healed from infection`
-                    } else if (ev.type === 'succession') {
-                      badgeColor = '#d29922'
-                      icon = '👑'
-                      title = `Ruler Succession · ${clanName(p.clan_id)}`
-                      detail = `Chieftain #${p.new_leader} ascended after #${p.prev_leader}`
-                    } else if (ev.type === 'regicide') {
-                      badgeColor = '#f85149'
-                      icon = '👑'
-                      title = `Regicide in Battle`
-                      detail = `Chieftain of ${clanName(p.clan_id)} perished in war`
-                    } else if (ev.type === 'temple') {
-                      badgeColor = '#bc8cff'
-                      icon = '🏛️'
-                      title = `Temple Consecration · ${clanName(p.clan_id)}`
-                      detail = 'Raised the sacred shrine into a glowing Temple of the Sphere'
-                    } else if (ev.type === 'miracle') {
-                      badgeColor = '#bc8cff'
-                      icon = '🌸'
-                      title = `Divine Miracle`
-                      detail = `Avatar granted seasonal miracle to ${clanName(p.clan_id)}`
-                    } else if (ev.type === 'synod') {
-                      badgeColor = '#58a6ff'
-                      icon = '🕊️'
-                      title = `The Great Synod of the Sphere`
-                      detail = `Crisis council convened sacred truce during ${p.age ?? 'crisis'} era`
-                    } else if (ev.type === 'epiphany') {
-                      badgeColor = '#f0883e'
-                      icon = '✨'
-                      title = `3D Epiphany Revelation`
-                      detail = 'Elder priest beheld the sacred third dimension'
-                    } else if (ev.type === 'disaster') {
-                      badgeColor = '#f85149'
-                      icon = '🌋'
-                      title = `Cataclysm: ${p.kind ?? 'Disaster'}`
-                      detail = `Severe event struck at coordinates (${ev.x}, ${ev.y})`
-                    } else if (ev.type === 'settlement' && p.kind === 'bridge') {
-                      badgeColor = '#8b949e'
-                      icon = '🏗️'
-                      title = `Plank Bridge Constructed`
-                      detail = `${clanName(p.clan_id)} built bridge over river channel (cy=${p.river_cy})`
-                    } else if (ev.type === 'extinction') {
-                      badgeColor = '#f85149'
-                      icon = '💀'
-                      title = `World Extinction Event`
-                      detail = 'All living citizens perished; world fell silent'
-                    } else {
-                      detail = JSON.stringify(p)
-                    }
-
-                    return (
-                      <div
-                        key={ev.id ?? i}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          background: '#161b22',
-                          border: '1px solid #21262d',
-                          borderLeft: `4px solid ${badgeColor}`,
-                          borderRadius: 6,
-                          padding: '8px 12px',
-                          fontSize: 12,
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: 16 }}>{icon}</span>
-                          <div>
-                            <div style={{ color: '#e6edf3', fontWeight: 600 }}>{title}</div>
-                            <div style={{ color: '#8b949e', fontSize: 11, marginTop: 1 }}>{detail}</div>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <span
-                            className="chip"
-                            style={{
-                              background: '#21262d',
-                              padding: '2px 6px',
-                              borderRadius: 4,
-                              fontSize: 10,
-                            }}
-                          >
-                            Day {day} · #{ev.tick}
-                          </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {filteredMilestones.map((m) => (
+                    <div
+                      key={m.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: '#161b22',
+                        border: '1px solid #21262d',
+                        borderLeft: `4px solid ${m.badgeColor}`,
+                        borderRadius: 8,
+                        padding: '10px 14px',
+                        fontSize: 12,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontSize: 20 }}>{m.icon}</span>
+                        <div>
+                          <div style={{ color: '#e6edf3', fontWeight: 600, fontSize: 13 }}>{m.title}</div>
+                          <div style={{ color: '#8b949e', fontSize: 12, marginTop: 2 }}>{m.detail}</div>
                         </div>
                       </div>
-                    )
-                  })}
+                      <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                        <span
+                          className="chip"
+                          style={{
+                            background: '#21262d',
+                            padding: '3px 8px',
+                            borderRadius: 4,
+                            fontSize: 11,
+                            fontWeight: 600,
+                          }}
+                        >
+                          Day {m.day} · #{m.startTick}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -595,7 +797,7 @@ ${stylePrompt}
                       🤖 AI Story Generation Prompt
                     </h3>
                     <p style={{ fontSize: 11, color: '#8b949e', margin: '4px 0 0' }}>
-                      Ready to paste into ChatGPT, Claude, or Gemini to generate a novel, chronicle, or saga of your world.
+                      Clean, curated turning points ready to paste into ChatGPT, Claude, or Gemini to write an epic story.
                     </p>
                   </div>
 
@@ -701,7 +903,7 @@ ${stylePrompt}
             color: '#8b949e',
           }}
         >
-          <span>Chronicle records stored in SQLite and accessible via <code>/api/history?major=true</code></span>
+          <span>Curated milestone history synthesized from SQLite (<code>/api/history?major=true</code>)</span>
           <button
             onClick={onClose}
             style={{

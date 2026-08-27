@@ -2673,6 +2673,9 @@ class Simulation:
         for h in houses:
             if h.is_ruin or h.clan_id == 0 or h.clan_id == cid:
                 continue
+            if self.tick - getattr(h, "takeover_tick", -9999) < 600:
+                # 600 tick garrison immunity prevents immediate ping-pong takeovers
+                continue
             if self.clans.get(h.clan_id, {}).get("main_house_id") == h.id and len(houses) > 4:
                 # Main seat protected unless it's the only remaining rival shelter
                 continue

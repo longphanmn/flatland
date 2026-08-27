@@ -143,12 +143,12 @@ def _on_event(e) -> None:
     """Durable sinks for chronicle events: events feed the genealogy table.
 
     AA: blooms stay in the in-memory chronicle only — high-frequency,
-    low-value, so they never cost a DB write. §AE withers are throttled
-    the same way.
+    low-value, so they never cost a DB write. §AE withers and ambient pings
+    are filtered out so history contains real historical milestones.
     AD: writes append to the Database RAM buffer (OS-log); the writer daemon
     drains it every 5s — the sim thread never blocks on SQLite.
     """
-    if RT.world_id is None or e.type in ("bloom", "wither"):
+    if RT.world_id is None or e.type in ("bloom", "wither", "peace_envoy", "culture", "rivalry"):
         return
     wid = RT.world_id
     DB.log_event(wid, e)
@@ -1852,10 +1852,8 @@ async def apply_preset(name: str, persist: bool = True, reset: bool = False) -> 
 
 MAJOR_EVENT_TYPES = (
     "war", "conquest", "takeover", "schism", "betrayal", "alliance",
-    "coalition_formed", "coalition_joined", "coalition_dissolved",
-    "peace", "peace_envoy", "regicide", "succession", "outbreak",
-    "recovery", "disaster", "miracle", "synod", "temple", "epiphany",
-    "extinction", "defection", "cannibalism", "exile", "banquet", "settlement"
+    "coalition_formed", "peace", "regicide", "succession", "outbreak",
+    "disaster", "miracle", "synod", "temple", "epiphany", "extinction"
 )
 
 
