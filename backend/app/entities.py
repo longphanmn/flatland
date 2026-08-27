@@ -197,6 +197,8 @@ class Creature(Entity):
     seeds: int = 0
     # §AQ PH-7 metabolic extremes: sustained cooking collapses the body
     heat_stroke_ticks: int = 0
+    # §AQ PH-4 cliff grace — no repeated tumbles while stunned
+    fall_cooldown: int = 0
     # §AN voice & ritual: chant-calm window, omen preparation, greeting pacing,
     # and an active diplomatic mission (emissary)
     calm_ticks: int = 0

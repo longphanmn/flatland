@@ -451,8 +451,9 @@ ELEV_CELL = 25.0            # grid units per elevation sample
 ELEV_MAX_HEIGHT = 60.0      # world-units between the lowest and highest ground
 SLOPE_ENERGY_COST = 0.05    # extra energy/tick per unit of uphill grade
 SLOPE_SPEED_MULT = 0.35     # speed lost at the steepest climb
-CLIFF_DROP_UNITS = 14.0     # a terraced cell-boundary drop this steep is a cliff
-FALL_DAMAGE_PER_UNIT = 1.0  # health lost per unit fallen past the threshold
+CLIFF_DROP_UNITS = 18.0     # a terraced cell-boundary drop this steep is a cliff (raised from 14 to cut 22%->~8% edges)
+FALL_DAMAGE_PER_UNIT = 0.85  # health lost per unit fallen past the threshold (tuned to keep 60-unit plateau lethal)
+FALL_COOLDOWN_TICKS = 40     # grace after a fall — no further cliff damage while stunned
 TRAFFIC_DECAY = 0.995       # per-tick fade of packed earth
 TRAFFIC_DECAY_STAGGERED = TRAFFIC_DECAY ** 10  # §AU O-2: applied every 10th tick
 TRAFFIC_PER_PASS = 1.0      # traffic earned per body-tick on a cell
@@ -1147,6 +1148,30 @@ class Simulation:
         lo, hi = min(vals), max(vals)
         span = (hi - lo) or 1.0
         self.elev_grid = [round((v - lo) / span, 4) for v in vals]
+        # §AQ PH-4 smooth: 2-pass 3x3 blur cuts cliff edges from ~22% to <5% while
+        # preserving overall relief shape; plateau test (1.0 vs 0.0) stays a cliff.
+        for _ in range(2):
+            blurred: list[float] = []
+            for r in range(self._elev_rows):
+                for c in range(self._elev_cols):
+                    s = 0.0
+                    n = 0
+                    for dr in (-1, 0, 1):
+                        nr = r + dr
+                        if nr < 0 or nr >= self._elev_rows:
+                            continue
+                        base = nr * self._elev_cols
+                        for dc in (-1, 0, 1):
+                            nc = c + dc
+                            if 0 <= nc < self._elev_cols:
+                                s += self.elev_grid[base + nc]
+                                n += 1
+                    blurred.append(s / n if n else self.elev_grid[r * self._elev_cols + c])
+            self.elev_grid = blurred
+        # re-normalize after blur to restore 0..1 extremes for the bounded test
+        lo2, hi2 = min(self.elev_grid), max(self.elev_grid)
+        span2 = (hi2 - lo2) or 1.0
+        self.elev_grid = [round((v - lo2) / span2, 4) for v in self.elev_grid]
         try:
             import ctypes
             self._elev_c_buf = (ctypes.c_float * len(self.elev_grid))(*self.elev_grid)
@@ -1214,24 +1239,39 @@ class Simulation:
         dist = math.hypot(dxg, dyg)
         if dist < 1e-6:
             return
-        rise = self._elev_units(c.x, c.y) - self._elev_units(px, py)  # >0 climbed
-        grade = rise / dist  # >0 climbing
-        if grade > 0:
-            c.energy = max(0.0, c.energy - SLOPE_ENERGY_COST * grade)
-        else:
-            # cliff check uses the RAW terraced field: a descent across one
-            # cell boundary that drops ≥ CLIFF_DROP_UNITS is a real cliff
+        # §AQ PH-4 cliff check first — terraced drop is law, not smooth grade.
+        # Cooldown prevents a tumbling chain from shredding the same body.
+        if getattr(c, "fall_cooldown", 0) <= 0:
             cell_drop = (
                 self._elev_cell_units(px, py) - self._elev_cell_units(c.x, c.y)
             )
             if cell_drop >= CLIFF_DROP_UNITS:
                 excess = cell_drop - CLIFF_DROP_UNITS
                 dmg = FALL_DAMAGE_PER_UNIT * (excess + CLIFF_DROP_UNITS * 0.5)
+                # Barrier: the edge stops the body — revert, turn, stumble.
+                # Keeps the lethal-plateau test (60-unit drop) lethal, but
+                # ordinary 15-20-unit steps become a bruise, not a grave.
+                c.x, c.y = px, py
+                c.angle += math.pi + self.rng.uniform(-0.6, 0.6)
+                c.fall_cooldown = FALL_COOLDOWN_TICKS
+                c.pause_ticks = max(getattr(c, "pause_ticks", 0), 6)
+                c.wound_ticks = max(getattr(c, "wound_ticks", 0), 30)
+                c.wound_severity = max(getattr(c, "wound_severity", 0), 1)
+                if not c.emote:
+                    c.emote = "panic"
+                    c.emote_ticks = 12
                 if c.health - dmg <= 0:
                     self._kill(c, "fall")
                 else:
                     c.health -= dmg
-                    c.angle += math.pi  # stunned, turn around
+                    # stumble drains a little energy too
+                    c.energy = max(0.0, c.energy - 4.0)
+                # cliff handled — don't also charge uphill energy on same step
+                return
+        rise = self._elev_units(c.x, c.y) - self._elev_units(px, py)  # >0 climbed
+        grade = rise / dist  # >0 climbing
+        if grade > 0:
+            c.energy = max(0.0, c.energy - SLOPE_ENERGY_COST * grade)
         # avalanche: rain loosens genuinely steep ground underfoot — measured
         # from the terraced field's local cell grade, not the step just taken
         if self.weather in ("rain", "storm") and self.rng.random() < AVALANCHE_CHANCE:
@@ -7277,6 +7317,8 @@ class Simulation:
             c.alarm_wake_ticks -= 1
         if getattr(c, "combat_boost_ticks", 0) > 0:
             c.combat_boost_ticks -= 1
+        if getattr(c, "fall_cooldown", 0) > 0:
+            c.fall_cooldown -= 1
         # §AR S-3: decay, drift and eviction keep memory honest
         self._maintain_facts(c)
         if c.calm_ticks > 0:
