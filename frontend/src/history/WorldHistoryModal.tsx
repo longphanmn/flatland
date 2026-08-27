@@ -75,9 +75,19 @@ export interface DayRecord {
   totalCasualties: number
 }
 
+const ADJECTIVES = ['Silent', 'Ancient', 'Crimson', 'Silver', 'Golden', 'Shadow', 'Azure', 'Iron', 'Emerald', 'Solar', 'Lunar', 'Obsidian', 'Dawn', 'Dusk', 'Misty', 'Starlight', 'Verdant', 'Echoing', 'Storm', 'Radiant']
+const NOUNS = ['Spire', 'Shield', 'Circle', 'Blade', 'Monolith', 'Sanctum', 'Vertex', 'Lineage', 'Hearth', 'Haven', 'Vanguard', 'Beacon', 'Sovereigns', 'Keepers', 'Pillars', 'Wardens', 'Foundry', 'Sands', 'Bridges', 'Valley']
+
+function generateClanName(id: number): string {
+  const adj = ADJECTIVES[Math.abs(id * 7 + 13) % ADJECTIVES.length]
+  const noun = NOUNS[Math.abs(id * 11 + 37) % NOUNS.length]
+  return `Clan of the ${adj} ${noun}`
+}
+
 export default function WorldHistoryModal({ open, onClose, state, selectedRunId }: Props) {
   const [rawEvents, setRawEvents] = useState<any[]>([])
   const [clans, setClans] = useState<Record<string, any>>({})
+  const [clanNames, setClanNames] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'timeline' | 'llm'>('timeline')
   const [category, setCategory] = useState<MajorCategory>('all')
@@ -107,18 +117,31 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
       .then(([histData, clanData]) => {
         setRawEvents(histData.events ?? [])
         const clanMap: Record<string, any> = {}
+        const nameMap: Record<string, string> = {
+          ...(histData.clan_names ?? {}),
+          ...(clanData.names ?? {}),
+        }
         for (const c of clanData.clans ?? []) {
           clanMap[String(c.id)] = c
+          if (c.name) nameMap[String(c.id)] = c.name
         }
         setClans(clanMap)
+        setClanNames(nameMap)
       })
       .catch((err) => console.error('Failed to load world history:', err))
       .finally(() => setLoading(false))
   }, [open, selectedRunId])
 
-  const clanName = (id?: number | null) => {
-    if (id == null) return '#?'
-    return clans[String(id)]?.name ?? state?.clans?.[String(id)]?.name ?? `Clan #${id}`
+  const clanName = (id?: number | null, fallbackName?: string | null) => {
+    if (fallbackName && !fallbackName.startsWith('Clan #') && !fallbackName.startsWith('#')) {
+      return fallbackName
+    }
+    if (id == null) return 'Independent Realm'
+    const fromMap = clanNames[String(id)] ?? clans[String(id)]?.name ?? state?.clans?.[String(id)]?.name
+    if (fromMap && !fromMap.startsWith('Clan #') && !fromMap.startsWith('#')) {
+      return fromMap
+    }
+    return generateClanName(id)
   }
 
   // Aggregate raw events into DayRecords (1 Day = 1200 ticks)
@@ -188,8 +211,8 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         let w = warMap.get(pairKey)
         if (!w) {
           w = {
-            aName: clanName(a),
-            bName: clanName(b),
+            aName: clanName(a, p.a_name),
+            bName: clanName(b, p.b_name),
             battles: 0,
             casualties: 0,
           }
@@ -202,8 +225,8 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         }
       } else if (ev.type === 'takeover' || ev.type === 'conquest') {
         dRec.categories.add('war')
-        const invaderName = clanName(p.invader_clan ?? p.clan_id)
-        const victimName = clanName(p.victim_clan ?? p.rival)
+        const invaderName = clanName(p.invader_clan ?? p.clan_id, p.invader_name)
+        const victimName = clanName(p.victim_clan ?? p.rival, p.victim_name)
         dRec.conquests.push({
           invaderName,
           victimName,
@@ -214,7 +237,7 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         dRec.categories.add('war')
         dRec.categories.add('politics')
         dRec.totalCasualties++
-        const victimClan = clanName(p.victim_clan ?? p.clan_id)
+        const victimClan = clanName(p.victim_clan ?? p.clan_id, p.clan_name)
         dRec.dynasties.push({
           kind: 'regicide',
           title: `Regicide in ${victimClan}`,
@@ -228,7 +251,7 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         })
       } else if (ev.type === 'schism') {
         dRec.categories.add('politics')
-        const fromName = clanName(p.from_clan)
+        const fromName = clanName(p.from_clan, p.from_name)
         dRec.dynasties.push({
           kind: 'schism',
           title: `Rebellion in ${fromName}`,
@@ -236,7 +259,7 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         })
       } else if (ev.type === 'succession') {
         dRec.categories.add('politics')
-        const cName = clanName(p.clan_id)
+        const cName = clanName(p.clan_id, p.clan_name)
         dRec.dynasties.push({
           kind: 'succession',
           title: `Chieftain Succession in ${cName}`,
@@ -244,8 +267,8 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         })
       } else if (ev.type === 'alliance' || ev.type === 'coalition_formed') {
         dRec.categories.add('politics')
-        const cAName = clanName(p.a ?? p.founder)
-        const cBName = p.b ? clanName(p.b) : ''
+        const cAName = clanName(p.a ?? p.founder, p.a_name)
+        const cBName = p.b ? clanName(p.b, p.b_name) : ''
         dRec.dynasties.push({
           kind: ev.type === 'coalition_formed' ? 'coalition' : 'treaty',
           title: ev.type === 'coalition_formed' ? `Defensive League: ${p.name ?? 'Grand Coalition'}` : `Peace Treaty: ${cAName} & ${cBName}`,
@@ -253,8 +276,8 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         })
       } else if (ev.type === 'betrayal') {
         dRec.categories.add('politics')
-        const cName = clanName(p.clan_id)
-        const tName = clanName(p.target_clan)
+        const cName = clanName(p.clan_id, p.clan_name)
+        const tName = clanName(p.target_clan, p.target_name)
         dRec.dynasties.push({
           kind: 'betrayal',
           title: `Betrayal by ${cName}`,
@@ -262,7 +285,7 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         })
       } else if (ev.type === 'temple') {
         dRec.categories.add('faith')
-        const cName = clanName(p.clan_id)
+        const cName = clanName(p.clan_id, p.clan_name)
         dRec.faiths.push({
           kind: 'temple',
           clanName: cName,

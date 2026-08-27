@@ -3951,7 +3951,14 @@ class Simulation:
                     caste=loser.caste,
                     x=round(loser.x, 2),
                     y=round(loser.y, 2),
-                    payload={"winner": winner.id, "a": loser.clan_id, "b": winner.clan_id, "lethal": True},
+                    payload={
+                        "winner": winner.id,
+                        "a": loser.clan_id,
+                        "b": winner.clan_id,
+                        "a_name": self.clans.get(loser.clan_id, {}).get("name"),
+                        "b_name": self.clans.get(winner.clan_id, {}).get("name"),
+                        "lethal": True,
+                    },
                 )
             )
             # §AS L-1: killing the enemy chief breaks the army's will —
@@ -4090,7 +4097,15 @@ class Simulation:
                     caste=loser.caste,
                     x=round(loser.x, 2),
                     y=round(loser.y, 2),
-                    payload={"winner": winner.id, "a": loser.clan_id, "b": winner.clan_id, "lethal": False, "damage": round(dmg,1)},
+                    payload={
+                        "winner": winner.id,
+                        "a": loser.clan_id,
+                        "b": winner.clan_id,
+                        "a_name": self.clans.get(loser.clan_id, {}).get("name"),
+                        "b_name": self.clans.get(winner.clan_id, {}).get("name"),
+                        "lethal": False,
+                        "damage": round(dmg, 1),
+                    },
                 )
             )
             self._bump_relation(loser.clan_id, winner.clan_id, -3)

@@ -1881,9 +1881,15 @@ async def get_history(
         types_list = [t.strip() for t in types.split(",") if t.strip()]
     elif major:
         types_list = list(MAJOR_EVENT_TYPES)
+    clan_names = {}
+    with RT.lock:
+        for cid, info in RT.sim.clans.items():
+            if info.get("name"):
+                clan_names[str(cid)] = info["name"]
     return {
         "world_id": RT.world_id,
         "total_deaths": DB.death_count(RT.world_id) if RT.world_id else 0,
+        "clan_names": clan_names,
         "events": DB.history(
             RT.world_id,
             since_id=since,
@@ -2112,7 +2118,8 @@ def _clans_payload() -> dict:
     # sort by population desc and cap at 100
     clans.sort(key=lambda c: (-c["population"], c["id"]))
     clans = clans[:100]
-    return {"clans": clans, "tick": RT.sim.tick}
+    names = {str(cid): info.get("name") for cid, info in RT.sim.clans.items() if info.get("name")}
+    return {"clans": clans, "names": names, "tick": RT.sim.tick}
 
 @app.get("/api/plots")
 async def get_plots() -> dict:
