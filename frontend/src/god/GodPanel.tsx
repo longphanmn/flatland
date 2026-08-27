@@ -589,6 +589,7 @@ export default function GodPanel({ open, onClose }: Props) {
   const applyAndReset = () => postLaws(true, true)
   const selectPreset = (name: string) => {
     setExpandedPreset(name)
+    setCurrentPreset(name)
     fetch('/api/presets')
       .then((r) => r.json())
       .then((data) => {
