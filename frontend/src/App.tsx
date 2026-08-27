@@ -574,9 +574,6 @@ export default function App() {
           <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )" data-hint="Wiki — documentation & API ( /wiki )">
             📖
           </button>
-          <button className="god-btn" onClick={() => setHelpOpen((o) => !o)} title="Show hints for all HUD chips and controls" data-hint="Show hints for all HUD chips and controls">
-            ?
-          </button>
           <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="The Sphere (God) — sets laws from Spaceland, never touches a life" data-hint="The Sphere (God) — sets laws from Spaceland, never touches a life">
             ⚖
           </button>
@@ -754,7 +751,6 @@ export default function App() {
                   noMoreHistory={noMoreHistory}
                   archiveMode={archiveMode}
                   selectedRunId={selectedRunId}
-                  onOpenWorldHistory={() => setWorldHistoryOpen(true)}
                   compact
                 />
               </div>
@@ -903,7 +899,6 @@ export default function App() {
               noMoreHistory={noMoreHistory}
               archiveMode={archiveMode}
               selectedRunId={selectedRunId}
-              onOpenWorldHistory={() => setWorldHistoryOpen(true)}
             />
           </Collapsible>
         </div>

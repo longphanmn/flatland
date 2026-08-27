@@ -15,7 +15,6 @@ interface Props {
   selectedRunId?: number | null
   maxDisplay?: number
   compact?: boolean
-  onOpenWorldHistory?: () => void
 }
 
 const CATEGORIES: Array<{ key: EventCategory; label: string; icon: string }> = [
@@ -126,7 +125,6 @@ export default function ChronicleFeed({
   selectedRunId = null,
   maxDisplay = 200,
   compact = false,
-  onOpenWorldHistory,
 }: Props) {
   const [category, setCategory] = useState<EventCategory>('all')
   const [search, setSearch] = useState('')
@@ -199,31 +197,6 @@ export default function ChronicleFeed({
               title="Clear search"
             >
               ✕
-            </button>
-          )}
-          {onOpenWorldHistory && (
-            <button
-              type="button"
-              onClick={onOpenWorldHistory}
-              style={{
-                background: '#1f6feb',
-                border: '1px solid #388bfd',
-                color: '#fff',
-                borderRadius: 6,
-                padding: '3px 8px',
-                fontSize: 11,
-                fontWeight: 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                flex: 'none',
-                minHeight: 28,
-              }}
-              title="Open Major World History & Export AI Story Prompt"
-            >
-              <span>📜</span> History & Story
             </button>
           )}
         </div>
