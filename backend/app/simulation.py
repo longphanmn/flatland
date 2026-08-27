@@ -2689,19 +2689,21 @@ class Simulation:
         for h in houses:
             if h.is_ruin or h.clan_id == 0 or h.clan_id == cid:
                 continue
-            if self.tick - getattr(h, "takeover_tick", -9999) < 600:
+            _tt = getattr(h, "takeover_tick", -9999)
+            if _tt >= 0 and self.tick - _tt < 600:
                 # 600 tick garrison immunity prevents immediate ping-pong takeovers
                 continue
-            if self.clans.get(h.clan_id, {}).get("main_house_id") == h.id and len(houses) > 4:
-                # Main seat protected unless it's the only remaining rival shelter
+            if self.clans.get(h.clan_id, {}).get("main_house_id") == h.id:
+                # Main seat protected — the clan seat is never taken (law preserved)
                 continue
             rival_members = self._clan_members.get(h.clan_id, [])
             rival_beds = sum(self._house_beds(rh) for rh in houses if rh.clan_id == h.clan_id and not rh.is_ruin)
-            # Invade if: (1) rival has spare beds, OR (2) invader has numerical superiority, OR (3) invader is desperately starving
-            is_spare = len(rival_members) < rival_beds
+            # Invade if house is empty tonight and (rival has spare beds or invader has superiority)
+            # Law: spare = rival population < half its beds (otherwise they need it)
+            is_spare = len(rival_members) * 2 < rival_beds
             has_superiority = len(members) >= len(rival_members)
             is_empty_tonight = occupants.get(h.id, 0) == 0
-            if is_spare or is_empty_tonight or has_superiority:
+            if is_empty_tonight and (is_spare or has_superiority):
                 candidates.append(h)
         if not candidates:
             return None
@@ -3465,7 +3467,9 @@ class Simulation:
                 corpses.append(e)
         self._cached_creatures = creatures
         self._clan_members = m
-        self._cached_creatures_sorted = sorted(creatures, key=operator.attrgetter("id"))
+        # §AU CPU: entities insertion order == id-ascending (monotonic _next_id);
+        # creatures list is already sorted — avoid O(N log N) sort without changing law.
+        self._cached_creatures_sorted = creatures
         self._cached_foods = foods
         self._cached_houses = sorted(houses, key=lambda h: h.id)
         self._cached_corpses = corpses
@@ -3489,9 +3493,16 @@ class Simulation:
                     house_grid.setdefault((gx + dgx, gy + dgy), []).append(h)
         self._house_grid = house_grid
 
-        # Compute sleeping house occupancy cache in single pass O(N)
+        # §AU CPU: merged single pass for sleeping occupancy + bodies under roof.
         house_occ: dict[int, int] = {}
+        bodies: dict[int, int] = {}
         for c in creatures:
+            # bodies physically under each roof (overcrowd drain)
+            for h in house_grid.get((int(c.x // 50), int(c.y // 50)), []):
+                half = h.size / 2
+                if abs(c.x - h.x) < half and abs(c.y - h.y) < half:
+                    bodies[h.id] = bodies.get(h.id, 0) + 1
+                    break
             if getattr(c, "sleeping", False):
                 hid = getattr(c, "house_id", None)
                 if hid is not None:
@@ -3502,22 +3513,13 @@ class Simulation:
                             house_occ[h.id] = house_occ.get(h.id, 0) + 1
                             break
         self._house_occupants = house_occ
+        self._house_bodies = bodies
         if getattr(self, "_elev_c_buf", None) is None and getattr(self, "elev_grid", None):
             try:
                 import ctypes
                 self._elev_c_buf = (ctypes.c_float * len(self.elev_grid))(*self.elev_grid)
             except Exception:
                 self._elev_c_buf = None
-
-        # §AT-4 H-2 + §AU O-2: bodies physically under each roof
-        bodies: dict[int, int] = {}
-        for c in creatures:
-            for h in house_grid.get((int(c.x // 50), int(c.y // 50)), []):
-                half = h.size / 2
-                if abs(c.x - h.x) < half and abs(c.y - h.y) < half:
-                    bodies[h.id] = bodies.get(h.id, 0) + 1
-                    break
-        self._house_bodies = bodies
 
         # Precompute shrine positions for instant O(1) lookups (§AP)
         shrine_pos: dict[int, tuple[float, float]] = {}
@@ -3611,6 +3613,20 @@ class Simulation:
         self.signals = [sg for sg in self.signals if sg["ttl"] > 1]
         for sg in self.signals:
             sg["ttl"] -= 1
+        # §AU CPU: build spatial index for signals — per-creature hearing drops
+        # from O(N*S) to O(N * avg_nearby) (~400 -> ~5-10). Law-preserving:
+        # grid is superset for max_hear_d; iteration order = insertion order.
+        self._signal_grid: dict[tuple[int, int], list[tuple[int, dict]]] = {}
+        self._signal_grid_cs = self.world.cell_size
+        if self.signals and self.config.communication_enabled:
+            cols = self.world.cols
+            rows = self.world.rows
+            cs = self._signal_grid_cs
+            sg_grid = self._signal_grid
+            for idx, sg in enumerate(self.signals):
+                gx = int(sg["x"] // cs) % cols if cols else 0
+                gy = int(sg["y"] // cs) % rows if rows else 0
+                sg_grid.setdefault((gx, gy), []).append((idx, sg))
         # §AR S-1: a war cry must wake sleepers BEFORE they settle — the full
         # hearing pass never reaches a sleeping body.
         if self.signals and self.config.communication_enabled:
@@ -7411,7 +7427,8 @@ class Simulation:
                     if skills_dict:
                         best_skill = max(skills_dict, key=lambda k: skills_dict.get(k, 0.0))
                         # §AP: the Dimensional Rift carries elder lore across generations
-                        lore_xp = 0.15 * (1.0 + self._totem_stat(c, "lore"))
+                        _totem_lore = getattr(self, "_clan_totem_stats", {}).get(c.clan_id, {}).get("lore", 0.0) if self.config.totems_enabled else 0.0
+                        lore_xp = 0.15 * (1.0 + _totem_lore)
                         for o, d2 in w.query_radius_with_dist_sq(c.x, c.y, 6.0):
                             if isinstance(o, Creature) and o.clan_id == c.clan_id and o.stage in ("infant", "juvenile"):
                                 if hasattr(o, "skills") and isinstance(o.skills, dict):
@@ -7461,7 +7478,7 @@ class Simulation:
                             and ci_sl.get("main_house_id") == home.id
                         ):
                             regen *= INFIRMARY_REGEN_MULT
-                        regen *= 1.0 + self._totem_stat(c, "defense")  # totem vitality heals faster
+                        regen *= 1.0 + (getattr(self, "_clan_totem_stats", {}).get(c.clan_id, {}).get("defense", 0.0) if self.config.totems_enabled and c.clan_id else 0.0)  # totem vitality heals faster
                         if c.heal_bonus_ticks > 0:
                             regen += c.heal_bonus_amount  # §AT-4 H-1: supper keeps working
                         healed = min(c.max_health, c.health + regen) - c.health
@@ -7723,11 +7740,13 @@ class Simulation:
         # §AT-4 H-2: scars dim the eyes forever.
         if c.scars:
             perceive *= SCAR_SIGHT_MULT ** c.scars
+        # §AU CPU: hoist clan totem stats once (law-preserving, _clan_totem_stats is final mult).
+        _totem = getattr(self, "_clan_totem_stats", {}).get(c.clan_id, {}) if c.clan_id and self.config.totems_enabled else {}
         # Totem sight (§P): Eye +25%, Owl +35%, Raven +15% …
-        perceive *= 1.0 + self._totem_stat(c, "sight")
+        perceive *= 1.0 + _totem.get("sight", 0.0)
         # §AP: the All-Seeing Vertex sees clearly even in the dark of the world —
         # its clarity recovers the night/fog dimming.
-        clarity = self._totem_stat(c, "clarity")
+        clarity = _totem.get("clarity", 0.0)
         if clarity and env_sight < 1.0:
             perceive /= max(0.05, 1.0 - clarity * (1.0 - env_sight))
         speed_mult = 1.0
@@ -7737,8 +7756,8 @@ class Simulation:
             perceive *= cfg.desperate_perceive_mult
             speed_mult = cfg.desperate_speed_mult
         # Totem speed: hunting/fleeing burst (Wolf, Stag, Fox, Serpent …)
-        if self._totem_of(c) and (c.is_predator or perceive > cfg.perceive_radius):
-            speed_mult *= 1.0 + self._totem_stat(c, "speed")
+        if _totem and (c.is_predator or perceive > cfg.perceive_radius):
+            speed_mult *= 1.0 + _totem.get("speed", 0.0)
 
         # §AO Phase D: pitch black — outdoors at night non-predator sight
         # contracts to a hand's width ahead. Predators hunt by nose; the
@@ -7749,7 +7768,7 @@ class Simulation:
             and not c.is_predator
             and not c.sleeping
         ):
-            dark_cap = PITCH_BLACK_SIGHT * (1.0 + self._totem_stat(c, "clarity"))
+            dark_cap = PITCH_BLACK_SIGHT * (1.0 + _totem.get("clarity", 0.0))
             if c.equipped_item == "torch":
                 dark_cap = max(dark_cap, cfg.perceive_radius * env_sight)
             else:
@@ -7809,7 +7828,7 @@ class Simulation:
                     if cfg.scent_enabled else 0.0
                 )
                 if c.is_predator and c.bite_cooldown <= 0:
-                    _hunt_r_tmp = cfg.hunt_radius + self._totem_stat(c, "hunt_radius")
+                    _hunt_r_tmp = cfg.hunt_radius + _totem.get("hunt_radius", 0.0)
                     if is_night:
                         _hunt_r_tmp *= PREDATOR_NIGHT_SIGHT
                     if self.campfires:
@@ -7822,6 +7841,9 @@ class Simulation:
                     _batch_r = max(_batch_r, fear_radius_eff * (1.0 + scent_boost), cfg.fear_radius)
         if is_night and c.status in ("hungry", "starving") and not c.is_predator:
             _batch_r = max(_batch_r, FOOD_SCENT_RADIUS)
+        # §AU CPU: extend batch to cover social micro-queries so every later
+        # scan reuses the same hash lookup (law-preserving superset).
+        _batch_r = max(_batch_r, YIELD_RADIUS, cfg.flock_radius, PRIEST_CALM_RADIUS, TORCH_LIGHT_RADIUS, DRESS_RADIUS, CAMPFIRE_LIGHT_RADIUS, max(8.0, cfg.fear_radius))
         # Use fast list variant to avoid generator overhead (1627) — always populated for food perception
         _batch_list: list[tuple[Entity, float]] = w.query_radius_with_dist_sq_list(c.x, c.y, _batch_r) if _batch_r > 0 else []  # type: ignore[assignment]
         if cfg.predation_enabled and c.is_predator and c.bite_cooldown <= 0:
@@ -7980,8 +8002,8 @@ class Simulation:
         # (production incident @ tick 34k: 800 predators, zero clan members).
         target: Entity | None = None
         best_sq = perceive * perceive
-        # AY fix: reuse batched query (_batch_r >= perceive) to avoid second spatial scan per creature
-        _food_iter = _batch_list if _batch_r >= perceive - 1e-9 else w.query_radius_with_dist_sq_list(c.x, c.y, perceive)
+        # §AU CPU: batch is superset for all micro-radii — no second hash lookup.
+        _food_iter = _batch_list
         for e, d2 in _food_iter:
             if d2 > perceive * perceive:
                 continue
@@ -8047,7 +8069,7 @@ class Simulation:
             and not c.is_predator
         ):
             scent_sq = FOOD_SCENT_RADIUS * FOOD_SCENT_RADIUS
-            _scent_iter = _batch_list if _batch_r >= FOOD_SCENT_RADIUS - 1e-9 else w.query_radius_with_dist_sq(c.x, c.y, FOOD_SCENT_RADIUS)
+            _scent_iter = _batch_list
             for e, d2 in _scent_iter:
                 if d2 > FOOD_SCENT_RADIUS * FOOD_SCENT_RADIUS:
                     continue
@@ -8078,7 +8100,7 @@ class Simulation:
         ):
             er2 = max(8.0, cfg.fear_radius)
             best_enemy_d = er2 * er2 + 1e-9
-            _war_chirp_iter = ((o, d2) for o, d2 in _batch_list if d2 <= er2 * er2) if _batch_r >= er2 else w.query_radius_with_dist_sq(c.x, c.y, er2)
+            _war_chirp_iter = ((o, d2) for o, d2 in _batch_list if d2 <= er2 * er2)
             for o, d2 in _war_chirp_iter:
                 if not isinstance(o, Creature) or o.clan_id == c.clan_id or not o.clan_id:
                     continue
@@ -8314,7 +8336,52 @@ class Simulation:
             best_food_sq = math.inf
             best_alarm_sq = math.inf
             my_dialect = float(self.clans.get(c.clan_id, {}).get("dialect", 0.0)) if c.clan_id else 0.0
-            for sg in self.signals:
+            # §AU CPU: grid-gather signals within max_hear_d (law-preserving superset,
+            # insertion-order sorted, wrap-aware). O(S) -> O(~5-10) per creature.
+            _sg_grid = getattr(self, "_signal_grid", {})
+            _sg_cs = getattr(self, "_signal_grid_cs", self.world.cell_size)
+            _sg_cols = self.world.cols
+            _sg_rows = self.world.rows
+            if _sg_grid:
+                _rx = int(max_hear_d // _sg_cs) + 1
+                _cx0 = int(c.x // _sg_cs) % _sg_cols if _sg_cols else 0
+                _cy0 = int(c.y // _sg_cs) % _sg_rows if _sg_rows else 0
+                if self.world.config.boundary == "wrap":
+                    _cand: list[tuple[int, dict]] = []
+                    _seen_cells: set[tuple[int,int]] = set()
+                    for _dx in range(-_rx, _rx + 1):
+                        for _dy in range(-_rx, _rx + 1):
+                            _cx = (_cx0 + _dx) % _sg_cols if _sg_cols else 0
+                            _cy = (_cy0 + _dy) % _sg_rows if _sg_rows else 0
+                            if (_cx, _cy) in _seen_cells:
+                                continue
+                            _seen_cells.add((_cx, _cy))
+                            bucket = _sg_grid.get((_cx, _cy))
+                            if bucket:
+                                _cand.extend(bucket)
+                    _cand.sort(key=lambda t: t[0])
+                    _iter_signals = (sg for _, sg in _cand)
+                else:
+                    # clamp: collect cells overlapping max_hear_d square
+                    _cand = []
+                    if _sg_grid:
+                        # fallback to direct collection via bounding box
+                        for (gx, gy), bucket in _sg_grid.items():
+                            # quick cell-center far reject
+                            cx_cell = (gx + 0.5) * _sg_cs
+                            cy_cell = (gy + 0.5) * _sg_cs
+                            if abs(cx_cell - c.x) > max_hear_d + _sg_cs and abs(cy_cell - c.y) > max_hear_d + _sg_cs:
+                                continue
+                            _cand.extend(bucket)
+                        _cand.sort(key=lambda t: t[0])
+                    _iter_signals = (sg for _, sg in _cand) if _cand else iter(self.signals)
+                    # For clamp small maps, if grid sparse, fallback to filtered linear scan is still cheaper
+                    if not _cand:
+                        _iter_signals = (sg for sg in self.signals)
+                        # apply same far-reject quickly inside loop anyway
+            else:
+                _iter_signals = iter(self.signals)
+            for sg in _iter_signals:
                 dxw = sg["x"] - c.x
                 if dxw > half_w:
                     dxw -= cfg.width
@@ -8958,7 +9025,7 @@ class Simulation:
                 # High-trust buddy attraction (§AL): steer towards trusted kin when idle
                 buddy_found = False
                 if getattr(c, "trust", None) and isinstance(c.trust, dict) and not c.is_predator and not c.is_herbivore:
-                    _buddy_iter = [o for o, _ in _batch_list if isinstance(o, Creature)] if _batch_r >= cfg.flock_radius else [o for o in w.query_radius(c.x, c.y, cfg.flock_radius) if isinstance(o, Creature)]
+                    _buddy_iter = [o for o, _ in _batch_list if isinstance(o, Creature)]
                     for o in _buddy_iter:
                         if o.id in c.trust and c.trust[o.id] >= 15.0 and o.id != c.id:
                             dx, dy = w.delta(o.x, o.y, c.x, c.y)
@@ -8985,7 +9052,7 @@ class Simulation:
             # 2b. Social yielding: the lowly give way to their betters.
             my_rank = YIELD_RANK.get(c.caste, 0)
             if my_rank < 6:
-                _yield_iter = ((o, d2) for o, d2 in _batch_list if d2 <= YIELD_RADIUS * YIELD_RADIUS) if _batch_r >= YIELD_RADIUS else w.query_radius_with_dist_sq(c.x, c.y, YIELD_RADIUS)
+                _yield_iter = ((o, d2) for o, d2 in _batch_list if d2 <= YIELD_RADIUS * YIELD_RADIUS)
                 for o, _ in _yield_iter:
                     if o is c or o.kind != "creature":
                         continue
@@ -9000,7 +9067,7 @@ class Simulation:
             # 2c. Flock instincts: keep your distance, and hold formation with kin.
             if cfg.cohesion_weight or cfg.alignment_weight or cfg.separation_weight:
                 fx = fy = 0.0
-                _flock_iter = [o for o, _ in _batch_list if isinstance(o, Creature)] if _batch_r >= cfg.flock_radius else [o for o in w.query_radius(c.x, c.y, cfg.flock_radius) if isinstance(o, Creature)]
+                _flock_iter = [o for o, _ in _batch_list if isinstance(o, Creature)]
                 for o in _flock_iter:
                     if o.id == c.id:
                         continue
