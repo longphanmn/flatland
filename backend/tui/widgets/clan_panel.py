@@ -20,7 +20,7 @@ class ClanPanel(DataTable):
         self._rows: dict[int, int] = {}  # clan_id -> row index
 
     def on_mount(self) -> None:
-        self.add_columns("clan", "pop", "avatar", "faith", "wars", "settled")
+        self.add_columns("clan", "pop", "dead", "day", "avatar", "faith", "wars", "settled")
         self.border_title = "Clans"
 
     def update_clans(self, clans: list[dict[str, Any]]) -> None:
@@ -38,10 +38,14 @@ class ClanPanel(DataTable):
             wars = f"{c.get('war_wins', 0)}W/{c.get('war_losses', 0)}L"
             house = c.get("house")
             settled = "-" if not house else ("ruin" if house.get("is_ruin") else f"({round(house['x'])},{round(house['y'])})")
+            day_str = f"d{c.get('founded_day', (c.get('born_tick', 0) or 0) // 1200)}"
+            dead_str = str(c.get("dead_count", 0))
             key = str(c["id"])
             self.add_row(
                 name,
                 str(c.get("population", 0)),
+                dead_str,
+                day_str,
                 totem,
                 faith,
                 wars,

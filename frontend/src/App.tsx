@@ -621,11 +621,11 @@ export default function App() {
             </div>
           )}
           <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <button className="god-btn" onClick={() => { setStatusExpanded(false); setWorldHistoryOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
+              📜 History
+            </button>
             <button className="god-btn" onClick={() => { setStatusExpanded(false); setWikiOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
               📖 Wiki
-            </button>
-            <button className="god-btn" onClick={() => { setStatusExpanded(false); setHelpOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
-              ❓ Guide
             </button>
             <button className="god-btn god-main-btn" onClick={() => { setStatusExpanded(false); setGodOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
               ⚖ The Sphere

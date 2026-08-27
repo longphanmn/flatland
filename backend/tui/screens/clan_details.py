@@ -61,6 +61,10 @@ class ClanDetailsScreen(ModalScreen):
         totem = data.get("totem")
         if totem:
             head.append(f" · {theme.TOTEM_ICONS.get(totem, totem)}", style=f"bold {color}")
+        founded_day = data.get("founded_day", (data.get("born_tick", 0) or 0) // 1200)
+        dead_count = data.get("dead_count", 0)
+        head.append(f" · 🌱 Day {founded_day}", style="#3fb950")
+        head.append(f" · 💀 {dead_count} dead", style="#ff7b72")
         head.append(
             f" · pop {data.get('population', 0)} · wars {data.get('war_wins', 0)}W/"
             f"{data.get('war_losses', 0)}L",
