@@ -23,6 +23,41 @@ const CATEGORY_TABS: Array<{ key: MajorCategory; label: string; icon: string }> 
   { key: 'disaster', label: 'Cataclysm Days', icon: '🌋' },
 ]
 
+interface WarDetail {
+  aName: string
+  bName: string
+  battles: number
+  casualties: number
+}
+
+interface ConquestDetail {
+  invaderName: string
+  victimName: string
+  houseId: number
+  plunderedFood?: number
+}
+
+interface OutbreakDetail {
+  diseaseId: number
+  caste?: string
+}
+
+interface DynastyDetail {
+  kind: 'succession' | 'regicide' | 'schism' | 'treaty' | 'coalition' | 'betrayal'
+  title: string
+  detail: string
+}
+
+interface FaithDetail {
+  kind: 'temple' | 'miracle' | 'epiphany' | 'synod'
+  clanName?: string
+  detail: string
+}
+
+interface DisasterDetail {
+  kind: string
+}
+
 export interface DayRecord {
   day: number
   startTick: number
@@ -31,16 +66,13 @@ export interface DayRecord {
   primaryIcon: string
   badgeColor: string
   categories: Set<MajorCategory>
-  wars: number
-  lethalCasualties: number
-  outbreaks: number
-  schisms: number
-  successions: number
-  temples: number
-  miracles: number
-  disasters: number
-  conquests: number
-  eventSnippets: string[]
+  wars: WarDetail[]
+  conquests: ConquestDetail[]
+  outbreaks: OutbreakDetail[]
+  dynasties: DynastyDetail[]
+  faiths: FaithDetail[]
+  disasters: DisasterDetail[]
+  totalCasualties: number
 }
 
 export default function WorldHistoryModal({ open, onClose, state, selectedRunId }: Props) {
@@ -69,7 +101,7 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
     if (!open) return
     setLoading(true)
     Promise.all([
-      fetch('/api/history?major=true&limit=1500').then((r) => r.json()),
+      fetch('/api/history?major=true&limit=2000').then((r) => r.json()),
       fetch('/api/clans').then((r) => r.json()),
     ])
       .then(([histData, clanData]) => {
@@ -95,7 +127,7 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
     const maxDay = Math.max(0, Math.floor(currentTick / 1200))
     const daysMap: Map<number, DayRecord> = new Map()
 
-    // Initialize all days up to current day
+    // Initialize days
     for (let d = 0; d <= maxDay; d++) {
       daysMap.set(d, {
         day: d,
@@ -105,20 +137,19 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         primaryIcon: '🌱',
         badgeColor: '#3fb950',
         categories: new Set<MajorCategory>(['all']),
-        wars: 0,
-        lethalCasualties: 0,
-        outbreaks: 0,
-        schisms: 0,
-        successions: 0,
-        temples: 0,
-        miracles: 0,
-        disasters: 0,
-        conquests: 0,
-        eventSnippets: [],
+        wars: [],
+        conquests: [],
+        outbreaks: [],
+        dynasties: [],
+        faiths: [],
+        disasters: [],
+        totalCasualties: 0,
       })
     }
 
-    // Group events by day
+    // Temporary war tracker per day: Map<dayNumber, Map<pairKey, WarDetail>>
+    const dayWarMap: Map<number, Map<string, WarDetail>> = new Map()
+
     for (const ev of rawEvents) {
       const dayNum = Math.floor(ev.tick / 1200)
       let dRec = daysMap.get(dayNum)
@@ -131,16 +162,13 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
           primaryIcon: '🌱',
           badgeColor: '#3fb950',
           categories: new Set<MajorCategory>(['all']),
-          wars: 0,
-          lethalCasualties: 0,
-          outbreaks: 0,
-          schisms: 0,
-          successions: 0,
-          temples: 0,
-          miracles: 0,
-          disasters: 0,
-          conquests: 0,
-          eventSnippets: [],
+          wars: [],
+          conquests: [],
+          outbreaks: [],
+          dynasties: [],
+          faiths: [],
+          disasters: [],
+          totalCasualties: 0,
         }
         daysMap.set(dayNum, dRec)
       }
@@ -148,129 +176,222 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
       const p = ev.payload ?? {}
 
       if (ev.type === 'war') {
-        dRec.wars++
-        if (p.lethal) dRec.lethalCasualties++
         dRec.categories.add('war')
+        const a = p.a ?? 0
+        const b = p.b ?? 0
+        const pairKey = [Math.min(a, b), Math.max(a, b)].join(':')
+        let warMap = dayWarMap.get(dayNum)
+        if (!warMap) {
+          warMap = new Map()
+          dayWarMap.set(dayNum, warMap)
+        }
+        let w = warMap.get(pairKey)
+        if (!w) {
+          w = {
+            aName: clanName(a),
+            bName: clanName(b),
+            battles: 0,
+            casualties: 0,
+          }
+          warMap.set(pairKey, w)
+        }
+        w.battles++
+        if (p.lethal) {
+          w.casualties++
+          dRec.totalCasualties++
+        }
       } else if (ev.type === 'takeover' || ev.type === 'conquest') {
-        dRec.conquests++
         dRec.categories.add('war')
-        const invader = clanName(p.invader_clan ?? p.clan_id)
-        const victim = clanName(p.victim_clan ?? p.rival)
-        dRec.eventSnippets.push(`🚩 ${invader} conquered shelter from ${victim}`)
+        const invaderName = clanName(p.invader_clan ?? p.clan_id)
+        const victimName = clanName(p.victim_clan ?? p.rival)
+        dRec.conquests.push({
+          invaderName,
+          victimName,
+          houseId: p.house_id ?? ev.entity_id,
+          plunderedFood: p.plundered_food,
+        })
       } else if (ev.type === 'regicide') {
-        dRec.lethalCasualties++
         dRec.categories.add('war')
-        const cName = clanName(p.victim_clan ?? p.clan_id)
-        dRec.eventSnippets.push(`👑 Regicide: Ruler of ${cName} slain in battle`)
+        dRec.categories.add('politics')
+        dRec.totalCasualties++
+        const victimClan = clanName(p.victim_clan ?? p.clan_id)
+        dRec.dynasties.push({
+          kind: 'regicide',
+          title: `Regicide in ${victimClan}`,
+          detail: `Chieftain of ${victimClan} was slain in battle`,
+        })
       } else if (ev.type === 'outbreak') {
-        dRec.outbreaks++
         dRec.categories.add('plague')
-        dRec.eventSnippets.push(`☣️ Plague outbreak #${p.disease_id ?? 1} erupted`)
+        dRec.outbreaks.push({
+          diseaseId: p.disease_id ?? 1,
+          caste: ev.caste ?? 'citizen',
+        })
       } else if (ev.type === 'schism') {
-        dRec.schisms++
         dRec.categories.add('politics')
         const fromName = clanName(p.from_clan)
-        dRec.eventSnippets.push(`⚡ Rebellion: Splinter faction fractured from ${fromName}`)
+        dRec.dynasties.push({
+          kind: 'schism',
+          title: `Rebellion in ${fromName}`,
+          detail: `Dissident faction splintered away from ${fromName} to form an independent rebel clan`,
+        })
       } else if (ev.type === 'succession') {
-        dRec.successions++
         dRec.categories.add('politics')
         const cName = clanName(p.clan_id)
-        dRec.eventSnippets.push(`👑 New ruler ascended in ${cName}`)
+        dRec.dynasties.push({
+          kind: 'succession',
+          title: `Chieftain Succession in ${cName}`,
+          detail: `New ruler #${p.new_leader} ascended the seat of ${cName}`,
+        })
       } else if (ev.type === 'alliance' || ev.type === 'coalition_formed') {
         dRec.categories.add('politics')
         const cAName = clanName(p.a ?? p.founder)
         const cBName = p.b ? clanName(p.b) : ''
-        dRec.eventSnippets.push(ev.type === 'coalition_formed' ? `🛡️ Defensive coalition formed by ${cAName}` : `🕊️ Treaty signed between ${cAName} & ${cBName}`)
+        dRec.dynasties.push({
+          kind: ev.type === 'coalition_formed' ? 'coalition' : 'treaty',
+          title: ev.type === 'coalition_formed' ? `Defensive League: ${p.name ?? 'Grand Coalition'}` : `Peace Treaty: ${cAName} & ${cBName}`,
+          detail: ev.type === 'coalition_formed' ? `Founded by ${cAName}` : `Signed binding peace agreement`,
+        })
       } else if (ev.type === 'betrayal') {
         dRec.categories.add('politics')
         const cName = clanName(p.clan_id)
         const tName = clanName(p.target_clan)
-        dRec.eventSnippets.push(`🗡️ ${cName} betrayed alliance with ${tName}`)
+        dRec.dynasties.push({
+          kind: 'betrayal',
+          title: `Betrayal by ${cName}`,
+          detail: `Broke sacred treaty and attacked former ally ${tName}`,
+        })
       } else if (ev.type === 'temple') {
-        dRec.temples++
         dRec.categories.add('faith')
         const cName = clanName(p.clan_id)
-        dRec.eventSnippets.push(`🏛️ ${cName} raised a Glowing Temple of the Sphere`)
+        dRec.faiths.push({
+          kind: 'temple',
+          clanName: cName,
+          detail: `${cName} consecrated a Great Temple of the Sphere`,
+        })
       } else if (ev.type === 'miracle') {
-        dRec.miracles++
         dRec.categories.add('faith')
         const cName = clanName(p.clan_id)
-        dRec.eventSnippets.push(`🌸 Avatar miracle answered prayers of ${cName}`)
+        dRec.faiths.push({
+          kind: 'miracle',
+          clanName: cName,
+          detail: `Sacred Avatar answered prayers of ${cName}, granting bountiful harvest`,
+        })
       } else if (ev.type === 'epiphany') {
         dRec.categories.add('faith')
-        dRec.eventSnippets.push(`✨ 3D Epiphany revelation revealed higher dimension`)
+        dRec.faiths.push({
+          kind: 'epiphany',
+          detail: `Elder priest beheld the sacred 3D Sphere in a divine epiphany`,
+        })
       } else if (ev.type === 'synod') {
         dRec.categories.add('faith')
-        dRec.eventSnippets.push(`🕊️ Great Synod proclaimed general peace truce`)
+        dRec.faiths.push({
+          kind: 'synod',
+          detail: `The Great Synod of the Sphere gathered all chieftains in general truce`,
+        })
       } else if (ev.type === 'disaster') {
-        dRec.disasters++
         dRec.categories.add('disaster')
-        dRec.eventSnippets.push(`🌋 Cataclysm (${p.kind ?? 'Disaster'}) struck landscape`)
+        dRec.disasters.push({
+          kind: p.kind ?? 'Cataclysm',
+        })
       } else if (ev.type === 'extinction') {
         dRec.categories.add('disaster')
-        dRec.eventSnippets.push(`💀 World extinction: Civilization fell silent`)
+        dRec.disasters.push({
+          kind: 'World Extinction',
+        })
       }
     }
 
-    // Synthesize concise One-Line Daily Digest Sentence per Day
+    // Attach consolidated wars to DayRecords
+    for (const [dayNum, warMap] of dayWarMap.entries()) {
+      const dRec = daysMap.get(dayNum)
+      if (dRec) {
+        dRec.wars = Array.from(warMap.values())
+      }
+    }
+
+    // Build rich, specific One-Line Daily Digest Sentence
     const sortedDays = Array.from(daysMap.values()).sort((a, b) => a.day - b.day)
 
     for (const d of sortedDays) {
-      const parts: string[] = []
+      const highlights: string[] = []
 
+      // Genesis
       if (d.day === 0) {
-        parts.push('🌱 Genesis: Initial civilization founded core settlements & river bridges')
+        const clanNames = Object.values(clans).slice(0, 3).map((c) => c.name).join(', ')
+        highlights.push(`🌱 Genesis: Core clans (${clanNames || 'founding clans'}) established settlements & river bridges`)
         d.primaryIcon = '🌱'
         d.badgeColor = '#3fb950'
       }
 
-      if (d.wars > 0 || d.conquests > 0) {
+      // Detailed Major Wars
+      if (d.wars.length > 0) {
         d.primaryIcon = '⚔️'
         d.badgeColor = '#f85149'
-        const warDesc = d.wars > 0
-          ? `${d.wars} war battle${d.wars > 1 ? 's' : ''}${d.lethalCasualties > 0 ? ` (${d.lethalCasualties} fallen)` : ''}`
-          : ''
-        const conqDesc = d.conquests > 0 ? `${d.conquests} shelter${d.conquests > 1 ? 's' : ''} conquered` : ''
-        parts.push(`⚔️ ${[warDesc, conqDesc].filter(Boolean).join(', ')}`)
+        const warSnippets = d.wars.map((w) => {
+          const casText = w.casualties > 0 ? ` (${w.casualties} fallen)` : ''
+          return `${w.aName} vs ${w.bName}${casText}`
+        })
+        highlights.push(`⚔️ War: ${warSnippets.join(', ')}`)
       }
 
-      if (d.outbreaks > 0) {
+      // Detailed Conquests
+      if (d.conquests.length > 0) {
+        const conqSnippets = d.conquests.slice(0, 2).map((c) => {
+          return `${c.invaderName} seized Hall #${c.houseId} from ${c.victimName}`
+        })
+        highlights.push(`🚩 Conquest: ${conqSnippets.join(', ')}`)
+      }
+
+      // Detailed Plagues
+      if (d.outbreaks.length > 0) {
         d.primaryIcon = '☣️'
         d.badgeColor = '#3fb950'
-        parts.push(`☣️ ${d.outbreaks} plague outbreak${d.outbreaks > 1 ? 's' : ''} erupted`)
+        highlights.push(`☣️ Plague: Outbreak #${d.outbreaks[0].diseaseId} erupted in settlements`)
       }
 
-      if (d.temples > 0 || d.miracles > 0) {
-        if (!d.wars) d.primaryIcon = '🏛️'
-        if (!d.wars) d.badgeColor = '#bc8cff'
-        const tDesc = d.temples > 0 ? `${d.temples} Temple raised` : ''
-        const mDesc = d.miracles > 0 ? `${d.miracles} Avatar miracle` : ''
-        parts.push(`🏛️ ${[tDesc, mDesc].filter(Boolean).join(', ')}`)
+      // Detailed Faith
+      if (d.faiths.length > 0) {
+        if (!d.wars.length) {
+          d.primaryIcon = '🏛️'
+          d.badgeColor = '#bc8cff'
+        }
+        const fSnippets = d.faiths.slice(0, 2).map((f) => {
+          if (f.kind === 'temple') return `${f.clanName ?? 'Clan'} raised Temple of the Sphere`
+          if (f.kind === 'miracle') return `Avatar Miracle answered ${f.clanName ?? 'Clan'}`
+          if (f.kind === 'epiphany') return `3D Epiphany revealed`
+          return `Great Synod held`
+        })
+        highlights.push(`🏛️ Faith: ${fSnippets.join(' & ')}`)
       }
 
-      if (d.schisms > 0 || d.successions > 0) {
-        if (!d.wars && !d.outbreaks) {
+      // Detailed Politics & Dynasties
+      if (d.dynasties.length > 0) {
+        if (!d.wars.length && !d.outbreaks.length) {
           d.primaryIcon = '👑'
           d.badgeColor = '#e3b341'
         }
-        const sDesc = d.schisms > 0 ? `${d.schisms} rebellion/schism` : ''
-        const sucDesc = d.successions > 0 ? `${d.successions} ruler succession` : ''
-        parts.push(`👑 ${[sDesc, sucDesc].filter(Boolean).join(', ')}`)
+        const dSnippets = d.dynasties.slice(0, 2).map((dyn) => {
+          return dyn.title
+        })
+        highlights.push(`👑 Politics: ${dSnippets.join(' · ')}`)
       }
 
-      if (d.disasters > 0) {
+      // Detailed Disasters
+      if (d.disasters.length > 0) {
         d.primaryIcon = '🌋'
         d.badgeColor = '#f85149'
-        parts.push(`🌋 ${d.disasters} natural cataclysm`)
+        const disSnippets = d.disasters.map((dis) => dis.kind)
+        highlights.push(`🌋 Cataclysm: ${disSnippets.join(', ')} struck landscape`)
       }
 
-      if (parts.length === 0) {
-        parts.push('🌾 Peaceful flourishing: Clans gathered food and expanded territory under calm skies')
+      // Peaceful Day
+      if (highlights.length === 0) {
+        highlights.push('🌾 Peaceful flourishing: Population grew steadily with abundant harvests under calm skies')
         d.primaryIcon = '🌾'
         d.badgeColor = '#2ea043'
       }
 
-      d.summaryLine = parts.join(' · ')
+      d.summaryLine = highlights.join(' · ')
     }
 
     // Return newest day first for timeline UI
@@ -283,7 +404,7 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
       if (category !== 'all' && !d.categories.has(category)) return false
       if (search.trim()) {
         const q = search.toLowerCase().trim()
-        const text = `day ${d.day} ${d.summaryLine} ${d.eventSnippets.join(' ')}`.toLowerCase()
+        const text = `day ${d.day} ${d.summaryLine}`.toLowerCase()
         if (!text.includes(q)) return false
       }
       return true
@@ -302,14 +423,14 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
     let successions = 0
 
     for (const d of dayRecords) {
-      wars += d.wars
-      lethalWars += d.lethalCasualties
-      outbreaks += d.outbreaks
-      schisms += d.schisms
-      disasters += d.disasters
-      temples += d.temples
-      miracles += d.miracles
-      successions += d.successions
+      wars += d.wars.reduce((acc, w) => acc + w.battles, 0)
+      lethalWars += d.totalCasualties
+      outbreaks += d.outbreaks.length
+      schisms += d.dynasties.filter((dyn) => dyn.kind === 'schism').length
+      successions += d.dynasties.filter((dyn) => dyn.kind === 'succession').length
+      temples += d.faiths.filter((f) => f.kind === 'temple').length
+      miracles += d.faiths.filter((f) => f.kind === 'miracle').length
+      disasters += d.disasters.length
     }
 
     return { wars, lethalWars, outbreaks, schisms, disasters, temples, miracles, successions }
@@ -317,7 +438,7 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
 
   const totalDays = state ? (state.tick / 1200).toFixed(1) : '0'
 
-  // Build the LLM Story Prompt (Chronological One-Line-Per-Day Digest)
+  // Build the LLM Story Prompt (Chronological Rich Day-by-Day Historical Chronicle)
   const llmPrompt = useMemo(() => {
     const seed = state?.seed ?? 42
     const aliveCount = state?.creatures_alive ?? 0
@@ -338,11 +459,11 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
 
     let stylePrompt = ''
     if (storyStyle === 'saga') {
-      stylePrompt = 'Write a dramatic, multi-chapter historical epic saga following chieftains, warriors, and priests across the daily chronicle. Emphasize character journeys, tactical battles, political betrayals, and survival during harsh winters.'
+      stylePrompt = 'Write a dramatic, multi-chapter historical epic saga following specific chieftains, named warriors, and priests across the daily chronicle. Emphasize character journeys, tactical battles between named clans, political betrayals, and survival during harsh winters.'
     } else if (storyStyle === 'chronicle') {
-      stylePrompt = 'Write an ancient, scholarly historical chronicle recording the day-by-day rise and fall of geometric clans, legal philosophy, demographic curves, and military campaigns.'
+      stylePrompt = 'Write an ancient, scholarly historical chronicle recording the day-by-day rise and fall of named geometric clans, territorial conquests, legal philosophy, demographic curves, and military campaigns.'
     } else if (storyStyle === 'mythos') {
-      stylePrompt = 'Write a spiritual and philosophical mythos focusing on the 2D inhabitants discovering the divine 3D Sphere, worshipping sacred avatars, raising temples, and experiencing epiphanies.'
+      stylePrompt = 'Write a spiritual and philosophical mythos focusing on the 2D inhabitants discovering the divine 3D Sphere, worshipping sacred avatars, raising glowing temples, and experiencing cosmic epiphanies.'
     } else {
       stylePrompt = 'Write a poignant tragedy recording the golden heights of the geometric civilization, its slow descent into plague and ice, and the solemn extinction of the final living creature.'
     }
@@ -352,7 +473,7 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
 ## Context & World Lore
 You are an epic historian and bard recording the true history of a simulated 2D world inspired by Edwin A. Abbott's *Flatland*.
 - **Society**: Women are razor-sharp line segments; Men are regular polygons whose status ascends by side count (Isosceles Triangles -> Soldiers -> Equilateral Artisans -> Squares -> Pentagons -> Hexagonal Nobles -> Multi-sided Priests/Circles).
-- **Faith & Avatars**: Clans revere Sacred 2D Avatars of the 3D Sphere (Radiant Circle, Celestial Strike, All-Seeing Vertex, Indomitable Monolith, Sacred Spiral, Cosmic Scales, Dimensional Rift, Eternal Hearth).
+- **Faith & Avatars**: Clans revere Sacred 2D Avatars of the 3D Sphere (Radiant Circle, Celestial Strike, All-Seeing Vertex, Indomitable Monolith, Sacred Spiral, Cosmic Scales, Tactical Rift, Eternal Hearth).
 - **Environment**: The world cycles through 4 Great Ages (Golden Era, Ice Age, Chaos Era, Plague Age) and dynamic seasons.
 
 ## World Statistics
@@ -365,7 +486,7 @@ You are an epic historian and bard recording the true history of a simulated 2D 
 ## Clan Roster & Avatars
 ${clanSummary || 'No formal clans recorded.'}
 
-## Day-by-Day Historical Chronicle (${chronologicalDays.length} Days)
+## Detailed Day-by-Day Historical Chronicle (${chronologicalDays.length} Days)
 ${dayTimeline || 'No daily records recorded yet.'}
 
 ---
@@ -374,9 +495,9 @@ ${dayTimeline || 'No daily records recorded yet.'}
 ${stylePrompt}
 
 **Guidelines**:
-1. Follow the chronological day-by-day turning points above.
+1. Follow the chronological day-by-day turning points above with the exact clan names, casualties, and milestones.
 2. Portray the unique geometric nature of Flatland characters (angles, vertex sharpness, fog perception, line speed).
-3. Weave the historical milestones (wars, plagues, temples, schisms) into pivotal chapter turns.`
+3. Weave the historical milestones (named wars, house conquests, outbreaks, temples, schisms) into pivotal chapter turns.`
   }, [state, clans, dayRecords, totalStats, totalDays, storyStyle])
 
   const copyToClipboard = () => {
@@ -390,7 +511,7 @@ ${stylePrompt}
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `flatland_daily_history_seed_${state?.seed ?? 42}.md`
+    a.download = `flatland_detailed_daily_history_seed_${state?.seed ?? 42}.md`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -400,7 +521,7 @@ ${stylePrompt}
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `flatland_daily_history_seed_${state?.seed ?? 42}.json`
+    a.download = `flatland_detailed_daily_history_seed_${state?.seed ?? 42}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -413,7 +534,7 @@ ${stylePrompt}
         className="clan-details-panel"
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 'min(860px, 96vw)',
+          width: 'min(900px, 96vw)',
           maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
@@ -560,7 +681,7 @@ ${stylePrompt}
 
                 <input
                   type="text"
-                  placeholder="Filter days..."
+                  placeholder="Filter by clan, war, or keyword..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   style={{
@@ -570,7 +691,7 @@ ${stylePrompt}
                     padding: '4px 10px',
                     borderRadius: 6,
                     fontSize: 12,
-                    width: 180,
+                    width: 220,
                   }}
                 />
               </div>
@@ -642,27 +763,88 @@ ${stylePrompt}
                           <div
                             style={{
                               marginTop: 10,
-                              paddingTop: 8,
+                              paddingTop: 10,
                               borderTop: '1px solid #30363d',
                               display: 'flex',
                               flexDirection: 'column',
-                              gap: 4,
-                              fontSize: 11,
-                              color: '#8b949e',
+                              gap: 8,
+                              fontSize: 12,
+                              color: '#c9d1d9',
                             }}
                           >
-                            <div style={{ fontWeight: 600, color: '#c9d1d9' }}>
-                              Ticks {d.startTick} – {d.endTick} Milestone Log:
+                            <div style={{ fontWeight: 600, color: '#8b949e', fontSize: 11 }}>
+                              Ticks {d.startTick} – {d.endTick} Detailed Dossier:
                             </div>
-                            {d.eventSnippets.length > 0 ? (
-                              d.eventSnippets.map((snip, idx) => (
-                                <div key={idx} style={{ paddingLeft: 8 }}>
-                                  • {snip}
-                                </div>
-                              ))
-                            ) : (
-                              <div style={{ paddingLeft: 8, fontStyle: 'italic' }}>
-                                Steady generational growth with no major disruptions.
+
+                            {/* Wars */}
+                            {d.wars.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ color: '#f85149', fontWeight: 600 }}>⚔️ Military Campaigns:</span>
+                                {d.wars.map((w, idx) => (
+                                  <div key={idx} style={{ paddingLeft: 12, color: '#c9d1d9' }}>
+                                    • <b>{w.aName}</b> fought <b>{w.bName}</b> across {w.battles} clashes ({w.casualties} lethal casualties)
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Conquests */}
+                            {d.conquests.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ color: '#d29922', fontWeight: 600 }}>🚩 Territorial Conquests:</span>
+                                {d.conquests.map((c, idx) => (
+                                  <div key={idx} style={{ paddingLeft: 12, color: '#c9d1d9' }}>
+                                    • <b>{c.invaderName}</b> invaded and seized Hall #{c.houseId} from <b>{c.victimName}</b>{c.plunderedFood ? ` (plundered ${c.plunderedFood} food)` : ''}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Plagues */}
+                            {d.outbreaks.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ color: '#3fb950', fontWeight: 600 }}>☣️ Epidemics:</span>
+                                {d.outbreaks.map((o, idx) => (
+                                  <div key={idx} style={{ paddingLeft: 12, color: '#c9d1d9' }}>
+                                    • Plague Outbreak #{o.diseaseId} erupted (Patient zero: {o.caste})
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Dynasties */}
+                            {d.dynasties.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ color: '#e3b341', fontWeight: 600 }}>👑 Dynasties & Alliances:</span>
+                                {d.dynasties.map((dyn, idx) => (
+                                  <div key={idx} style={{ paddingLeft: 12, color: '#c9d1d9' }}>
+                                    • <b>{dyn.title}</b>: {dyn.detail}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Faith */}
+                            {d.faiths.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ color: '#bc8cff', fontWeight: 600 }}>🏛️ Faith & Sphere Devotion:</span>
+                                {d.faiths.map((f, idx) => (
+                                  <div key={idx} style={{ paddingLeft: 12, color: '#c9d1d9' }}>
+                                    • {f.detail}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Disasters */}
+                            {d.disasters.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ color: '#f85149', fontWeight: 600 }}>🌋 Cataclysms:</span>
+                                {d.disasters.map((dis, idx) => (
+                                  <div key={idx} style={{ paddingLeft: 12, color: '#c9d1d9' }}>
+                                    • {dis.kind} struck the landscape
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </div>
@@ -690,7 +872,7 @@ ${stylePrompt}
                       🤖 AI Story Generation Prompt
                     </h3>
                     <p style={{ fontSize: 11, color: '#8b949e', margin: '4px 0 0' }}>
-                      Clean, concise day-by-day chronicle formatted for ChatGPT, Claude, or Gemini to write an epic world story.
+                      Rich, day-by-day historical chronicle with specific clan wars, conquests, successions, and miracles ready for ChatGPT, Claude, or Gemini.
                     </p>
                   </div>
 
@@ -796,7 +978,7 @@ ${stylePrompt}
             color: '#8b949e',
           }}
         >
-          <span>One-line-per-day historical chronicle synthesized from SQLite (<code>/api/history?major=true</code>)</span>
+          <span>Detailed daily chronicle synthesized from SQLite (<code>/api/history?major=true</code>)</span>
           <button
             onClick={onClose}
             style={{
