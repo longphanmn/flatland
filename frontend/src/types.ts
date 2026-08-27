@@ -83,6 +83,8 @@ export interface ClanInfo {
   name: string
   founder_id: number
   born_tick: number
+  founded_day?: number
+  dead_count?: number
   color: string
   totem?: string
   culture?: string

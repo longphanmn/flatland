@@ -33,6 +33,8 @@ interface ClanDetailsData {
   founder_id: number
   leader_id: number | null
   born_tick: number
+  founded_day?: number
+  dead_count?: number
   population: number
   house: ClanHouse | null
   houses?: ClanHouse[]
@@ -202,6 +204,12 @@ export default function ClanDetails({
 
       {/* Clan Stats Grid */}
       <div className="insp-grid">
+        <span className="chip" title={`Founded at tick ${data.born_tick ?? 0}`}>
+          🌱 Founded <b>Day {data.founded_day ?? Math.floor((data.born_tick ?? 0) / 1200)}</b>
+        </span>
+        <span className="chip dead" title="Total clan members who have died">
+          💀 Dead <b>{data.dead_count ?? 0}</b>
+        </span>
         <span className="chip">
           Founder{' '}
           {data.founder_id != null ? (

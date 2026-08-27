@@ -742,6 +742,7 @@ class Simulation:
         self.law_wave: dict | None = None  # {born_tick}
         self.anomalies: list[dict] = []  # {x,y,kind,discovered}
         self._totem_mult_cache: dict[int, float] = {}
+        self._clan_deaths: dict[int, int] = {}
         self.signals: list[dict] = []  # §Q: {x,y,kind,sender,clan_id,ttl}
         self.fires: list[dict] = []  # §S wildfire: {x,y,r,ttl}
         self.campfires: list[dict] = []  # §AO E: field campfires {x,y,day}
@@ -6966,6 +6967,8 @@ class Simulation:
             )
         self.deaths += 1
         self._death_counts[cause] = self._death_counts.get(cause, 0) + 1
+        if c.clan_id:
+            self._clan_deaths[c.clan_id] = self._clan_deaths.get(c.clan_id, 0) + 1
         event = HistoryEvent(
             type="death",
             tick=self.tick + 1,  # the tick being completed

@@ -16,6 +16,8 @@ interface ClanInfo {
   founder_id: number
   leader_id: number | null
   born_tick: number
+  founded_day?: number
+  dead_count?: number
   population: number
   house: { x: number; y: number; size: number; is_ruin: boolean } | null
   war_wins: number
@@ -82,14 +84,14 @@ export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelect
               <span className="chip" style={{ background: c.color, color: '#0b0f14' }}>{totemEmoji(c.totem)} {c.totem ?? '—'}</span>
             </div>
             <div className="chip" style={{ marginTop: 4 }}>
-              #{c.id} · pop <b>{c.population}</b> · {c.house ? (c.house.is_ruin ? 'ruins' : `house ${Math.round(c.house.x)},${Math.round(c.house.y)}`) : 'homeless'} · war {c.war_wins}W/{c.war_losses}L
+              #{c.id} · pop <b>{c.population}</b> · dead <b style={{ color: '#f85149' }}>{c.dead_count ?? 0}</b> · {c.house ? (c.house.is_ruin ? 'ruins' : `house ${Math.round(c.house.x)},${Math.round(c.house.y)}`) : 'homeless'} · war {c.war_wins}W/{c.war_losses}L
             </div>
             <div className="chip">
               leader{' '}
               <button className="chronicle-name" onClick={(e) => { e.stopPropagation(); c.leader_id != null && onSelectCreature?.(c.leader_id) }} title="show leader profile">#{c.leader_id ?? '—'}</button>
               {' · '}founder{' '}
               <button className="chronicle-name" onClick={(e) => { e.stopPropagation(); onSelectCreature?.(c.founder_id) }} title="show founder profile">#{c.founder_id}</button>
-              {' · '}born tick {c.born_tick}
+              {' · '}day {c.founded_day ?? Math.floor((c.born_tick ?? 0) / 1200)}
             </div>
             {c.knowledge && (c.knowledge.enemy_clans?.length || c.knowledge.danger_zones?.length || c.knowledge.food_spots?.length) ? (
               <div className="chip" title="Clan memory — the union of what members remember: enemy clans that struck them, danger zones (predator sightings), known food spots">
