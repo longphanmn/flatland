@@ -15,19 +15,21 @@ from .guide import _api_table, _god_laws_table, _md_to_html, CODEBASE_MAP_MD, CO
 
 
 SUSTAINABILITY_MD = """
-# Sustainability — the 1000-day world
+# Sustainability — Multi-Generational Balance
 
-The world self-balances for 1000+ days at 500–800 head when tuned to Goldilocks balance.
+The world self-balances across hundreds of days and multi-generational dynastic flourishing under tuned ecological and social equilibrium.
 
-## Presets
+## Curated Presets
 
-- **balance** ⚖️ (Default) — The Goldilocks condition: 220 food, carrying 600, max 800 pop. All 15+ simulation mechanics active in gentle, harmonious proportions (mild war, rare predation, mild plagues, gentle winters, and thriving multi-generational clans).
-- **sustainable** 🌿 — 1000-day gentle: 450 food, carrying 2200, rare war/predation, calm society. Multi-generational flourishing.
-- **chaos** 🔥 — 320 food, carrying 800, max 1200: famine, predators, wars, plagues, fires, schism. Stress test.
-- **extinction** 💀 — 100 food, carrying 250, max 400: 0.3 winter, high decay. Extinction in days.
-- **boom** 🚀 — 650 food, carrying 3500, max 5000: massive population boom scale test for low-end hardware (e.g. Intel N150).
+- **balance** ⚖️ (Default) — Goldilocks harmony tuned for **200–350 inhabitants** with 240 food, carrying capacity 350 (max 500), gentle wars, rare predation, agriculture, and flourishing multi-generational clans.
+- **sustainable** 🌿 — 1000-day prosperous peace: abundant food (360), carrying capacity 450 (max 600), rich granaries, harvest festivals, and banquets.
+- **theocracy** 🔮 — Age of the Sphere: sacred avatars, glowing temples, avatar miracles, 3D epiphanies, holy synods, and divine tithes.
+- **warlords** ⚔️ — Clash of clans: imperial conquests, granary raids, house takeovers, territorial expansion, and defensive coalitions.
+- **chaos** 🔥 — High predator ratio, lethal wars, wildfires, earthquakes, frequent plagues, and fast seasonal turnover.
+- **extinction** 💀 — Severe famine (120 food), harsh winter (0.30×), high exposure decay, testing societal resilience under collapse.
+- **boom** 🚀 — High reproduction, 500 food, carrying capacity 800 (max 1000) for monumental metropolis testing.
 
-Use: `curl -X POST localhost:8000/api/presets/balance?reset=true` or God panel buttons.
+Use: `curl -X POST localhost:8000/api/presets/balance?reset=true` or use The Sphere (God Panel) preset selector.
 """
 
 PERFORMANCE_MD = """
@@ -250,7 +252,7 @@ hr{{border:0;border-top:1px solid #21262d;margin:20px 0}}
 <ul style="list-style:none;padding:0;margin:8px 0">{nav}</ul>
 <p style="font-size:13px"><a href="/docs">Swagger /docs</a> · <a href="/openapi.json">OpenAPI</a> · <a href="/guide">Guide</a></p>
 <p style="font-size:13px"><a href="/api/wiki">JSON</a> · <a href="/">← Live world</a></p>
-<div class="card" style="margin-top:12px;font-size:12px;color:#8b949e">Presets: <a href="#" onclick="applyPreset('sustainable');return false">🌿 sustainable</a> · <a href="#" onclick="applyPreset('chaos');return false">🔥 chaos</a> · <a href="#" onclick="applyPreset('extinction');return false">💀 extinction</a></div>
+<div class="card" style="margin-top:12px;font-size:12px;color:#8b949e">Presets: <a href="#" onclick="applyPreset('balance');return false">⚖️ balance</a> · <a href="#" onclick="applyPreset('sustainable');return false">🌿 sustainable</a> · <a href="#" onclick="applyPreset('theocracy');return false">🔮 theocracy</a> · <a href="#" onclick="applyPreset('warlords');return false">⚔️ warlords</a> · <a href="#" onclick="applyPreset('chaos');return false">🔥 chaos</a> · <a href="#" onclick="applyPreset('extinction');return false">💀 extinction</a> · <a href="#" onclick="applyPreset('boom');return false">🚀 boom</a></div>
 <div class="card" style="margin-top:12px;font-size:12px;color:#8b949e;border-color:#1f6feb">Developed by<br/><strong>Long Phan</strong><br/><a href="mailto:long@minhnhan.in">long@minhnhan.in</a><br/><a href="https://minhnhan.in">minhnhan.in</a> · <a href="https://world.minhnhan.in">world.minhnhan.in</a><br/><small style="color:#8b949e;display:block;margin-top:4px">Built with OpenCode & Antigravity<br/>Inspired by Edwin A. Abbott</small></div>
 </nav>
 <main>

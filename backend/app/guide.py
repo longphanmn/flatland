@@ -284,18 +284,26 @@ CODEBASE_MAP_MD = """
 - `config.py:13` — `Config` dataclass: world geometry, densities, food, corpses, behaviour, life, reproduction, disease, environment, shelter, terrain, society, houses, chronicle. `from_env()` + `tick_interval`.
 - `entities.py:1` — `CasteTraits`, `CASTE_TRAITS`, `YIELD_RANK`, `caste_name()`, `Creature` (shape/sides/caste/age/lifespan/health/infected/clan_id/sleeping...), `Food` (growth), `Corpse`, `House` (size/door/clan).
 - `world.py:32` — `World` registry + uniform spatial hash (`cell_size`, `rebuild_index`), `delta`/`distance` wrap-aware, `query_radius`.
-- `simulation.py:57` — `Simulation` deterministic tick: `CLAN_COLORS`, `STAGE_MULT`, `SEASONS`, `SEASON_FOOD_MULT`, `YIELD_RADIUS`, `SPREAD_RADIUS` etc. Methods: `_time_of_day`, `_is_night`, `_season`, `_update_weather`, `_inside_house`, `_spawn_initial`, `_new_clan`, `_found_founding_clans`, `_cluster_founders_kcenter`, `_assign_house_claims`, terrain, `step`, `_update_relations`, `_update_plants`, `_update_corpses`, `_infect`, `_reproduce`, `_birth`, `_kill`, `_update_creature`, `_enforce_food_law`, `snapshot`.
+- `simulation.py:57` — `Simulation` deterministic tick: `CLAN_COLORS`, `STAGE_MULT`, `SEASONS`, `SEASON_FOOD_MULT`, `YIELD_RADIUS`, `SPREAD_RADIUS` etc.
+- `auth.py:1` — `require_god` FastAPI dependency for God passkey cryptographic verification (`X-God-Key`).
 - `protocol.py:7` — Pydantic wire schemas: `ControlAction`, `ControlMessage`, `EntityState`, `StateMessage`, `HistoryEvent`, `HelloMessage`, `GodLaws`.
 - `db.py:1` — `Database` stdlib `sqlite3` thin wrapper: `worlds`, `events`, `law_changes`, `creatures`, `snapshots`; WAL, thread-safe reentrant lock; §AD OS-log — RAM buffer + writer daemon (`log_event`/`log_birth`/`log_death`, `flush()` every 5s or 5000 ops, forced on world end/snapshot/close), reads may lag ≤5s.
 - `main.py:1` — FastAPI `app`, `Hub` broadcast, `RuntimeState`, `tick_loop`, `apply_control`, `hello_payload`, `LAW_FIELDS`, `get_laws`/`apply_laws`, WebSocket `/ws`, REST routes, `/guide`.
 
 ## Frontend (`frontend/src/`)
-- `App.tsx` — HUD, controls, WebSocket hook, snapshot state, inspector.
-- `render/CanvasRenderer.tsx` — rAF loop drawing snapshot (creatures, houses, food, terrain, night/weather).
-- `god/GodPanel.tsx` — grouped law sliders/toggles (World/Food&Energy/Hunger&Sight/Movement/Life&Death/Bodies&Houses/Sky&Seasons/Disease/Shelter/Interaction).
-- `inspect/Inspector.tsx` — creature dossier (vitals, lineage, family tree).
-- `types.ts` — TS mirror of `protocol.py`.
-- `websocket.ts` — reconnecting WS client.
+- `App.tsx` — Main application layout, HUD, WebSocket synchronization, mobile drawer tabs.
+- `render/CanvasRenderer.tsx` — High-performance 60 FPS batched HTML5 Canvas renderer with trigonometric vertex geometry.
+- `render/ClanPanel.tsx` — Live clan settlements, totems, and war records.
+- `render/ChronicleFeed.tsx` — Filterable, scrollable real-time event log.
+- `render/PlotsPanel.tsx` — Multi-metric population, caste, and trophic sparklines.
+- `clan/ClanDetails.tsx` — Clan profile, leader residence, founded day & casualty tracking.
+- `history/WorldHistoryModal.tsx` — Daily chronicle digest, major wars, and AI Story export.
+- `god/GodPanel.tsx` — Interactive Laws of Nature drawer with 7 curated presets.
+- `god/auth.tsx` — God passkey modal dialog and authenticated fetch wrapper (`godFetch`).
+- `inspect/Inspector.tsx` — Creature dossier, vitals, inventory & family tree.
+- `wiki/Wiki.tsx` — In-app interactive wiki & API playground.
+- `types.ts` — TypeScript definitions mirroring backend protocol schemas.
+- `websocket.ts` — Auto-reconnecting WebSocket client.
 
 ## Data flow
 `tick_loop` → `sim.step()` → `sim.snapshot()` → `HUB.broadcast` → `ws` → `CanvasRenderer` + `App` state. Client → `ControlMessage` → `apply_control` → `RT.config`/`RT.sim` → DB law_changes. Events → `DB.add_events` + genealogy.
