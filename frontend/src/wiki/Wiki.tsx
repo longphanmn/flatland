@@ -23,8 +23,12 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
 
   if (!open) return null
 
+  const [presetFeedback, setPresetFeedback] = useState<string | null>(null)
+
   const activePreset =
-    laws?.food_count === 450 && laws?.carrying_capacity === 2200
+    laws?.food_count === 220 && laws?.carrying_capacity === 600
+      ? 'balance'
+      : laws?.food_count === 450 && laws?.carrying_capacity === 2200
       ? 'sustainable'
       : laws?.food_count === 320 && laws?.carrying_capacity === 800
       ? 'chaos'
@@ -34,13 +38,18 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
       ? 'boom'
       : null
 
-  const applyPreset = async (name: string) => {
+  const applyPreset = async (name: string, reset: boolean = false) => {
     try {
-      const r = await godFetch(`/api/presets/${name}?persist=true`, { method: 'POST' })
-      if (r.ok) alert(`${name} preset applied`)
-      else alert('preset failed')
+      const r = await godFetch(`/api/presets/${name}?persist=true${reset ? '&reset=true' : ''}`, { method: 'POST' })
+      if (r.ok) {
+        setPresetFeedback(`✓ ${name} preset applied${reset ? ' (world reset)' : ''}`)
+        fetch('/api/laws').then(res => res.json()).then(setLaws).catch(() => {})
+      } else {
+        setPresetFeedback(`✗ Failed to apply ${name}`)
+      }
+      setTimeout(() => setPresetFeedback(null), 3000)
     } catch {
-      /* cancelled passkey prompt */
+      /* cancelled */
     }
   }
 
@@ -237,13 +246,31 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <h3 style={{ margin: 0 }}>Presets — one-click worlds</h3>
-              {activePreset && (
-                <span className="chip" style={{ color: '#3fb950', borderColor: '#3fb950', background: 'rgba(63, 185, 80, 0.15)' }}>
-                  Active: {activePreset}
-                </span>
-              )}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                {presetFeedback && (
+                  <span style={{ fontSize: 12, color: presetFeedback.startsWith('✓') ? '#3fb950' : '#f85149', fontWeight: 600 }}>
+                    {presetFeedback}
+                  </span>
+                )}
+                {activePreset && (
+                  <span className="chip" style={{ color: '#3fb950', borderColor: '#3fb950', background: 'rgba(63, 185, 80, 0.15)' }}>
+                    Active: {activePreset}
+                  </span>
+                )}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+              <button
+                onClick={() => applyPreset('balance')}
+                style={{
+                  borderColor: '#e3b341',
+                  color: '#e3b341',
+                  background: activePreset === 'balance' ? 'rgba(227, 179, 65, 0.2)' : undefined,
+                  fontWeight: activePreset === 'balance' ? 700 : undefined,
+                }}
+              >
+                ⚖️ Balance {activePreset === 'balance' ? '✓' : ''}
+              </button>
               <button
                 onClick={() => applyPreset('sustainable')}
                 style={{
@@ -295,8 +322,8 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
                 <div key={name} style={{ border: `1px solid ${isCurrent ? '#3fb950' : '#21262d'}`, borderRadius: 6, padding: 10, marginBottom: 8, background: isCurrent ? 'rgba(63, 185, 80, 0.06)' : '#161b22' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <b style={{ color: isCurrent ? '#3fb950' : '#e6edf3' }}>{name} {isCurrent && '(active)'}</b>
-                    <button onClick={() => applyPreset(name)} style={{ marginLeft: 'auto', padding: '4px 8px', fontSize: 12 }}>Apply</button>
-                    <button onClick={async () => { try { const r = await godFetch(`/api/presets/${name}?persist=true&reset=true`, { method: 'POST' }); if (r.ok) alert(name + ' + reset'); else alert('preset failed') } catch { /* cancelled */ } }} style={{ padding: '4px 8px', fontSize: 12 }}>Apply + Reset</button>
+                    <button onClick={() => applyPreset(name, false)} style={{ marginLeft: 'auto', padding: '4px 8px', fontSize: 12, cursor: 'pointer' }}>⚡ Apply</button>
+                    <button onClick={() => applyPreset(name, true)} style={{ padding: '4px 8px', fontSize: 12, background: '#238636', borderColor: '#2ea043', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>🔄 Apply + Reset</button>
                   </div>
                   <div style={{ fontSize: 11, color: '#8b949e', marginTop: 6, wordBreak: 'break-all' }}>
                     {Object.entries(pLaws).slice(0, 8).map(([k, v]) => <span key={k} style={{ marginRight: 8 }}><code>{k}={String(v)}</code></span>)}

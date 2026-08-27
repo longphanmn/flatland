@@ -587,6 +587,17 @@ export default function GodPanel({ open, onClose }: Props) {
   const apply = () => postLaws(false)
   const save = () => postLaws(true)
   const applyAndReset = () => postLaws(true, true)
+  const selectPreset = (name: string) => {
+    setExpandedPreset(name)
+    fetch('/api/presets')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.details?.[name]) {
+          setLaws((prev) => ({ ...prev, ...data.details[name] }))
+        }
+      })
+      .catch(() => {})
+  }
   const applyPreset = async (name: string, reset: boolean) => {
     setError(null)
     setSaved(false)
@@ -688,7 +699,7 @@ export default function GodPanel({ open, onClose }: Props) {
             return (
               <div
                 key={key}
-                onClick={() => setExpandedPreset(key)}
+                onClick={() => selectPreset(key)}
                 style={{
                   background: isActive ? bg : isExpanded ? '#1c2128' : '#161b22',
                   border: `1.5px solid ${isActive ? border : isExpanded ? '#444c56' : '#30363d'}`,
@@ -736,6 +747,7 @@ export default function GodPanel({ open, onClose }: Props) {
                 <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                   <button
                     type="button"
+                    disabled={submitting}
                     onClick={(e) => {
                       e.stopPropagation()
                       applyPreset(key, false)
@@ -743,19 +755,21 @@ export default function GodPanel({ open, onClose }: Props) {
                     title={`Apply ${label} laws to live world`}
                     style={{
                       flex: 1,
-                      padding: '5px 8px',
+                      padding: '6px 8px',
                       fontSize: 11,
                       fontWeight: 600,
-                      background: isActive ? '#21262d' : '#21262d',
+                      background: '#21262d',
                       borderColor: isActive ? border : '#30363d',
                       color: isActive ? color : '#c9d1d9',
                       borderRadius: 6,
+                      cursor: 'pointer',
                     }}
                   >
                     ⚡ Apply Laws
                   </button>
                   <button
                     type="button"
+                    disabled={submitting}
                     onClick={(e) => {
                       e.stopPropagation()
                       applyPreset(key, true)
@@ -763,13 +777,14 @@ export default function GodPanel({ open, onClose }: Props) {
                     title={`Apply ${label} + start fresh world`}
                     style={{
                       flex: 1,
-                      padding: '5px 8px',
+                      padding: '6px 8px',
                       fontSize: 11,
                       fontWeight: 700,
-                      background: isActive ? '#238636' : '#238636',
+                      background: '#238636',
                       borderColor: '#2ea043',
                       color: '#fff',
                       borderRadius: 6,
+                      cursor: 'pointer',
                     }}
                   >
                     🔄 Apply & Reset

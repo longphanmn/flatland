@@ -88,6 +88,18 @@ export async function ensureGodKey(
 
 /** fetch wrapper for god-touching calls: attaches the key, re-asks on failure. */
 export async function godFetch(url: string, init?: RequestInit): Promise<Response> {
+  const cached = getCachedKey()
+  if (cached) {
+    const headers = new Headers(init?.headers)
+    headers.set('X-God-Key', cached)
+    const res = await fetch(url, { ...init, headers })
+    if (res.status !== 401 && res.status !== 409) return res
+    forgetKey()
+  } else {
+    const res = await fetch(url, init)
+    if (res.status !== 401 && res.status !== 409) return res
+  }
+
   let key = await ensureGodKey()
   for (let attempt = 0; attempt < 3 && key; attempt++) {
     const headers = new Headers(init?.headers)
@@ -99,7 +111,7 @@ export async function godFetch(url: string, init?: RequestInit): Promise<Respons
     forgetKey()
     if (code === 'god_key_not_configured') {
       statusKnown = false
-      key = await requestPasskey('create')
+      return fetch(url, init)
     } else {
       key = await requestPasskey('enter', 'Wrong passkey — reset must be done in backend terminal (python -m app.godkey reset <key>)')
     }
