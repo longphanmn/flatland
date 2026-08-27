@@ -222,7 +222,7 @@ export default function App() {
         // New world detection: tick reset or seed change → clear chronicle
         const isNewWorld =
           (prevTickRef.current !== null && msg.tick < prevTickRef.current) ||
-          (prevSeedRef.current !== null && msg.seed !== prevSeedRef.current && msg.tick === 0)
+          (prevSeedRef.current !== null && msg.seed !== prevSeedRef.current)
         if (isNewWorld && !archiveModeRef.current) {
           setLog([])
           setAliveHist([])
@@ -232,6 +232,7 @@ export default function App() {
           oldestLoadedRef.current = null
           seededRef.current = false
           setNoMoreHistory(false)
+          refreshWorlds()
         }
         prevTickRef.current = msg.tick
         prevSeedRef.current = msg.seed

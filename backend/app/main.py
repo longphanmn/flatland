@@ -1788,13 +1788,30 @@ async def auth_setup(body: SetupPasskey) -> dict:
 
 
 @app.post("/api/laws", dependencies=[Depends(require_god)])
-async def write_laws(laws: GodLaws, persist: bool = True) -> dict:
+async def write_laws(laws: GodLaws, persist: bool = True, reset: bool = False) -> dict:
     """Set new laws of nature (god-writable).
 
     persist=true  (default) → Save: current + future worlds (Reset keeps it)
     persist=false → Apply: current world only (Reset reverts)
+    reset=true    → also reset world with new laws
     """
-    return apply_laws(laws, persist=persist)
+    result = apply_laws(laws, persist=persist)
+    if reset:
+        payload = None
+        with RT.lock:
+            base = getattr(RT, "saved_config", RT.config) if persist else RT.config
+            new_cfg = replace(base, seed=random.SystemRandom().randint(0, 2**31 - 1))
+            RT.config = new_cfg
+            RT.sim = Simulation(new_cfg)
+            RT._cached_clans_payload = None
+            RT._cached_plots_payload = None
+            RT._cached_state_text = None
+            RT.paused = False
+            start_world()
+            payload = RT.sim.snapshot_payload()
+        if payload is not None:
+            await HUB.broadcast(payload)
+    return {"laws": result, "reset": reset}
 
 
 @app.get("/api/presets")
@@ -1816,14 +1833,20 @@ async def apply_preset(name: str, persist: bool = True, reset: bool = False) -> 
     laws = GodLaws.model_validate(PRESETS[name])
     result = apply_laws(laws, persist=persist)
     if reset:
-        # reuse RESET logic: new seed, new world
-        base = getattr(RT, "saved_config", RT.config) if persist else RT.config
-        new_cfg = replace(base, seed=random.SystemRandom().randint(0, 2**31 - 1))
-        RT.config = new_cfg
-        RT.sim = Simulation(new_cfg, history=RT.sim.history)
-        RT.paused = False
-        start_world()
-        await HUB.broadcast(RT.sim.snapshot_payload())
+        payload = None
+        with RT.lock:
+            base = getattr(RT, "saved_config", RT.config) if persist else RT.config
+            new_cfg = replace(base, seed=random.SystemRandom().randint(0, 2**31 - 1))
+            RT.config = new_cfg
+            RT.sim = Simulation(new_cfg)
+            RT._cached_clans_payload = None
+            RT._cached_plots_payload = None
+            RT._cached_state_text = None
+            RT.paused = False
+            start_world()
+            payload = RT.sim.snapshot_payload()
+        if payload is not None:
+            await HUB.broadcast(payload)
     return {"preset": name, "laws": result, "reset": reset}
 
 

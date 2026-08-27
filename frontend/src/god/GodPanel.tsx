@@ -553,28 +553,28 @@ export default function GodPanel({ open, onClose }: Props) {
     )
   }
 
-  const postLaws = async (persist: boolean) => {
+  const postLaws = async (persist: boolean, reset: boolean = false) => {
     setError(null)
     setSaved(false)
     setSubmitting(true)
     try {
-      const qs = persist ? '?persist=true' : '?persist=false'
+      const qs = `?persist=${persist ? 'true' : 'false'}${reset ? '&reset=true' : ''}`
       const res = await godFetch(`/api/laws${qs}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(laws),
       })
+      const body = await res.json().catch(() => null)
       if (!res.ok) {
-        const body = await res.json()
         throw new Error(
-          typeof body.detail === 'string'
+          typeof body?.detail === 'string'
             ? body.detail
-            : (body.detail?.[0]?.msg ?? 'law rejected'),
+            : (body?.detail?.[0]?.msg ?? 'law rejected'),
         )
       }
-      const data = await res.json()
-      setLaws(data)
-      setCurrentPreset(detectPreset(data))
+      const lawsData = body?.laws ?? body
+      setLaws(lawsData)
+      setCurrentPreset(detectPreset(lawsData))
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch (e) {
@@ -586,15 +586,22 @@ export default function GodPanel({ open, onClose }: Props) {
   }
   const apply = () => postLaws(false)
   const save = () => postLaws(true)
+  const applyAndReset = () => postLaws(true, true)
   const applyPreset = async (name: string, reset: boolean) => {
     setError(null)
     setSaved(false)
     setSubmitting(true)
     try {
       const res = await godFetch(`/api/presets/${name}?persist=true${reset ? '&reset=true' : ''}`, { method: 'POST' })
-      if (!res.ok) throw new Error((await res.json()).detail ?? 'preset failed')
-      const data = await res.json()
-      setLaws(data.laws)
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(
+          typeof body?.detail === 'string'
+            ? body.detail
+            : (body?.detail?.[0]?.msg ?? 'preset failed'),
+        )
+      }
+      setLaws(body.laws ?? body)
       setCurrentPreset(name)
       setExpandedPreset(name)
       setSaved(true)
@@ -608,13 +615,29 @@ export default function GodPanel({ open, onClose }: Props) {
   }
 
   const foot = (
-    <footer className="god-foot">
+    <footer className="god-foot" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
       {error && <span className="god-error">{error}</span>}
       {!error && saved && <span className="god-saved">✓ Laws active</span>}
       {!error && !saved && submitting && <span className="god-note" style={{ color: '#d29922' }}>Applying…</span>}
       <button onClick={apply} disabled={submitting} title="apply to current world only (Reset reverts)">Apply</button>
       <button onClick={save} disabled={submitting} title="The Sphere — save laws to current and future worlds (Reset keeps it)" className="god-save">
         Save
+      </button>
+      <button
+        onClick={applyAndReset}
+        disabled={submitting}
+        title="Save laws and restart world with new seed"
+        style={{
+          background: '#238636',
+          borderColor: '#2ea043',
+          color: '#fff',
+          fontWeight: 600,
+          padding: '4px 10px',
+          borderRadius: 6,
+          cursor: 'pointer',
+        }}
+      >
+        🔄 Apply & Reset
       </button>
     </footer>
   )
