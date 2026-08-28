@@ -655,12 +655,39 @@ export default function GodPanel({ open, onClose }: Props) {
   }
 
   const foot = (
-    <footer className="god-foot" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+    <footer
+      className="god-foot"
+      style={{
+        display: 'flex',
+        gap: 6,
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        position: 'sticky',
+        bottom: 0,
+        background: '#0d1117',
+        padding: '10px 0 max(10px, env(safe-area-inset-bottom))',
+        borderTop: '1px solid #21262d',
+        zIndex: 1,
+      }}
+    >
       {error && <span className="god-error">{error}</span>}
       {!error && saved && <span className="god-saved">✓ Laws active</span>}
       {!error && !saved && submitting && <span className="god-note" style={{ color: '#d29922' }}>Applying…</span>}
-      <button onClick={apply} disabled={submitting} title="apply to current world only (Reset reverts)">Apply</button>
-      <button onClick={save} disabled={submitting} title="The Sphere — save laws to current and future worlds (Reset keeps it)" className="god-save">
+      <button
+        onClick={apply}
+        disabled={submitting}
+        title="apply to current world only (Reset reverts)"
+        style={{ minHeight: isMobile ? 44 : undefined, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+      >
+        Apply
+      </button>
+      <button
+        onClick={save}
+        disabled={submitting}
+        title="The Sphere — save laws to current and future worlds (Reset keeps it)"
+        className="god-save"
+        style={{ minHeight: isMobile ? 44 : undefined, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+      >
         Save
       </button>
       <button
@@ -672,9 +699,12 @@ export default function GodPanel({ open, onClose }: Props) {
           borderColor: '#2ea043',
           color: '#fff',
           fontWeight: 600,
-          padding: '4px 10px',
+          padding: isMobile ? '10px 12px' : '4px 10px',
           borderRadius: 6,
           cursor: 'pointer',
+          minHeight: isMobile ? 44 : undefined,
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent' as any,
         }}
       >
         🔄 Apply & Reset
@@ -778,13 +808,18 @@ export default function GodPanel({ open, onClose }: Props) {
                     type="button"
                     disabled={submitting}
                     onClick={(e) => {
+                      e.preventDefault()
                       e.stopPropagation()
                       applyPreset(key, false)
+                    }}
+                    onTouchEnd={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
                     }}
                     title={`Apply ${label} laws to live world`}
                     style={{
                       flex: 1,
-                      padding: '6px 8px',
+                      padding: isMobile ? '10px 8px' : '6px 8px',
                       fontSize: 11,
                       fontWeight: 600,
                       background: '#21262d',
@@ -792,6 +827,9 @@ export default function GodPanel({ open, onClose }: Props) {
                       color: isActive ? color : '#c9d1d9',
                       borderRadius: 6,
                       cursor: 'pointer',
+                      minHeight: isMobile ? 44 : undefined,
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
                     }}
                   >
                     ⚡ Apply Laws
@@ -800,13 +838,18 @@ export default function GodPanel({ open, onClose }: Props) {
                     type="button"
                     disabled={submitting}
                     onClick={(e) => {
+                      e.preventDefault()
                       e.stopPropagation()
                       applyPreset(key, true)
+                    }}
+                    onTouchEnd={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
                     }}
                     title={`Apply ${label} + start fresh world`}
                     style={{
                       flex: 1,
-                      padding: '6px 8px',
+                      padding: isMobile ? '10px 8px' : '6px 8px',
                       fontSize: 11,
                       fontWeight: 700,
                       background: '#238636',
@@ -814,6 +857,9 @@ export default function GodPanel({ open, onClose }: Props) {
                       color: '#fff',
                       borderRadius: 6,
                       cursor: 'pointer',
+                      minHeight: isMobile ? 44 : undefined,
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
                     }}
                   >
                     🔄 Apply & Reset

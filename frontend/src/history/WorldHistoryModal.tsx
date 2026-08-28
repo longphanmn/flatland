@@ -546,43 +546,84 @@ ${stylePrompt}
 3. Weave the historical milestones (named wars, house conquests, outbreaks, temples, schisms) into pivotal chapter turns.`
   }, [state, clans, dayRecords, totalStats, totalDays, storyStyle])
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(llmPrompt)
+  const copyToClipboard = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(llmPrompt)
+      } else {
+        throw new Error('no clipboard')
+      }
+    } catch {
+      // fallback for iOS / insecure context: textarea + execCommand + prompt
+      try {
+        const ta = document.createElement('textarea')
+        ta.value = llmPrompt
+        ta.style.position = 'fixed'
+        ta.style.opacity = '0'
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+      } catch {
+        window.prompt('Copy the chronicle (⌘C / Ctrl+C):', llmPrompt)
+        return
+      }
+    }
     setCopied(true)
     setTimeout(() => setCopied(false), 2500)
   }
 
-  const downloadMarkdown = () => {
-    const blob = new Blob([llmPrompt], { type: 'text/markdown;charset=utf-8' })
+  const triggerDownload = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `flatland_detailed_daily_history_seed_${state?.seed ?? 42}.md`
+    a.download = filename
+    a.style.display = 'none'
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    setTimeout(() => {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }, 1000)
+    // iOS fallback: if download didn't trigger, open in new tab
+    if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
+      setTimeout(() => window.open(url, '_blank') ?? undefined, 100)
+    }
+  }
+
+  const downloadMarkdown = () => {
+    const blob = new Blob([llmPrompt], { type: 'text/markdown;charset=utf-8' })
+    triggerDownload(blob, `flatland_detailed_daily_history_seed_${state?.seed ?? 42}.md`)
   }
 
   const downloadJSON = () => {
     const blob = new Blob([JSON.stringify({ state, totalStats, clans, dayRecords }, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `flatland_detailed_daily_history_seed_${state?.seed ?? 42}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    triggerDownload(blob, `flatland_detailed_daily_history_seed_${state?.seed ?? 42}.json`)
   }
 
   if (!open) return null
 
   return (
-    <div className="clan-details-backdrop" onClick={onClose} style={{ zIndex: 100, padding: isMobile ? 0 : undefined }}>
+    <div
+      className="clan-details-backdrop"
+      onClick={onClose}
+      style={{
+        zIndex: 100,
+        padding: isMobile ? 0 : undefined,
+        paddingTop: isMobile ? 'env(safe-area-inset-top)' : undefined,
+        paddingBottom: isMobile ? 'env(safe-area-inset-bottom)' : undefined,
+        overflow: 'auto',
+        WebkitOverflowScrolling: 'touch' as any,
+      }}
+    >
       <div
         className="clan-details-panel"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: isMobile ? '100vw' : 'min(900px, 96vw)',
-          height: isMobile ? '100vh' : 'auto',
-          maxHeight: isMobile ? '100vh' : '92vh',
+          height: isMobile ? '100dvh' : 'auto',
+          maxHeight: isMobile ? '100dvh' : '92vh',
+          minHeight: isMobile ? '100dvh' : undefined,
           display: 'flex',
           flexDirection: 'column',
           padding: 0,
@@ -593,10 +634,10 @@ ${stylePrompt}
           overflow: 'hidden',
         }}
       >
-        {/* Header */}
+        {/* Header — sticky on phone so topbar never scrolls under notch */}
         <header
           style={{
-            padding: isMobile ? '10px 12px 8px' : '14px 18px',
+            padding: isMobile ? 'max(10px, env(safe-area-inset-top)) 12px 8px' : '14px 18px',
             borderBottom: '1px solid #21262d',
             background: '#161b22',
             display: 'flex',
@@ -604,6 +645,10 @@ ${stylePrompt}
             justifyContent: 'space-between',
             alignItems: isMobile ? 'stretch' : 'center',
             gap: isMobile ? 8 : 12,
+            position: isMobile ? ('sticky' as const) : undefined,
+            top: isMobile ? 0 : undefined,
+            zIndex: isMobile ? 5 : undefined,
+            flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: isMobile ? '100%' : 'auto' }}>
@@ -966,10 +1011,11 @@ ${stylePrompt}
                         background: '#21262d',
                         border: '1px solid #30363d',
                         color: '#c9d1d9',
-                        padding: '6px 10px',
+                        padding: isMobile ? '10px 10px' : '6px 10px',
                         borderRadius: 6,
                         fontSize: 12,
                         width: isMobile ? '100%' : 'auto',
+                        minHeight: isMobile ? 44 : undefined,
                       }}
                     >
                       <option value="saga">⚔️ Epic Novel Saga</option>
@@ -987,11 +1033,14 @@ ${stylePrompt}
                           border: '1px solid',
                           borderColor: copied ? '#2ea043' : '#388bfd',
                           color: '#fff',
-                          padding: '6px 14px',
+                          padding: isMobile ? '10px 14px' : '6px 14px',
                           borderRadius: 6,
                           fontSize: 12,
                           cursor: 'pointer',
                           fontWeight: 600,
+                          minHeight: isMobile ? 44 : undefined,
+                          touchAction: 'manipulation',
+                          WebkitTapHighlightColor: 'transparent' as any,
                           textAlign: 'center',
                         }}
                       >
@@ -1003,10 +1052,13 @@ ${stylePrompt}
                           background: '#21262d',
                           border: '1px solid #30363d',
                           color: '#c9d1d9',
-                          padding: '6px 10px',
+                          padding: isMobile ? '10px 10px' : '6px 10px',
                           borderRadius: 6,
                           fontSize: 12,
                           cursor: 'pointer',
+                          minHeight: isMobile ? 44 : undefined,
+                          touchAction: 'manipulation',
+                          WebkitTapHighlightColor: 'transparent' as any,
                         }}
                         title="Download Markdown"
                       >
@@ -1018,10 +1070,13 @@ ${stylePrompt}
                           background: '#21262d',
                           border: '1px solid #30363d',
                           color: '#c9d1d9',
-                          padding: '6px 10px',
+                          padding: isMobile ? '10px 10px' : '6px 10px',
                           borderRadius: 6,
                           fontSize: 12,
                           cursor: 'pointer',
+                          minHeight: isMobile ? 44 : undefined,
+                          touchAction: 'manipulation',
+                          WebkitTapHighlightColor: 'transparent' as any,
                         }}
                         title="Download JSON"
                       >
@@ -1055,10 +1110,10 @@ ${stylePrompt}
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer — sticky so Close always reachable on phone */}
         <footer
           style={{
-            padding: isMobile ? '8px 12px' : '10px 18px',
+            padding: isMobile ? '8px 12px max(12px, env(safe-area-inset-bottom))' : '10px 18px',
             borderTop: '1px solid #21262d',
             background: '#161b22',
             display: 'flex',
@@ -1066,19 +1121,25 @@ ${stylePrompt}
             alignItems: 'center',
             fontSize: isMobile ? 10.5 : 11,
             color: '#8b949e',
+            position: isMobile ? ('sticky' as const) : undefined,
+            bottom: isMobile ? 0 : undefined,
+            flexShrink: 0,
           }}
         >
           <span>{isMobile ? 'Synthesized from world history' : 'Detailed daily chronicle synthesized from SQLite (/api/history?major=true)'}</span>
           <button
             onClick={onClose}
             style={{
-              padding: isMobile ? '5px 14px' : '6px 16px',
+              padding: isMobile ? '10px 16px' : '6px 16px',
               background: '#21262d',
               border: '1px solid #30363d',
               borderRadius: 6,
               color: '#c9d1d9',
               cursor: 'pointer',
               fontSize: isMobile ? 11 : 12,
+              minHeight: isMobile ? 44 : undefined,
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent' as any,
             }}
           >
             Close
