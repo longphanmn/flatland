@@ -377,13 +377,12 @@ def _try_restore_snapshot() -> bool:
         if "dead_by_cause" in data and isinstance(data["dead_by_cause"], dict):
             try:
                 snap_counts = {str(k): int(v) for k, v in data["dead_by_cause"].items()}
-                # if DB has more, merge (keep max per cause or sum? use DB rebuild for accuracy when DB >> snap)
+                # if DB has more, rebuild from DB for accurate breakdown when snapshot is stale
                 if db_total > sum(snap_counts.values()) + 1000:
-                    # rebuild from DB for accurate breakdown when snapshot is stale
                     counts: dict[str,int] = {}
-                    for row in DB.history(RT.world_id, limit=20000):
+                    for row in DB.history(RT.world_id, limit=50000):
                         if row.get("type") == "death":
-                            cause = (row.get("payload") or {}).get("cause") or "unknown"
+                            cause = row.get("cause") or (row.get("payload") or {}).get("cause") or "unknown"
                             counts[cause] = counts.get(cause, 0) + 1
                     if counts: RT.sim._death_counts = counts
                     else: RT.sim._death_counts = snap_counts
@@ -393,9 +392,9 @@ def _try_restore_snapshot() -> bool:
         elif RT.world_id:
             try:
                 counts: dict[str,int] = {}
-                for row in DB.history(RT.world_id, limit=20000):
+                for row in DB.history(RT.world_id, limit=50000):
                     if row.get("type") == "death":
-                        cause = (row.get("payload") or {}).get("cause") or "unknown"
+                        cause = row.get("cause") or (row.get("payload") or {}).get("cause") or "unknown"
                         counts[cause] = counts.get(cause, 0) + 1
                 if counts: RT.sim._death_counts = counts
             except: pass
@@ -487,9 +486,9 @@ async def lifespan(_: FastAPI):
                     RT.sim.deaths = db_total
                     # rebuild breakdown from DB if snapshot tail is stale
                     counts: dict[str,int] = {}
-                    for row in DB.history(RT.world_id, limit=30000):
+                    for row in DB.history(RT.world_id, limit=50000):
                         if row.get("type") == "death":
-                            cause = (row.get("payload") or {}).get("cause") or "unknown"
+                            cause = row.get("cause") or (row.get("payload") or {}).get("cause") or "unknown"
                             counts[cause] = counts.get(cause, 0) + 1
                     if counts: RT.sim._death_counts = counts
             except: pass
