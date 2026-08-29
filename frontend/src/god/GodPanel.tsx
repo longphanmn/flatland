@@ -398,99 +398,15 @@ interface Props {
   onClose: () => void
 }
 
-interface PresetItem {
-  key: string
-  label: string
-  subtitle: string
-  badge?: string
-  color: string
-  border: string
-  bg: string
-  title: string
-  description: string
-  tags: string[]
+const PRESET_META: Record<string, { color: string; border: string; bg: string; badge?: string }> = {
+  balance: { color: '#e3b341', border: '#d29922', bg: 'rgba(227, 179, 65, 0.15)', badge: 'DEFAULT' },
+  sustainable: { color: '#3fb950', border: '#2ea043', bg: 'rgba(63, 185, 80, 0.15)' },
+  theocracy: { color: '#bc8cff', border: '#a371f7', bg: 'rgba(188, 140, 255, 0.15)' },
+  warlords: { color: '#f0883e', border: '#d26a1b', bg: 'rgba(240, 136, 62, 0.15)' },
+  chaos: { color: '#f85149', border: '#da3633', bg: 'rgba(248, 81, 73, 0.15)' },
+  extinction: { color: '#ff7b72', border: '#f85149', bg: 'rgba(255, 123, 114, 0.15)' },
+  boom: { color: '#79c0ff', border: '#388bfd', bg: 'rgba(121, 192, 255, 0.15)' },
 }
-
-const PRESET_LIST: PresetItem[] = [
-  {
-    key: 'balance',
-    label: '⚖️ Balance',
-    subtitle: 'Goldilocks World',
-    badge: 'DEFAULT',
-    color: '#e3b341',
-    border: '#d29922',
-    bg: 'rgba(227, 179, 65, 0.15)',
-    title: 'Goldilocks balance: 240 food, carrying 350, max 500 — gentle harmony for 200-350 population',
-    description: 'All 15+ simulation mechanics active in living harmony: balanced border skirmishes, mild predation, seasonal plagues, bridges, and thriving multi-generational clans.',
-    tags: ['200-350 Pop', 'Living Harmony', 'All Systems Active'],
-  },
-  {
-    key: 'sustainable',
-    label: '🌿 Sustainable',
-    subtitle: '1000-Day Peace',
-    color: '#3fb950',
-    border: '#2ea043',
-    bg: 'rgba(63, 185, 80, 0.15)',
-    title: '1000-day gentle: 360 food, carrying 450, rare war, calm society',
-    description: 'Bountiful agriculture (360 food), rich granaries, seasonal banquets, glowing temples, and gentle winters for long flourishing dynasties.',
-    tags: ['300-500 Pop', 'Rich Granaries', 'Banquets & Peace'],
-  },
-  {
-    key: 'theocracy',
-    label: '🔮 Theocracy',
-    subtitle: 'Age of the Sphere',
-    color: '#bc8cff',
-    border: '#a371f7',
-    bg: 'rgba(188, 140, 255, 0.15)',
-    title: 'Theocracy: high faith tithes, glowing temples, avatar miracles, 3D epiphanies',
-    description: 'Spiritual civilization: devoted prayer to the 8 Sacred 2D Avatars, glowing Temples of the Sphere, divine miracles, and holy synods.',
-    tags: ['Sacred Avatars', 'Glowing Temples', '3D Epiphanies'],
-  },
-  {
-    key: 'warlords',
-    label: '⚔️ Warlords',
-    subtitle: 'Clash of Clans',
-    color: '#f0883e',
-    border: '#d26a1b',
-    bg: 'rgba(240, 136, 62, 0.15)',
-    title: 'Warlords: wide territories, defensive leagues, granary raids, house conquests',
-    description: 'High martial expansion: tactical clan warfare, defensive coalitions, granary plundering, territorial takeovers, and contested thrones.',
-    tags: ['Martial Skirmishes', 'Coalitions', 'Territory Conquest'],
-  },
-  {
-    key: 'chaos',
-    label: '🔥 Chaos',
-    subtitle: 'Total Turmoil',
-    color: '#f85149',
-    border: '#da3633',
-    bg: 'rgba(248, 81, 73, 0.15)',
-    title: 'Chaos: famine, predators, wars, plagues, fires',
-    description: 'Brutal stress test: high predator packs, lethal wars, frequent plagues, wildfires, earthquakes, and rapid seasonal turnover.',
-    tags: ['Deadly Wars', 'Wildfires & Quakes', 'Frequent Plagues'],
-  },
-  {
-    key: 'extinction',
-    label: '💀 Extinction',
-    subtitle: 'Cataclysmic Collapse',
-    color: '#ff7b72',
-    border: '#f85149',
-    bg: 'rgba(255, 123, 114, 0.15)',
-    title: 'Extinction: 120 food, harsh winter 0.3, high decay',
-    description: 'Extreme famine (120 food), freezing winter (0.3x), rampant disease, exposure drain, and desperate cannibalism.',
-    tags: ['Famine', 'Harsh Winter', 'Extinction Challenge'],
-  },
-  {
-    key: 'boom',
-    label: '🚀 Boom',
-    subtitle: 'Monumental Growth',
-    color: '#79c0ff',
-    border: '#388bfd',
-    bg: 'rgba(121, 192, 255, 0.15)',
-    title: 'Boom: 500 food, carrying 800, max 1000 — massive population growth',
-    description: 'Massive urban growth: rapid reproduction, food abundance (500), giant granaries, bridges, and bustling settlements.',
-    tags: ['800-1000 Pop', 'Rapid Births', 'Bustling Cities'],
-  },
-]
 
 function detectPreset(laws: GodLaws): string | null {
   if (laws.food_count === 240 && laws.carrying_capacity === 350) return 'balance'
@@ -723,7 +639,8 @@ export default function GodPanel({ open, onClose }: Props) {
     </header>
   )
 
-  const activePresetMeta = PRESET_LIST.find((p) => p.key === currentPreset)
+  const activePresetMeta = currentPreset ? (PRESET_META as any)[currentPreset] : null
+  const presetKeys = ['balance','sustainable','theocracy','warlords','chaos','extinction','boom'] as const
 
   const body = (
     <>
@@ -748,13 +665,19 @@ export default function GodPanel({ open, onClose }: Props) {
               fontWeight: 700,
             }}
           >
-            {activePresetMeta ? `Active: ${activePresetMeta.label}` : 'Active: ⚙ Custom'}
+            {activePresetMeta && currentPreset ? `${t('god.presets.active', { name: t(`god.presets.${currentPreset}`) })}` : t('god.presets.custom')}
           </span>
         </div>
 
         {/* Preset Cards Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
-          {PRESET_LIST.map(({ key, label, subtitle, badge, description, tags, color, border, bg }) => {
+          {presetKeys.map((key) => {
+            const meta = PRESET_META[key as keyof typeof PRESET_META]
+            const label = t(`god.presets.${key}`)
+            const subtitle = t(`god.presets.${key}Subtitle`)
+            const description = t(`god.presets.${key}Desc`)
+            const tags: string[] = []
+            const { color, border, bg, badge } = meta as any
             const isActive = currentPreset === key
             const isExpanded = expandedPreset === key
             return (

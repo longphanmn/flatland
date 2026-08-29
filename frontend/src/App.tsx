@@ -612,7 +612,7 @@ export default function App() {
       {isMobile && statusExpanded && (
         <div className="hud-detail-sheet" onClick={(e) => { if ((e.target as HTMLElement).tagName !== 'SELECT' && (e.target as HTMLElement).tagName !== 'BUTTON') setStatusExpanded(false); }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#e6edf3' }}>World Details & Navigation</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#e6edf3' }}>{t('app.hud.worldDetails')}</span>
             <button onClick={() => setStatusExpanded(false)} style={{ background: 'transparent', border: 'none', color: '#8b949e', fontSize: 16, cursor: 'pointer', padding: 0, minHeight: 24 }}>✕</button>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>
@@ -628,7 +628,7 @@ export default function App() {
           </div>
           {worlds.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 6, paddingTop: 6, borderTop: '1px solid #21262d', wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>
-              <span style={{ fontSize: 12, color: '#8b949e', flex: 'none', whiteSpace: 'normal' }}>⚖ History Run (The Sphere):</span>
+              <span style={{ fontSize: 12, color: '#8b949e', flex: 'none', whiteSpace: 'normal' }}>{t('app.hud.historyRun')}</span>
               <select
                 className="run-select"
                 value={String(selectedRunId ?? liveWorldId ?? '')}
