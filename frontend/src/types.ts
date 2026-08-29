@@ -100,7 +100,9 @@ export interface ClanInfo {
   tribute_to?: number | null
   faith?: number
   shrine_level?: number
-  specialization?: Record<string, number>
+  population?: number
+  war_wins?: number
+  war_losses?: number
   history?: ClanHistoryEvent[]
 }
 

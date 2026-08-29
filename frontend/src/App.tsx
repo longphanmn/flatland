@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import CanvasRenderer, { CASTE_COLORS } from './render/CanvasRenderer'
-import CasteChart from './render/CasteChart'
-import TrophicChart from './render/TrophicChart'
+import CanvasRenderer from './render/CanvasRenderer'
+import OverviewPanel from './render/OverviewPanel'
 import ClanPanel from './render/ClanPanel'
 import PlotsPanel from './render/PlotsPanel'
 import Collapsible from './render/Collapsible'
@@ -63,7 +62,6 @@ export default function App() {
   const [selectedClanId, setSelectedClanId] = useState<number | null>(null)
   const [showWorldEnd, setShowWorldEnd] = useState(false)
   const [aliveHist, setAliveHist] = useState<number[]>([])
-  const [popHist, setPopHist] = useState<Array<Record<string, number>>>([])
   const [worlds, setWorlds] = useState<WorldSummary[]>([])
   /** null = follow the live run; a number = pinned to that (past) run. */
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null)
@@ -230,7 +228,6 @@ export default function App() {
         if (isNewWorld && !archiveModeRef.current) {
           setLog([])
           setAliveHist([])
-          setPopHist([])
           seenEventsRef.current.clear()
           fetchedByIdRef.current.clear()
           oldestLoadedRef.current = null
@@ -293,11 +290,6 @@ export default function App() {
             isNewWorld && !archiveModeRef.current
               ? [msg.creatures_alive]
               : [...prev.slice(-119), msg.creatures_alive],
-          )
-          setPopHist((prev) =>
-            isNewWorld && !archiveModeRef.current
-              ? [msg.population]
-              : [...prev.slice(-239), msg.population],
           )
           if (!archiveModeRef.current && queuedEventsRef.current.length > 0) {
             const batch = queuedEventsRef.current.splice(0)
@@ -457,12 +449,6 @@ export default function App() {
     [liveWorldId],
   )
 
-
-  const populationEntries = state
-    ? Object.entries(state.population).sort(([a], [b]) => a.localeCompare(b))
-    : []
-  const creatureEntries = populationEntries.filter(([k]) => k in CASTE_COLORS)
-  const objectEntries = populationEntries.filter(([k]) => !(k in CASTE_COLORS))
 
   const hungryCount = state?.entities.filter((e) => e.status === 'hungry').length ?? 0
   const starvingCount = state?.entities.filter((e) => e.status === 'starving').length ?? 0
@@ -772,14 +758,12 @@ export default function App() {
           </div>
           <div className="mobile-sheet-body">
             {sheetTab === 'world' && (
-              <>
-                <h3 className="chronicle-title">{t('app.overview.title')}<span className="chronicle-pop">{creatureEntries.map(([k,v],i)=>(<span key={k} className="pop-chip"><span className="dot-inline" style={{background:CASTE_COLORS[k]??'#8b949e'}}/>{k} <b>{v}</b>{(i<creatureEntries.length-1||objectEntries.length>0)&&' · '}</span>))}{objectEntries.map(([k,v],i)=>(<span key={k} className="pop-chip">{k} <b>{v}</b>{i<objectEntries.length-1&&' · '}</span>))}</span></h3>
-                <CasteChart history={popHist} showLegend={false} />
-                <div style={{ fontSize: 11, color: '#8b949e', margin: '6px 0 2px' }}>{t('app.hud.aliveSpark')}</div>
-                <span className="spark-wrap" style={{ display:'block', width:'100%' }}><svg viewBox="0 0 100 22" className="spark" style={{ width:'100%', height:28 }}>{aliveHist.length>1 && <polyline points={aliveHist.map((v,i)=> `${(i/(aliveHist.length-1))*100},${21-((v-Math.min(...aliveHist))/(Math.max(...aliveHist,1)-Math.min(...aliveHist)||1))*20}`).join(' ')} />}</svg></span>
-                <h4 style={{ margin:'10px 0 4px', fontSize:'0.85em', opacity:0.8 }}>{t('app.overview.trophicTitle')}</h4>
-                <TrophicChart history={popHist} showLegend={false} />
-              </>
+              <OverviewPanel
+                state={state}
+                aliveHist={aliveHist}
+                onSelectCreature={setSelectedId}
+                onSelectClan={setSelectedClanId}
+              />
             )}
             {sheetTab === 'clans' && <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />}
             {sheetTab === 'plots' && <PlotsPanel onSelectClan={setSelectedClanId} />}
@@ -878,56 +862,12 @@ export default function App() {
           onWheel={(e) => e.stopPropagation()}
         >
           <Collapsible id="box-overview" title={t("app.overview.title")} hint={t("app.overview.hint")} defaultOpen={true}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 0', fontSize: 11, color: '#8b949e', marginBottom: 6 }}>
-              {creatureEntries.map(([k, v], i) => (
-                <span key={k} className="pop-chip" title={`${k}: ${v} alive`}>
-                  <span className="dot-inline" style={{ background: CASTE_COLORS[k] ?? '#8b949e' }} />
-                  {k} <b>{v}</b>
-                  {(i < creatureEntries.length - 1 || objectEntries.length > 0) && ' · '}
-                </span>
-              ))}
-              {objectEntries.map(([k, v], i) => {
-                const color = k === 'Food' ? '#3fb950' : k === 'House' ? '#8b949e' : k === 'Corpse' ? '#6e7681' : '#8b949e'
-                return (
-                  <span key={k} className="pop-chip" title={`${k}: ${v} objects`}>
-                    <span className="dot-inline" style={{ background: color }} />
-                    {k} <b>{v}</b>
-                    {i < objectEntries.length - 1 && ' · '}
-                  </span>
-                )
-              })}
-            </div>
-            <Collapsible id="overview-caste-v2" title={t("app.overview.casteTitle")} hint={t("app.overview.casteHint")} defaultOpen={true}>
-              <CasteChart history={popHist} showLegend={false} />
-            </Collapsible>
-            <div className="info-spark" title="alive creatures, recent ticks">
-              <div style={{ fontSize: '11px', color: '#8b949e', marginBottom: 2 }}>{t('app.hud.aliveSpark')}</div>
-              <span className="spark-wrap" title="alive creatures, recent ticks">
-                <svg viewBox="0 0 100 22" className="spark">
-                  {aliveHist.length > 1 && (
-                    <polyline
-                      points={aliveHist
-                        .map(
-                          (v, i) =>
-                            `${(i / (aliveHist.length - 1)) * 100},${21 - ((v - Math.min(...aliveHist)) / (Math.max(...aliveHist, 1) - Math.min(...aliveHist) || 1)) * 20}`,
-                        )
-                        .join(' ')}
-                    />
-                  )}
-                </svg>
-              </span>
-            </div>
-            <Collapsible
-              id="overview-trophic-v2"
-              title={<>{t("app.overview.trophicTitle")} <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span></>}
-              hint={t("app.overview.trophicHint")}
-              defaultOpen={true}
-            >
-              <TrophicChart history={popHist} showLegend={false} />
-            </Collapsible>
-            <Collapsible id="overview-plots" title={t("app.controls.plots")} defaultOpen={true}>
-              <PlotsPanel onSelectClan={setSelectedClanId} />
-            </Collapsible>
+            <OverviewPanel
+              state={state}
+              aliveHist={aliveHist}
+              onSelectCreature={setSelectedId}
+              onSelectClan={setSelectedClanId}
+            />
           </Collapsible>
           <Collapsible id="box-clans" title={t("app.controls.clans")} hint={t("app.overview.hint")} defaultOpen={true}>
             <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
