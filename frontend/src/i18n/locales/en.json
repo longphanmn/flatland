@@ -125,7 +125,8 @@
       "apply": "Apply",
       "save": "Save",
       "saved": "✓ Laws active",
-      "applying": "Applying…"
+      "applying": "Applying…",
+      "loading": "reading the tablets…"
     },
     "footer": {
       "apply": "Apply",
@@ -172,6 +173,12 @@
       "seismic": "Seismic & Waves",
       "electrostatics": "Electrostatics",
       "cosmology": "Cosmology"
+    },
+    "edge": {
+      "edgeOfWorld": "Edge of world",
+      "wrap": "wrap",
+      "walls": "walls",
+      "readingTablets": "reading the tablets…"
     }
   },
   "history": {
@@ -233,7 +240,15 @@
     "loadingOlder": "Loading…",
     "noMore": "No more history",
     "filter": "All",
-    "empty": "No events yet — the world is young."
+    "empty": "No events yet — the world is young.",
+    "categories": {
+      "all": "All",
+      "conflict": "Conflict",
+      "clan": "Clan & Life",
+      "deaths": "Deaths",
+      "plague": "Plague",
+      "nature": "Nature"
+    }
   },
   "confirm": {
     "tip": "Tip: Save before reset to keep the world."
@@ -691,6 +706,8 @@
     "culture_enabled": "Culture",
     "culture_enabledHint": "culture spreads to allied neighbours, can split into rival traditions; grants small collective bonus",
     "cosmologyNote": "Hidden zones of altered physics — fertile ground, heavy gravity, calm air. Skilled foragers discover them; shrines beside one draw extra power. Law changes sweep a shimmer wave across the land (§AQ PH-10).",
-    "worshipNote": "the Sacred Avatars of the Sphere: settled clans consecrate shrines, the devout tithe at dawn & dusk, faith works miracles, chimes ring when laws change, and high faith raises temples"
+    "worshipNote": "the Sacred Avatars of the Sphere: settled clans consecrate shrines, the devout tithe at dawn & dusk, faith works miracles, chimes ring when laws change, and high faith raises temples",
+    "edgeOfWorld": "Edge of world",
+    "edgeHint": "what happens at the edge of the world"
   }
 }

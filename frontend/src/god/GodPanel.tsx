@@ -204,6 +204,45 @@ const GROUP_ORDER = [
   'Cosmology',
 ]
 
+const GROUP_KEY: Record<string, string> = {
+  'Food & Energy': 'foodEnergy',
+  'Ecosystem': 'ecosystem',
+  'Hunger & Sight': 'hungerSight',
+  'Movement': 'movement',
+  'Life & Death': 'lifeDeath',
+  'Reproduction': 'reproduction',
+  'Disease': 'disease',
+  'Sky & Seasons': 'skySeasons',
+  'Ages': 'ages',
+  'Culture': 'culture',
+  'Genetics': 'genetics',
+  'Wildfire & Disasters': 'wildfire',
+  'Weather & Crops': 'weatherCrops',
+  'Weather Sickness': 'weatherSickness',
+  'Shelter': 'shelter',
+  'Territory': 'territory',
+  'Clan': 'clan',
+  'Communication': 'communication',
+  'Communication II': 'communication2',
+  'Language & Diplomacy': 'languageDiplomacy',
+  'Rebellion': 'rebellion',
+  'Interaction': 'interaction',
+  'Predation': 'predation',
+  'Clan War': 'clanWar',
+  'Politics': 'politics',
+  'Desperation': 'desperation',
+  'Food Decay': 'foodDecay',
+  'Agriculture': 'agriculture',
+  'Theology': 'theology',
+  'Bodies & Houses': 'bodiesHouses',
+  'Rivers': 'rivers',
+  'Terrain': 'terrain',
+  'Materials': 'materials',
+  'Seismic & Waves': 'seismic',
+  'Electrostatics': 'electrostatics',
+  'Cosmology': 'cosmology',
+}
+
 // Backend Config defaults — switches render these until laws load.
 const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
   birth_enabled: true,
@@ -806,8 +845,8 @@ export default function GodPanel({ open, onClose }: Props) {
               }
               style={{ minHeight: 32, padding: '4px 8px' }}
             >
-              <option value="wrap">wrap</option>
-              <option value="clamp">walls</option>
+              <option value="wrap">{t('god.edge.wrap')}</option>
+              <option value="clamp">{t('god.edge.walls')}</option>
             </select>
           </label>
 
@@ -1031,7 +1070,7 @@ export default function GodPanel({ open, onClose }: Props) {
             return (
               <section key={group} className="god-group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid #30363d', paddingBottom: 6 }}>
-                  <h3 style={{ margin: 0, fontSize: 13, color: '#e3b341', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{(t(`god.groups.${group}`) !== `god.groups.${group}` ? t(`god.groups.${group}`) : group)}</h3>
+                  <h3 style={{ margin: 0, fontSize: 13, color: '#e3b341', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{(t(`god.groups.${GROUP_KEY[group] ?? group}`) !== `god.groups.${GROUP_KEY[group] ?? group}` ? t(`god.groups.${GROUP_KEY[group] ?? group}`) : group)}</h3>
                   <span style={{ fontSize: 10, color: '#8b949e', fontWeight: 600, background: '#21262d', padding: '1px 6px', borderRadius: 10, border: '1px solid #30363d' }}>
                     {lawsInGroup.length} laws
                   </span>

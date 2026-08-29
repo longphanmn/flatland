@@ -216,6 +216,7 @@ export default function ChronicleFeed({
         >
           {CATEGORIES.map((cat) => {
             const active = category === cat.key
+            const label = t(`chronicle.categories.${cat.key}`) !== `chronicle.categories.${cat.key}` ? t(`chronicle.categories.${cat.key}`) : cat.label
             return (
               <button
                 key={cat.key}
@@ -239,7 +240,7 @@ export default function ChronicleFeed({
                 }}
               >
                 <span>{cat.icon}</span>
-                <span>{cat.label}</span>
+                <span>{label}</span>
               </button>
             )
           })}
