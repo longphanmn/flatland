@@ -490,20 +490,6 @@ export default function App() {
     <div className="app">
       <header className={`hud ${isMobile ? 'hud-compact' : ''}`} onClick={isMobile ? () => setStatusExpanded(o => !o) : undefined} style={isMobile ? { cursor: 'pointer' } : undefined}>
         <span className="title">{t('app.title')}</span>
-        {isMobile && (
-          <select
-            value={lang}
-            onChange={e => setLang(e.target.value as any)}
-            onClick={e => e.stopPropagation()}
-            style={{ background: '#161b22', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 6, padding: '2px 4px', fontSize: 11, cursor: 'pointer', minHeight: 26, marginLeft: 6, flex: 'none' }}
-            title={t('common.language')}
-            aria-label={t('common.language')}
-          >
-            <option value="en">EN</option>
-            <option value="fr">FR</option>
-            <option value="vi">VI</option>
-          </select>
-        )}
         <span className={`dot ${status}`} title={`Connection: ${STATUS_LABEL[status]}`} data-hint={`Connection: ${STATUS_LABEL[status]}`} />
         {status !== 'open' && <span className="chip" style={{ color: status === 'connecting' ? '#d29922' : '#f85149' }}>{STATUS_LABEL[status]}</span>}
         {paused && <span className="chip paused">PAUSED</span>}

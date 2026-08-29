@@ -365,6 +365,26 @@ def _try_restore_snapshot() -> bool:
         RT.sim.world._next_id = max_id + 1
         # Restore tick and meta
         RT.sim.tick = int(data.get("tick") or 0)
+        # Restore death counters from snapshot (or DB total if snapshot old)
+        if "creatures_dead" in data:
+            try: RT.sim.deaths = int(data["creatures_dead"])
+            except: pass
+        elif RT.world_id:
+            try: RT.sim.deaths = int(DB.death_count(RT.world_id))
+            except: pass
+        if "dead_by_cause" in data and isinstance(data["dead_by_cause"], dict):
+            try: RT.sim._death_counts = {str(k): int(v) for k, v in data["dead_by_cause"].items()}
+            except: pass
+        elif RT.world_id:
+            try:
+                # fallback: rebuild from DB history if snapshot lacks breakdown
+                counts: dict[str,int] = {}
+                for row in DB.history(RT.world_id, limit=10000):
+                    cause = (row.get("payload") or {}).get("cause") or row.get("type")
+                    if row.get("type") == "death" and cause:
+                        counts[cause] = counts.get(cause, 0) + 1
+                if counts: RT.sim._death_counts = counts
+            except: pass
         if "clans" in data and isinstance(data["clans"], dict):
             # server keys are strings
             restored_clans: dict[int, dict] = {}

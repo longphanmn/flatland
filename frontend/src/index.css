@@ -1246,7 +1246,7 @@ select {
     display: flex; flex-direction: column; gap: 8px; max-height: 65vh; overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
-  .hud-detail-sheet .chip{ font-size: 11px; }
+  .hud-detail-sheet .chip{ font-size: 11px; white-space: normal !important; word-break: break-word; overflow-wrap: anywhere; }
   .hud-detail-sheet .god-btn { min-height: 34px !important; }
   /* immersive stage — edge-to-edge, overlays float */
   .stage {
