@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { totemEmoji } from '../totems'
+import { useI18n } from '../i18n'
 
 interface ClanKnowledge {
   enemy_clans?: number[]
@@ -39,6 +40,7 @@ interface ClanInfo {
 }
 
 export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelectClan?: (id: number) => void; onSelectCreature?: (id: number) => void }) {
+  const { t } = useI18n()
   const [clans, setClans] = useState<ClanInfo[]>([])
   const [tick, setTick] = useState(0)
 
@@ -70,12 +72,12 @@ export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelect
     }
   }, [])
 
-  if (clans.length === 0) return <p className="chip">no clans yet</p>
+  if (clans.length === 0) return <p className="chip">{t('clanPanel.noClans')}</p>
   const alive = clans.filter((c) => c.population > 0)
 
   return (
     <div className="clan-panel">
-      <h4 style={{ margin: '8px 0 6px', fontSize: '0.9em' }}>Clans — {tick} ticks</h4>
+      <h4 style={{ margin: '8px 0 6px', fontSize: '0.9em' }}>{t('clanPanel.title', { tick })}</h4>
       <div style={{ display: 'grid', gap: 6 }}>
         {alive.map((c) => (
           <div key={c.id} className="clan-card" onClick={() => onSelectClan?.(c.id)} style={{ borderLeft: `4px solid ${c.color}`, padding: '6px 8px', background: '#161b22', border: '1px solid #30363d', borderLeftWidth: 4, borderRadius: 6, cursor: onSelectClan ? 'pointer' : 'default' }} title={onSelectClan ? 'Click for clan details' : undefined}>
@@ -84,14 +86,14 @@ export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelect
               <span className="chip" style={{ background: c.color, color: '#0b0f14' }}>{totemEmoji(c.totem)} {c.totem ?? '—'}</span>
             </div>
             <div className="chip" style={{ marginTop: 4 }}>
-              #{c.id} · pop <b>{c.population}</b> · dead <b style={{ color: '#f85149' }}>{c.dead_count ?? 0}</b> · {c.house ? (c.house.is_ruin ? 'ruins' : `house ${Math.round(c.house.x)},${Math.round(c.house.y)}`) : 'homeless'} · war {c.war_wins}W/{c.war_losses}L
+              #{c.id} · {t('clanPanel.pop')} <b>{c.population}</b> · {t('clanPanel.dead')} <b style={{ color: '#f85149' }}>{c.dead_count ?? 0}</b> · {c.house ? (c.house.is_ruin ? t('clanPanel.ruins') : t('clanPanel.house', { x: Math.round(c.house.x), y: Math.round(c.house.y) })) : t('clanPanel.homeless')} · {t('clanPanel.war')} {c.war_wins}W/{c.war_losses}L
             </div>
             <div className="chip">
-              leader{' '}
-              <button className="chronicle-name" onClick={(e) => { e.stopPropagation(); c.leader_id != null && onSelectCreature?.(c.leader_id) }} title="show leader profile">#{c.leader_id ?? '—'}</button>
-              {' · '}founder{' '}
-              <button className="chronicle-name" onClick={(e) => { e.stopPropagation(); onSelectCreature?.(c.founder_id) }} title="show founder profile">#{c.founder_id}</button>
-              {' · '}day {c.founded_day ?? Math.floor((c.born_tick ?? 0) / 1200)}
+              {t('clanPanel.leader')}{' '}
+              <button className="chronicle-name" onClick={(e) => { e.stopPropagation(); c.leader_id != null && onSelectCreature?.(c.leader_id) }} title={t('clanPanel.showLeader')}>#{c.leader_id ?? '—'}</button>
+              {' · '}{t('clanPanel.founder')}{' '}
+              <button className="chronicle-name" onClick={(e) => { e.stopPropagation(); onSelectCreature?.(c.founder_id) }} title={t('clanPanel.showFounder')}>#{c.founder_id}</button>
+              {' · '}{t('clanPanel.day', { day: c.founded_day ?? Math.floor((c.born_tick ?? 0) / 1200) })}
             </div>
             {c.knowledge && (c.knowledge.enemy_clans?.length || c.knowledge.danger_zones?.length || c.knowledge.food_spots?.length) ? (
               <div className="chip" title="Clan memory — the union of what members remember: enemy clans that struck them, danger zones (predator sightings), known food spots">

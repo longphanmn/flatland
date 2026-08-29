@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { HistoryEvent } from '../types'
+import { useI18n } from '../i18n'
 
 export type EventCategory = 'all' | 'conflict' | 'clan' | 'deaths' | 'plague' | 'nature'
 
@@ -126,6 +127,7 @@ export default function ChronicleFeed({
   maxDisplay = 200,
   compact = false,
 }: Props) {
+  const { t } = useI18n()
   const [category, setCategory] = useState<EventCategory>('all')
   const [search, setSearch] = useState('')
   const [visibleLimit, setVisibleLimit] = useState(maxDisplay)
@@ -145,7 +147,7 @@ export default function ChronicleFeed({
     >
       {archiveMode && selectedRunId !== null && (
         <p className="archive-banner" style={{ margin: 0 }}>
-          viewing archive of world #{selectedRunId} — live feed paused
+          {t('chronicleEvents.archive', { id: selectedRunId })}
         </p>
       )}
 
@@ -169,7 +171,7 @@ export default function ChronicleFeed({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter logs (e.g. #42, Wolf, starvation, birth)..."
+            placeholder={t('chronicleEvents.searchPlaceholder')}
             style={{
               flex: 1,
               background: '#0d1117',
@@ -255,8 +257,7 @@ export default function ChronicleFeed({
           }}
         >
           <span>
-            Showing <b>{displayed.length}</b> of <b>{filtered.length}</b> {filtered.length === 1 ? 'event' : 'events'}
-            {filtered.length !== events.length && ` (${events.length} total)`}
+            {t('chronicleEvents.showing', { displayed: displayed.length, filtered: filtered.length, unit: filtered.length === 1 ? t('chronicleEvents.event') : t('chronicleEvents.events'), total: events.length })}{filtered.length !== events.length ? '' : ` (${events.length} total)`}
           </span>
           {(category !== 'all' || search) && (
             <button
@@ -275,7 +276,7 @@ export default function ChronicleFeed({
                 textDecoration: 'underline',
               }}
             >
-              Reset filter
+              {t('chronicleEvents.resetFilter')}
             </button>
           )}
         </div>
@@ -289,14 +290,14 @@ export default function ChronicleFeed({
           disabled={loadingOlder || noMoreHistory}
           style={{ width: '100%', minHeight: 28, fontSize: 11 }}
         >
-          {loadingOlder ? 'loading older…' : noMoreHistory ? 'no older events' : '↓ Load older events'}
+          {loadingOlder ? t('chronicleEvents.loadingOlder') : noMoreHistory ? t('chronicleEvents.noOlder') : t('chronicleEvents.loadOlder')}
         </button>
       )}
 
       {/* Event Items List */}
       {displayed.length === 0 ? (
         <p className="chip" style={{ margin: '8px 0', textAlign: 'center' }}>
-          {search || category !== 'all' ? 'No events matching filter' : 'No major events recorded yet'}
+          {search || category !== 'all' ? t('chronicleEvents.noMatch') : t('chronicleEvents.noMajor')}
         </p>
       ) : (
         <ul
@@ -825,7 +826,7 @@ export default function ChronicleFeed({
           onClick={() => setVisibleLimit((l) => l + 100)}
           style={{ width: '100%', minHeight: 28, fontSize: 11, marginTop: 4 }}
         >
-          Show more ({filtered.length - visibleLimit} remaining)
+          {t('chronicleEvents.showMore', { remaining: filtered.length - visibleLimit })}
         </button>
       )}
     </div>

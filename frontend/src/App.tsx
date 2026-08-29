@@ -490,9 +490,9 @@ export default function App() {
     <div className="app">
       <header className={`hud ${isMobile ? 'hud-compact' : ''}`} onClick={isMobile ? () => setStatusExpanded(o => !o) : undefined} style={isMobile ? { cursor: 'pointer' } : undefined}>
         <span className="title">{t('app.title')}</span>
-        <span className={`dot ${status}`} title={`Connection: ${STATUS_LABEL[status]}`} data-hint={`Connection: ${STATUS_LABEL[status]}`} />
+        <span className={`dot ${status}`} title={t("app.hints.connection", { status: t(`app.status.${STATUS_LABEL[status]}`) } as any)} data-hint={t("app.hints.connection", { status: t(`app.status.${STATUS_LABEL[status]}`) } as any)} />
         {status !== 'open' && <span className="chip" style={{ color: status === 'connecting' ? '#d29922' : '#f85149' }}>{STATUS_LABEL[status]}</span>}
-        {paused && <span className="chip paused">PAUSED</span>}
+        {paused && <span className="chip paused">{t("app.status.paused")}</span>}
         {state && (
           <span className="chip" title={`Time of day ${state.time_of_day} — night (0-0.22, 0.78-1) dims sight 0.6×, fog 0.6× stack; season ${state.season} changes Food target and disease. Weather ${state.weather}: rain slows 0.85×, storm adds wander.`}>
             {isNight ? '🌙' : '☀'} day <b>{state.day}</b> · {state.season}
@@ -574,7 +574,7 @@ export default function App() {
           </span>
         )}
 
-        {isMobile && <span className="chip" style={{ marginLeft: 'auto', fontSize: 10, color: '#58a6ff' }}>{statusExpanded ? '▲ Close' : '▼ More'}</span>}
+        {isMobile && <span className="chip" style={{ marginLeft: 'auto', fontSize: 10, color: '#58a6ff' }}>{statusExpanded ? `▲ ${t('common.close')}` : `▼ ${t('common.language') === 'Langue' ? 'Plus' : t('common.language') === 'Ngôn ngữ' ? 'Thêm' : 'More'}`}</span>}
 
         <div className="top-right-panel" style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'nowrap', flexShrink: 0 }}>
           <select
@@ -773,11 +773,11 @@ export default function App() {
           <div className="mobile-sheet-body">
             {sheetTab === 'world' && (
               <>
-                <h3 className="chronicle-title">Overview<span className="chronicle-pop">{creatureEntries.map(([k,v],i)=>(<span key={k} className="pop-chip"><span className="dot-inline" style={{background:CASTE_COLORS[k]??'#8b949e'}}/>{k} <b>{v}</b>{(i<creatureEntries.length-1||objectEntries.length>0)&&' · '}</span>))}{objectEntries.map(([k,v],i)=>(<span key={k} className="pop-chip">{k} <b>{v}</b>{i<objectEntries.length-1&&' · '}</span>))}</span></h3>
+                <h3 className="chronicle-title">{t('app.overview.title')}<span className="chronicle-pop">{creatureEntries.map(([k,v],i)=>(<span key={k} className="pop-chip"><span className="dot-inline" style={{background:CASTE_COLORS[k]??'#8b949e'}}/>{k} <b>{v}</b>{(i<creatureEntries.length-1||objectEntries.length>0)&&' · '}</span>))}{objectEntries.map(([k,v],i)=>(<span key={k} className="pop-chip">{k} <b>{v}</b>{i<objectEntries.length-1&&' · '}</span>))}</span></h3>
                 <CasteChart history={popHist} showLegend={false} />
-                <div style={{ fontSize: 11, color: '#8b949e', margin: '6px 0 2px' }}>Alive — recent ticks</div>
+                <div style={{ fontSize: 11, color: '#8b949e', margin: '6px 0 2px' }}>{t('app.hud.aliveSpark')}</div>
                 <span className="spark-wrap" style={{ display:'block', width:'100%' }}><svg viewBox="0 0 100 22" className="spark" style={{ width:'100%', height:28 }}>{aliveHist.length>1 && <polyline points={aliveHist.map((v,i)=> `${(i/(aliveHist.length-1))*100},${21-((v-Math.min(...aliveHist))/(Math.max(...aliveHist,1)-Math.min(...aliveHist)||1))*20}`).join(' ')} />}</svg></span>
-                <h4 style={{ margin:'10px 0 4px', fontSize:'0.85em', opacity:0.8 }}>Trophic — Food · Herbivore · Predator</h4>
+                <h4 style={{ margin:'10px 0 4px', fontSize:'0.85em', opacity:0.8 }}>{t('app.overview.trophicTitle')}</h4>
                 <TrophicChart history={popHist} showLegend={false} />
               </>
             )}
@@ -864,7 +864,7 @@ export default function App() {
 
           </footer>
 
-          <p className="key-hints">space pause · S step · R reset · F fit · +/− zoom</p>
+          <p className="key-hints">{t("app.footer.spacePause")} · {t("app.footer.step")} · {t("app.footer.reset")} · {t("app.footer.fit")} · {t("app.footer.zoom")}</p>
         </>
       )}
 
@@ -877,7 +877,7 @@ export default function App() {
           onTouchStart={(e) => e.stopPropagation()}
           onWheel={(e) => e.stopPropagation()}
         >
-          <Collapsible id="box-overview" title="Overview" hint="Live population — Caste, Alive spark, Trophic, Plots" defaultOpen={true}>
+          <Collapsible id="box-overview" title={t("app.overview.title")} hint={t("app.overview.hint")} defaultOpen={true}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 0', fontSize: 11, color: '#8b949e', marginBottom: 6 }}>
               {creatureEntries.map(([k, v], i) => (
                 <span key={k} className="pop-chip" title={`${k}: ${v} alive`}>
@@ -897,11 +897,11 @@ export default function App() {
                 )
               })}
             </div>
-            <Collapsible id="overview-caste-v2" title="Caste population" hint="Stacked per-caste population over recent ticks" defaultOpen={true}>
+            <Collapsible id="overview-caste-v2" title={t("app.overview.casteTitle")} hint={t("app.overview.casteHint")} defaultOpen={true}>
               <CasteChart history={popHist} showLegend={false} />
             </Collapsible>
             <div className="info-spark" title="alive creatures, recent ticks">
-              <div style={{ fontSize: '11px', color: '#8b949e', marginBottom: 2 }}>Alive — recent ticks</div>
+              <div style={{ fontSize: '11px', color: '#8b949e', marginBottom: 2 }}>{t('app.hud.aliveSpark')}</div>
               <span className="spark-wrap" title="alive creatures, recent ticks">
                 <svg viewBox="0 0 100 22" className="spark">
                   {aliveHist.length > 1 && (
@@ -919,20 +919,20 @@ export default function App() {
             </div>
             <Collapsible
               id="overview-trophic-v2"
-              title={<>Trophic pyramid — Food · Herbivore · Predator <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span></>}
-              hint="Trophic pyramid: stacked history"
+              title={<>{t("app.overview.trophicTitle")} <span style={{ fontWeight: 400, opacity: 0.7 }}>(plants → grazers → hunters)</span></>}
+              hint={t("app.overview.trophicHint")}
               defaultOpen={true}
             >
               <TrophicChart history={popHist} showLegend={false} />
             </Collapsible>
-            <Collapsible id="overview-plots" title="Plots" defaultOpen={true}>
+            <Collapsible id="overview-plots" title={t("app.controls.plots")} defaultOpen={true}>
               <PlotsPanel onSelectClan={setSelectedClanId} />
             </Collapsible>
           </Collapsible>
-          <Collapsible id="box-clans" title="Clans" hint="Clans — settlements with population, totem and war record" defaultOpen={true}>
+          <Collapsible id="box-clans" title={t("app.controls.clans")} hint={t("app.overview.hint")} defaultOpen={true}>
             <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
           </Collapsible>
-          <Collapsible id="box-chronicle" title="Chronicle" hint="Event history — births, deaths, wars" defaultOpen={true}>
+          <Collapsible id="box-chronicle" title={t("chronicle.title")} hint={t("chronicle.title")} defaultOpen={true}>
             <ChronicleFeed
               events={log}
               clanLabel={clanLabel}

@@ -491,10 +491,12 @@ export default function GodPanel({ open, onClose }: Props) {
 
   const ToggleRow = ({ k, label, title, hideIfOff }: { k: BoolLawKey; label: string; title?: string; hideIfOff?: BoolLawKey | BoolLawKey[] }) => {
     if (hideIfOff && !gateOpen(hideIfOff)) return null
+    const trLabel = t(`godToggles.${k}`) !== `godToggles.${k}` ? t(`godToggles.${k}`) : label
+    const trTitle = t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint` ? t(`godToggles.${k}Hint`) : title
     return (
       <div className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, borderBottom: '1px solid #21262d', padding: '8px 10px' }}>
-        <span title={title} style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500 }}>{label}</span>
-        <Switch checked={boolVal(k)} onChange={(v) => setBool(k, v)} title={title ?? label} />
+        <span title={trTitle} style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500 }}>{trLabel}</span>
+        <Switch checked={boolVal(k)} onChange={(v) => setBool(k, v)} title={trTitle ?? trLabel} />
       </div>
     )
   }
@@ -589,12 +591,12 @@ export default function GodPanel({ open, onClose }: Props) {
       }}
     >
       {error && <span className="god-error">{error}</span>}
-      {!error && saved && <span className="god-saved">✓ Laws active</span>}
-      {!error && !saved && submitting && <span className="god-note" style={{ color: '#d29922' }}>Applying…</span>}
+      {!error && saved && <span className="god-saved">{t('god.presets.saved')}</span>}
+      {!error && !saved && submitting && <span className="god-note" style={{ color: '#d29922' }}>{t('god.presets.applying')}</span>}
       <button
         onClick={apply}
         disabled={submitting}
-        title="apply to current world only (Reset reverts)"
+        title={t("god.footer.applyDesc")}
         style={{ minHeight: isMobile ? 44 : undefined, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
       >
         Apply
@@ -602,16 +604,15 @@ export default function GodPanel({ open, onClose }: Props) {
       <button
         onClick={save}
         disabled={submitting}
-        title="The Sphere — save laws to current and future worlds (Reset keeps it)"
+        title={t("god.footer.saveDesc")}
         className="god-save"
         style={{ minHeight: isMobile ? 44 : undefined, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
-      >
-        Save
+      >{t('god.footer.save')}
       </button>
       <button
         onClick={applyAndReset}
         disabled={submitting}
-        title="Save laws and restart world with new seed"
+        title={t("god.footer.applyResetDesc")}
         style={{
           background: '#238636',
           borderColor: '#2ea043',
@@ -624,8 +625,7 @@ export default function GodPanel({ open, onClose }: Props) {
           touchAction: 'manipulation',
           WebkitTapHighlightColor: 'transparent' as any,
         }}
-      >
-        🔄 Apply & Reset
+      >{t('god.footer.applyReset')}
       </button>
     </footer>
   )
@@ -644,10 +644,7 @@ export default function GodPanel({ open, onClose }: Props) {
 
   const body = (
     <>
-      <p className="god-note">
-        You are The Sphere (God): set the universal laws from Spaceland, never the fates.
-        Creatures and the world obey the higher-dimensional law; no single life may be touched.
-      </p>
+      <p className="god-note">{t('god.subtitle')}</p>
 
       <div className="god-group" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 2 }}>
@@ -797,11 +794,11 @@ export default function GodPanel({ open, onClose }: Props) {
       </div>
 
       {loading ? (
-        <p className="god-note">reading the tablets…</p>
+        <p className="god-note">{t("god.presets.loading" as any) || "reading the tablets…"}</p>
       ) : (
         <>
           <label className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderBottom: '1px solid #30363d' }}>
-            <span title="what happens at the edge of the world" style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500 }}>Edge of world</span>
+            <span title={t("godToggles.edgeHint" as any) || "what happens at the edge of the world"} style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500 }}>{t("godToggles.edgeOfWorld" as any) || "Edge of world"}</span>
             <select
               value={laws.boundary ?? 'wrap'}
               onChange={(e) =>
@@ -956,14 +953,15 @@ export default function GodPanel({ open, onClose }: Props) {
               </>
             )
             const rows = lawsInGroup.map(({ key, label, min, max, step }) => {
-              const hint = LAW_HINTS[key]
+              const translatedLabel = t(`godLaws.${key}`) !== `godLaws.${key}` ? t(`godLaws.${key}`) : label
+              const hint = (t(`godHints.${key}`) !== `godHints.${key}` ? t(`godHints.${key}`) : LAW_HINTS[key])
               const isOpen = openHint === key
               return (
                 <div key={key} style={{ borderBottom: '1px solid #30363d', padding: isOpen ? '8px 10px' : '6px 10px' }}>
                   <label className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 8 }}>
                     <span style={{ display: 'flex', gap: 6, alignItems: 'center', flex: 1, minWidth: 0 }}>
                       <span title={hint} style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {label}
+                        {translatedLabel}
                       </span>
                       {hint && (
                         <button
@@ -971,7 +969,7 @@ export default function GodPanel({ open, onClose }: Props) {
                           onClick={() => setOpenHint(isOpen ? null : key)}
                           title={hint}
                           style={{ width: 22, height: 22, borderRadius: '50%', border: '1px solid #484f58', background: isOpen ? '#30363d' : '#21262d', color: isOpen ? '#f0f6fc' : '#8b949e', fontSize: 12, lineHeight: 1, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
-                          aria-label={`hint for ${label}`}
+                          aria-label={`hint for ${translatedLabel}`}
                         >
                           ?
                         </button>
@@ -1033,7 +1031,7 @@ export default function GodPanel({ open, onClose }: Props) {
             return (
               <section key={group} className="god-group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid #30363d', paddingBottom: 6 }}>
-                  <h3 style={{ margin: 0, fontSize: 13, color: '#e3b341', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{group}</h3>
+                  <h3 style={{ margin: 0, fontSize: 13, color: '#e3b341', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{(t(`god.groups.${group}`) !== `god.groups.${group}` ? t(`god.groups.${group}`) : group)}</h3>
                   <span style={{ fontSize: 10, color: '#8b949e', fontWeight: 600, background: '#21262d', padding: '1px 6px', borderRadius: 10, border: '1px solid #30363d' }}>
                     {lawsInGroup.length} laws
                   </span>

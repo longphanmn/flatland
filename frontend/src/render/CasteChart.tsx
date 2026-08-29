@@ -1,4 +1,5 @@
 import { CASTE_COLORS } from '../render/CanvasRenderer'
+import { useI18n } from '../i18n'
 
 interface Props {
   history: Array<Record<string, number>>
@@ -7,8 +8,9 @@ interface Props {
 
 /** Stacked-line population history per caste, client-side only. */
 export default function CasteChart({ history, showLegend = true }: Props) {
+  const { t } = useI18n()
   if (history.length < 2) {
-    return <p className="chip">collecting history…</p>
+    return <p className="chip">{t('charts.collectingHistory')}</p>
   }
   const castes = Object.keys(CASTE_COLORS).filter((c) =>
     history.some((h) => (h[c] ?? 0) > 0),

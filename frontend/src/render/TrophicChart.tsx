@@ -1,3 +1,5 @@
+import { useI18n } from '../i18n'
+
 interface Props {
   history: Array<Record<string, number>>
   showLegend?: boolean
@@ -12,11 +14,12 @@ const TROPHIC_COLORS: Record<string, string> = {
 
 /** Trophic pyramid history: plants → herbivores → predators, client-side only. */
 export default function TrophicChart({ history, showLegend = true }: Props) {
-  if (history.length < 2) return <p className="chip">collecting trophic…</p>
+  const { t } = useI18n()
+  if (history.length < 2) return <p className="chip">{t('charts.collectingTrophic')}</p>
   const trophics = ['Food', 'Herbivore', 'Predator'] as const
   // only show those that ever appeared
   const shown = trophics.filter((k) => history.some((h) => (h[k] ?? 0) > 0))
-  if (shown.length === 0) return <p className="chip">no trophic data</p>
+  if (shown.length === 0) return <p className="chip">{t('charts.noTrophic')}</p>
   const max = Math.max(1, ...history.map((h) => shown.reduce((a, k) => a + (h[k] ?? 0), 0)))
   const W = 100
   const H = 46

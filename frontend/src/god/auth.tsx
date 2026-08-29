@@ -6,6 +6,7 @@ a 401 clears it and asks to enter it again. REST uses the X-God-Key header,
 WebSocket control messages carry it in the `key` field.
 */
 import { useEffect, useState } from 'react'
+import { useI18n } from '../i18n'
 
 const STORAGE_KEY = 'flatworld-god-key'
 
@@ -121,6 +122,7 @@ export async function godFetch(url: string, init?: RequestInit): Promise<Respons
 
 /** The dialog itself — mount once, near the app root. */
 export function AuthModal() {
+  const { t } = useI18n()
   const [tick, setTick] = useState(0)
   const [value, setValue] = useState('')
   useEffect(() => {
@@ -213,7 +215,7 @@ export function AuthModal() {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, fontSize: 16 }}>
-            {currentMode === 'create' ? 'Create a Sphere passkey' : 'The Sphere (God Passkey)'}
+            {currentMode === 'create' ? t('auth.createTitle') : t('auth.enterTitle')}
           </h3>
           <button
             onClick={() => close(null)}
@@ -223,9 +225,7 @@ export function AuthModal() {
           </button>
         </div>
         <p style={{ margin: 0, fontSize: 12, color: '#8b949e', lineHeight: 1.4 }}>
-          {currentMode === 'create'
-            ? 'No passkey exists yet. Set a passkey (min 4 chars) to govern Flatland as The Sphere (God).'
-            : 'Setting laws and governing Flatland requires the passkey of The Sphere (God). (Reset is only available via server terminal: python -m app.godkey reset <key>)'}
+          {currentMode === 'create' ? t('auth.createDesc') : t('auth.enterDesc')}
         </p>
 
         {current.error && <p style={{ margin: 0, fontSize: 12, color: '#f85149', lineHeight: 1.4 }}>{current.error}</p>}
@@ -233,7 +233,7 @@ export function AuthModal() {
           autoFocus
           type="password"
           value={value}
-          placeholder={currentMode === 'create' ? 'new passkey' : 'passkey'}
+          placeholder={currentMode === 'create' ? t('auth.newPasskey') : t('auth.passkey')}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') void submit()
@@ -250,14 +250,14 @@ export function AuthModal() {
         />
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
           <button onClick={() => close(null)} style={{ padding: '6px 12px', minHeight: 36 }}>
-            Cancel
+            {t('auth.cancel')}
           </button>
           <button
             onClick={() => void submit()}
             disabled={submitting}
             style={{ padding: '6px 14px', borderColor: '#d29922', color: '#d29922', minHeight: 36, fontWeight: 600 }}
           >
-            {currentMode === 'create' ? 'Create' : 'Unlock'}
+            {currentMode === 'create' ? t('auth.create') : t('auth.unlock')}
           </button>
         </div>
       </div>

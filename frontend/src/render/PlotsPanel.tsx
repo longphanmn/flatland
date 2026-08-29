@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useI18n } from '../i18n'
 
 interface Plot {
   type: 'war' | 'schism'
@@ -14,6 +15,7 @@ interface Plot {
 }
 
 export default function PlotsPanel({ onSelectClan }: { onSelectClan?: (id: number) => void }) {
+  const { t } = useI18n()
   const [plots, setPlots] = useState<Plot[]>([])
   useEffect(() => {
     let alive = true
@@ -37,10 +39,10 @@ export default function PlotsPanel({ onSelectClan }: { onSelectClan?: (id: numbe
       document.removeEventListener('visibilitychange', onVis)
     }
   }, [])
-  if (plots.length === 0) return <p className="chip">no plots — the world is calm</p>
+  if (plots.length === 0) return <p className="chip">{t('plots.noPlots')}</p>
   return (
     <div className="plots-panel">
-      <h4 style={{ margin: '8px 0 6px', fontSize: '0.9em' }}>Plots — foreshadowing</h4>
+      <h4 style={{ margin: '8px 0 6px', fontSize: '0.9em' }}>{t('plots.title')}</h4>
       <div style={{ display: 'grid', gap: 4 }}>
         {plots.map((pl, i) => (
           <div key={i} style={{ background: '#161b22', border: '1px solid #7e6325', borderRadius: 6, padding: '6px 8px' }}>
@@ -75,8 +77,8 @@ export default function PlotsPanel({ onSelectClan }: { onSelectClan?: (id: numbe
             <div style={{ height: 4, background: '#21262d', borderRadius: 2, marginTop: 4 }}>
               <div style={{ width: `${(pl.progress / pl.max) * 100}%`, height: '100%', background: pl.type === 'war' ? '#f85149' : '#e3b341', borderRadius: 2 }} />
             </div>
-            {pl.type === 'war' && pl.distance != null && <div className="chip" style={{ marginTop: 2 }}>closest {pl.distance}u</div>}
-            {pl.type === 'schism' && <div className="chip" style={{ marginTop: 2 }}>{pl.unhappy}/{pl.pop} unhappy</div>}
+            {pl.type === 'war' && pl.distance != null && <div className="chip" style={{ marginTop: 2 }}>{t('plots.closest', { distance: pl.distance })}</div>}
+            {pl.type === 'schism' && <div className="chip" style={{ marginTop: 2 }}>{t('plots.unhappy', { unhappy: pl.unhappy, pop: pl.pop })}</div>}
           </div>
         ))}
       </div>

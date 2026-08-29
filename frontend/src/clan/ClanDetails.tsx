@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { TOTEMS, totemEmoji } from '../totems'
 import Collapsible from '../render/Collapsible'
 import type { ClanHistoryEvent } from '../types'
+import { useI18n } from '../i18n'
 
 interface ClanMember {
   id: number
@@ -75,6 +76,7 @@ export default function ClanDetails({
   onClose: () => void
   onSelectCreature?: (id: number) => void
 }) {
+  const { t } = useI18n()
   const [data, setData] = useState<ClanDetailsData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -112,7 +114,7 @@ export default function ClanDetails({
           <h2>Clan #{clanId}</h2>
           <button className="god-close" onClick={onClose} aria-label="close">×</button>
         </header>
-        <p className="god-note">Loading clan dossier…</p>
+        <p className="god-note">{t('clanDetails.loading')}</p>
       </aside>
     )
   }
@@ -124,7 +126,7 @@ export default function ClanDetails({
           <h2>Clan #{clanId}</h2>
           <button className="god-close" onClick={onClose} aria-label="close">×</button>
         </header>
-        <p className="god-note">Clan not found or has perished from the world.</p>
+        <p className="god-note">{t('clanDetails.notFound')}</p>
       </aside>
     )
   }
@@ -163,16 +165,16 @@ export default function ClanDetails({
         }}
       >
         <span>
-          {data.totem ? `${totemEmoji(data.totem)} ${data.totem}` : 'No Avatar'} · Born tick {data.born_tick}
+          {data.totem ? `${totemEmoji(data.totem)} ${data.totem}` : t('clanDetails.noAvatar')} · {t('clanDetails.bornTick', { tick: data.born_tick })}
         </span>
-        <span style={{ color: data.color, fontWeight: 700 }}>{data.population} alive</span>
+        <span style={{ color: data.color, fontWeight: 700 }}>{t('clanDetails.alive', { count: data.population })}</span>
       </div>
 
       {/* §AP Theology — avatar dogma + faith pool */}
       {(data.faith != null || (data.shrine_level ?? 0) >= 1) && (
         <div className="chip" title="§AP Theology — the Sacred Avatar watches this clan; dawn & dusk tithes fill its faith pool and the shrine aura mends the faithful">
-          {(data.shrine_level ?? 0) >= 2 ? '⛪ Temple of the Sphere' : (data.shrine_level ?? 0) >= 1 ? '🕯️ Shrine consecrated' : 'No shrine'}
-          {typeof data.faith === 'number' && data.faith > 0 ? ` · ⛲ ${Math.round(data.faith)} faith` : ''}
+          {(data.shrine_level ?? 0) >= 2 ? t('clanDetails.templeOfSphere') : (data.shrine_level ?? 0) >= 1 ? t('clanDetails.shrine') : t('clanDetails.noShrine')}
+          {typeof data.faith === 'number' && data.faith > 0 ? ` · ${t('clanDetails.faith', { count: Math.round(data.faith) })}` : ''}
         </div>
       )}
 
@@ -204,20 +206,20 @@ export default function ClanDetails({
 
       {/* Clan Stats Grid */}
       <div className="insp-grid">
-        <span className="chip" title={`Founded at tick ${data.born_tick ?? 0}`}>
-          🌱 Founded <b>Day {data.founded_day ?? Math.floor((data.born_tick ?? 0) / 1200)}</b>
+        <span className="chip" title={t('clanDetails.foundedTitle', { tick: data.born_tick ?? 0 })}>
+          {t('clanDetails.founded', { day: data.founded_day ?? Math.floor((data.born_tick ?? 0) / 1200) })}
         </span>
-        <span className="chip dead" title="Total clan members who have died">
-          💀 Dead <b>{data.dead_count ?? 0}</b>
+        <span className="chip dead" title={t('clanDetails.deadTitle')}>
+          {t('clanDetails.dead', { count: data.dead_count ?? 0 })}
         </span>
         <span className="chip">
-          Founder{' '}
+          {t('clanDetails.founder')}{' '}
           {data.founder_id != null ? (
             <button
               type="button"
               className="chronicle-name"
               onClick={() => onSelectCreature?.(data.founder_id)}
-              title="Inspect founder dossier"
+              title={t('clanDetails.inspectFounder')}
               style={{ fontWeight: 600 }}
             >
               #{data.founder_id} ↗
@@ -227,13 +229,13 @@ export default function ClanDetails({
           )}
         </span>
         <span className="chip">
-          Leader{' '}
+          {t('clanDetails.leader')}{' '}
           {data.leader_id != null ? (
             <button
               type="button"
               className="chronicle-name"
               onClick={() => onSelectCreature?.(data.leader_id!)}
-              title="Inspect leader dossier"
+              title={t('clanDetails.inspectLeader')}
               style={{ fontWeight: 600, color: data.color }}
             >
               #{data.leader_id} ↗
@@ -243,31 +245,31 @@ export default function ClanDetails({
           )}
         </span>
         <span className="chip">
-          War <b>{data.war_wins}W</b> / <b>{data.war_losses}L</b>
+          {t('clanDetails.war', { wins: data.war_wins, losses: data.war_losses })}
         </span>
         <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px 8px', background: 'rgba(22, 27, 34, 0.6)', padding: '5px 8px', borderRadius: 4, border: '1px solid #30363d' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
             <span>👑</span>
             {data.house ? (
-              <span><b style={{ color: '#e6edf3' }}>Main House #{data.house.id}</b> <span style={{ color: '#8b949e', fontSize: 11 }}>({Math.round(data.house.x)}, {Math.round(data.house.y)})</span></span>
+              <span><b style={{ color: '#e6edf3' }}>{t('clanDetails.mainHouse', { id: data.house.id, x: Math.round(data.house.x), y: Math.round(data.house.y) })}</b></span>
             ) : (
-              <span style={{ color: '#8b949e' }}>🏕 Homeless</span>
+              <span style={{ color: '#8b949e' }}>{t('clanDetails.homeless')}</span>
             )}
           </div>
           {data.house && data.leader_id ? (
             <span style={{ color: data.color, fontWeight: 600, fontSize: 11, background: `${data.color}22`, padding: '1px 6px', borderRadius: 3, border: `1px solid ${data.color}44`, whiteSpace: 'nowrap' }}>
-              👑 Leader Residence
+              {t('clanDetails.leaderResidence')}
             </span>
           ) : null}
         </div>
         {((data.houses?.length ?? 0) > 1) && (
           <span className="chip">
-            🏠 Houses <b>{data.houses!.length}</b> total
+            {t('clanDetails.houses', { count: data.houses!.length })}
           </span>
         )}
         {data.territory_radius && (
           <span className="chip">
-            📍 Radius <b>r{data.territory_radius}</b>
+            {t('clanDetails.radius', { r: data.territory_radius })}
           </span>
         )}
         {data.culture && (
@@ -279,7 +281,7 @@ export default function ClanDetails({
 
       {/* Clan History & Major Milestones Section */}
       {data.history && data.history.length > 0 && (
-        <Collapsible id={`clan-history-${data.id}`} title={<h3 className="insp-h">📜 Clan History & Milestones</h3>} defaultOpen={true}>
+        <Collapsible id={`clan-history-${data.id}`} title={<h3 className="insp-h">{t('clanDetails.history')}</h3>} defaultOpen={true}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 4, maxHeight: 180, overflowY: 'auto' }}>
             {data.history.slice().reverse().map((h, i) => (
               <div
@@ -294,11 +296,11 @@ export default function ClanDetails({
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#8b949e', fontSize: 10 }}>
                   <span style={{ textTransform: 'capitalize', fontWeight: 600, color: '#c9d1d9' }}>
-                    {h.event === 'founded' ? '🌱 Foundation' :
-                     h.event === 'leader_change' ? '👑 Succession' :
-                     h.event === 'hq_relocated' ? '🏛️ Headquarters' :
-                     h.event === 'war_declared' ? '⚔️ War' :
-                     h.event === 'tribute_paid' ? '🤝 Treaty' : h.event}
+                    {h.event === 'founded' ? t('clanDetails.foundation') :
+                     h.event === 'leader_change' ? t('clanDetails.succession') :
+                     h.event === 'hq_relocated' ? t('clanDetails.hq') :
+                     h.event === 'war_declared' ? t('clanDetails.warEvent') :
+                     h.event === 'tribute_paid' ? t('clanDetails.treaty') : h.event}
                   </span>
                   <span>Day {h.day} · tick {h.tick}</span>
                 </div>
@@ -311,7 +313,7 @@ export default function ClanDetails({
 
       {/* Houses Collapsible */}
       {(data.houses && data.houses.length > 0) && (
-        <Collapsible id={`clan-houses-${data.id}`} title={<h3 className="insp-h">Houses ({data.houses.length})</h3>}>
+        <Collapsible id={`clan-houses-${data.id}`} title={<h3 className="insp-h">{t('clanDetails.housesTitle', { count: data.houses.length })}</h3>}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
             {data.houses.map((h) => (
               <div
@@ -328,10 +330,10 @@ export default function ClanDetails({
                 }}
               >
                 <span>
-                  {h.is_main ? '👑 Main House' : '🏠 Outpost'} #{h.id} ({Math.round(h.x)}, {Math.round(h.y)})
+                  {h.is_main ? t('clanDetails.mainHouseLabel') : t('clanDetails.outpost')} #{h.id} ({Math.round(h.x)}, {Math.round(h.y)})
                 </span>
                 <span style={{ fontSize: 10.5, color: h.is_main ? '#e3b341' : '#8b949e', fontWeight: 600 }}>
-                  {h.is_main ? `Leader HQ` : `size ${h.size.toFixed(1)}`}
+                  {h.is_main ? t('clanDetails.leaderResidence') : t('clanDetails.size', { n: h.size.toFixed(1) })}
                 </span>
               </div>
             ))}
@@ -341,7 +343,7 @@ export default function ClanDetails({
 
       {/* Specialization Bars */}
       {data.specialization && (
-        <Collapsible id={`clan-spec-${data.id}`} title={<h3 className="insp-h">Specialization</h3>}>
+        <Collapsible id={`clan-spec-${data.id}`} title={<h3 className="insp-h">{t('clanDetails.specialization')}</h3>}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
             <Bar label="⚔ warrior" value={data.specialization.warrior * 100} max={100} color="#ff7b72" />
             <Bar label="🌾 farmer" value={data.specialization.farmer * 100} max={100} color="#3fb950" />
@@ -351,9 +353,9 @@ export default function ClanDetails({
       )}
 
       {/* Members Section */}
-      <Collapsible id={`clan-members-${data.id}`} title={<h3 className="insp-h">Members ({data.members.length})</h3>}>
+      <Collapsible id={`clan-members-${data.id}`} title={<h3 className="insp-h">{t('clanDetails.members', { count: data.members.length })}</h3>}>
         {data.members.length === 0 ? (
-          <p className="chip" style={{ margin: '4px 0' }}>No living members — clan is extinct.</p>
+          <p className="chip" style={{ margin: '4px 0' }}>{t('clanDetails.noMembers')}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto' }}>
             {data.members.map((m) => (
@@ -371,7 +373,7 @@ export default function ClanDetails({
                   padding: '5px 8px',
                   cursor: 'pointer',
                 }}
-                title={`Inspect creature #${m.id}`}
+                title={t('clanDetails.inspectCreature', { id: m.id })}
               >
                 <span>
                   <b>{m.personal_name}</b> {m.glyph} #{m.id} · {m.caste}
@@ -386,9 +388,9 @@ export default function ClanDetails({
       </Collapsible>
 
       {/* Events / Chronicle Section */}
-      <Collapsible id={`clan-events-${data.id}`} title={<h3 className="insp-h">Recent Activity</h3>}>
+      <Collapsible id={`clan-events-${data.id}`} title={<h3 className="insp-h">{t('clanDetails.recentActivity')}</h3>}>
         {data.events.length === 0 ? (
-          <p className="chip" style={{ margin: '4px 0' }}>No recent clan events.</p>
+          <p className="chip" style={{ margin: '4px 0' }}>{t('clanDetails.noEvents')}</p>
         ) : (
           <ul className="insp-events" style={{ maxHeight: 150, overflowY: 'auto', margin: 0, padding: 0 }}>
             {data.events.slice().reverse().map((ev: any, i: number) => (
@@ -407,6 +409,7 @@ export default function ClanDetails({
 }
 
 function FullHistory({ clanId, color }: { clanId: number; color: string }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [events, setEvents] = useState<any[]>([])
   const [page, setPage] = useState(0)
@@ -439,16 +442,16 @@ function FullHistory({ clanId, color }: { clanId: number; color: string }) {
           loadPage(0, true)
         }}
       >
-        📚 Full History (all pages)
+        {t('clanDetails.fullHistory')}
       </button>
     )
   }
   return (
     <div style={{ marginTop: 4 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <span className="chip">📚 Full History · {total} events</span>
+        <span className="chip">{t('clanDetails.fullHistoryTitle', { total })}</span>
         <button type="button" className="chip" style={{ cursor: 'pointer' }} onClick={() => setOpen(false)}>
-          close
+          {t('clanDetails.close')}
         </button>
       </div>
       <ul className="insp-events" style={{ maxHeight: 220, overflowY: 'auto', margin: 0, padding: 0 }}>
@@ -458,7 +461,7 @@ function FullHistory({ clanId, color }: { clanId: number; color: string }) {
           </li>
         ))}
         {events.length === 0 && !loading && (
-          <li className="chip" style={{ fontSize: 11.5 }}>No recorded clan events.</li>
+          <li className="chip" style={{ fontSize: 11.5 }}>{t('clanDetails.noRecorded')}</li>
         )}
       </ul>
       {hasMore && (
@@ -469,7 +472,7 @@ function FullHistory({ clanId, color }: { clanId: number; color: string }) {
           disabled={loading}
           onClick={() => loadPage(page + 1, false)}
         >
-          {loading ? 'loading…' : 'load older'}
+          {loading ? t('clanDetails.loading') : t('clanDetails.loadOlder')}
         </button>
       )}
     </div>

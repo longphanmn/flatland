@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { EntityState, HistoryEvent } from '../types'
 import Collapsible from '../render/Collapsible'
 import { totemEmoji } from '../totems'
+import { useI18n } from '../i18n'
 
 const CASTE_COLORS: Record<string, string> = {
   Soldier: '#ff7b72',
@@ -99,18 +100,18 @@ function Bar({ label, value, max, color }: { label: string; value: number; max: 
   )
 }
 
-function eventLine(ev: HistoryEvent): string {
+function eventLine(ev: HistoryEvent, t: (k: string, v?: any) => string): string {
   switch (ev.type) {
     case 'birth':
-      return `born to #${(ev.payload as any)?.mother} × #${(ev.payload as any)?.father}`
+      return t('inspector.bornTo', { mother: (ev.payload as any)?.mother, father: (ev.payload as any)?.father })
     case 'promotion':
-      return `rose to ${ev.caste}`
+      return t('inspector.roseTo', { caste: ev.caste })
     case 'demotion':
-      return `judged irregular → ${ev.caste}`
+      return t('inspector.demoted', { caste: ev.caste })
     case 'recovery':
-      return `recovered from disease ${(ev.payload as any)?.disease_id ?? ''}`
+      return t('inspector.recovered', { id: (ev.payload as any)?.disease_id ?? '' })
     case 'death':
-      return `died of ${ev.cause} (${Math.round(ev.x)}, ${Math.round(ev.y)})`
+      return t('inspector.diedOf', { cause: ev.cause, x: Math.round(ev.x), y: Math.round(ev.y) })
     default:
       return ev.type
   }
@@ -125,12 +126,13 @@ function KinNode({
   label: string
   onNavigate: (id: number) => void
 }) {
+  const { t } = useI18n()
   if (!kin) return <div className="kin-node empty">{label}: —</div>
   return (
     <button
       className={`kin-node ${kin.alive ? '' : 'dead'}`}
       onClick={() => onNavigate(kin.id)}
-      title={kin.alive ? 'open dossier' : 'deceased — view record'}
+      title={kin.alive ? t('inspector.openDossier') : t('inspector.deceased')}
     >
       <span className="kin-role">{label}</span>{' '}
       {kin.personal_name ? `${kin.personal_name} ` : ''}#{kin.id} {kin.caste ?? '?'} {kin.glyph ? kin.glyph : ''} {kin.alive ? '' : '†'}
@@ -146,6 +148,7 @@ interface Props {
 }
 
 export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Props) {
+  const { t } = useI18n()
   const [data, setData] = useState<CreatureResponse | null>(null)
 
   useEffect(() => {
@@ -170,17 +173,17 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
   const fam = data?.family
 
   const statusChips: Array<{ text: string; cls: string }> = []
-  if (e?.status === 'hungry') statusChips.push({ text: 'hungry', cls: 'st-hungry' })
-  if (e?.status === 'starving') statusChips.push({ text: 'starving', cls: 'st-starving' })
-  if (e?.infected) statusChips.push({ text: 'sick', cls: 'st-sick' })
-  if (e?.sleeping) statusChips.push({ text: 'asleep', cls: 'st-asleep' })
-  if ((e?.chill ?? 0) >= 12) statusChips.push({ text: `chilled ${(e?.chill ?? 0).toFixed(1)}`, cls: 'st-asleep' })
+  if (e?.status === 'hungry') statusChips.push({ text: t('inspector.hungry'), cls: 'st-hungry' })
+  if (e?.status === 'starving') statusChips.push({ text: t('inspector.starving'), cls: 'st-starving' })
+  if (e?.infected) statusChips.push({ text: t('inspector.sick'), cls: 'st-sick' })
+  if (e?.sleeping) statusChips.push({ text: t('inspector.asleep'), cls: 'st-asleep' })
+  if ((e?.chill ?? 0) >= 12) statusChips.push({ text: t('inspector.chilled', { v: (e?.chill ?? 0).toFixed(1) }), cls: 'st-asleep' })
 
   return (
     <aside className="inspector">
       <header className="god-head">
         <h2 style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span>{e?.personal_name ?? `${e?.caste ?? 'Creature'}`} #{id}</span>
+          <span>{e?.personal_name ?? `${e?.caste ?? t('inspector.creature')}`} #{id}</span>
           {e?.title ? <span style={{ color: '#e3b341', fontSize: '0.85em', fontWeight: 600 }}>{e.title}</span> : null}
           {e?.glyph ? <span title="soul-code glyph" style={{ fontSize: '0.9em' }}>{e.glyph}</span> : null}
         </h2>
@@ -191,13 +194,13 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
 
       {e && (
         <div className="chip" style={{ fontSize: 11, opacity: 0.85, margin: '2px 0 4px' }}>
-          {e.caste} · {e.shape === 'line' ? 'female' : 'male'} · {e.stage} · Gen {e.generation ?? 0}
+          {e.caste} · {e.shape === 'line' ? t('inspector.female') : t('inspector.male')} · {e.stage} · Gen {e.generation ?? 0}
         </div>
       )}
 
       {e && <CreatureAvatar e={e} />}
 
-      {!e && data && <p className="god-note">no longer among the living — their chronicle remains.</p>}
+      {!e && data && <p className="god-note">{t('inspector.noLongerLiving')}</p>}
 
       {e && (
         <>
@@ -212,50 +215,50 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '4px 0' }}>
-            <Bar label="Energy" value={e.energy ?? 0} max={100} color="#d29922" />
-            <Bar label="Health" value={e.health ?? 0} max={100} color="#3fb950" />
+            <Bar label={t('inspector.energy')} value={e.energy ?? 0} max={100} color="#d29922" />
+            <Bar label={t('inspector.health')} value={e.health ?? 0} max={100} color="#3fb950" />
             {typeof e.chill === 'number' && e.chill > 0.5 && (
-              <Bar label="Chill" value={e.chill} max={24} color="#79c0ff" />
+              <Bar label={t('inspector.chill')} value={e.chill} max={24} color="#79c0ff" />
             )}
           </div>
 
           {/* Personality & Equipped Tool */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, margin: '6px 0' }}>
             <div className="chip" style={{ background: '#161b22', border: '1px solid #30363d', padding: '6px 8px', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>Personality</span>
+              <span style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('inspector.personality')}</span>
               <span style={{ fontWeight: 600, color: '#58a6ff', textTransform: 'capitalize' }}>
-                {e.personality === 'brave' ? '🛡️ Brave' :
-                 e.personality === 'cautious' ? '🌾 Cautious' :
-                 e.personality === 'altruistic' ? '🤝 Altruistic' :
-                 e.personality === 'greedy' ? '💰 Greedy' :
-                 e.personality === 'explorer' ? '🧭 Explorer' :
-                 e.personality === 'builder' ? '🔨 Builder' : e.personality ?? 'Brave'}
+                {e.personality === 'brave' ? t('inspector.brave') :
+                 e.personality === 'cautious' ? t('inspector.cautious') :
+                 e.personality === 'altruistic' ? t('inspector.altruistic') :
+                 e.personality === 'greedy' ? t('inspector.greedy') :
+                 e.personality === 'explorer' ? t('inspector.explorer') :
+                 e.personality === 'builder' ? t('inspector.builder') : e.personality ?? t('inspector.brave')}
               </span>
             </div>
             <div className="chip" style={{ background: '#161b22', border: '1px solid #30363d', padding: '6px 8px', borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>Tool / Basket</span>
+              <span style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('inspector.toolBasket')}</span>
               <span style={{ fontWeight: 600, color: '#f2cc60' }}>
-                {e.equipped_item === 'spear' ? '🗡️ Spear' :
-                 e.equipped_item === 'crown' ? '👑 Crown' :
-                 e.equipped_item === 'basket' ? `🧺 Basket (${e.food_basket ?? 0}/3)` :
-                 e.equipped_item === 'herb_poultice' ? '🌿 Herb Poultice' :
-                 (e.food_basket ?? 0) > 0 ? `🧺 Food (${e.food_basket}/3)` : 'None'}
+                {e.equipped_item === 'spear' ? t('inspector.spear') :
+                 e.equipped_item === 'crown' ? t('inspector.crown') :
+                 e.equipped_item === 'basket' ? t('inspector.basket', { n: e.food_basket ?? 0 }) :
+                 e.equipped_item === 'herb_poultice' ? t('inspector.poultice') :
+                 (e.food_basket ?? 0) > 0 ? t('inspector.food', { n: e.food_basket ?? 0 }) : t('inspector.none')}
               </span>
             </div>
           </div>
 
           {/* Skill Mastery Matrix */}
-          <Collapsible id="inspector-skills" title={<h3 className="insp-h">Skill Mastery</h3>} defaultOpen={true}>
+          <Collapsible id="inspector-skills" title={<h3 className="insp-h">{t('inspector.skillMastery')}</h3>} defaultOpen={true}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 0' }}>
               {[
-                { name: 'Farming', key: 'farming', icon: '🌾', max: 30, color: '#3fb950' },
-                { name: 'Combat', key: 'combat', icon: '⚔️', max: 30, color: '#ff7b72' },
-                { name: 'Foraging', key: 'foraging', icon: '🦴', max: 30, color: '#d2a8ff' },
-                { name: 'Healing', key: 'healing', icon: '🌿', max: 30, color: '#79c0ff' },
+                { name: t('inspector.farming'), key: 'farming', icon: '🌾', max: 30, color: '#3fb950' },
+                { name: t('inspector.combat'), key: 'combat', icon: '⚔️', max: 30, color: '#ff7b72' },
+                { name: t('inspector.foraging'), key: 'foraging', icon: '🦴', max: 30, color: '#d2a8ff' },
+                { name: t('inspector.healing'), key: 'healing', icon: '🌿', max: 30, color: '#79c0ff' },
               ].map((sk) => {
                 const xp = (e.skills as any)?.[sk.key] ?? 0
                 const level = xp >= 30 ? 3 : xp >= 12 ? 2 : xp >= 4 ? 1 : 0
-                const lvlName = level === 3 ? 'Master' : level === 2 ? 'Adept' : level === 1 ? 'Novice' : 'Unranked'
+                const lvlName = level === 3 ? t('inspector.master') : level === 2 ? t('inspector.adept') : level === 1 ? t('inspector.novice') : t('inspector.unranked')
                 return (
                   <div key={sk.key} style={{ display: 'flex', flexDirection: 'column', gap: 2, background: 'rgba(22, 27, 34, 0.6)', padding: '4px 6px', borderRadius: 4 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
@@ -274,14 +277,14 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
           {/* Vitals & Affiliation Grid */}
           <div className="insp-grid">
             <span className="chip">
-              Age <b>{e.age ?? 0}</b> / {Math.round(e.lifespan ?? 0)}
+              {t('inspector.age')} <b>{e.age ?? 0}</b> / {Math.round(e.lifespan ?? 0)}
             </span>
             <span className="chip">
-              Meals <b>{e.meals ?? 0}</b> · Sides <b>{e.sides}</b>
+              {t('inspector.meals')} <b>{e.meals ?? 0}</b> · {t('inspector.sides')} <b>{e.sides}</b>
             </span>
             {typeof e.irregularity === 'number' && e.irregularity > 0 && (
               <span className="chip" style={{ color: '#f85149' }}>
-                Irregularity <b>{e.irregularity}</b>
+                {t('inspector.irregularity')} <b>{e.irregularity}</b>
               </span>
             )}
             {e.clan_id != null && e.clan_id > 0 && (
@@ -289,7 +292,7 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
                 type="button"
                 className="chip clan-link-chip"
                 onClick={() => onSelectClan?.(e.clan_id!)}
-                title={`Open clan details for ${e.clan_name ?? `Clan ${e.clan_id}`}`}
+                title={t('inspector.openClanDetails', { name: e.clan_name ?? `Clan ${e.clan_id}` })}
                 style={{
                   cursor: 'pointer',
                   display: 'inline-flex',
@@ -316,26 +319,26 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
               </button>
             )}
             {e.trait && (
-              <span className="chip" title={`Heritable trait: ${e.trait}`}>
+              <span className="chip" title={t('inspector.trait', { trait: e.trait })}>
                 {e.trait === 'greedy' ? '⬔' : e.trait === 'peaceful' ? '◯' : e.trait === 'paranoid' ? '⬥' : e.trait === 'bold' ? '▲' : '•'} {e.trait}
               </span>
             )}
           </div>
 
           {/* Family Tree */}
-          <Collapsible id="inspector-family" title={<h3 className="insp-h">Family Lineage</h3>}>
+          <Collapsible id="inspector-family" title={<h3 className="insp-h">{t('inspector.familyLineage')}</h3>}>
             <div className="family-tree">
               <div className="tree-row">
-                <KinNode kin={fam?.mother ?? null} label="♀ Mother" onNavigate={onNavigate} />
-                <KinNode kin={fam?.father ?? null} label="♂ Father" onNavigate={onNavigate} />
+                <KinNode kin={fam?.mother ?? null} label={t('inspector.mother')} onNavigate={onNavigate} />
+                <KinNode kin={fam?.father ?? null} label={t('inspector.father')} onNavigate={onNavigate} />
               </div>
-              <div className="tree-self">#{id} · Current Subject</div>
+              <div className="tree-self">#{id} · {t('inspector.currentSubject')}</div>
               <div className="tree-row wrap">
                 {(fam?.children ?? []).length === 0 ? (
-                  <span className="chip">No offspring recorded</span>
+                  <span className="chip">{t('inspector.noOffspring')}</span>
                 ) : (
                   fam!.children.map((k) => (
-                    <KinNode key={k.id} kin={k} label="Child" onNavigate={onNavigate} />
+                    <KinNode key={k.id} kin={k} label={t('inspector.child')} onNavigate={onNavigate} />
                   ))
                 )}
               </div>
@@ -344,15 +347,15 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
         </>
       )}
 
-      <Collapsible id="inspector-chronicle" title={<h3 className="insp-h">Personal Chronicle</h3>}>
+      <Collapsible id="inspector-chronicle" title={<h3 className="insp-h">{t('inspector.personalChronicle')}</h3>}>
         <ul className="insp-events" style={{ maxHeight: 150, overflowY: 'auto' }}>
           {(data?.events ?? []).slice().reverse().map((ev) => (
             <li key={`${ev.tick}:${ev.type}`} className={`ev-${ev.type}`}>
-              tick {ev.tick}: {eventLine(ev)}
+              tick {ev.tick}: {eventLine(ev, t)}
             </li>
           ))}
           {(data?.events?.length ?? 0) === 0 && (
-            <li className="chip">Nothing recorded yet</li>
+            <li className="chip">{t('inspector.nothingRecorded')}</li>
           )}
         </ul>
       </Collapsible>
