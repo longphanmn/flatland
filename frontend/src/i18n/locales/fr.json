@@ -1,0 +1,129 @@
+{
+  "common": {
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "copy": "Copier",
+    "download": "Télécharger",
+    "search": "Rechercher",
+    "language": "Langue"
+  },
+  "app": {
+    "title": "Flatland",
+    "status": {
+      "connecting": "connexion",
+      "live": "en direct",
+      "reconnecting": "reconnexion…",
+      "paused": "EN PAUSE"
+    },
+    "controls": {
+      "pause": "Pause (Espace)",
+      "resume": "Reprendre (Espace)",
+      "step": "Pas (S)",
+      "reset": "Réinitialiser (R)",
+      "resetConfirmTitle": "Réinitialiser le monde ?",
+      "resetConfirmMessage": "Réinitialiser le monde avec une nouvelle graine ? Cette action est irréversible. Toutes les créatures et l'historique actuels seront perdus.",
+      "resetConfirmOk": "🔄 Réinitialiser",
+      "resetCancel": "Garder le monde",
+      "fit": "Ajuster la vue (F)",
+      "history": "Histoire du monde & Export IA (H)",
+      "wiki": "Wiki",
+      "sphere": "La Sphère",
+      "god": "Lois de la Sphère (Dieu)",
+      "chronicle": "Journal",
+      "world": "Monde",
+      "clans": "Clans",
+      "plots": "Graphiques"
+    },
+    "hud": {
+      "alive": "Vivants",
+      "dead": "Morts",
+      "tick": "Tick",
+      "day": "Jour",
+      "season": "Saison",
+      "weather": "Météo",
+      "aliveSpark": "Vivants — derniers ticks"
+    }
+  },
+  "god": {
+    "title": "⚖ La Sphère — Lois de Flatland",
+    "subtitle": "Vous êtes la Sphère (Dieu) : définissez les lois universelles depuis Spaceland, sans jamais toucher une vie.",
+    "presets": {
+      "title": "Préréglages du monde",
+      "active": "Actif : {{name}}",
+      "custom": "Actif : ⚙ Personnalisé",
+      "balance": "⚖️ Équilibre",
+      "sustainable": "🌿 Durable",
+      "theocracy": "🔮 Théocratie",
+      "warlords": "⚔️ Seigneurs de guerre",
+      "chaos": "🔥 Chaos",
+      "extinction": "💀 Extinction",
+      "boom": "🚀 Essor",
+      "applyLaws": "⚡ Appliquer les lois",
+      "applyReset": "🔄 Appliquer & Réinitialiser",
+      "apply": "Appliquer",
+      "save": "Enregistrer",
+      "saved": "✓ Lois actives",
+      "applying": "Application…"
+    },
+    "footer": {
+      "apply": "Appliquer",
+      "applyDesc": "appliquer au monde actuel seulement (Réinitialiser annule)",
+      "save": "Enregistrer",
+      "saveDesc": "enregistrer pour le monde actuel et futurs (Réinitialiser conserve)",
+      "applyReset": "🔄 Appliquer & Réinitialiser",
+      "applyResetDesc": "Enregistrer les lois et redémarrer le monde avec une nouvelle graine"
+    }
+  },
+  "history": {
+    "title": "Histoire & Chronique du monde",
+    "subtitle": "Graine {{seed}} · {{days}} Jours · {{alive}} vivants",
+    "tabs": {
+      "timeline": "📅 Chronique quotidienne ({{count}})",
+      "ai": "🤖 Histoire IA"
+    },
+    "stats": {
+      "battles": "batailles",
+      "fallen": "morts",
+      "plagues": "pestes",
+      "schisms": "schismes",
+      "successions": "successions",
+      "temples": "temples",
+      "miracles": "miracles",
+      "cataclysms": "cataclysmes"
+    },
+    "empty": "Aucun jour correspondant au filtre.",
+    "searchPlaceholder": "Filtrer par clan, guerre ou mot-clé…",
+    "aiTitle": "🤖 Générateur d'histoire IA",
+    "aiDesc": "Chronique historique riche jour par jour avec guerres de clans, conquêtes, successions et miracles prête pour ChatGPT, Claude ou Gemini.",
+    "copyPrompt": "📋 Copier le prompt",
+    "copied": "✓ Prompt copié !",
+    "downloadMd": "⬇️ .md",
+    "downloadJson": "⬇️ JSON",
+    "close": "Fermer",
+    "synthesized": "Chronique quotidienne détaillée synthétisée depuis SQLite (/api/history?major=true)"
+  },
+  "wiki": {
+    "title": "📖 Wiki Flatland",
+    "searchPlaceholder": "Rechercher lois, routes, docs… ( / )",
+    "tabs": {
+      "guide": "guide",
+      "book": "book",
+      "api": "api",
+      "laws": "laws",
+      "presets": "presets"
+    },
+    "guideTitle": "📖 À propos de Flatland",
+    "presetsTitle": "Préréglages — mondes en un clic",
+    "lawsTitle": "Lois de la Sphère — {{count}} lois",
+    "apiTitle": "Référence API — routes en direct"
+  },
+  "chronicle": {
+    "title": "Chronique",
+    "loadOlder": "Charger plus ancien",
+    "loadingOlder": "Chargement…",
+    "noMore": "Plus d'historique",
+    "filter": "Tous",
+    "empty": "Aucun événement — le monde est jeune."
+  }
+}

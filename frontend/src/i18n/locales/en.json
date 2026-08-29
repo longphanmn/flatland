@@ -1,0 +1,129 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "copy": "Copy",
+    "download": "Download",
+    "search": "Search",
+    "language": "Language"
+  },
+  "app": {
+    "title": "Flatland",
+    "status": {
+      "connecting": "connecting",
+      "live": "live",
+      "reconnecting": "reconnecting…",
+      "paused": "PAUSED"
+    },
+    "controls": {
+      "pause": "Pause (Space)",
+      "resume": "Resume (Space)",
+      "step": "Step (S)",
+      "reset": "Reset (R)",
+      "resetConfirmTitle": "Reset World?",
+      "resetConfirmMessage": "Reset world with new seed? This cannot be undone. All current creatures and history will be lost.",
+      "resetConfirmOk": "🔄 Reset World",
+      "resetCancel": "Keep World",
+      "fit": "Fit view (F)",
+      "history": "World History & AI Story Export (H)",
+      "wiki": "Wiki",
+      "sphere": "The Sphere",
+      "god": "Laws of the Sphere (God)",
+      "chronicle": "Log",
+      "world": "World",
+      "clans": "Clans",
+      "plots": "Plots"
+    },
+    "hud": {
+      "alive": "Alive",
+      "dead": "Fallen",
+      "tick": "Tick",
+      "day": "Day",
+      "season": "Season",
+      "weather": "Weather",
+      "aliveSpark": "Alive — recent ticks"
+    }
+  },
+  "god": {
+    "title": "⚖ The Sphere — Laws of Flatland",
+    "subtitle": "You are The Sphere (God): set the universal laws from Spaceland, never the fates.",
+    "presets": {
+      "title": "World Presets",
+      "active": "Active: {{name}}",
+      "custom": "Active: ⚙ Custom",
+      "balance": "⚖️ Balance",
+      "sustainable": "🌿 Sustainable",
+      "theocracy": "🔮 Theocracy",
+      "warlords": "⚔️ Warlords",
+      "chaos": "🔥 Chaos",
+      "extinction": "💀 Extinction",
+      "boom": "🚀 Boom",
+      "applyLaws": "⚡ Apply Laws",
+      "applyReset": "🔄 Apply & Reset",
+      "apply": "Apply",
+      "save": "Save",
+      "saved": "✓ Laws active",
+      "applying": "Applying…"
+    },
+    "footer": {
+      "apply": "Apply",
+      "applyDesc": "apply to current world only (Reset reverts)",
+      "save": "Save",
+      "saveDesc": "save laws to current and future worlds (Reset keeps it)",
+      "applyReset": "🔄 Apply & Reset",
+      "applyResetDesc": "Save laws and restart world with new seed"
+    }
+  },
+  "history": {
+    "title": "World History & Chronicle",
+    "subtitle": "Seed {{seed}} · {{days}} Days · {{alive}} alive",
+    "tabs": {
+      "timeline": "📅 Daily Chronicle ({{count}})",
+      "ai": "🤖 AI Story"
+    },
+    "stats": {
+      "battles": "battles",
+      "fallen": "fallen",
+      "plagues": "plagues",
+      "schisms": "schisms",
+      "successions": "successions",
+      "temples": "temples",
+      "miracles": "miracles",
+      "cataclysms": "cataclysms"
+    },
+    "empty": "No days found matching filter.",
+    "searchPlaceholder": "Filter by clan, war, or keyword...",
+    "aiTitle": "🤖 AI Story Generation Prompt",
+    "aiDesc": "Rich, day-by-day historical chronicle with specific clan wars, conquests, successions, and miracles ready for ChatGPT, Claude, or Gemini.",
+    "copyPrompt": "📋 Copy Prompt",
+    "copied": "✓ Copied Prompt!",
+    "downloadMd": "⬇️ .md",
+    "downloadJson": "⬇️ JSON",
+    "close": "Close",
+    "synthesized": "Detailed daily chronicle synthesized from SQLite (/api/history?major=true)"
+  },
+  "wiki": {
+    "title": "📖 Flatland Wiki",
+    "searchPlaceholder": "Search laws, routes, docs… ( / )",
+    "tabs": {
+      "guide": "guide",
+      "book": "book",
+      "api": "api",
+      "laws": "laws",
+      "presets": "presets"
+    },
+    "guideTitle": "📖 About Flatland",
+    "presetsTitle": "Presets — one-click worlds",
+    "lawsTitle": "Laws of the Sphere — {{count}} laws",
+    "apiTitle": "API Reference — live routes"
+  },
+  "chronicle": {
+    "title": "Chronicle",
+    "loadOlder": "Load older",
+    "loadingOlder": "Loading…",
+    "noMore": "No more history",
+    "filter": "All",
+    "empty": "No events yet — the world is young."
+  }
+}

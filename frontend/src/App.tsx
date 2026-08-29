@@ -15,6 +15,8 @@ import WorldHistoryModal from './history/WorldHistoryModal'
 import Inspector from './inspect/Inspector'
 import { WorldSocket, type ConnStatus } from './websocket'
 import type { HelloMessage, HistoryEvent, StateMessage, WorldSummary } from './types'
+import { useI18n } from './i18n'
+import ConfirmModal from './components/ConfirmModal'
 
 const SPEEDS = [1, 5, 10, 20, 40]
 const HISTORY_PAGE = 200
@@ -36,12 +38,14 @@ const newestFirst = (a: HistoryEvent, b: HistoryEvent) =>
 const fmtStart = (iso: string) => iso.slice(11, 16) || iso
 
 export default function App() {
+  const { t, lang, setLang } = useI18n()
   const [status, setStatus] = useState<ConnStatus>('connecting')
   const [hello, setHello] = useState<HelloMessage | null>(null)
   const [state, setState] = useState<StateMessage | null>(null)
   const [paused, setPaused] = useState(false)
   const [speed, setSpeed] = useState(10)
   const [godOpen, setGodOpen] = useState(false)
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
   const [chronicleOpen, setChronicleOpen] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth <= 768) return false
     return true
@@ -333,10 +337,8 @@ export default function App() {
   }, [sendControl])
   const sendStep = useCallback(() => void sendControl('step'), [sendControl])
   const sendReset = useCallback(() => void sendControl('reset'), [sendControl])
-  const confirmReset = useCallback(() => {
-    if (!window.confirm('Reset world with new seed? This cannot be undone.')) return
-    void sendControl('reset')
-  }, [sendControl])
+  const confirmReset = useCallback(() => setResetConfirmOpen(true), [])
+  const doReset = useCallback(() => void sendControl('reset'), [sendControl])
   const changeSpeed = useCallback(
     (v: number) => {
       setSpeed(v)
@@ -487,7 +489,12 @@ export default function App() {
   return (
     <div className="app">
       <header className={`hud ${isMobile ? 'hud-compact' : ''}`} onClick={isMobile ? () => setStatusExpanded(o => !o) : undefined} style={isMobile ? { cursor: 'pointer' } : undefined}>
-        <span className="title">Flatland</span>
+        <span className="title">{t('app.title')}</span>
+        <select value={lang} onChange={e => setLang(e.target.value as any)} onClick={e => e.stopPropagation()} style={{ background: '#161b22', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 6, padding: '2px 6px', fontSize: 11, cursor: 'pointer' }} title={t('common.language')}>
+          <option value="en">EN</option>
+          <option value="fr">FR</option>
+          <option value="vi">VI</option>
+        </select>
         <span className={`dot ${status}`} title={`Connection: ${STATUS_LABEL[status]}`} data-hint={`Connection: ${STATUS_LABEL[status]}`} />
         {status !== 'open' && <span className="chip" style={{ color: status === 'connecting' ? '#d29922' : '#f85149' }}>{STATUS_LABEL[status]}</span>}
         {paused && <span className="chip paused">PAUSED</span>}
@@ -940,6 +947,7 @@ export default function App() {
         onSelectClan={setSelectedClanId}
         onSelectCreature={setSelectedId}
       />
+      <ConfirmModal open={resetConfirmOpen} onClose={() => setResetConfirmOpen(false)} onConfirm={doReset} />
 
       {helpOpen && (
         <div className="help-backdrop" onClick={() => setHelpOpen(false)}>

@@ -1,0 +1,129 @@
+{
+  "common": {
+    "cancel": "Hủy",
+    "confirm": "Xác nhận",
+    "close": "Đóng",
+    "copy": "Sao chép",
+    "download": "Tải xuống",
+    "search": "Tìm kiếm",
+    "language": "Ngôn ngữ"
+  },
+  "app": {
+    "title": "Flatland",
+    "status": {
+      "connecting": "đang kết nối",
+      "live": "trực tiếp",
+      "reconnecting": "đang kết nối lại…",
+      "paused": "TẠM DỪNG"
+    },
+    "controls": {
+      "pause": "Tạm dừng (Space)",
+      "resume": "Tiếp tục (Space)",
+      "step": "Bước (S)",
+      "reset": "Đặt lại (R)",
+      "resetConfirmTitle": "Đặt lại thế giới?",
+      "resetConfirmMessage": "Đặt lại thế giới với seed mới? Hành động này không thể hoàn tác. Mọi sinh vật và lịch sử hiện tại sẽ mất.",
+      "resetConfirmOk": "🔄 Đặt lại",
+      "resetCancel": "Giữ lại",
+      "fit": "Vừa khung (F)",
+      "history": "Lịch sử & Xuất AI (H)",
+      "wiki": "Wiki",
+      "sphere": "Quả Cầu",
+      "god": "Định luật Quả Cầu (Chúa)",
+      "chronicle": "Biên niên",
+      "world": "Thế giới",
+      "clans": "Tộc",
+      "plots": "Biểu đồ"
+    },
+    "hud": {
+      "alive": "Sống",
+      "dead": "Chết",
+      "tick": "Tick",
+      "day": "Ngày",
+      "season": "Mùa",
+      "weather": "Thời tiết",
+      "aliveSpark": "Sống — ticks gần đây"
+    }
+  },
+  "god": {
+    "title": "⚖ Quả Cầu — Định luật Flatland",
+    "subtitle": "Bạn là Quả Cầu (Chúa): đặt định luật vũ trụ từ Spaceland, không bao giờ chạm vào một sinh mạng.",
+    "presets": {
+      "title": "Preset thế giới",
+      "active": "Đang dùng: {{name}}",
+      "custom": "Đang dùng: ⚙ Tùy chỉnh",
+      "balance": "⚖️ Cân bằng",
+      "sustainable": "🌿 Bền vững",
+      "theocracy": "🔮 Thần quyền",
+      "warlords": "⚔️ Quân phiệt",
+      "chaos": "🔥 Hỗn loạn",
+      "extinction": "💀 Tuyệt chủng",
+      "boom": "🚀 Bùng nổ",
+      "applyLaws": "⚡ Áp dụng luật",
+      "applyReset": "🔄 Áp dụng & Đặt lại",
+      "apply": "Áp dụng",
+      "save": "Lưu",
+      "saved": "✓ Luật đã áp dụng",
+      "applying": "Đang áp dụng…"
+    },
+    "footer": {
+      "apply": "Áp dụng",
+      "applyDesc": "áp dụng cho thế giới hiện tại (Đặt lại sẽ hoàn tác)",
+      "save": "Lưu",
+      "saveDesc": "lưu cho thế giới hiện tại và tương lai (Đặt lại giữ nguyên)",
+      "applyReset": "🔄 Áp dụng & Đặt lại",
+      "applyResetDesc": "Lưu luật và khởi động lại thế giới với seed mới"
+    }
+  },
+  "history": {
+    "title": "Lịch sử & Biên niên",
+    "subtitle": "Seed {{seed}} · {{days}} Ngày · {{alive}} đang sống",
+    "tabs": {
+      "timeline": "📅 Biên niên hằng ngày ({{count}})",
+      "ai": "🤖 Truyện AI"
+    },
+    "stats": {
+      "battles": "trận",
+      "fallen": "tử trận",
+      "plagues": "dịch",
+      "schisms": "ly khai",
+      "successions": "kế vị",
+      "temples": "đền",
+      "miracles": "phép màu",
+      "cataclysms": "thảm họa"
+    },
+    "empty": "Không có ngày khớp bộ lọc.",
+    "searchPlaceholder": "Lọc theo tộc, chiến tranh hoặc từ khóa…",
+    "aiTitle": "🤖 Tạo truyện AI",
+    "aiDesc": "Biên niên phong phú từng ngày với chiến tranh tộc, chinh phục, kế vị và phép màu sẵn sàng cho ChatGPT, Claude hoặc Gemini.",
+    "copyPrompt": "📋 Sao chép prompt",
+    "copied": "✓ Đã sao chép!",
+    "downloadMd": "⬇️ .md",
+    "downloadJson": "⬇️ JSON",
+    "close": "Đóng",
+    "synthesized": "Biên niên hằng ngày chi tiết tổng hợp từ SQLite (/api/history?major=true)"
+  },
+  "wiki": {
+    "title": "📖 Wiki Flatland",
+    "searchPlaceholder": "Tìm luật, routes, docs… ( / )",
+    "tabs": {
+      "guide": "guide",
+      "book": "book",
+      "api": "api",
+      "laws": "laws",
+      "presets": "presets"
+    },
+    "guideTitle": "📖 Về Flatland",
+    "presetsTitle": "Preset — thế giới một cú nhấp",
+    "lawsTitle": "Định luật Quả Cầu — {{count}} luật",
+    "apiTitle": "Tham chiếu API — routes trực tiếp"
+  },
+  "chronicle": {
+    "title": "Biên niên",
+    "loadOlder": "Tải thêm",
+    "loadingOlder": "Đang tải…",
+    "noMore": "Hết lịch sử",
+    "filter": "Tất cả",
+    "empty": "Chưa có sự kiện — thế giới còn non trẻ."
+  }
+}
