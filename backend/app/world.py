@@ -75,6 +75,10 @@ class World:
         for b in buckets:
             b.clear()
         for e in self.entities.values():
+            # §AQ PH-6 ruins are not spatial — they don't block, aren't queried,
+            # and would bloat buckets 80× (7782 vs 98) at 600k ticks.
+            if getattr(e, "is_ruin", False):
+                continue
             cx = int(e.x // cs) % cols
             cy = int(e.y // cs) % rows
             buckets[cy * cols + cx].append(e)

@@ -1692,6 +1692,21 @@ class Simulation:
                             h.hp = min(max_hp, h.hp + REPAIR_RATE)
                             c.energy = max(0.0, c.energy - 0.05)
                             break
+            # §AQ PH-6 rubble auto-decay — ruins fade even without builders (1.5 seasons)
+            # Prevents unbounded 7k-house blowup at 600k ticks (production 7782 houses).
+            if cfg.rubble_blocking_enabled and self.tick % 10 == 0:
+                for h in list(self.world.entities.values()):
+                    if isinstance(h, House) and h.is_ruin and h.rubble > 0:
+                        h.rubble = max(0.0, h.rubble - 0.08)
+                        if h.rubble == 0.0:
+                            self.world.remove(h.id)
+            # hard cap: keep total houses (incl. ruins) < 400 to stay 60 Hz
+            total_houses = sum(1 for e in self.world.entities.values() if isinstance(e, House))
+            if total_houses > 400:
+                # remove oldest ruins first (lowest id), batch 100/tick to avoid one slow tick
+                ruins = sorted([e for e in self.world.entities.values() if isinstance(e, House) and e.is_ruin], key=lambda x: x.id)
+                for r in ruins[: min(200, total_houses - 400)]:
+                    self.world.remove(r.id)
 
     def _collapse_house(self, h: House) -> None:
         """A building whose structural HP is gone falls in (§AQ PH-6)."""
