@@ -118,7 +118,7 @@ export default function ChronicleFeed({
   events,
   clanLabel,
   onSelectCreature,
-  onSelectClan,
+  onSelectClan: _onSelectClan,
   onLoadOlder,
   loadingOlder = false,
   noMoreHistory = false,
@@ -317,15 +317,7 @@ export default function ChronicleFeed({
                   <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show profile">
                     <b>{nm}{gl}</b> #{ev.entity_id}
                   </button>{' '}
-                  born to{' '}
-                  <button className="chronicle-name" onClick={() => p.mother && onSelectCreature(p.mother)} title="show mother">
-                    #{p.mother}
-                  </button>{' '}
-                  ×{' '}
-                  <button className="chronicle-name" onClick={() => p.father && onSelectCreature(p.father)} title="show father">
-                    #{p.father}
-                  </button>{' '}
-                  (gen {p.generation ?? 0}) at tick {ev.tick}
+                  {t('chronicleEvents.bornTo', { mother: p.mother ?? '?', father: p.father ?? '?', gen: p.generation ?? 0, tick: ev.tick })}
                 </li>
               )
             }
@@ -337,7 +329,7 @@ export default function ChronicleFeed({
                   <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show profile">
                     <b>{nm}#{ev.entity_id}</b>
                   </button>{' '}
-                  rose {String(p.from ?? 'Soldier')} → {String(p.to ?? ev.caste)} at tick {ev.tick}
+                  {t('chronicleEvents.roseTo', { from: String(p.from ?? 'Soldier'), to: String(p.to ?? ev.caste), tick: ev.tick })}
                 </li>
               )
             }
@@ -350,7 +342,7 @@ export default function ChronicleFeed({
                   <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show profile">
                     <b>{nm}{gl}</b> #{ev.entity_id}
                   </button>{' '}
-                  judged irregular and demoted to Woman at tick {ev.tick}
+                  {t('chronicleEvents.demotedToWoman', { tick: ev.tick })}
                 </li>
               )
             }
@@ -363,11 +355,7 @@ export default function ChronicleFeed({
                   <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show predator">
                     <b>{nm}{gl}</b> #{ev.entity_id}
                   </button>{' '}
-                  predated <b>{p.prey_caste ?? 'Creature'}</b>{' '}
-                  <button className="chronicle-name" onClick={() => p.prey && onSelectCreature(p.prey)} title="show prey">
-                    #{p.prey}
-                  </button>{' '}
-                  at tick {ev.tick}
+                  {t('chronicleEvents.predatedPrey', { preyCaste: p.prey_caste ?? 'Creature', prey: p.prey ?? '?', tick: ev.tick })}
                 </li>
               )
             }
@@ -380,10 +368,7 @@ export default function ChronicleFeed({
                   <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show fallen">
                     <b>{nm}{gl}</b> #{ev.entity_id}
                   </button>{' '}
-                  fell in clan war (winner{' '}
-                  <button className="chronicle-name" onClick={() => p.winner && onSelectCreature(p.winner)} title="show winner">
-                    #{p.winner}
-                  </button>) at tick {ev.tick}
+                  {t('chronicleEvents.fellInWar', { winner: p.winner ?? '?', tick: ev.tick })}
                 </li>
               )
             }
@@ -391,15 +376,7 @@ export default function ChronicleFeed({
             if (ev.type === 'alliance' || ev.type === 'rivalry') {
               return (
                 <li key={key} className={ev.type === 'alliance' ? 'ev-alliance' : 'ev-rivalry'}>
-                  Clans{' '}
-                  <button className="chronicle-name" onClick={() => p.a != null && onSelectClan(p.a)} title="show clan">
-                    {clanLabel(p.a)}
-                  </button>{' '}
-                  &{' '}
-                  <button className="chronicle-name" onClick={() => p.b != null && onSelectClan(p.b)} title="show clan">
-                    {clanLabel(p.b)}
-                  </button>{' '}
-                  {ev.type} (score {p.score}) at tick {ev.tick}
+                  {t('chronicleEvents.clansAlliance', { a: clanLabel(p.a), b: clanLabel(p.b), type: ev.type, score: p.score, tick: ev.tick })}
                 </li>
               )
             }
@@ -407,15 +384,7 @@ export default function ChronicleFeed({
             if (ev.type === 'schism') {
               return (
                 <li key={key} className="ev-schism">
-                  schism:{' '}
-                  <button className="chronicle-name" onClick={() => p.parent != null && onSelectClan(p.parent)} title="show parent clan">
-                    {p.parent_name ?? clanLabel(p.parent)}
-                  </button>{' '}
-                  →{' '}
-                  <button className="chronicle-name" onClick={() => p.new_clan != null && onSelectClan(p.new_clan)} title="show new clan">
-                    {p.new_name ?? clanLabel(p.new_clan)}
-                  </button>{' '}
-                  ({(p.members as number[])?.length ?? 0} broke away) at tick {ev.tick}
+                  {t('chronicleEvents.schismBreak', { parent: p.parent_name ?? clanLabel(p.parent), child: p.new_name ?? clanLabel(p.new_clan), count: (p.members as number[])?.length ?? 0, tick: ev.tick })}
                 </li>
               )
             }
@@ -423,15 +392,7 @@ export default function ChronicleFeed({
             if (ev.type === 'conquest') {
               return (
                 <li key={key} className="ev-war">
-                  conquest: clan{' '}
-                  <button className="chronicle-name" onClick={() => p.winner_clan != null && onSelectClan(p.winner_clan)} title="show winner clan">
-                    {clanLabel(p.winner_clan)}
-                  </button>{' '}
-                  seized house {p.house_id} from clan{' '}
-                  <button className="chronicle-name" onClick={() => p.loser_clan != null && onSelectClan(p.loser_clan)} title="show loser clan">
-                    {clanLabel(p.loser_clan)}
-                  </button>{' '}
-                  at tick {ev.tick}
+                  {t('chronicleEvents.conquestHouse', { winner: clanLabel(p.winner_clan), house: p.house_id, loser: clanLabel(p.loser_clan), tick: ev.tick })}
                 </li>
               )
             }
@@ -439,28 +400,20 @@ export default function ChronicleFeed({
             if (ev.type === 'takeover') {
               return (
                 <li key={key} className="ev-war">
-                  takeover: clan{' '}
-                  <button className="chronicle-name" onClick={() => p.invader_clan != null && onSelectClan(p.invader_clan)} title="show invader clan">
-                    {p.invader_name ?? clanLabel(p.invader_clan)}
-                  </button>{' '}
-                  moved into house {p.house_id} abandoned by clan{' '}
-                  <button className="chronicle-name" onClick={() => p.victim_clan != null && onSelectClan(p.victim_clan)} title="show victim clan">
-                    {p.victim_name ?? clanLabel(p.victim_clan)}
-                  </button>{' '}
-                  at tick {ev.tick}
+                  {t('chronicleEvents.takeoverHouse', { invader: p.invader_name ?? clanLabel(p.invader_clan), house: p.house_id, victim: p.victim_name ?? clanLabel(p.victim_clan), tick: ev.tick })}
                 </li>
               )
             }
 
             if (ev.type === 'coalition_formed' || ev.type === 'coalition_joined' || ev.type === 'coalition_dissolved') {
               const who = ev.type === 'coalition_joined'
-                ? <>clan <button className="chronicle-name" onClick={() => p.clan != null && onSelectClan(p.clan)} title="show clan">{clanLabel(p.clan)}</button> joined</>
+                ? t('chronicleEvents.coalitionJoined', { clan: clanLabel(p.clan) })
                 : ev.type === 'coalition_dissolved'
-                  ? <>{p.reason ?? 'dissolved'} —</>
-                  : <>founded by clan <button className="chronicle-name" onClick={() => p.leader_clan != null && onSelectClan(p.leader_clan)} title="show founder clan">{clanLabel(p.leader_clan)}</button></>
+                  ? `${p.reason ?? 'dissolved'} —`
+                  : t('chronicleEvents.coalitionFounded', { clan: clanLabel(p.leader_clan) })
               return (
                 <li key={key} className="ev-alliance" style={{ color: '#7ee787' }}>
-                  {ev.type === 'coalition_formed' ? 'coalition formed: ' : ''}{who} <b>{String(p.name ?? `coalition #${p.coalition}`)}</b> ({(p.members as number[] | undefined)?.length ?? 0} members) at tick {ev.tick}
+                  {t('chronicleEvents.coalitionLine', { formed: ev.type === 'coalition_formed' ? 'coalition: ' : '', who, name: String(p.name ?? `coalition #${p.coalition}`), count: (p.members as number[] | undefined)?.length ?? 0, tick: ev.tick })}
                 </li>
               )
             }
@@ -468,15 +421,7 @@ export default function ChronicleFeed({
             if (ev.type === 'peace') {
               return (
                 <li key={key} className="ev-alliance">
-                  peace: clans{' '}
-                  <button className="chronicle-name" onClick={() => p.a != null && onSelectClan(p.a)} title="show clan">
-                    {clanLabel(p.a)}
-                  </button>{' '}
-                  &{' '}
-                  <button className="chronicle-name" onClick={() => p.b != null && onSelectClan(p.b)} title="show clan">
-                    {clanLabel(p.b)}
-                  </button>{' '}
-                  lay down arms at tick {ev.tick}
+                  {t('chronicleEvents.peaceArms', { a: clanLabel(p.a), b: clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
             }
@@ -484,15 +429,7 @@ export default function ChronicleFeed({
             if (ev.type === 'tribute') {
               return (
                 <li key={key} className="ev-alliance">
-                  tribute: clan{' '}
-                  <button className="chronicle-name" onClick={() => p.from != null && onSelectClan(p.from)} title="show vassal clan">
-                    {clanLabel(p.from)}
-                  </button>{' '}
-                  pays {p.amount ?? '?'} to protector{' '}
-                  <button className="chronicle-name" onClick={() => p.to != null && onSelectClan(p.to)} title="show protector clan">
-                    {clanLabel(p.to)}
-                  </button>{' '}
-                  at tick {ev.tick}
+                  {t('chronicleEvents.tributePay', { from: clanLabel(p.from), amount: p.amount ?? '?', to: clanLabel(p.to), tick: ev.tick })}
                 </li>
               )
             }
@@ -500,15 +437,7 @@ export default function ChronicleFeed({
             if (ev.type === 'betrayal') {
               return (
                 <li key={key} className="ev-war">
-                  betrayal: clan{' '}
-                  <button className="chronicle-name" onClick={() => p.a != null && onSelectClan(p.a)} title="show betrayer">
-                    {clanLabel(p.a)}
-                  </button>{' '}
-                  turns on ally{' '}
-                  <button className="chronicle-name" onClick={() => p.b != null && onSelectClan(p.b)} title="show betrayed">
-                    {clanLabel(p.b)}
-                  </button>{' '}
-                  at tick {ev.tick}
+                  {t('chronicleEvents.betrayalTurn', { a: clanLabel(p.a), b: clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
             }
@@ -516,19 +445,7 @@ export default function ChronicleFeed({
             if (ev.type === 'defection') {
               return (
                 <li key={key} className="ev-schism">
-                  defection:{' '}
-                  <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show creature">
-                    #{ev.entity_id}
-                  </button>{' '}
-                  leaves clan{' '}
-                  <button className="chronicle-name" onClick={() => p.from != null && onSelectClan(p.from)} title="show old clan">
-                    {clanLabel(p.from)}
-                  </button>{' '}
-                  for{' '}
-                  <button className="chronicle-name" onClick={() => p.to != null && onSelectClan(p.to)} title="show new clan">
-                    {clanLabel(p.to)}
-                  </button>{' '}
-                  at tick {ev.tick}
+                  {t('chronicleEvents.defectionLeave', { id: ev.entity_id, from: clanLabel(p.from), to: clanLabel(p.to), tick: ev.tick })}
                 </li>
               )
             }
@@ -536,15 +453,7 @@ export default function ChronicleFeed({
             if (ev.type === 'cannibalism') {
               return (
                 <li key={key} className="ev-predation">
-                  cannibalism: starving{' '}
-                  <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show eater">
-                    <b>{ev.caste}</b> #{ev.entity_id}
-                  </button>{' '}
-                  ate {p.kin ? <b>kin</b> : 'enemy'} {p.prey_caste}{' '}
-                  <button className="chronicle-name" onClick={() => p.prey && onSelectCreature(p.prey)} title="show prey">
-                    #{p.prey}
-                  </button>{' '}
-                  at tick {ev.tick}
+                  {t('chronicleEvents.cannibalismEat', { caste: ev.caste ?? 'Creature', id: ev.entity_id, kin: p.kin ? 'kin' : 'enemy', preyCaste: p.prey_caste ?? 'Creature', prey: p.prey ?? '?', tick: ev.tick })}
                 </li>
               )
             }
@@ -552,11 +461,7 @@ export default function ChronicleFeed({
             if (ev.type === 'exile') {
               return (
                 <li key={key} className="ev-demote">
-                  exile: kin-eater{' '}
-                  <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show outcast">
-                    <b>{String(p.personal_name ?? '')}{String(p.glyph ?? '')}</b> #{ev.entity_id}
-                  </button>{' '}
-                  cast out of {p.former_name ?? clanLabel(p.former_clan)} at tick {ev.tick}
+                  {t('chronicleEvents.exileCast', { name: String(p.personal_name ?? '') + String(p.glyph ?? ''), id: ev.entity_id, clan: p.former_name ?? clanLabel(p.former_clan), tick: ev.tick })}
                 </li>
               )
             }
@@ -564,11 +469,7 @@ export default function ChronicleFeed({
             if (ev.type === 'miracle') {
               return (
                 <li key={key} className="ev-bloom" style={{ color: '#7ee787' }}>
-                  miracle: the {String(p.avatar ?? 'avatar')} grants{' '}
-                  <button className="chronicle-name" onClick={() => p.clan_id != null && onSelectClan(p.clan_id)} title="show clan">
-                    {p.clan_name ?? clanLabel(p.clan_id)}
-                  </button>{' '}
-                  a bounty — food blooms around the shrine at tick {ev.tick}
+                  {t('chronicleEvents.miracleBounty', { avatar: String(p.avatar ?? 'avatar'), clan: p.clan_name ?? clanLabel(p.clan_id), tick: ev.tick })}
                 </li>
               )
             }
@@ -576,15 +477,7 @@ export default function ChronicleFeed({
             if (ev.type === 'sermon') {
               return (
                 <li key={key} className="ev-alliance" style={{ color: '#d2a8ff' }}>
-                  sermon:{' '}
-                  <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show priest">
-                    <b>{ev.caste} #{ev.entity_id}</b>
-                  </button>{' '}
-                  of{' '}
-                  <button className="chronicle-name" onClick={() => p.clan_id != null && onSelectClan(p.clan_id)} title="show clan">
-                    {p.clan_name ?? clanLabel(p.clan_id)}
-                  </button>{' '}
-                  interprets the new law — {String(p.text ?? '')} at tick {ev.tick}
+                  {t('chronicleEvents.sermonLaw', { caste: ev.caste ?? 'Priest', id: ev.entity_id, clan: p.clan_name ?? clanLabel(p.clan_id), text: String(p.text ?? ''), tick: ev.tick })}
                 </li>
               )
             }
@@ -592,8 +485,7 @@ export default function ChronicleFeed({
             if (ev.type === 'synod') {
               return (
                 <li key={key} className="ev-alliance" style={{ color: '#e3b341' }}>
-                  ⛪ synod of the Sphere: priests of {(p.clans as number[] | undefined)?.length ?? '?'} clans convene during the {String(p.age ?? 'crisis')} age —
-                  a sacred truce stills all strife at tick {ev.tick}
+                  {t('chronicleEvents.synodSphere', { count: (p.clans as number[] | undefined)?.length ?? '?', age: String(p.age ?? 'crisis'), tick: ev.tick })}
                 </li>
               )
             }
@@ -601,11 +493,7 @@ export default function ChronicleFeed({
             if (ev.type === 'temple') {
               return (
                 <li key={key} className="ev-settlement" style={{ color: '#e3b341' }}>
-                  temple:{' '}
-                  <button className="chronicle-name" onClick={() => p.clan_id != null && onSelectClan(p.clan_id)} title="show clan">
-                    {p.clan_name ?? clanLabel(p.clan_id)}
-                  </button>{' '}
-                  raises its {String(p.avatar ?? 'avatar')} shrine into a glowing Temple of the Sphere at tick {ev.tick}
+                  {t('chronicleEvents.templeRaise', { clan: p.clan_name ?? clanLabel(p.clan_id), avatar: String(p.avatar ?? 'avatar'), tick: ev.tick })}
                 </li>
               )
             }
@@ -613,11 +501,7 @@ export default function ChronicleFeed({
             if (ev.type === 'epiphany') {
               return (
                 <li key={key} className="ev-miracle" style={{ color: '#bc8cff' }}>
-                  ✦ epiphany: elder priest{' '}
-                  <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show priest">
-                    <b>{String(p.personal_name ?? '')}{String(p.glyph ?? '')}</b> #{ev.entity_id}
-                  </button>{' '}
-                  beholds the Sphere in three dimensions — sectarian strife stills at tick {ev.tick}
+                  {t('chronicleEvents.epiphanyBehold', { name: String(p.personal_name ?? '') + String(p.glyph ?? ''), id: ev.entity_id, tick: ev.tick })}
                 </li>
               )
             }
@@ -625,24 +509,16 @@ export default function ChronicleFeed({
             if (ev.type === 'resonance') {
               return (
                 <li key={key} className="ev-alliance" style={{ color: '#e3b341' }}>
-                  🔔 resonance: god alters {String(((p.laws as string[]) ?? []).join(', ') || 'the laws')} — every shrine chimes ({String(p.chimes ?? 0)}), {String(p.sermons ?? 0)} sermons ring out at tick {ev.tick}
+                  {t('chronicleEvents.resonanceChimes', { laws: String(((p.laws as string[]) ?? []).join(', ') || 'the laws'), chimes: String(p.chimes ?? 0), sermons: String(p.sermons ?? 0), tick: ev.tick })}
                 </li>
               )
             }
 
             if (ev.type === 'settlement') {
+              const byClan = p.clan_id ? t('chronicleEvents.settlementByClan', { clan: clanLabel(p.clan_id) }) : ''
               return (
                 <li key={key} className="ev-bloom">
-                  settlement founded
-                  {p.clan_id ? (
-                    <>
-                      {' '}by clan{' '}
-                      <button className="chronicle-name" onClick={() => onSelectClan(p.clan_id)} title="show clan">
-                        {clanLabel(p.clan_id)}
-                      </button>
-                    </>
-                  ) : ''}{' '}
-                  at ({Math.round(ev.x)}, {Math.round(ev.y)}) tick {ev.tick}
+                  {t('chronicleEvents.settlementFounded', { byClan, x: Math.round(ev.x), y: Math.round(ev.y), tick: ev.tick })}
                 </li>
               )
             }
@@ -650,19 +526,7 @@ export default function ChronicleFeed({
             if (ev.type === 'succession') {
               return (
                 <li key={key} className="ev-promo">
-                  succession in{' '}
-                  <button className="chronicle-name" onClick={() => p.clan_id != null && onSelectClan(p.clan_id)} title="show clan">
-                    {p.clan_name ?? clanLabel(p.clan_id)}
-                  </button>
-                  :{' '}
-                  <button className="chronicle-name" onClick={() => p.new_leader && onSelectCreature(p.new_leader)} title="show new leader">
-                    #{p.new_leader}
-                  </button>{' '}
-                  succeeds{' '}
-                  <button className="chronicle-name" onClick={() => p.prev_leader && onSelectCreature(p.prev_leader)} title="show previous leader">
-                    #{p.prev_leader}
-                  </button>{' '}
-                  at tick {ev.tick}
+                  {t('chronicleEvents.successionLeader', { clan: p.clan_name ?? clanLabel(p.clan_id), newLeader: p.new_leader ?? '?', prevLeader: p.prev_leader ?? '?', tick: ev.tick })}
                 </li>
               )
             }
@@ -670,11 +534,7 @@ export default function ChronicleFeed({
             if (ev.type === 'culture') {
               return (
                 <li key={key} className="ev-bloom">
-                  clan{' '}
-                  <button className="chronicle-name" onClick={() => p.clan_id != null && onSelectClan(p.clan_id)} title="show clan">
-                    {clanLabel(p.clan_id)}
-                  </button>{' '}
-                  embraces a new tradition: <b>{p.culture}</b> at tick {ev.tick}
+                  {t('chronicleEvents.cultureEmbrace', { clan: clanLabel(p.clan_id), culture: p.culture, tick: ev.tick })}
                 </li>
               )
             }
@@ -703,18 +563,14 @@ export default function ChronicleFeed({
             if (ev.type === 'raid') {
               return (
                 <li key={key} style={{ color: '#f85149' }}>
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.a)} title="show clan"><b>{p.a_name ?? `Clan ${p.a}`}</b></button>
-                  {' '}raided the granary of{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.b)} title="show clan"><b>{p.b_name ?? `Clan ${p.b}`}</b></button>
-                  {' '}(−{p.loot} grain) at tick {ev.tick}
+                  {t('chronicleEvents.raidGranary', { a: p.a_name ?? clanLabel(p.a), b: p.b_name ?? clanLabel(p.b), loot: p.loot ?? '?', tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'banquet') {
               return (
                 <li key={key} style={{ color: '#e3b341' }}>
-                  🍞 <button className="chronicle-name" onClick={() => onSelectClan(p.clan_id)} title="show clan"><b>{p.clan_name ?? `Clan ${p.clan_id}`}</b></button>
-                  {' '}feasted on their overflowing granary at tick {ev.tick}
+                  {t('chronicleEvents.banquetFeast', { clan: p.clan_name ?? clanLabel(p.clan_id), tick: ev.tick })}
                 </li>
               )
             }
@@ -722,75 +578,49 @@ export default function ChronicleFeed({
               const nm = p.personal_name ?? ev.caste
               return (
                 <li key={key} style={{ color: '#3fb950' }}>
-                  ♻️ <b>{nm}</b> #{ev.entity_id} composted the fields of{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.clan_id)} title="show clan">{p.clan_name ?? `Clan ${p.clan_id}`}</button>
-                  {' '}at tick {ev.tick}
+                  {t('chronicleEvents.compostFields', { name: nm, id: ev.entity_id, clan: p.clan_name ?? clanLabel(p.clan_id), tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'hospitality') {
               return (
                 <li key={key} style={{ color: '#79c0ff' }}>
-                  🍞 bread broken between{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.a)} title="show clan"><b>{p.a_name ?? `Clan ${p.a}`}</b></button>
-                  {' '}and{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.b)} title="show clan"><b>{p.b_name ?? `Clan ${p.b}`}</b></button>
-                  {' '}at tick {ev.tick}
+                  {t('chronicleEvents.hospitalityBread', { a: p.a_name ?? clanLabel(p.a), b: p.b_name ?? clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'peace_envoy') {
               return (
                 <li key={key} style={{ color: '#d2a8ff' }}>
-                  📜 an emissary of{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.a)} title="show clan"><b>{p.a_name ?? `Clan ${p.a}`}</b></button>
-                  {' '}delivered treaty terms to{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.b)} title="show clan"><b>{p.b_name ?? `Clan ${p.b}`}</b></button>
-                  {' '}at tick {ev.tick}
+                  {t('chronicleEvents.peaceEnvoyTerms', { a: p.a_name ?? clanLabel(p.a), b: p.b_name ?? clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'market') {
               return (
                 <li key={key} style={{ color: '#e3b341' }}>
-                  ⚖️ a neutral market opened between{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.a)} title="show clan"><b>{p.a_name ?? `Clan ${p.a}`}</b></button>
-                  {' '}and{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.b)} title="show clan"><b>{p.b_name ?? `Clan ${p.b}`}</b></button>
-                  {' '}at tick {ev.tick}
+                  {t('chronicleEvents.marketOpen', { a: p.a_name ?? clanLabel(p.a), b: p.b_name ?? clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'caravan') {
               return (
                 <li key={key} style={{ color: '#8b949e' }}>
-                  🐫 a trade caravan travelled between{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.a)} title="show clan"><b>{p.a_name ?? `Clan ${p.a}`}</b></button>
-                  {' '}and{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.b)} title="show clan"><b>{p.b_name ?? `Clan ${p.b}`}</b></button>
-                  {' '}at tick {ev.tick}
+                  {t('chronicleEvents.caravanTrade', { a: p.a_name ?? clanLabel(p.a), b: p.b_name ?? clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'regicide') {
               return (
                 <li key={key} style={{ color: '#f85149' }}>
-                  🗡 regicide: <b>{p.assassin}</b> of{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.assassin_clan)} title="show clan"><b>{p.assassin_clan_name ?? `Clan ${p.assassin_clan}`}</b></button>
-                  {' '}murdered Chief #{p.victim} of{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.victim_clan)} title="show clan"><b>{p.victim_clan_name ?? `Clan ${p.victim_clan}`}</b></button>
-                  {' '}at tick {ev.tick}
+                  {t('chronicleEvents.regicideMurder', { assassin: p.assassin ?? 'assassin', clanA: p.assassin_clan_name ?? clanLabel(p.assassin_clan), victim: p.victim ?? '?', clanB: p.victim_clan_name ?? clanLabel(p.victim_clan), tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'herald') {
               return (
                 <li key={key} style={{ color: '#8b949e' }}>
-                  📜 a herald carried terms from{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.a)} title="show clan"><b>{p.a_name ?? `Clan ${p.a}`}</b></button>
-                  {' '}to{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.b)} title="show clan"><b>{p.b_name ?? `Clan ${p.b}`}</b></button>
-                  {' '}at tick {ev.tick}
+                  {t('chronicleEvents.heraldTerms', { a: p.a_name ?? clanLabel(p.a), b: p.b_name ?? clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
             }
@@ -798,9 +628,7 @@ export default function ChronicleFeed({
               const nm = p.personal_name ?? ev.caste
               return (
                 <li key={key} style={{ color: '#e3b341' }}>
-                  🔮 <b>{nm}</b> beheld an omen for{' '}
-                  <button className="chronicle-name" onClick={() => onSelectClan(p.clan_id)} title="show clan">{p.clan_name ?? `Clan ${p.clan_id}`}</button>
-                  {': the '}{String(p.season)}{' '}approaches (tick {ev.tick})
+                  {t('chronicleEvents.omenBehold', { name: nm, clan: p.clan_name ?? clanLabel(p.clan_id), season: String(p.season), tick: ev.tick })}
                 </li>
               )
             }
@@ -810,10 +638,7 @@ export default function ChronicleFeed({
             const gl = p.glyph ? ` ${p.glyph}` : ''
             return (
               <li key={key}>
-                <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show profile">
-                  <b>{nm}{gl}</b> #{ev.entity_id}
-                </button>{' '}
-                died of {ev.cause} at tick {ev.tick} ({Math.round(ev.x)}, {Math.round(ev.y)})
+                {t('chronicleEvents.deathEvent', { name: `${nm}${gl}`, id: ev.entity_id, cause: ev.cause ?? 'unknown', tick: ev.tick, x: Math.round(ev.x), y: Math.round(ev.y) })}
               </li>
             )
           })}

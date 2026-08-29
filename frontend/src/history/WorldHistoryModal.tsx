@@ -15,13 +15,13 @@ interface Props {
 
 export type MajorCategory = 'all' | 'war' | 'plague' | 'politics' | 'faith' | 'disaster'
 
-const CATEGORY_TABS: Array<{ key: MajorCategory; label: string; icon: string }> = [
-  { key: 'all', label: 'All Days', icon: '📅' },
-  { key: 'war', label: 'War Days', icon: '⚔️' },
-  { key: 'plague', label: 'Plague Days', icon: '☣️' },
-  { key: 'politics', label: 'Dynasty Days', icon: '👑' },
-  { key: 'faith', label: 'Faith Days', icon: '🏛️' },
-  { key: 'disaster', label: 'Cataclysm Days', icon: '🌋' },
+const CATEGORY_TABS: Array<{ key: MajorCategory; icon: string }> = [
+  { key: 'all', icon: '📅' },
+  { key: 'war', icon: '⚔️' },
+  { key: 'plague', icon: '☣️' },
+  { key: 'politics', icon: '👑' },
+  { key: 'faith', icon: '🏛️' },
+  { key: 'disaster', icon: '🌋' },
 ]
 
 interface WarDetail {
@@ -249,8 +249,8 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         const victimClan = clanName(p.victim_clan ?? p.clan_id, p.clan_name)
         dRec.dynasties.push({
           kind: 'regicide',
-          title: `Regicide in ${victimClan}`,
-          detail: `Chieftain of ${victimClan} was slain in battle`,
+          title: t('history.details.regicideTitle', { clan: victimClan }),
+          detail: t('history.details.regicideDetail', { clan: victimClan }),
         })
       } else if (ev.type === 'outbreak') {
         dRec.categories.add('plague')
@@ -263,16 +263,16 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         const fromName = clanName(p.from_clan, p.from_name)
         dRec.dynasties.push({
           kind: 'schism',
-          title: `Rebellion in ${fromName}`,
-          detail: `Dissident faction splintered away from ${fromName} to form an independent rebel clan`,
+          title: t('history.details.schismTitle', { clan: fromName }),
+          detail: t('history.details.schismDetail', { clan: fromName }),
         })
       } else if (ev.type === 'succession') {
         dRec.categories.add('politics')
         const cName = clanName(p.clan_id, p.clan_name)
         dRec.dynasties.push({
           kind: 'succession',
-          title: `Chieftain Succession in ${cName}`,
-          detail: `New ruler #${p.new_leader} ascended the seat of ${cName}`,
+          title: t('history.details.successionTitle', { clan: cName }),
+          detail: t('history.details.successionDetail', { leader: p.new_leader, clan: cName }),
         })
       } else if (ev.type === 'alliance' || ev.type === 'coalition_formed') {
         dRec.categories.add('politics')
@@ -280,8 +280,8 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         const cBName = p.b ? clanName(p.b, p.b_name) : ''
         dRec.dynasties.push({
           kind: ev.type === 'coalition_formed' ? 'coalition' : 'treaty',
-          title: ev.type === 'coalition_formed' ? `Defensive League: ${p.name ?? 'Grand Coalition'}` : `Peace Treaty: ${cAName} & ${cBName}`,
-          detail: ev.type === 'coalition_formed' ? `Founded by ${cAName}` : `Signed binding peace agreement`,
+          title: ev.type === 'coalition_formed' ? t('history.details.coalitionTitle', { name: p.name ?? 'Grand Coalition' }) : t('history.details.treatyTitle', { a: cAName, b: cBName }),
+          detail: ev.type === 'coalition_formed' ? t('history.details.coalitionDetail', { clan: cAName }) : t('history.details.treatyDetail'),
         })
       } else if (ev.type === 'betrayal') {
         dRec.categories.add('politics')
@@ -289,8 +289,8 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         const tName = clanName(p.target_clan, p.target_name)
         dRec.dynasties.push({
           kind: 'betrayal',
-          title: `Betrayal by ${cName}`,
-          detail: `Broke sacred treaty and attacked former ally ${tName}`,
+          title: t('history.details.betrayalTitle', { clan: cName }),
+          detail: t('history.details.betrayalDetail', { target: tName }),
         })
       } else if (ev.type === 'temple') {
         dRec.categories.add('faith')
@@ -298,7 +298,7 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         dRec.faiths.push({
           kind: 'temple',
           clanName: cName,
-          detail: `${cName} consecrated a Great Temple of the Sphere`,
+          detail: t('history.details.templeDetail', { clan: cName }),
         })
       } else if (ev.type === 'miracle') {
         dRec.categories.add('faith')
@@ -306,19 +306,19 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         dRec.faiths.push({
           kind: 'miracle',
           clanName: cName,
-          detail: `Sacred Avatar answered prayers of ${cName}, granting bountiful harvest`,
+          detail: t('history.details.miracleDetail', { clan: cName }),
         })
       } else if (ev.type === 'epiphany') {
         dRec.categories.add('faith')
         dRec.faiths.push({
           kind: 'epiphany',
-          detail: `Elder priest beheld the sacred 3D Sphere in a divine epiphany`,
+          detail: t('history.details.epiphanyDetail'),
         })
       } else if (ev.type === 'synod') {
         dRec.categories.add('faith')
         dRec.faiths.push({
           kind: 'synod',
-          detail: `The Great Synod of the Sphere gathered all chieftains in general truce`,
+          detail: t('history.details.synodDetail'),
         })
       } else if (ev.type === 'disaster') {
         dRec.categories.add('disaster')
@@ -350,7 +350,7 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
       // Genesis
       if (d.day === 0) {
         const clanNames = Object.values(clans).slice(0, 3).map((c) => c.name).join(', ')
-        highlights.push(`🌱 Genesis: Core clans (${clanNames || 'founding clans'}) established settlements & river bridges`)
+        highlights.push(t('history.details.genesis', { clans: clanNames || 'founding clans' }))
         d.primaryIcon = '🌱'
         d.badgeColor = '#3fb950'
       }
@@ -360,25 +360,25 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         d.primaryIcon = '⚔️'
         d.badgeColor = '#f85149'
         const warSnippets = d.wars.map((w) => {
-          const casText = w.casualties > 0 ? ` (${w.casualties} fallen)` : ''
+          const casText = w.casualties > 0 ? t('history.details.fallenDigest', { count: w.casualties }) : ''
           return `${w.aName} vs ${w.bName}${casText}`
         })
-        highlights.push(`⚔️ War: ${warSnippets.join(', ')}`)
+        highlights.push(t('history.details.warDigest', { wars: warSnippets.join(', ') }))
       }
 
       // Detailed Conquests
       if (d.conquests.length > 0) {
         const conqSnippets = d.conquests.slice(0, 2).map((c) => {
-          return `${c.invaderName} seized Hall #${c.houseId} from ${c.victimName}`
+          return t('history.details.conquestDigestItem', { invader: c.invaderName, house: c.houseId, victim: c.victimName })
         })
-        highlights.push(`🚩 Conquest: ${conqSnippets.join(', ')}`)
+        highlights.push(t('history.details.conquestDigest', { conquests: conqSnippets.join(', ') }))
       }
 
       // Detailed Plagues
       if (d.outbreaks.length > 0) {
         d.primaryIcon = '☣️'
         d.badgeColor = '#3fb950'
-        highlights.push(`☣️ Plague: Outbreak #${d.outbreaks[0].diseaseId} erupted in settlements`)
+        highlights.push(t('history.details.plagueDigest', { id: d.outbreaks[0].diseaseId }))
       }
 
       // Detailed Faith
@@ -387,13 +387,8 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
           d.primaryIcon = '🏛️'
           d.badgeColor = '#bc8cff'
         }
-        const fSnippets = d.faiths.slice(0, 2).map((f) => {
-          if (f.kind === 'temple') return `${f.clanName ?? 'Clan'} raised Temple of the Sphere`
-          if (f.kind === 'miracle') return `Avatar Miracle answered ${f.clanName ?? 'Clan'}`
-          if (f.kind === 'epiphany') return `3D Epiphany revealed`
-          return `Great Synod held`
-        })
-        highlights.push(`🏛️ Faith: ${fSnippets.join(' & ')}`)
+        const fSnippets = d.faiths.slice(0, 2).map((f) => f.detail)
+        highlights.push(t('history.details.faithDigest', { faiths: fSnippets.join(' & ') }))
       }
 
       // Detailed Politics & Dynasties
@@ -402,10 +397,8 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
           d.primaryIcon = '👑'
           d.badgeColor = '#e3b341'
         }
-        const dSnippets = d.dynasties.slice(0, 2).map((dyn) => {
-          return dyn.title
-        })
-        highlights.push(`👑 Politics: ${dSnippets.join(' · ')}`)
+        const dSnippets = d.dynasties.slice(0, 2).map((dyn) => dyn.title)
+        highlights.push(t('history.details.politicsDigest', { politics: dSnippets.join(' · ') }))
       }
 
       // Detailed Disasters
@@ -413,25 +406,25 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         d.primaryIcon = '🌋'
         d.badgeColor = '#f85149'
         const disSnippets = d.disasters.map((dis) => dis.kind)
-        highlights.push(`🌋 Cataclysm: ${disSnippets.join(', ')} struck landscape`)
+        highlights.push(t('history.details.cataclysmDigest', { kinds: disSnippets.join(', ') }))
       }
 
       // Peaceful / Flourishing Day variety based on seasonal cycles and clan activity
       if (highlights.length === 0) {
         const seasonIndex = Math.floor((d.day % 12) / 3)
         const seasonDesc = [
-          '🌱 Spring Thaw: Newborn polygons learned caste customs as clans gathered wild herbs',
-          '☀️ High Summer: Bumper grain harvests filled clan granaries under golden sunlit skies',
-          '🍂 Autumn Bounty: Grand seasonal feasts held beside hearths; trade caravans crossed river bridges',
-          '❄️ Deep Winter: Families sheltered within warm halls around glowing hearthstones during winter frost',
+          t('history.details.springThaw'),
+          t('history.details.highSummer'),
+          t('history.details.autumnBounty'),
+          t('history.details.deepWinter'),
         ][seasonIndex]
 
         const flavorIndex = d.day % 4
         const flavorDesc = [
-          'craftsmen maintained timber bridges & boundary stones',
-          'priests led twilight choral chimes to the Sacred Sphere',
-          'elders passed lineage lore & craft mastery to youth',
-          'allied neighbours exchanged grain & bartered supplies',
+          t('history.details.flavor0'),
+          t('history.details.flavor1'),
+          t('history.details.flavor2'),
+          t('history.details.flavor3'),
         ][flavorIndex]
 
         highlights.push(`${seasonDesc} · ${flavorDesc}`)
@@ -692,7 +685,7 @@ ${stylePrompt}
                 fontSize: isMobile ? 11 : 12,
               }}
             >
-              📅 Daily Chronicle ({filteredDays.length})
+              {t('history.tabs.timeline', { count: filteredDays.length })}
             </button>
             <button
               onClick={() => setActiveTab('llm')}
@@ -709,7 +702,7 @@ ${stylePrompt}
                 fontSize: isMobile ? 11 : 12,
               }}
             >
-              🤖 AI Story
+              {t('history.tabs.ai')}
             </button>
             {!isMobile && (
               <button
@@ -738,25 +731,25 @@ ${stylePrompt}
           }}
         >
           <div className="chip" style={{ flexShrink: 0 }} title="Major battles fought">
-            ⚔️ <b>{totalStats.wars}</b> battles ({totalStats.lethalWars} fallen)
+            ⚔️ <b>{totalStats.wars}</b> {t('history.stats.battles')} ({totalStats.lethalWars} {t('history.stats.fallen')})
           </div>
           <div className="chip" style={{ flexShrink: 0 }} title="Plague outbreaks">
-            ☣️ <b>{totalStats.outbreaks}</b> plagues
+            ☣️ <b>{totalStats.outbreaks}</b> {t('history.stats.plagues')}
           </div>
           <div className="chip" style={{ flexShrink: 0 }} title="Internal rebellions">
-            ⚡ <b>{totalStats.schisms}</b> schisms
+            ⚡ <b>{totalStats.schisms}</b> {t('history.stats.schisms')}
           </div>
           <div className="chip" style={{ flexShrink: 0 }} title="Ruler successions">
-            👑 <b>{totalStats.successions}</b> successions
+            👑 <b>{totalStats.successions}</b> {t('history.stats.successions')}
           </div>
           <div className="chip" style={{ flexShrink: 0 }} title="Temples of the Sphere">
-            🏛️ <b>{totalStats.temples}</b> temples
+            🏛️ <b>{totalStats.temples}</b> {t('history.stats.temples')}
           </div>
           <div className="chip" style={{ flexShrink: 0 }} title="Avatar seasonal miracles">
-            🌸 <b>{totalStats.miracles}</b> miracles
+            🌸 <b>{totalStats.miracles}</b> {t('history.stats.miracles')}
           </div>
           <div className="chip" style={{ flexShrink: 0 }} title="Natural cataclysms">
-            🌋 <b>{totalStats.disasters}</b> cataclysms
+            🌋 <b>{totalStats.disasters}</b> {t('history.stats.cataclysms')}
           </div>
         </div>
 
@@ -794,7 +787,7 @@ ${stylePrompt}
                         flexShrink: 0,
                       }}
                     >
-                      {tab.icon} {tab.label}
+                      {tab.icon} {t(`history.tabs.${tab.key}`)}
                     </button>
                   ))}
                 </div>
@@ -819,11 +812,11 @@ ${stylePrompt}
               {/* Day Feed */}
               {loading ? (
                 <div style={{ textAlign: 'center', padding: 40, color: '#8b949e' }}>
-                  Analyzing daily chronicle...
+                  {t('history.analyzing')}
                 </div>
               ) : filteredDays.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 40, color: '#8b949e' }}>
-                  No days found matching filter.
+                  {t('history.empty')}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -859,7 +852,7 @@ ${stylePrompt}
                                 flexShrink: 0,
                               }}
                             >
-                              Day {d.day}
+                              {t('history.dayNumber', { day: d.day })}
                             </span>
                             <span style={{ fontSize: 16, flexShrink: 0 }}>{d.primaryIcon}</span>
                             <span
@@ -893,16 +886,16 @@ ${stylePrompt}
                             }}
                           >
                             <div style={{ fontWeight: 600, color: '#8b949e', fontSize: 11 }}>
-                              Ticks {d.startTick} – {d.endTick} Detailed Dossier:
+                              {t('history.dossier', { start: d.startTick, end: d.endTick })}
                             </div>
 
                             {/* Wars */}
                             {d.wars.length > 0 && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <span style={{ color: '#f85149', fontWeight: 600 }}>⚔️ Military Campaigns:</span>
+                                <span style={{ color: '#f85149', fontWeight: 600 }}>{t('history.sections.military')}</span>
                                 {d.wars.map((w, idx) => (
                                   <div key={idx} style={{ paddingLeft: 12, color: '#c9d1d9' }}>
-                                    • <b>{w.aName}</b> fought <b>{w.bName}</b> across {w.battles} clashes ({w.casualties} lethal casualties)
+                                    {t('history.details.warEntry', { a: w.aName, b: w.bName, battles: w.battles, casualties: w.casualties })}
                                   </div>
                                 ))}
                               </div>
@@ -911,10 +904,10 @@ ${stylePrompt}
                             {/* Conquests */}
                             {d.conquests.length > 0 && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <span style={{ color: '#d29922', fontWeight: 600 }}>🚩 Territorial Conquests:</span>
+                                <span style={{ color: '#d29922', fontWeight: 600 }}>{t('history.sections.conquests')}</span>
                                 {d.conquests.map((c, idx) => (
                                   <div key={idx} style={{ paddingLeft: 12, color: '#c9d1d9' }}>
-                                    • <b>{c.invaderName}</b> invaded and seized Hall #{c.houseId} from <b>{c.victimName}</b>{c.plunderedFood ? ` (plundered ${c.plunderedFood} food)` : ''}
+                                    {t('history.details.conquestEntry', { invader: c.invaderName, house: c.houseId, victim: c.victimName, food: c.plunderedFood ? t('history.details.conquestFood', { food: c.plunderedFood }) : '' })}
                                   </div>
                                 ))}
                               </div>
@@ -923,10 +916,10 @@ ${stylePrompt}
                             {/* Plagues */}
                             {d.outbreaks.length > 0 && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <span style={{ color: '#3fb950', fontWeight: 600 }}>☣️ Epidemics:</span>
+                                <span style={{ color: '#3fb950', fontWeight: 600 }}>{t('history.sections.plagues')}</span>
                                 {d.outbreaks.map((o, idx) => (
                                   <div key={idx} style={{ paddingLeft: 12, color: '#c9d1d9' }}>
-                                    • Plague Outbreak #{o.diseaseId} erupted (Patient zero: {o.caste})
+                                    {t('history.details.plagueEntry', { id: o.diseaseId, caste: o.caste })}
                                   </div>
                                 ))}
                               </div>
@@ -935,7 +928,7 @@ ${stylePrompt}
                             {/* Dynasties */}
                             {d.dynasties.length > 0 && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <span style={{ color: '#e3b341', fontWeight: 600 }}>👑 Dynasties & Alliances:</span>
+                                <span style={{ color: '#e3b341', fontWeight: 600 }}>{t('history.sections.dynasties')}</span>
                                 {d.dynasties.map((dyn, idx) => (
                                   <div key={idx} style={{ paddingLeft: 12, color: '#c9d1d9' }}>
                                     • <b>{dyn.title}</b>: {dyn.detail}
@@ -947,7 +940,7 @@ ${stylePrompt}
                             {/* Faith */}
                             {d.faiths.length > 0 && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <span style={{ color: '#bc8cff', fontWeight: 600 }}>🏛️ Faith & Sphere Devotion:</span>
+                                <span style={{ color: '#bc8cff', fontWeight: 600 }}>{t('history.sections.faith')}</span>
                                 {d.faiths.map((f, idx) => (
                                   <div key={idx} style={{ paddingLeft: 12, color: '#c9d1d9' }}>
                                     • {f.detail}
@@ -959,10 +952,10 @@ ${stylePrompt}
                             {/* Disasters */}
                             {d.disasters.length > 0 && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <span style={{ color: '#f85149', fontWeight: 600 }}>🌋 Cataclysms:</span>
+                                <span style={{ color: '#f85149', fontWeight: 600 }}>{t('history.sections.cataclysms')}</span>
                                 {d.disasters.map((dis, idx) => (
                                   <div key={idx} style={{ paddingLeft: 12, color: '#c9d1d9' }}>
-                                    • {dis.kind} struck the landscape
+                                    {t('history.details.disasterEntry', { kind: dis.kind })}
                                   </div>
                                 ))}
                               </div>
@@ -989,7 +982,7 @@ ${stylePrompt}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                   <div>
                     <h3 style={{ fontSize: 14, margin: 0, color: '#e6edf3', fontWeight: 700 }}>
-                      🤖 AI Story Generation Prompt
+                      {t('history.tabs.ai')} Generation Prompt
                     </h3>
                     <p style={{ fontSize: 11, color: '#8b949e', margin: '4px 0 0' }}>
                       Rich, day-by-day historical chronicle with specific clan wars, conquests, successions, and miracles ready for ChatGPT, Claude, or Gemini.
@@ -1128,7 +1121,7 @@ ${stylePrompt}
             flexShrink: 0,
           }}
         >
-          <span>{isMobile ? 'Synthesized from world history' : 'Detailed daily chronicle synthesized from SQLite (/api/history?major=true)'}</span>
+          <span>{isMobile ? t('history.synthesizedMobile') : t('history.synthesized')}</span>
           <button
             onClick={onClose}
             style={{
@@ -1144,7 +1137,7 @@ ${stylePrompt}
               WebkitTapHighlightColor: 'transparent' as any,
             }}
           >
-            Close
+            {t('history.close')}
           </button>
         </footer>
       </div>
