@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { StateMessage, WorldSummary } from '../types'
 import { totemEmoji } from '../totems'
+import { useI18n } from '../i18n'
 
 interface Props {
   open: boolean
@@ -85,6 +86,7 @@ function generateClanName(id: number): string {
 }
 
 export default function WorldHistoryModal({ open, onClose, state, selectedRunId }: Props) {
+  const { t } = useI18n()
   const [rawEvents, setRawEvents] = useState<any[]>([])
   const [clans, setClans] = useState<Record<string, any>>({})
   const [clanNames, setClanNames] = useState<Record<string, string>>({})
@@ -656,10 +658,10 @@ ${stylePrompt}
               <span style={{ fontSize: isMobile ? 20 : 24 }}>📜</span>
               <div>
                 <h2 style={{ fontSize: isMobile ? 14 : 16, margin: 0, color: '#e6edf3', fontWeight: 700 }}>
-                  World History & Chronicle
+                  {t('history.title')}
                 </h2>
-                <div style={{ fontSize: 10.5, color: '#8b949e', marginTop: 1 }}>
-                  Seed {state?.seed ?? 42} · {dayRecords.length} Days · {state?.creatures_alive ?? 0} alive
+                <div style={{ fontSize: 10.5, color: '#8b949e', marginTop: 1, wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>
+                  {t('history.subtitle', { seed: state?.seed ?? 42, days: dayRecords.length, alive: state?.creatures_alive ?? 0 })}
                 </div>
               </div>
             </div>
@@ -799,7 +801,7 @@ ${stylePrompt}
 
                 <input
                   type="text"
-                  placeholder="Filter by clan, war, or keyword..."
+                  placeholder={t('history.searchPlaceholder')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   style={{

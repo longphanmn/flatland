@@ -7,8 +7,20 @@ const locales: Record<string, any> = { en, fr, vi, vn: vi }
 export type Lang = 'en' | 'fr' | 'vi' | 'vn'
 const STORAGE_KEY = 'flatland_lang'
 
+function safeGet(key: string): string | null {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null
+  } catch {
+    try { return typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(key) : null } catch { return null }
+  }
+}
+function safeSet(key: string, val: string) {
+  try { localStorage.setItem(key, val); } catch {
+    try { sessionStorage.setItem(key, val); } catch {}
+  }
+}
 function getInitialLang(): Lang {
-  const saved = (typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null) as Lang | null
+  const saved = safeGet(STORAGE_KEY) as Lang | null
   if (saved && locales[saved]) return saved === 'vn' ? 'vi' : saved
   const nav = typeof navigator !== 'undefined' ? navigator.language.slice(0, 2).toLowerCase() : 'en'
   if (nav === 'vi' || nav === 'vn') return 'vi'
@@ -43,7 +55,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangRaw] = useState<Lang>(getInitialLang)
   const setLang = (l: Lang) => {
     const normalized = l === 'vn' ? 'vi' : (l as Lang)
-    localStorage.setItem(STORAGE_KEY, normalized)
+    safeSet(STORAGE_KEY, normalized)
     setLangRaw(normalized)
     document.documentElement.lang = normalized
   }

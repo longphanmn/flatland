@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { godFetch } from '../god/auth'
+import { useI18n } from '../i18n'
 
 type WikiData = {
   laws: string[]
@@ -10,6 +11,7 @@ type WikiData = {
 }
 
 export default function Wiki({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useI18n()
   const [data, setData] = useState<WikiData | null>(null)
   const [tab, setTab] = useState<'guide' | 'book' | 'api' | 'laws' | 'presets'>('guide')
   const [q, setQ] = useState('')
@@ -69,7 +71,7 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
           <input
-            placeholder="Search laws, routes, docs… ( / )"
+            placeholder={t('wiki.searchPlaceholder')}
             value={q}
             onChange={e => setQ(e.target.value)}
             style={{ flex: 1, minWidth: 160, background: '#161b22', color: '#e6edf3', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}
@@ -80,9 +82,9 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
         </div>
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-          {(['guide', 'book', 'api', 'laws', 'presets'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{ background: tab === t ? '#1f6feb' : '#21262d', color: tab === t ? '#fff' : '#c9d1d9', borderColor: tab === t ? '#1f6feb' : '#30363d' }}>
-              {t === 'book' ? '📖 Book vs Sim' : t}
+          {(['guide', 'book', 'api', 'laws', 'presets'] as const).map(tt => (
+            <button key={tt} onClick={() => setTab(tt)} style={{ background: tab === tt ? '#1f6feb' : '#21262d', color: tab === tt ? '#fff' : '#c9d1d9', borderColor: tab === tt ? '#1f6feb' : '#30363d' }}>
+              {tt === 'book' ? '📖 Book vs Sim' : t(`wiki.tabs.${tt}`)}
             </button>
           ))}
         </div>

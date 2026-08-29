@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { godFetch } from './auth'
+import { useI18n } from '../i18n'
 import type { GodLaws } from '../types'
 
 type NumberLawKey = Exclude<keyof GodLaws, 'boundary'>
@@ -508,6 +509,7 @@ function detectPreset(laws: GodLaws): string | null {
 }
 
 export default function GodPanel({ open, onClose }: Props) {
+  const { t } = useI18n()
   const [laws, setLaws] = useState<GodLaws>({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -714,7 +716,7 @@ export default function GodPanel({ open, onClose }: Props) {
 
   const head = (
     <header className="god-head">
-      <h2>⚖ The Sphere — Laws of Flatland</h2>
+      <h2>{t('god.title')}</h2>
       <button className="god-close" onClick={onClose} aria-label="close">
         ×
       </button>
@@ -733,7 +735,7 @@ export default function GodPanel({ open, onClose }: Props) {
       <div className="god-group" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 2 }}>
           <span style={{ fontSize: 12, color: '#8b949e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            World Presets
+            {t('god.presets.title')}
           </span>
           <span
             style={{

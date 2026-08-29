@@ -488,13 +488,8 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className={`hud ${isMobile ? 'hud-compact' : ''}`} onClick={isMobile ? () => setStatusExpanded(o => !o) : undefined} style={isMobile ? { cursor: 'pointer' } : undefined}>
+      <header className={`hud ${isMobile ? 'hud-compact' : ''}`} onClick={isMobile ? () => setStatusExpanded(o => !o) : undefined} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', wordBreak: 'break-word', overflowWrap: 'anywhere' } as any}>
         <span className="title">{t('app.title')}</span>
-        <select value={lang} onChange={e => setLang(e.target.value as any)} onClick={e => e.stopPropagation()} style={{ background: '#161b22', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 6, padding: '2px 6px', fontSize: 11, cursor: 'pointer' }} title={t('common.language')}>
-          <option value="en">EN</option>
-          <option value="fr">FR</option>
-          <option value="vi">VI</option>
-        </select>
         <span className={`dot ${status}`} title={`Connection: ${STATUS_LABEL[status]}`} data-hint={`Connection: ${STATUS_LABEL[status]}`} />
         {status !== 'open' && <span className="chip" style={{ color: status === 'connecting' ? '#d29922' : '#f85149' }}>{STATUS_LABEL[status]}</span>}
         {paused && <span className="chip paused">PAUSED</span>}
@@ -504,22 +499,24 @@ export default function App() {
             {weatherIcon && ` · ${weatherIcon}`}
           </span>
         )}
-        <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Est TPS is wall-clock measured from WS stream; if it drops below target, healthz avg_tick_ms shows overrun.">
-          tick <b>{state?.tick ?? 0}</b>{estTps !== null && ` · ${estTps} t/s`}
+        <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Est TPS is wall-clock measured from WS stream; if it drops below target, healthz avg_tick_ms shows overrun." style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}>
+          {t('app.hud.tick')} <b>{state?.tick ?? 0}</b>{estTps !== null && ` · ${estTps} t/s`}
         </span>
         <span
           className="chip alive"
-          title={`Alive: ${state?.creatures_alive ?? 0} creatures — Flatland castes + Predators + Herbivores. Hover Caste chart for breakdown.`}
-          data-hint={`Alive: ${state?.creatures_alive ?? 0} creatures`}
+          title={`${t('app.hud.alive')}: ${state?.creatures_alive ?? 0} creatures — Flatland castes + Predators + Herbivores. Hover Caste chart for breakdown.`}
+          data-hint={`${t('app.hud.alive')}: ${state?.creatures_alive ?? 0} creatures`}
+          style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}
         >
-          💚 <b>{state?.creatures_alive ?? 0}</b>
+          💚 {t('app.hud.alive')} <b>{state?.creatures_alive ?? 0}</b>
         </span>
         <span
           className="chip dead desktop-only"
-          title={`Dead: ${state?.creatures_dead ?? 0} — ${deadBreakdown} (hover for per-cause breakdown: starvation/old_age/euthanasia/disease/predation/war/poison).`}
-          data-hint={`Dead: ${state?.creatures_dead ?? 0} creatures (${deadBreakdown})`}
+          title={`${t('app.hud.dead')}: ${state?.creatures_dead ?? 0} — ${deadBreakdown} (hover for per-cause breakdown: starvation/old_age/euthanasia/disease/predation/war/poison).`}
+          data-hint={`${t('app.hud.dead')}: ${state?.creatures_dead ?? 0} creatures (${deadBreakdown})`}
+          style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}
         >
-          💀 <b>{state?.creatures_dead ?? 0}</b>
+          💀 {t('app.hud.dead')} <b>{state?.creatures_dead ?? 0}</b>
         </span>
         {hungryCount > 0 && (
           <span
@@ -579,7 +576,28 @@ export default function App() {
 
         {isMobile && <span className="chip" style={{ marginLeft: 'auto', fontSize: 10, color: '#58a6ff' }}>{statusExpanded ? '▲ Close' : '▼ More'}</span>}
 
-        <div className="top-right-panel">
+        <div className="top-right-panel" style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+          <select
+            value={lang}
+            onChange={e => setLang(e.target.value as any)}
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#161b22',
+              color: '#c9d1d9',
+              border: '1px solid #30363d',
+              borderRadius: 6,
+              padding: '4px 6px',
+              fontSize: 11,
+              cursor: 'pointer',
+              minHeight: 28,
+            }}
+            title={t('common.language')}
+            aria-label={t('common.language')}
+          >
+            <option value="en">EN</option>
+            <option value="fr">FR</option>
+            <option value="vi">VI</option>
+          </select>
           <button className="god-btn" onClick={() => setWorldHistoryOpen(true)} title="World History & AI Story Export (H)" data-hint="World History & AI Story Export (H)">
             📜
           </button>
@@ -597,20 +615,20 @@ export default function App() {
             <span style={{ fontSize: 13, fontWeight: 600, color: '#e6edf3' }}>World Details & Navigation</span>
             <button onClick={() => setStatusExpanded(false)} style={{ background: 'transparent', border: 'none', color: '#8b949e', fontSize: 16, cursor: 'pointer', padding: 0, minHeight: 24 }}>✕</button>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            <span className="chip">entities <b>{state?.entities.length ?? 0}</b></span>
-            <span className="chip dead">dead <b>{state?.creatures_dead ?? 0}</b></span>
-            <span className="chip" style={{ fontSize: 10, color: '#8b949e' }}>{deadBreakdown}</span>
-            {(state?.infected_count ?? 0) > 0 && <span className="chip sick">infected <b>{state?.infected_count}</b></span>}
-            {(state?.entities.filter((e) => (e.chill ?? 0) >= 12).length ?? 0) > 0 && <span className="chip" style={{ color: '#79c0ff' }}>🥶 chilled <b>{state?.entities.filter((e) => (e.chill ?? 0) >= 12).length}</b></span>}
-            {raining && exposedCount > 0 && <span className="chip exposed">⛈ exposed <b>{exposedCount}</b></span>}
-            {hello && <span className="chip">seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×{state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}</span>}
-            {state?.age && <span className="chip">🗓 age <b>{state.age}</b> · day {ageDay}/{ageTotalDays}</span>}
-            <span className="chip">hungry <b>{hungryCount}</b> · starving <b>{starvingCount}</b></span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>
+            <span className="chip" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>entities <b>{state?.entities.length ?? 0}</b></span>
+            <span className="chip dead" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>dead <b>{state?.creatures_dead ?? 0}</b></span>
+            <span className="chip" style={{ fontSize: 10, color: '#8b949e', whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>{deadBreakdown}</span>
+            {(state?.infected_count ?? 0) > 0 && <span className="chip sick" style={{ whiteSpace: 'normal' }}>infected <b>{state?.infected_count}</b></span>}
+            {(state?.entities.filter((e) => (e.chill ?? 0) >= 12).length ?? 0) > 0 && <span className="chip" style={{ color: '#79c0ff', whiteSpace: 'normal' }}>🥶 chilled <b>{state?.entities.filter((e) => (e.chill ?? 0) >= 12).length}</b></span>}
+            {raining && exposedCount > 0 && <span className="chip exposed" style={{ whiteSpace: 'normal' }}>⛈ exposed <b>{exposedCount}</b></span>}
+            {hello && <span className="chip" style={{ whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×{state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}</span>}
+            {state?.age && <span className="chip" style={{ whiteSpace: 'normal' }}>🗓 age <b>{state.age}</b> · day {ageDay}/{ageTotalDays}</span>}
+            <span className="chip" style={{ whiteSpace: 'normal' }}>hungry <b>{hungryCount}</b> · starving <b>{starvingCount}</b></span>
           </div>
           {worlds.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, paddingTop: 6, borderTop: '1px solid #21262d' }}>
-              <span style={{ fontSize: 12, color: '#8b949e', flex: 'none' }}>⚖ History Run (The Sphere):</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 6, paddingTop: 6, borderTop: '1px solid #21262d', wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>
+              <span style={{ fontSize: 12, color: '#8b949e', flex: 'none', whiteSpace: 'normal' }}>⚖ History Run (The Sphere):</span>
               <select
                 className="run-select"
                 value={String(selectedRunId ?? liveWorldId ?? '')}
@@ -719,11 +737,11 @@ export default function App() {
             }}
           />
           <div className="mobile-sheet-header">
-            <div className="mobile-sheet-tabs">
-              <button className={sheetTab === 'world' ? 'active' : ''} onClick={() => setSheetTab('world')}>World</button>
-              <button className={sheetTab === 'clans' ? 'active' : ''} onClick={() => setSheetTab('clans')}>Clans</button>
-              <button className={sheetTab === 'chronicle' ? 'active' : ''} onClick={() => setSheetTab('chronicle')}>Log</button>
-              <button className={sheetTab === 'plots' ? 'active' : ''} onClick={() => setSheetTab('plots')}>Plots</button>
+            <div className="mobile-sheet-tabs" style={{ flexWrap: 'wrap' } as any}>
+              <button className={sheetTab === 'world' ? 'active' : ''} onClick={() => setSheetTab('world')} style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.controls.world')}</button>
+              <button className={sheetTab === 'clans' ? 'active' : ''} onClick={() => setSheetTab('clans')} style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.controls.clans')}</button>
+              <button className={sheetTab === 'chronicle' ? 'active' : ''} onClick={() => setSheetTab('chronicle')} style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.controls.chronicle')}</button>
+              <button className={sheetTab === 'plots' ? 'active' : ''} onClick={() => setSheetTab('plots')} style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.controls.plots')}</button>
             </div>
             <button
               className="mobile-sheet-close"
