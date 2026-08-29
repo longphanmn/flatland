@@ -333,6 +333,10 @@ export default function App() {
   }, [sendControl])
   const sendStep = useCallback(() => void sendControl('step'), [sendControl])
   const sendReset = useCallback(() => void sendControl('reset'), [sendControl])
+  const confirmReset = useCallback(() => {
+    if (!window.confirm('Reset world with new seed? This cannot be undone.')) return
+    void sendControl('reset')
+  }, [sendControl])
   const changeSpeed = useCallback(
     (v: number) => {
       setSpeed(v)
@@ -361,7 +365,7 @@ export default function App() {
           sendStep()
           break
         case 'KeyR':
-          sendReset()
+          confirmReset()
           break
         case 'KeyH':
           setWorldHistoryOpen((o) => !o)
@@ -381,7 +385,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [sendControl, sendStep, sendReset])
+  }, [sendControl, sendStep, sendReset, confirmReset])
 
 
   /** Merge fetched (id-bearing) events into the log newest-first, deduped by tick+entity_id+type. */
@@ -411,13 +415,14 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!chronicleOpen || archiveMode || seededRef.current) return
+    const shouldFetchChronicle = chronicleOpen || (isMobile && sheetTab === 'chronicle' && sheetState !== 'hidden')
+    if (!shouldFetchChronicle || archiveMode || seededRef.current) return
     seededRef.current = true
     fetch(`/api/history?limit=${HISTORY_PAGE}`)
       .then((r) => r.json())
       .then((d) => mergeFetched(Array.isArray(d.events) ? d.events : []))
       .catch(() => {})
-  }, [chronicleOpen, archiveMode, mergeFetched])
+  }, [chronicleOpen, isMobile, sheetTab, sheetState, archiveMode, mergeFetched])
 
   const loadOlder = useCallback(async () => {
     const since = oldestLoadedRef.current
@@ -631,7 +636,7 @@ export default function App() {
               ⚖ The Sphere
             </button>
 
-            <button className="god-btn" onClick={() => { setStatusExpanded(false); sendReset(); }} style={{ flex: 1, minHeight: 34, fontSize: 12, borderColor: '#f85149', color: '#ff7b72' }} title="Reset world with new seed (R)">
+            <button className="god-btn" onClick={() => { setStatusExpanded(false); confirmReset(); }} style={{ flex: 1, minHeight: 34, fontSize: 12, borderColor: '#f85149', color: '#ff7b72' }} title="Reset world with new seed (R)">
               🔄 Reset
             </button>
           </div>
@@ -657,7 +662,7 @@ export default function App() {
         <div className="mobile-thumb-bar">
           <button onClick={paused ? sendResume : sendPause} title={paused ? 'Resume (space)' : 'Pause (space)'}>{paused ? '▶' : '⏸'}</button>
           <button onClick={sendStep} title="Step (S)">⏭</button>
-          <button onClick={sendReset} title="Reset world with new seed (R)" style={{ color: '#ff7b72' }}>🔄</button>
+          <button onClick={confirmReset} title="Reset world with new seed (R)" style={{ color: '#ff7b72' }}>🔄</button>
           <button onClick={() => setGodOpen(true)} title="Laws of the Sphere (God)">⚖</button>
           <button
 
@@ -768,7 +773,7 @@ export default function App() {
               <button onClick={sendPause} title="Pause (Space)" data-hint="Pause (Space)">⏸</button>
             )}
             <button onClick={sendStep} title="Step (S)" data-hint="Step (S)">⏭</button>
-            <button onClick={sendReset} title="Reset (R)" data-hint="Reset (R)">🔄</button>
+            <button onClick={confirmReset} title="Reset (R)" data-hint="Reset (R)">🔄</button>
             <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))} title="Fit view (F)" data-hint="Fit view (F)">
               ⛶
             </button>
