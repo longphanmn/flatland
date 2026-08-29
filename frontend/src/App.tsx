@@ -490,6 +490,20 @@ export default function App() {
     <div className="app">
       <header className={`hud ${isMobile ? 'hud-compact' : ''}`} onClick={isMobile ? () => setStatusExpanded(o => !o) : undefined} style={isMobile ? { cursor: 'pointer' } : undefined}>
         <span className="title">{t('app.title')}</span>
+        {isMobile && (
+          <select
+            value={lang}
+            onChange={e => setLang(e.target.value as any)}
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#161b22', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 6, padding: '2px 4px', fontSize: 11, cursor: 'pointer', minHeight: 26, marginLeft: 6, flex: 'none' }}
+            title={t('common.language')}
+            aria-label={t('common.language')}
+          >
+            <option value="en">EN</option>
+            <option value="fr">FR</option>
+            <option value="vi">VI</option>
+          </select>
+        )}
         <span className={`dot ${status}`} title={`Connection: ${STATUS_LABEL[status]}`} data-hint={`Connection: ${STATUS_LABEL[status]}`} />
         {status !== 'open' && <span className="chip" style={{ color: status === 'connecting' ? '#d29922' : '#f85149' }}>{STATUS_LABEL[status]}</span>}
         {paused && <span className="chip paused">PAUSED</span>}
@@ -612,11 +626,24 @@ export default function App() {
       </header>
       {isMobile && statusExpanded && (
         <div className="hud-detail-sheet" onClick={(e) => { if ((e.target as HTMLElement).tagName !== 'SELECT' && (e.target as HTMLElement).tagName !== 'BUTTON') setStatusExpanded(false); }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#e6edf3' }}>{t('app.hud.worldDetails')}</span>
-            <button onClick={() => setStatusExpanded(false)} style={{ background: 'transparent', border: 'none', color: '#8b949e', fontSize: 16, cursor: 'pointer', padding: 0, minHeight: 24 }}>✕</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4, gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#e6edf3', flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.hud.worldDetails')}</span>
+            <select
+              value={lang}
+              onChange={e => setLang(e.target.value as any)}
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#161b22', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: 6, padding: '4px 6px', fontSize: 11, cursor: 'pointer', minHeight: 28, flex: 'none' }}
+              title={t('common.language')}
+              aria-label={t('common.language')}
+            >
+              <option value="en">EN</option>
+              <option value="fr">FR</option>
+              <option value="vi">VI</option>
+            </select>
+            <button onClick={() => setStatusExpanded(false)} style={{ background: 'transparent', border: 'none', color: '#8b949e', fontSize: 16, cursor: 'pointer', padding: 0, minHeight: 24, flex: 'none' }}>✕</button>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>
+            <span className="chip" style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any, borderColor: '#e3b341', color: '#e3b341' }}>{t('app.hud.tick')} <b>{state?.tick ?? 0}</b>{estTps !== null && ` · ${estTps} t/s`}</span>
             <span className="chip" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>entities <b>{state?.entities.length ?? 0}</b></span>
             <span className="chip dead" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>dead <b>{state?.creatures_dead ?? 0}</b></span>
             <span className="chip" style={{ fontSize: 10, color: '#8b949e', whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>{deadBreakdown}</span>
