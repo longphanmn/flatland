@@ -198,7 +198,7 @@ export default function ClanDetails({
           <div style={{ fontSize: 13, fontWeight: 700, color: data.color }}>{data.name}</div>
           {totemInfo && (
             <div style={{ fontSize: 10.5, color: '#8b949e', marginTop: 1 }}>
-              {totemInfo.buff}
+              {data.totem && t(`totems.${data.totem}`) !== `totems.${data.totem}` ? t(`totems.${data.totem}`) : totemInfo.buff}
             </div>
           )}
         </div>

@@ -52,7 +52,7 @@ export default function PlotsPanel({ onSelectClan }: { onSelectClan?: (id: numbe
                 <button
                   className="chronicle-name"
                   onClick={() => onSelectClan?.(pl.a)}
-                  title="show clan"
+                  title={t('chronicleEvents.showClan')}
                 >
                   {pl.a_name ?? `#${pl.a}`}
                 </button>
@@ -62,13 +62,13 @@ export default function PlotsPanel({ onSelectClan }: { onSelectClan?: (id: numbe
                     <button
                       className="chronicle-name"
                       onClick={() => pl.b != null && onSelectClan?.(pl.b)}
-                      title="show clan"
+                      title={t('chronicleEvents.showClan')}
                     >
                       {pl.b_name ?? `#${pl.b}`}
                     </button>
                   </>
                 )}
-                {pl.type === 'schism' && ' schism'}
+                {pl.type === 'schism' && ` ${t('plots.schism')}`}
               </span>
               <span>
                 {pl.progress}/{pl.max}

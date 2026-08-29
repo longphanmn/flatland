@@ -80,7 +80,7 @@ export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelect
       <h4 style={{ margin: '8px 0 6px', fontSize: '0.9em' }}>{t('clanPanel.title', { tick })}</h4>
       <div style={{ display: 'grid', gap: 6 }}>
         {alive.map((c) => (
-          <div key={c.id} className="clan-card" onClick={() => onSelectClan?.(c.id)} style={{ borderLeft: `4px solid ${c.color}`, padding: '6px 8px', background: '#161b22', border: '1px solid #30363d', borderLeftWidth: 4, borderRadius: 6, cursor: onSelectClan ? 'pointer' : 'default' }} title={onSelectClan ? 'Click for clan details' : undefined}>
+          <div key={c.id} className="clan-card" onClick={() => onSelectClan?.(c.id)} style={{ borderLeft: `4px solid ${c.color}`, padding: '6px 8px', background: '#161b22', border: '1px solid #30363d', borderLeftWidth: 4, borderRadius: 6, cursor: onSelectClan ? 'pointer' : 'default' }} title={onSelectClan ? t('clanPanel.clickForDetails') : undefined}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <b style={{ color: c.color }}>{c.name}</b>
               <span className="chip" style={{ background: c.color, color: '#0b0f14' }}>{totemEmoji(c.totem)} {c.totem ?? '—'}</span>
@@ -96,42 +96,42 @@ export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelect
               {' · '}{t('clanPanel.day', { day: c.founded_day ?? Math.floor((c.born_tick ?? 0) / 1200) })}
             </div>
             {c.knowledge && (c.knowledge.enemy_clans?.length || c.knowledge.danger_zones?.length || c.knowledge.food_spots?.length) ? (
-              <div className="chip" title="Clan memory — the union of what members remember: enemy clans that struck them, danger zones (predator sightings), known food spots">
-                🧠 remembers:{' '}
-                {c.knowledge.enemy_clans?.length ? `enemies ${c.knowledge.enemy_clans.map((id) => '#' + id).join(' ')} · ` : ''}
-                {c.knowledge.danger_zones?.length ? `⚠ ${c.knowledge.danger_zones.length} · ` : ''}
-                {c.knowledge.food_spots?.length ? `🍃 ${c.knowledge.food_spots.length}` : ''}
+              <div className="chip" title={t('clanPanel.culture')}>
+                🧠 {t('clanPanel.remembers')}:{' '}
+                {c.knowledge.enemy_clans?.length ? `${t('clanPanel.enemies', { list: c.knowledge.enemy_clans.map((id) => '#' + id).join(' ') })} · ` : ''}
+                {c.knowledge.danger_zones?.length ? `${t('clanPanel.danger', { count: c.knowledge.danger_zones.length })} · ` : ''}
+                {c.knowledge.food_spots?.length ? `${t('clanPanel.food', { count: c.knowledge.food_spots.length })}` : ''}
               </div>
             ) : null}
             {c.specialization && (
-              <div className="chip" title="Clan specialization drifts over generations — warrior (war), farmer (harvest), scavenger (corpse) — totem biases start, environment + history drift it">
-                <span style={{ color: '#f85149' }}>⚔ warrior {c.specialization.warrior.toFixed(2)}</span> · <span style={{ color: '#3fb950' }}>🌾 farmer {c.specialization.farmer.toFixed(2)}</span> · <span style={{ color: '#8b949e' }}>🦴 scavenger {c.specialization.scavenger.toFixed(2)}</span>
+              <div className="chip">
+                <span style={{ color: '#f85149' }}>⚔ {t('inspector.combat')} {c.specialization.warrior.toFixed(2)}</span> · <span style={{ color: '#3fb950' }}>🌾 {t('inspector.farming')} {c.specialization.farmer.toFixed(2)}</span> · <span style={{ color: '#8b949e' }}>🦴 {t('inspector.foraging')} {c.specialization.scavenger.toFixed(2)}</span>
               </div>
             )}
             {c.culture && (
-              <div className="chip" title="Culture — spreads to allies, can diverge into rival traditions; grants small collective bonus">
+              <div className="chip" title={t('clanPanel.culture')}>
                 🎭 {c.culture}
               </div>
             )}
             {(c.coalition_id != null || (c.tribute_to != null)) && (
-              <div className="chip" title="§AB politics — coalition bloc membership; tribute_to marks a protector this clan pays">
-                {c.coalition_id != null && <span title="member of a defensive coalition">🤝 pact #{c.coalition_id}{' · '}</span>}
-                {c.tribute_to != null && <span title="pays tribute to a stronger protector">🛡️ vassal of #{c.tribute_to}{' · '}</span>}
+              <div className="chip">
+                {c.coalition_id != null && <span>🤝 #{c.coalition_id}{' · '}</span>}
+                {c.tribute_to != null && <span>🛡️ #{c.tribute_to}{' · '}</span>}
               </div>
             )}
             {typeof c.larder === 'number' && c.larder > 0 && (
-              <div className="chip" title="Clan larder — surplus stored at the settlement, famine draws it down; allies aid each other">
-                🏺 larder {Math.round(c.larder)}
+              <div className="chip">
+                🏺 {t('clanPanel.larder', { count: Math.round(c.larder) })}
               </div>
             )}
             {typeof c.granary === 'number' && (c.granary > 0 || c.feast) ? (
-              <div className="chip" title="§AM Granary — dry roofed grain & cured rations; sated harvests fill it, famine draws it, feasts burn a quarter">
-                🌾 granary {Math.round(c.granary)}{c.feast ? ' · 🍞 feasting' : ''}
+              <div className="chip">
+                🌾 {t('clanPanel.granary', { count: Math.round(c.granary) })}{c.feast ? ` · 🍞 ${t('clanPanel.feasting')}` : ''}
               </div>
             ) : null}
             {(typeof c.faith === 'number' && c.faith > 0) || (c.shrine_level ?? 0) >= 1 ? (
-              <div className="chip" title="§AP Theology — the clan faith pool filled by dawn & dusk tithes; the shrine beside the main house mends the faithful, and high faith raises a Temple of the Sphere">
-                {(c.shrine_level ?? 0) >= 2 ? '⛪ temple' : '🕯️ shrine'}{typeof c.faith === 'number' ? ` · ⛲ faith ${Math.round(c.faith)}` : ''}
+              <div className="chip">
+                {(c.shrine_level ?? 0) >= 2 ? `⛪ ${t('clanPanel.temple')}` : `🕯️ ${t('clanPanel.shrine')}`}{typeof c.faith === 'number' ? ` · ⛲ ${t('clanPanel.faith', { count: Math.round(c.faith) })}` : ''}
               </div>
             ) : null}
           </div>
