@@ -40,9 +40,10 @@ class PasskeyAuth:
         self._loaded = False
         self._hash_hex: str | None = None
         self._salt_hex: str | None = None
+        self._verify_cache: dict[tuple, bool] = {}
+        self._cache_version: int = 0
         env_key = os.environ.get("FLATWORLD_GOD_KEY")
         if env_key:
-            # Environment wins: deterministic credential for headless runs.
             salt = secrets.token_bytes(16)
             self._salt_hex = salt.hex()
             self._hash_hex = _hash(env_key, salt)
@@ -79,6 +80,8 @@ class PasskeyAuth:
         self._hash_hex = None
         self._salt_hex = None
         self._loaded = True
+        self._verify_cache.clear()
+        self._cache_version += 1
 
     def _write(self, passkey: str) -> None:
         salt = secrets.token_bytes(16)
@@ -87,12 +90,22 @@ class PasskeyAuth:
         self._salt_hex = salt.hex()
         self._hash_hex = _hash(passkey, salt)
         self._loaded = True
+        self._verify_cache.clear()
+        self._cache_version += 1
 
     def verify(self, passkey: str | None) -> bool:
         if not passkey or not self.configured():
             return False
+        key = (passkey, self._hash_hex, self._salt_hex, self._cache_version)
+        cached = self._verify_cache.get(key)
+        if cached is not None:
+            return cached
         calc = _hash(passkey, bytes.fromhex(self._salt_hex or ""))
-        return hmac.compare_digest(calc, self._hash_hex or "")
+        ok = hmac.compare_digest(calc, self._hash_hex or "")
+        if len(self._verify_cache) >= 256:
+            self._verify_cache.clear()
+        self._verify_cache[key] = ok
+        return ok
 
 
 class SetupPasskey(BaseModel):

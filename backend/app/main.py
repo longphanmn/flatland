@@ -27,6 +27,12 @@ from .simulation import Simulation, glyph_for, personal_name_for, variation_for
 MIN_SPEED = 0.5  # ticks per second
 MAX_SPEED = 120.0
 
+# AZ Phase 1 P1: caches for blocking calls off the event loop
+_VERSION_CACHE: dict | None = None
+_GUIDE_CACHE: str | None = None
+_WIKI_CACHE: str | None = None
+_PROCSTAT_CACHE: tuple[float, list[dict]] | None = None  # (timestamp, cores)
+
 # AA: C-extension JSON for the ~30 Hz broadcast (GIL-releasing encode);
 # falls back to stdlib when orjson is not installed.
 try:
@@ -51,12 +57,67 @@ class Hub:
 
     §AX P0: permessage-deflate disabled on LAN — synchronous zlib on every
     frame cost 33% CPU. See run.sh --ws-per-message-deflate.
+    AZ Phase 1 P0: bounded broadcast queue (maxsize 1) — wedged client with
+    5 s SEND_TIMEOUT no longer grows memory without limit.
     """
 
     SEND_TIMEOUT = 5.0  # seconds a client may take per frame before we cut it
 
     def __init__(self) -> None:
         self.clients: set[WebSocket] = set()
+        self._queue: asyncio.Queue[str] | None = None
+        self._consumer_task: asyncio.Task | None = None
+
+    def start_queue(self, loop: asyncio.AbstractEventLoop) -> None:
+        if self._queue is not None:
+            return
+        self._queue = asyncio.Queue(maxsize=1)
+        self._consumer_task = loop.create_task(self._consume())
+
+    def stop_queue(self) -> None:
+        if self._consumer_task is not None:
+            self._consumer_task.cancel()
+            self._consumer_task = None
+
+    async def _consume(self) -> None:
+        assert self._queue is not None
+        while True:
+            try:
+                text = await self._queue.get()
+            except asyncio.CancelledError:
+                break
+            try:
+                await self.broadcast_text(text)
+            except Exception:
+                pass
+            finally:
+                self._queue.task_done()
+
+    def enqueue_text(self, text: str, loop: asyncio.AbstractEventLoop) -> None:
+        """Thread-safe bounded enqueue: drop stale frame on QueueFull."""
+        if not text or not self.clients:
+            return
+        if self._queue is None:
+            # fallback: direct fan-out (startup race)
+            asyncio.run_coroutine_threadsafe(self.broadcast_text(text), loop)
+            return
+        def _put():
+            try:
+                self._queue.put_nowait(text)  # type: ignore
+            except asyncio.QueueFull:
+                try:
+                    self._queue.get_nowait()  # type: ignore
+                    self._queue.task_done()
+                except Exception:
+                    pass
+                try:
+                    self._queue.put_nowait(text)  # type: ignore
+                except Exception:
+                    pass
+        try:
+            loop.call_soon_threadsafe(_put)
+        except Exception:
+            pass
 
     async def connect(self, ws: WebSocket) -> None:
         await ws.accept()
@@ -208,10 +269,14 @@ def advance_world(rt: RuntimeState, hub: Hub | None = None, force_keyframe: bool
                 rt._tick_durs.pop(0)
                 rt._tick_times.pop(0)
                 rt._tick_creature_counts.pop(0)
-            # Warn when a single tick overruns the target interval
+            # Warn when a single tick overruns the target interval — AZ Phase 1 P2: rate-limit to ~5s
             interval_ms = 1000.0 / max(rt.speed, MIN_SPEED)
             if dur_ms > interval_ms * 1.2:
-                print(f"[tick-engine] overrun tick={rt.sim.tick} dur={dur_ms:.1f}ms > interval={interval_ms:.1f}ms (speed={rt.speed})", flush=True)
+                now = time.monotonic()
+                last = getattr(rt, "_last_overrun_log", 0.0)
+                if now - last >= 5.0:
+                    print(f"[tick-engine] overrun tick={rt.sim.tick} dur={dur_ms:.1f}ms > interval={interval_ms:.1f}ms (speed={rt.speed})", flush=True)
+                    rt._last_overrun_log = now  # type: ignore
         except Exception:
             pass
     # If a hub is passed and has no active listeners, skip snapshot payload serialization
@@ -276,21 +341,34 @@ class SimEngine:
                     self.rt._cached_state_text = text  # type: ignore[attr-defined]
                 except Exception:
                     text = None
+                    self.rt._cached_state_text = None  # type: ignore[attr-defined]
+                # AZ Phase 1 P1: take lock for clan/plots cache build; reset to None on exception
                 if getattr(self.rt, "sim", None) and (self.rt.sim.tick % 10 == 0 or getattr(self.rt, "_cached_clans_payload", None) is None):
                     try:
+                        with self.rt.lock:
+                            self.rt._cached_clans_payload = _clans_payload()  # type: ignore[attr-defined]
+                            self.rt._cached_plots_payload = {"plots": self.rt.sim.get_plots(), "tick": self.rt.sim.tick}  # type: ignore[attr-defined]
+                    except Exception:
+                        self.rt._cached_clans_payload = None  # type: ignore[attr-defined]
+                        self.rt._cached_plots_payload = None  # type: ignore[attr-defined]
+            # AZ Phase 1 P0: still refresh caches even when no WS clients, so HTTP doesn't freeze
+            elif getattr(self.rt, "sim", None) and getattr(self.rt, "_cached_clans_payload", None) is None:
+                try:
+                    with self.rt.lock:
                         self.rt._cached_clans_payload = _clans_payload()  # type: ignore[attr-defined]
                         self.rt._cached_plots_payload = {"plots": self.rt.sim.get_plots(), "tick": self.rt.sim.tick}  # type: ignore[attr-defined]
-                    except Exception:
-                        pass
+                except Exception:
+                    self.rt._cached_clans_payload = None  # type: ignore[attr-defined]
+                    self.rt._cached_plots_payload = None  # type: ignore[attr-defined]
             if text is not None:
-                asyncio.run_coroutine_threadsafe(
-                    self.hub.broadcast_text(text), self._loop
-                )
+                self.hub.enqueue_text(text, self._loop)
             elif payload is not None:
                 # Fallback if dumps failed — broadcast dict the old way
-                asyncio.run_coroutine_threadsafe(
-                    self.hub.broadcast(payload), self._loop
-                )
+                try:
+                    text2 = _dumps(payload)
+                    self.hub.enqueue_text(text2, self._loop)
+                except Exception:
+                    pass
             elapsed = time.monotonic() - started
             stop.wait(max(0.0, interval - elapsed))
 
@@ -491,9 +569,16 @@ async def lifespan(_: FastAPI):
             except: pass
             print(f"[restore] continuing world_id={RT.world_id} tick={RT.sim.tick}", flush=True)
     engine = SimEngine(RT, HUB)
+    # AZ Phase 1: start bounded broadcast queue consumer
+    try:
+        loop = asyncio.get_running_loop()
+        HUB.start_queue(loop)
+    except Exception:
+        pass
     engine.start()
     yield
     engine.stop()
+    HUB.stop_queue()
     if RT.world_id is not None:
         DB.end_world(RT.world_id)
     DB.close()
@@ -1936,8 +2021,17 @@ def apply_laws(laws: GodLaws, persist: bool = True) -> dict:
             except Exception:
                 pass  # theology must never reject a law
         if updates and RT.world_id is not None:
-            for name, value in updates.items():
-                DB.add_law_change(RT.world_id, RT.sim.tick, name, value)
+            # AZ Phase 3 P1: batch 180 laws into one transaction while holding RT.lock
+            try:
+                with DB.batch():
+                    for name, value in updates.items():
+                        DB.add_law_change(RT.world_id, RT.sim.tick, name, value)
+            except Exception:
+                for name, value in updates.items():
+                    try:
+                        DB.add_law_change(RT.world_id, RT.sim.tick, name, value)
+                    except Exception:
+                        pass
     return get_laws()
 
 
@@ -1945,14 +2039,26 @@ def apply_laws(laws: GodLaws, persist: bool = True) -> dict:
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket) -> None:
     await HUB.connect(ws)
+    # AZ Phase 1 P0: refresh frozen cache on connect so HTTP doesn't stay stale
     try:
-        # A client that accepts the socket but never reads must not leak a
-        # hung handler task — bound the handshake sends like broadcasts.
-        await asyncio.wait_for(ws.send_json(hello_payload()), timeout=HUB.SEND_TIMEOUT)
         with RT.lock:
-            snap = RT.sim.snapshot_payload()
+            if getattr(RT, "_cached_clans_payload", None) is None:
+                RT._cached_clans_payload = _clans_payload()  # type: ignore
+                RT._cached_plots_payload = {"plots": RT.sim.get_plots(), "tick": RT.sim.tick}  # type: ignore
+    except Exception:
+        RT._cached_clans_payload = None  # type: ignore
+        RT._cached_plots_payload = None  # type: ignore
+    try:
+        # AZ Phase 1 P0: use orjson + shared keyframe (stdlib json stalls event loop)
+        hello_text = _dumps(hello_payload())
+        await asyncio.wait_for(ws.send_text(hello_text), timeout=HUB.SEND_TIMEOUT)
+        # share one keyframe per tick across concurrent connects
+        snap_text = RT._cached_state_text
+        if snap_text is None:
+            with RT.lock:
+                snap_text = _dumps(RT.sim.snapshot_payload())
         await asyncio.wait_for(
-            ws.send_json(snap),
+            ws.send_text(snap_text),
             timeout=HUB.SEND_TIMEOUT,
         )
         while True:
@@ -2043,19 +2149,25 @@ async def get_telemetry(window_seconds: int = 60) -> dict:
     p95 = round(s_durs[int(len(s_durs) * 0.95)], 2)
     p99 = round(s_durs[int(len(s_durs) * 0.99)], 2)
 
-    # Read per-core CPU usage
-    cores_usage = []
-    try:
-        with open("/proc/stat", "r") as f:
-            for line in f:
-                parts = line.split()
-                if parts and parts[0].startswith("cpu") and parts[0] != "cpu":
-                    t = [int(x) for x in parts[1:]]
-                    idle = t[3] + (t[4] if len(t) > 4 else 0)
-                    total = sum(t)
-                    cores_usage.append({"core": parts[0], "idle": idle, "total": total})
-    except Exception:
-        pass
+    # Read per-core CPU usage — AZ Phase 1 P1: 1s cache off event loop
+    global _PROCSTAT_CACHE
+    now_proc = time.monotonic()
+    if _PROCSTAT_CACHE is not None and now_proc - _PROCSTAT_CACHE[0] < 1.0:
+        cores_usage = _PROCSTAT_CACHE[1]
+    else:
+        cores_usage = []
+        try:
+            with open("/proc/stat", "r") as f:
+                for line in f:
+                    parts = line.split()
+                    if parts and parts[0].startswith("cpu") and parts[0] != "cpu":
+                        t = [int(x) for x in parts[1:]]
+                        idle = t[3] + (t[4] if len(t) > 4 else 0)
+                        total = sum(t)
+                        cores_usage.append({"core": parts[0], "idle": idle, "total": total})
+        except Exception:
+            pass
+        _PROCSTAT_CACHE = (now_proc, cores_usage)
 
     return {
         "tick": RT.sim.tick,
@@ -2084,14 +2196,14 @@ async def get_telemetry(window_seconds: int = 60) -> dict:
 @app.get("/api/version")
 async def get_version() -> dict:
     """Version + git revision for footer display."""
+    global _VERSION_CACHE
+    if _VERSION_CACHE is not None:
+        return _VERSION_CACHE
     import subprocess
-
     version = "0.1.2"
     revision = ""
-    # try pyproject
     try:
         import tomllib
-
         with open("pyproject.toml", "rb") as f:
             data = tomllib.load(f)
             version = data.get("project", {}).get("version", version)
@@ -2101,13 +2213,11 @@ async def get_version() -> dict:
             txt = pathlib.Path("pyproject.toml").read_text()
             for line in txt.splitlines():
                 if line.strip().startswith("version"):
-                    # version = "0.1.2"
                     parts = line.split("=")
                     if len(parts) == 2:
                         version = parts[1].strip().strip('"').strip("'")
         except Exception:
             pass
-    # git revision
     try:
         revision = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=".", timeout=2).decode().strip()
     except Exception:
@@ -2115,13 +2225,14 @@ async def get_version() -> dict:
             revision = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], timeout=2).decode().strip()
         except Exception:
             revision = "dev"
-    return {
+    _VERSION_CACHE = {
         "version": version,
         "revision": revision,
         "developer": "Long Phan",
         "email": "long@minhnhan.in",
         "contact": "long@minhnhan.in",
     }
+    return _VERSION_CACHE
 
 
 @app.get("/api/config")
@@ -2238,10 +2349,8 @@ async def get_history(
 
     §AT-1: `clan_id=N` filters at the SQL level — events whose payload names
     the clan (a/b/clan_id/conquest/schism/takeover pairs) stay queryable even
-    after they rolled off the in-memory chronicle."""
-    # AD: drain the RAM log so a fresh reader sees the full tail
-    # (the flush runs here, on the HTTP thread — never on the sim thread).
-    DB.flush()
+    after they rolled off the in-memory chronicle.
+    AZ Phase 1 P1: read-your-writes from RAM instead of forcing a flush."""
     limit = max(1, min(limit, 2000))
     types_list = None
     if types:
@@ -2253,21 +2362,59 @@ async def get_history(
         for cid, info in RT.sim.clans.items():
             if info.get("name"):
                 clan_names[str(cid)] = info["name"]
+    db_events = DB.history(
+        RT.world_id,
+        since_id=since,
+        limit=limit,
+        type_filter=type,
+        types_filter=types_list,
+        entity_id=entity_id,
+        clan_id=clan_id,
+    ) if RT.world_id else []
+    # AZ Phase 1 P1: merge pending RAM events without flushing
+    if RT.world_id and DB.pending:
+        try:
+            pend = DB.pending_events(RT.world_id, limit=limit)
+            # apply same filters to pending
+            filtered = []
+            for ev in pend:
+                if type and ev["type"] != type:
+                    continue
+                if types_list and ev["type"] not in types_list:
+                    continue
+                if entity_id is not None and ev["entity_id"] != entity_id:
+                    continue
+                if clan_id is not None:
+                    if not any(ev["payload"].get(k) == clan_id for k in CLAN_PAYLOAD_KEYS):
+                        continue
+                if since and ev["id"] and ev["id"] >= since:
+                    # pending has id 0, so skip since check for pending
+                    pass
+                filtered.append(ev)
+            # prepend pending (newest) before DB tail, cap to limit
+            merged = (filtered + db_events)[:limit]
+            db_events = merged
+        except Exception:
+            pass
+    total = DB.death_count(RT.world_id) if RT.world_id else 0
+    # include pending deaths not yet flushed
+    if RT.world_id and DB.pending:
+        try:
+            with DB._lock:
+                pend_deaths = 0
+                for k, args in list(DB._pending):
+                    if k == "event":
+                        wid, ev = args
+                        if wid == RT.world_id and getattr(ev, "type", None) == "death":
+                            pend_deaths += 1
+                total += pend_deaths
+        except Exception:
+            pass
     return {
         "world_id": RT.world_id,
-        "total_deaths": DB.death_count(RT.world_id) if RT.world_id else 0,
+        "total_deaths": total,
         "clan_names": clan_names,
-        "events": DB.history(
-            RT.world_id,
-            since_id=since,
-            limit=limit,
-            type_filter=type,
-            types_filter=types_list,
-            entity_id=entity_id,
-            clan_id=clan_id,
-        )
-        if RT.world_id
-        else [],
+        "events": db_events,
     }
 
 
@@ -2303,7 +2450,7 @@ async def get_clan_history(clan_id: int, page: int = 0, size: int = 50) -> dict:
 @app.get("/api/worlds")
 async def get_worlds() -> dict:
     """All world runs recorded in the database (newest first)."""
-    DB.flush()  # AD: fresh reads of the world ledger
+    # AZ Phase 1 P1: no forced flush — durability window is 5s, stale lag accepted
     return {"worlds": DB.worlds()}
 
 
@@ -2318,9 +2465,9 @@ def _clan_details(clan_id: int) -> dict:
     if clan_id not in RT.sim.clans:
         raise HTTPException(404, "clan not found")
     info = RT.sim.clans[clan_id]
-    # members
+    # members — AZ Phase 1 P1: use cached creatures + direct imports (no __import__ per member)
     members = []
-    for c in RT.sim.world.creatures():
+    for c in (RT.sim._cached_creatures if getattr(RT.sim, "_cached_creatures", None) else RT.sim.world.creatures()):
         if c.clan_id == clan_id:
             members.append({
                 "id": c.id,
@@ -2332,8 +2479,8 @@ def _clan_details(clan_id: int) -> dict:
                 "energy": round(c.energy, 1),
                 "health": round(c.health, 1),
                 "status": c.status,
-                "personal_name": __import__('app.simulation', fromlist=['personal_name_for']).personal_name_for(c.id, RT.sim.config.seed, c.generation),
-                "glyph": __import__('app.simulation', fromlist=['glyph_for']).glyph_for(c.id, RT.sim.config.seed, c.generation),
+                "personal_name": personal_name_for(c.id, RT.sim.config.seed, c.generation),
+                "glyph": glyph_for(c.id, RT.sim.config.seed, c.generation),
             })
     # houses — a clan can have multiple houses, strictly one main house
     clan_houses = []
@@ -2405,12 +2552,26 @@ def _clan_details(clan_id: int) -> dict:
 @app.get("/api/clans")
 async def get_clans() -> dict:
     """Clan roster with lineage, territory and war record."""
-    # §AX P0: lockless snapshot — tick thread publishes immutable payloads
+    # AZ Phase 1 P0/P1: refresh frozen cache on HTTP serve; lock for build
     cached = getattr(RT, "_cached_clans_payload", None)
     if cached is not None:
-        return cached
+        # also refresh if tick drifted >10 ticks since cache (stale while no WS clients)
+        try:
+            if isinstance(cached, dict) and cached.get("tick", -1) < RT.sim.tick - 10:
+                raise ValueError("stale")
+            return cached
+        except Exception:
+            pass
     with RT.lock:
-        return _clans_payload()
+        try:
+            payload = _clans_payload()
+            RT._cached_clans_payload = payload  # type: ignore
+            RT._cached_plots_payload = {"plots": RT.sim.get_plots(), "tick": RT.sim.tick}  # type: ignore
+            return payload
+        except Exception:
+            RT._cached_clans_payload = None  # type: ignore
+            RT._cached_plots_payload = None  # type: ignore
+            raise
 
 
 def _clans_payload() -> dict:
@@ -2495,12 +2656,22 @@ def _clans_payload() -> dict:
 @app.get("/api/plots")
 async def get_plots() -> dict:
     """Upcoming war/schism as progress — god's foreshadowing."""
-    # §AX P0: lockless snapshot
     cached = getattr(RT, "_cached_plots_payload", None)
     if cached is not None:
-        return cached
+        try:
+            if isinstance(cached, dict) and cached.get("tick", -1) < RT.sim.tick - 10:
+                raise ValueError("stale")
+            return cached
+        except Exception:
+            pass
     with RT.lock:
-        return {"plots": RT.sim.get_plots(), "tick": RT.sim.tick}
+        try:
+            payload = {"plots": RT.sim.get_plots(), "tick": RT.sim.tick}
+            RT._cached_plots_payload = payload  # type: ignore
+            return payload
+        except Exception:
+            RT._cached_plots_payload = None  # type: ignore
+            raise
 
 
 def _kin_card(entity_id: int) -> dict:
@@ -2551,8 +2722,8 @@ def _family_of(creature_id: int) -> dict:
     mother = father = None
     children: dict[int, dict] = {}
 
-    # Living children are visible to the world even if the subject is not.
-    for other in RT.sim.world.creatures():
+    # AZ Phase 1 P1: use cached creatures instead of full entity scan
+    for other in RT.sim._cached_creatures if getattr(RT.sim, "_cached_creatures", None) else RT.sim.world.creatures():
         if other.id != creature_id and creature_id in (other.mother_id, other.father_id):
             children[other.id] = _kin_card(other.id)
 
@@ -2579,7 +2750,7 @@ def _family_of(creature_id: int) -> dict:
 @app.get("/api/creature/{creature_id}")
 async def get_creature(creature_id: int) -> dict:
     """Live status + personal chronicle + family tree for one creature."""
-    DB.flush()  # AD: genealogy + chronicle must include the RAM tail
+    # AZ Phase 1 P1: no forced flush — merge pending in dossier instead
     with RT.lock:
         return _creature_dossier(creature_id)
 
@@ -2625,15 +2796,19 @@ def _creature_dossier(creature_id: int) -> dict:
             entity = None
     else:
         entity = None
-    events = (
-        [
-            e
-            for e in DB.history(RT.world_id, since_id=0, limit=2000)
-            if e["entity_id"] == creature_id
-        ]
-        if RT.world_id
-        else []
-    )
+    # AZ Phase 1 P1: pass entity_id to DB.history to avoid 2000 json.loads filter
+    events = DB.history(RT.world_id, since_id=0, limit=500, entity_id=creature_id) if RT.world_id else []
+    # merge pending without flush
+    if RT.world_id and DB.pending:
+        try:
+            pend = DB.pending_events(RT.world_id, limit=500)
+            for ev in pend:
+                if ev["entity_id"] == creature_id:
+                    events.append(ev)
+            # cap and sort by tick desc
+            events = sorted(events, key=lambda e: e.get("tick", 0), reverse=True)[:500]
+        except Exception:
+            pass
     return {"entity": entity, "events": events, "family": _family_of(creature_id)}
 
 
@@ -2653,17 +2828,25 @@ async def get_guide(format: str | None = None):
                 "routes": [getattr(r, "path", "") for r in app.routes],
             }
         )
+    global _GUIDE_CACHE
+    if _GUIDE_CACHE is not None:
+        return HTMLResponse(_GUIDE_CACHE)
     from .guide import build_guide_html
-
-    return HTMLResponse(build_guide_html(app))
+    html = build_guide_html(app)
+    _GUIDE_CACHE = html
+    return HTMLResponse(html)
 
 
 @app.get("/wiki", response_class=HTMLResponse)
 async def get_wiki():
     """Wiki — richer guide with presets, sustainability, playground."""
+    global _WIKI_CACHE
+    if _WIKI_CACHE is not None:
+        return HTMLResponse(_WIKI_CACHE)
     from .wiki import build_wiki_html
-
-    return HTMLResponse(build_wiki_html(app))
+    html = build_wiki_html(app)
+    _WIKI_CACHE = html
+    return HTMLResponse(html)
 
 
 @app.get("/api/wiki")

@@ -109,7 +109,7 @@ def caste_name(sides: int, shape: str, iso_angle: float = 60.0) -> str:
     return "Priest"
 
 
-@dataclass
+@dataclass(slots=True)
 class Entity:
     id: int = 0  # assigned by World.add
     kind: str = ""  # "creature" | "food" | "house"
@@ -118,7 +118,7 @@ class Entity:
     angle: float = 0.0
 
 
-@dataclass
+@dataclass(slots=True)
 class Creature(Entity):
     kind: str = "creature"
     shape: str = "polygon"  # "polygon" (male) | "line" (female)
@@ -248,7 +248,7 @@ class Creature(Entity):
     FERTILITY_MULT = {"infant": 0.0, "juvenile": 0.0, "adult": 1.0, "elder": 0.5}
 
 
-@dataclass
+@dataclass(slots=True)
 class Food(Entity):
     """A living plant: grows from sprout toward maturity (1.0).
 
@@ -268,7 +268,7 @@ class Food(Entity):
 
 
 
-@dataclass
+@dataclass(slots=True)
 class Corpse(Entity):
     """The remains of the fallen — edible, and fading with every tick."""
 
@@ -277,7 +277,7 @@ class Corpse(Entity):
     energy: float = 25.0  # what's left to scavenge
 
 
-@dataclass
+@dataclass(slots=True)
 class House(Entity):
     kind: str = "house"
     size: float = 6.0  # square side length

@@ -136,7 +136,23 @@ class Database:
         # §AD: NORMAL + WAL — consistent fsync only at checkpoints; the RAM
         # buffer already bounds crash loss to the un-flushed tail.
         self._conn.execute("PRAGMA synchronous=NORMAL")
+        # AZ Phase 3 P1: tune checkpoint and caches
+        try:
+            self._conn.execute("PRAGMA wal_autocheckpoint=10000")
+            self._conn.execute("PRAGMA cache_size=-65536")
+            self._conn.execute("PRAGMA temp_store=MEMORY")
+            self._conn.execute("PRAGMA mmap_size=268435456")
+        except Exception:
+            pass
         self._conn.executescript(_SCHEMA)
+        # AZ Phase 3 P0: missing indices — guarded migration (2.6M rows)
+        try:
+            self._conn.execute("CREATE INDEX IF NOT EXISTS idx_events_world_type ON events(world_id, type)")
+            self._conn.execute("CREATE INDEX IF NOT EXISTS idx_creatures_world_mother ON creatures(world_id, mother_id)")
+            self._conn.execute("CREATE INDEX IF NOT EXISTS idx_creatures_world_father ON creatures(world_id, father_id)")
+            self._conn.execute("CREATE INDEX IF NOT EXISTS idx_law_changes_world ON law_changes(world_id)")
+        except Exception:
+            pass
         self._start_writer()
 
     def _start_writer(self) -> None:
@@ -161,6 +177,37 @@ class Database:
     def pending(self) -> int:
         """Ops waiting in the RAM buffer (observability / tests)."""
         return len(self._pending)
+
+    def pending_events(self, world_id: int, limit: int = 500) -> list[dict[str, Any]]:
+        """AZ Phase 1 P1: read-your-writes from RAM without forcing a flush."""
+        out: list[dict[str, Any]] = []
+        with self._lock:
+            pending_copy = list(self._pending)
+        for kind, args in reversed(pending_copy):
+            if kind != "event":
+                continue
+            wid, ev = args  # type: ignore
+            if wid != world_id:
+                continue
+            # need payload dict; HistoryEvent has payload attribute
+            try:
+                payload = ev.payload if hasattr(ev, "payload") else {}
+            except Exception:
+                payload = {}
+            out.append({
+                "id": 0,  # pending has no row id yet; sort after DB rows
+                "tick": getattr(ev, "tick", 0),
+                "type": getattr(ev, "type", ""),
+                "entity_id": getattr(ev, "entity_id", None),
+                "caste": getattr(ev, "caste", None),
+                "cause": getattr(ev, "cause", None),
+                "x": getattr(ev, "x", None),
+                "y": getattr(ev, "y", None),
+                "payload": dict(payload) if isinstance(payload, dict) else {},
+            })
+            if len(out) >= limit:
+                break
+        return out
 
     # ------------------------------------------------------------- §AD queue
     def log_event(self, world_id: int, event: HistoryEvent) -> None:
@@ -208,13 +255,36 @@ class Database:
         conn = self._require()
         try:
             with self.batch():
-                for kind, args in ops:
-                    if kind == "event":
-                        self._write_event(*args)
-                    elif kind == "birth":
-                        self.add_creature(*args)
-                    elif kind == "death":
-                        self.mark_death(*args)
+                # AZ Phase 3 P1: group by kind and use executemany (5000 binds -> 3 statements)
+                events = [a for k, a in ops if k == "event"]
+                births = [a for k, a in ops if k == "birth"]
+                deaths = [a for k, a in ops if k == "death"]
+                if events:
+                    now = _now()
+                    rows = [
+                        (wid, ev.tick, ev.type, ev.entity_id, ev.caste, ev.cause, ev.x, ev.y, json.dumps(ev.payload), now)
+                        for wid, ev in events
+                    ]
+                    conn.executemany(
+                        "INSERT INTO events(world_id,tick,type,entity_id,caste,cause,x,y,payload,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        rows,
+                    )
+                if births:
+                    conn.executemany(
+                        "INSERT INTO creatures(world_id,entity_id,caste,clan_id,generation,mother_id,father_id,born_tick,died_tick) VALUES (?,?,?,?,?,?,?,?,NULL)",
+                        [(wid, eid, caste, clan_id, gen, mid or None, fid or None, bt) for wid, eid, caste, clan_id, gen, mid, fid, bt in births],
+                    )
+                if deaths:
+                    for wid, eid, dt in deaths:
+                        cur = conn.execute(
+                            "UPDATE creatures SET died_tick=? WHERE world_id=? AND entity_id=? AND died_tick IS NULL",
+                            (dt, wid, eid),
+                        )
+                        if cur.rowcount == 0:
+                            conn.execute(
+                                "INSERT INTO creatures(world_id,entity_id,born_tick,died_tick) VALUES (?,?,NULL,?)",
+                                (wid, eid, dt),
+                            )
             return len(ops)
         except sqlite3.Error:
             # Put the tail back at the front so nothing is lost; the writer

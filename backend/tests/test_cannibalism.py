@@ -34,6 +34,10 @@ def cann_cfg(**kw) -> Config:
         age_enabled=False,
         communication_enabled=False,
         knowledge_enabled=True,
+        defection_enabled=False,
+        betrayal_enabled=False,
+        coalitions_enabled=False,
+        tribute_enabled=False,
     )
     zeros.update(kw)
     return Config(**zeros)

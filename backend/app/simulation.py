@@ -3588,16 +3588,15 @@ class Simulation:
                 shrine_pos[cid] = (house.x + house.size / 2.0 + 1.5, house.y)
         self._shrine_pos_by_clan = shrine_pos
 
-        # §AS L-0: living leader positions per clan (for the morale aura)
+        # AZ Phase 4a P0: _leader_pos O(N) inner scan → O(1) via world.entities.get
         leader_pos: dict[int, tuple[float, float]] = {}
         for cid, info in self.clans.items():
             lid = info.get("leader_id")
             if not lid:
                 continue
-            for c in m.get(cid, ()):
-                if c.id == lid:
-                    leader_pos[cid] = (c.x, c.y)
-                    break
+            ent = self.world.entities.get(lid)
+            if isinstance(ent, Creature) and ent.clan_id == cid:
+                leader_pos[cid] = (ent.x, ent.y)
         self._leader_pos = leader_pos
 
         # §AS L-2/L-5: totem power rides on the chief's presence at the hall
@@ -3701,6 +3700,15 @@ class Simulation:
         self._refresh_cache()
         self._update_anomaly_discovery()  # §AQ PH-10: explorers map the strange
 
+        # AZ Phase 2 P1: evict _identity_cache for dead entities (never queried again)
+        if self.tick % 30 == 0 and self._identity_cache:
+            try:
+                live_entity_ids = set(self.world.entities.keys())
+                dead_keys = [k for k in self._identity_cache if k[0] not in live_entity_ids]
+                for k in dead_keys:
+                    self._identity_cache.pop(k, None)
+            except Exception:
+                pass
         # Leaderless-clan repair: catch clans whose leader_id points to a dead or
         # missing creature (e.g. loaded from old state, or succession_enabled=False).
         # Runs every 30 ticks so the cost is negligible.

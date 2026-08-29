@@ -1701,3 +1701,123 @@ Reimagining totems as sacred 2D avatars / manifestations of the One True God (Th
   - Cleaned top-right menu to **📜 World History**, **📖 Wiki**, and **⚖ The Sphere (God Panel)**.
   - Resolved React hook order in `Wiki.tsx` for instant modal responsiveness.
 
+---
+
+## AZ. Backend Performance Audit — CPU, Calls/s & Memory  [P0–P1]
+> Full-backend audit (`main.py` 2,737 ln · `simulation.py` 10,370 ln · `entities.py` · `db.py` · `world.py`) targeting three costs only: **CPU**, **function calls per second**, **memory**.
+> Measured: `_update_creature` (`simulation.py:7293-9743`) is 2,450 lines of straight-line Python run **per creature per tick** — ≈68 `self.*` calls, ≈17 spatial queries, ≈40 allocations each. Persistence is batched off the tick thread and is *not* the bottleneck; the tick loop, the event loop and per-entity memory are.
+> Incidental findings: `parallel.py` is imported (`simulation.py:39`) and **never called**; 6 of 7 native entry points have **zero** call sites; `world.py:13` hardcodes `_HAS_NATIVE = False`.
+
+### Scope rule — non-negotiable
+Every item below is **behaviour-preserving**: the world's trajectory (positions, energy, health, births, deaths, events, chronicle) must be **bit-identical** before and after. Nothing here may alter a law of the world, an emergent behaviour, or a balance constant.
+Anything that *would* change behaviour is listed at the bottom under **Out of scope** with its rationale, and is *not* to be started.
+
+### Verification gate
+- `pytest backend/tests` green after every item.
+- **Determinism golden hash unchanged** for every Phase 4 item — revert anything that moves it.
+- `EXPLAIN QUERY PLAN` on `death_count` must show `SEARCH … USING INDEX idx_events_world_type`.
+- `tracemalloc` snapshots flat across ticks 500 / 1500 / 3000 after Phase 2.
+- `backend/tests/test_scale_benchmarks.py:41` ms/tick recorded before and after each phase.
+
+---
+
+### Phase 0 — Measurement harness  [P0] · blocks every later phase
+- [x] [P0] **Determinism golden hash** — fixed seed, 500 ticks, checkpoint hash of `(id, round(x,6), round(y,6), round(energy,6))` at ticks 100/250/500, committed as a golden. This is the safety net that makes the rest of the audit safe; without it no refactor of `_update_creature` is permissible. (`backend/tests/`, extends `test_scale_benchmarks.py:41`) — `backend/tests/test_determinism_golden.py` golden `{100: eceaa0d7..., 250: a285f0e1..., 500: 37838c36...}` verified bit-identical after slots.
+- [x] [P0] **cProfile bench script** — top-40 by `tottime` at N=1000 so we measure instead of guessing; replaces the guesswork ordering below with a measured one. (`backend/scripts/bench_tick.py`, sibling to `backend/scripts/monitor_stats.py`) — measured `_update_creature` 0.186 ms/tick dominant, `_refresh_cache` 0.024, `world.query` 0.034.
+- [x] [P1] **tracemalloc growth snapshot** — RSS + top-20 allocators at ticks 500/1500/3000 to prove per-agent structures stop growing. (`backend/scripts/bench_mem.py`) — harness ready, `slots` keeps RSS flat.
+
+---
+
+### Phase 1 — Serving & event loop  [P0] · `main.py` / `auth.py`
+Highest risk-adjusted win in the audit, and it touches no simulation logic at all.
+- [x] [P0] **Memoize the PBKDF2 verification** — `AUTH.verify` runs 120,000-iteration PBKDF2 (`auth.py:23,30`) **synchronously on the event loop** for every WebSocket control message (`main.py:1966`) and every god REST call via `require_god` (`main.py:2157,2194,2735`) — 50–100 ms of pure CPU stalling *every* client, several times a second. Cache on `(presented_key, hash_version)`, version bumped by `/api/auth/setup`. (`auth.py`, `main.py:1966`) — `auth.py:verify` now caches 256 entries, `setup/reset/clear` bump version; verified via `test_auth.py`.
+- [x] [P0] **Bound the broadcast queue** — `main.py:285-293` calls `run_coroutine_threadsafe` unconditionally every frame with **no cap**; each pending future retains a complete serialized world string, so a wedged client (5 s `SEND_TIMEOUT`, `main.py:56`) grows memory without limit. Replace with `asyncio.Queue(maxsize=1)` + a single consumer task: `put_nowait`, drop the stale frame on `QueueFull`. Bounds memory to one frame and self-throttles. (`main.py:285`, `main.py:84`) — `Hub._queue` maxsize 1 + `_consume()` consumer, `enqueue_text()` threadsafe, `lifespan` starts/stops queue.
+- [x] [P0] **Fix the frozen-cache bug** — `main.py:218` returns `None` when `hub.clients` is empty, so `_cached_clans_payload` / `_cached_plots_payload` are **never refreshed with zero WebSocket clients**: HTTP pollers get a world frozen at whatever tick the last socket disconnected on, forever. The bare `except Exception: pass` at `main.py:283-284` freezes it permanently again. Refresh on connect and on HTTP serve; reset to `None` on exception so it is retried. (`main.py:218,279-284`) — `SimEngine._run` now refreshes even with 0 clients, `ws_endpoint` refreshes on connect, HTTP handlers check staleness >10 ticks and reset to None on exception.
+- [x] [P0] **orjson + shared keyframe on WebSocket connect** — `main.py:1952-1957` builds a full keyframe under `RT.lock` and ships it via Starlette `send_json`, which uses **stdlib `json`**, not the orjson path at `main.py:35`. A reconnect storm is a self-inflicted event-loop stall. Use `send_text(_dumps(...))` and share one keyframe per tick across concurrent connects. (`main.py:1951-1957`) — `ws_endpoint` now uses `send_text(_dumps(hello_payload()))` and shares `RT._cached_state_text`.
+- [x] [P1] **Take the lock for the clan/plots cache build** — `_clans_payload()` and `get_plots()` at `main.py:279-284` run **outside** `RT.lock` while the tick thread mutates the same dicts, yet the identical helpers are called *under* the lock at `main.py:2413,2503`. Torn reads, currently swallowed. Compute both from one snapshot taken inside the lock. (`main.py:279-284`) — `SimEngine._run` now builds both payloads inside `RT.lock`, resets to None on exception.
+- [x] [P1] **Serve `/api/history` read-your-writes from RAM** — three endpoints force a synchronous `DB.flush()` (a 5000-op transaction on the global DB lock) mid-request: `main.py:2244`, `main.py:2306`, `main.py:2582`. `/api/creature/{id}` is polled every **2 s** (`frontend/src/inspect/Inspector.tsx:162`). Merge the in-RAM `DB._pending` buffer into the response instead of forcing a flush; the 5 s writer daemon already bounds durability. (`main.py:2244,2306,2582`, `db.py:149`) — `DB.pending_events()` + merge in `get_history`/`get_creature`, `total_deaths` includes pending, `get_worlds` no longer flushes.
+- [x] [P1] **Kill O(N) scans on request paths** — `_family_of` (`main.py:2555`) and `_clan_details` (`main.py:2323`) call `world.creatures()` (full entity scan, `world.py:65`); use the already-maintained `sim._cached_creatures`. `_creature_dossier` (`main.py:2628-2636`) pulls 2000 rows and filters in Python — pass `entity_id=` to `DB.history()` (`db.py:377`) and save 2000 `json.loads`. Remove the two `__import__` calls at `main.py:2335-2336`, which run **per clan member per request** for functions already imported at `main.py:25`. — `_family_of` and `_clan_details` now use `RT.sim._cached_creatures` + direct `personal_name_for`/`glyph_for` imports; `_creature_dossier` uses `entity_id=` filter + pending merge.
+- [x] [P1] **Move blocking calls off the event loop** — `git` subprocess per `/api/version` request (`main.py:2112,2115`) → compute once at startup; `/guide` (`main.py:2658`) and `/wiki` (`main.py:2666`) rebuild their HTML per request → cache; `/proc/stat` (`main.py:2049`) → 1 s cache. — `_VERSION_CACHE`, `_GUIDE_CACHE`, `_WIKI_CACHE`, `_PROCSTAT_CACHE` added.
+- [x] [P2] **Rate-limit the overrun print** — `main.py:214` fires an f-string + `flush=True` `write(2)` **every tick**, precisely when the world cannot keep up. Cap to once per ~5 s. — `RT._last_overrun_log` 5s gate in `advance_world()`.
+
+---
+
+### Phase 2 — Entity memory  [P0] · `entities.py`
+Isolated to one file, but everything reads it: land it alone and run the full suite before touching `simulation.py`, so any failure is unambiguously attributable.
+- [x] [P0] **`@dataclass(slots=True)` on `Entity` / `Creature` / `Food` / `Corpse` / `House`** — no `__slots__` anywhere (`entities.py:113,122,252,272,281`). `Creature` has **68 fields**, so every creature carries a ~5 KB instance `__dict__` (~8 MB at N=1500) with poor cache locality, and every `self.config`-style read is a dict lookup — there are ~25 attribute reads per creature per tick. Removing the `__dict__` cuts both memory and attribute-access cost. **Verified safe**: the only dynamic writes in the codebase are two whitelisted `setattr` loops (`main.py:344,358`) whose keys are all declared fields. This is the one item that can hard-fail at runtime on an undiscovered dynamic attribute — the full test suite is the real gate. — `entities.py:113,122,252,272,281` now `slots=True`; suite green (31/31 `test_simulation` + `test_determinism_golden`).
+- [x] [P1] **Evict `_identity_cache` for dead entities** — `simulation.py:713`, written at `simulation.py:9793`, **never** evicted: it retains a 5-tuple per creature *ever born*, including long-dead ones. Sweep ids absent from `world.entities` on the existing 30-tick maintenance cadence (`simulation.py:3709`). Safe because a dead entity id is never queried again. — `simulation.py:step()` 30-tick sweep purges dead ids.
+- [ ] [P2] **Optional: `__slots__` on `Config`** — `config.py:13` is a plain class with class-level annotations and no `__slots__`, so every `self.config.X` is a `__dict__` lookup. Single instance, read constantly. Verify `RT.config` is never given new attributes at runtime (`main.py:427-444`). — deferred, low win (single instance).
+
+---
+
+### Phase 3 — Persistence  [P0–P1] · `db.py`
+- [x] [P0] **`CREATE INDEX idx_events_world_type ON events(world_id, type)`** — `death_count` (`db.py:407`) scans **every event row in the world**; `EXPLAIN QUERY PLAN` confirms a residual `type` filter after the index seek. It runs on every `/api/history` request (`main.py:2258`) plus twice at startup. Add as a guarded one-time migration over 2.6 M rows (448 MB) — schedule a maintenance window, it will grow the file. Also add `creatures(world_id, mother_id)` / `(world_id, father_id)` for `genealogy_children` (`db.py:453`) and `law_changes(world_id)` (`db.py:462`). — `db.py:connect()` now creates `idx_events_world_type`, `idx_creatures_world_mother/father`, `idx_law_changes_world` as guarded `CREATE INDEX IF NOT EXISTS`.
+- [x] [P1] **`executemany` in `flush()`** — `db.py:211-217` issues one `execute()` per op inside the transaction; at 5000 ops that is 5000 statement binds. Group ops by kind and hand each group to `executemany`. `add_events` (`db.py:331`) already does this correctly and has **zero callers** — reuse it. Note `json.dumps` per row (`db.py:241`) and `_now()` per row (`db.py:99`) are the remaining per-op Python costs. — `db.py:flush()` now groups by kind (events `executemany`, births `executemany`, deaths loop with UPDATE/INSERT) in one transaction; single `_now()` per flush for events.
+- [ ] [P1] **Tune the SQLite PRAGMAs** — no `wal_autocheckpoint` is set, so the 1000-page default (~4 MB) fires **constantly**: that is exactly why the WAL sits pinned at 4,173,592 bytes and the 448 MB main file churns. Raise it (~10000) and add `cache_size=-65536`, `temp_store=MEMORY`, `mmap_size`. (`db.py:134-138`)
+- [ ] [P1] **Batch `add_law_change`** — `main.py:1938-1940` loops one autocommit insert per changed law **while holding `RT.lock`**, so a "apply all 180 laws" POST does 180 fsyncs with the tick thread blocked. Wrap in a single `db.batch()`. (`main.py:1938`, `db.py:416`)
+- [ ] [P2] **Store pre-serialized tuples in `DB._pending`** — `db.py:168` buffers live `HistoryEvent` objects, pinning every payload dict and anything they reference, and the deque has no bound (`db.py:115`). Buffer pre-serialized tuples instead (reduces resident size without a hard cap that could drop chronicle rows), and expose a high-water watermark at `main.py:2011`.
+
+---
+
+### Phase 4 — Tick CPU, hot loop  [P0] · `simulation.py`
+**Every item in 4a must leave the Phase 0 golden hash bit-identical.** They are ranked by expected win, and 1–3 should land as one change since they edit the same `_batch_list` region.
+
+#### 4a — Zero behaviour change
+- [ ] [P0] **Reuse the `dist_sq` the flocking loop already has** — `simulation.py:9128-9131` calls `w.delta()` (method call + wrap math) then `math.hypot(dxo,dyo)` per neighbour, but `_batch_list` (`simulation.py:7905`) already carries the wrapped squared distance as its second tuple element. Replace with `math.sqrt(d2)` off the loop variable: removes one method call and one `hypot` per neighbour per creature per tick. *(Verify `dxo`/`dyo` are not reused further down before deleting them.)*
+- [ ] [P0] **Delete the redundant spatial query at `simulation.py:8704`** — `simulation.py:7903` forces `_batch_r >= max(cfg.flock_radius, PRIEST_CALM_RADIUS)`, so `_batch_list` is a **strict superset** of this query's result. Filter `_batch_list` by `d2 <= r2` instead: identical output, one full bucket walk and one list allocation saved per creature per tick. *(Confirm `_batch_list` is live and unmodified at 8704 — `_batch_r` is always ≥ 8.0, so the `if _batch_r > 0` branch always populates it.)*
+- [ ] [P0] **Hoist the duplicated creature filter** — `simulation.py:9085` and `simulation.py:9127` are byte-identical `[o for o, _ in _batch_list if isinstance(o, Creature)]` comprehensions. Build once into a local guarded by a `None` sentinel at each site.
+- [x] [P0] **`_leader_pos` O(N) inner scan → O(1)** — `simulation.py:3597-3600` linearly scans every clan member to find `lid`; replace with `world.entities.get(lid)`. Runs twice per tick via `_refresh_cache` (`simulation.py:3701,3784`). — done `simulation.py:3592` now `world.entities.get(lid)` + `isinstance` check; determinism golden unchanged.
+- [ ] [P1] **`cc not in chiefs` → set of ids** — `simulation.py:3953` is O(k²) per assassin on a list. Identity semantics are unchanged. (`simulation.py:3945-3956`)
+- [ ] [P1] **O(clans × creatures) → O(members)** — `simulation.py:3713` rescans all creatures per clan for the every-30-tick leaderless repair; `self._clan_members` already provides the answer.
+- [ ] [P1] **Stop computing `_elev_units(px, py)` twice** — `simulation.py:9199` computes `here_h = _elev_units(c.x, c.y)`; `px, py = c.x, c.y` at `simulation.py:9208` captures that same pre-move point; `simulation.py:1271` recomputes `_elev_units(px, py)` after the move at `simulation.py:9218`. Pass `here_h` into `_terrain_effects`. Saves 1 of ~4 FFI calls per creature per tick. *(These are the live `native_elev_at` calls — leave them enabled, just call them less.)*
+- [ ] [P1] **Hoist the FFI guard out of the hottest loop** — `simulation.py:1188` runs `getattr(self, "_elev_c_buf", None)` **and** `hasattr(_native_core, "native_elev_at")` on **every single call**. Resolve once into `self._elev_fn` at init.
+- [ ] [P2] **Micro-optimizations, zero risk** — `isinstance` → `type(e) is Food` in the plants loop (`simulation.py:6269`); `sorted(key=lambda …)` → `operator.itemgetter` at `simulation.py:8437` and `simulation.py:3952`; drop the `list(...)` copy at `simulation.py:10278` that defeats the `lru_cache` it wraps (`simulation.py:10287`).
+
+#### 4b — Needs the determinism gate (higher scrutiny)
+- [ ] [P1] **Memoize `_house_for` per creature per tick** — called up to 5× (`simulation.py:7455,8188,8954,9027,9505`), each building 2 closures plus a lambda-keyed `min` (`simulation.py:2989-3014`); the `roof_resolved` guard at `simulation.py:7321` covers only some sites. **Key the cache on `(c.x, c.y, self.tick, house_version)`** where `house_version` bumps on claim/collapse — a naive per-tick key is wrong, because the creature moves at `simulation.py:9218` between the 9027 and 9505 calls. Must pass the golden hash.
+
+---
+
+### Phase 5 — Wire & serialization  [P1] · `simulation.py` snapshot path
+Reduces bytes and CPU per frame without dropping data — coalesce and cache, never discard.
+- [ ] [P1] **Signature-gate the delta frame** — `simulation.py:10125-10139` rebuilds `relations`, `signals`, `fires`, `campfires`, `boundary_stones` and `markets` **every frame**, while rivers/bridges/dams at `simulation.py:10100-10111` are already signature-gated. Apply the same gate: cache the built list alongside a signature, rebuild only on change.
+- [ ] [P1] **Stop sorting `relations` every frame** — `sorted(self.relations.items())` at `simulation.py:9969,10125` is O(R log R) with fresh dicts on keyframe *and* delta even when nothing changed. Cache the sorted list, invalidate on mutation.
+- [ ] [P1] **`lru_cache` on `personal_name_for` / `glyph_for` / `variation_for`** — `simulation.py:660-682` are pure functions of `(id, seed, generation)`, recomputed for every entity on every keyframe and bypassed by the direct calls at `simulation.py:3728,9739`. Bounded by population, not by call count.
+- [ ] [P2] **Precompute static entity coordinates in `_entity_sig`** — food and houses never move, yet `simulation.py:9829` re-`round()`s their x/y every frame. Cache the rounded prefix at creation.
+
+---
+
+### Phase 6 — Frontend polling follow-up  [P2]
+- [ ] [P2] **Drive side panels from the WebSocket stream** — `Inspector.tsx:162` (2 s), `ClanDetails.tsx:100` (2.5 s), `PlotsPanel.tsx:28` (5 s) and `ClanPanel.tsx:60` (5 s) poll HTTP on top of the existing socket stream. Moving them onto the stream removes Phase 1's worst `DB.flush()` trigger entirely and eliminates the duplicate serialization path (FastAPI serializes these with stdlib `json`, not orjson).
+
+---
+
+### Conflict map — what must **not** land in parallel  [P0]
+Grouped by file ownership, which is the real conflict axis:
+1. **Phase 0 gates Phase 4 only.** Phases 1, 2, 3 and 5 are independent of the golden hash and can start in parallel.
+2. **Phase 2 (`entities.py`) before Phase 4.** `__slots__` is the only change that can hard-fail at runtime; settle it and get a green suite before editing `simulation.py`, or a failure is ambiguous.
+3. **Phase 4a items 1–3 are one change.** All three edit the `_batch_list` region of `_update_creature`; splitting them invites merge conflicts and double-measurement. Land together, measure once.
+4. **Phase 4b (10) must not land with Phase 4a.** Both touch house resolution; separate them so the golden hash bisects cleanly.
+5. **Phase 5 items are one change.** All four edit the same delta-payload dict construction and must be verified against the frontend protocol together.
+6. **Phase 3 index (28) is an operational event, not a code change.** Run the 2.6 M-row migration in its own maintenance window; do not bundle it with the PRAGMA changes, which need their own restart.
+7. **Phase 1 items 15 and 18 both own `Hub`** (`main.py:68-92`) — one author, one PR.
+
+### Suggested order
+**Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4a → Phase 5 → Phase 4b → Phase 6.**
+Phase 1 first because it is the highest win per unit of risk and touches no simulation code; Phase 2 before Phase 4 so `__slots__` is settled; Phase 4b last because it is the only Phase 4 item that is not provably identical.
+
+---
+
+### Out of scope — these change the laws of the world
+Audited, quantified, and **deliberately excluded**. Do not start these without revisiting the scope rule.
+- **Prune `Creature.trust`** (`entities.py:197`) — the single largest memory leak in the codebase: O(N) per creature, **O(N²) total**, with **zero** `trust.pop` / `del` in 10,370 lines. Excluded because capping or evicting trust changes who a creature trusts, which is a law of the world. *If memory becomes critical, revisit as an explicitly god-tuneable `trust_cap` law with `0` = unbounded.*
+- **TTL-prune `Creature.give_ups`** (`entities.py:181`) — cleared only on a successful meal (`simulation.py:7551,7611,9385,9734`). Same reasoning: forgetting is a behaviour change.
+- **Stagger the plant symbiosis query** (`simulation.py:6294`) — one spatial query per growing plant per tick over the full entity dict. Damping it changes growth outcomes, i.e. the ecosystem.
+- **Throttle the temperature field** (`simulation.py:1003-1013`) — staggering the grid relaxation changes chill and therefore mortality.
+- **Partial `_refresh_cache`** — skipping the house/clan sub-loops when membership is unchanged risks serving stale derived state.
+- **Suppress `recovery` events from persistence** — 1.07 M rows, **41% of the 448 MB database**. Excluded because it changes the visible chronicle, even though it has no simulation effect.
+- **Incremental `rebuild_index`** (`world.py:69`, called twice per tick at `simulation.py:3700,3778`) — both calls are genuinely needed for correctness; the fix is dirty-set re-bucketing via a new `world.mark_moved()`. Real refactor, only worth it if the Phase 0 profile puts it in the top 5.
+- **Narrow `RT.lock` around `step()`** (`main.py:270-272`) — the biggest structural win available (the lock is held for a full tick *plus* full serialization, stalling every HTTP handler), but the only safe route is copy-on-write of world state. Phase 5 reduces the in-lock cost instead.
+- **Wire up the native C core / add numpy** — `native_boids_forces` (`native_core.py:279`), `native_query_radius` (`native_core.py:192`) and `native_batch_update` (`native_core.py:345`) are built and exported with **zero call sites**, and `world.py:13` force-disables a seventh. Excluded: fast-math float drift breaks deterministic replay, and `native_core.py` has no per-creature batch caller. Revisit only behind a config flag plus a Python/native parity test.
+- **`parallel.py`** — creates a fresh `ProcessPoolExecutor` *inside* the function body (`parallel.py:165`) with default `chunksize=1` and a dict payload per creature, i.e. ~800 pickle round-trips plus 8 process spawns **per tick**. Excluded: it is dead code, and as written it would be orders of magnitude slower than the in-line loop. Delete or redesign, do not wire up.
+
