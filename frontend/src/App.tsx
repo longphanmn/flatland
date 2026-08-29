@@ -643,10 +643,10 @@ export default function App() {
             <button onClick={() => setStatusExpanded(false)} style={{ background: 'transparent', border: 'none', color: '#8b949e', fontSize: 16, cursor: 'pointer', padding: 0, minHeight: 24, flex: 'none' }}>✕</button>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>
-            <span className="chip" style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any, borderColor: '#e3b341', color: '#e3b341' }}>{t('app.hud.tick')} <b>{state?.tick ?? 0}</b>{estTps !== null && ` · ${estTps} t/s`}</span>
+            <span className="chip" style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any, borderColor: '#e3b341', color: '#e3b341', flex: '0 0 100%', width: '100%', boxSizing: 'border-box' as any, justifyContent: 'flex-start' }}>{t('app.hud.tick')} <b>{state?.tick ?? 0}</b>{estTps !== null && ` · ${estTps} t/s`}</span>
             <span className="chip" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>entities <b>{state?.entities.length ?? 0}</b></span>
             <span className="chip dead" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>dead <b>{state?.creatures_dead ?? 0}</b></span>
-            <span className="chip" style={{ fontSize: 10, color: '#8b949e', whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>{deadBreakdown}</span>
+            <span className="chip" style={{ fontSize: 10, color: '#8b949e', whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'anywhere' as any, flex: '0 0 100%', width: '100%', boxSizing: 'border-box' as any }}>{deadBreakdown}</span>
             {(state?.infected_count ?? 0) > 0 && <span className="chip sick" style={{ whiteSpace: 'normal' }}>infected <b>{state?.infected_count}</b></span>}
             {(state?.entities.filter((e) => (e.chill ?? 0) >= 12).length ?? 0) > 0 && <span className="chip" style={{ color: '#79c0ff', whiteSpace: 'normal' }}>🥶 chilled <b>{state?.entities.filter((e) => (e.chill ?? 0) >= 12).length}</b></span>}
             {raining && exposedCount > 0 && <span className="chip exposed" style={{ whiteSpace: 'normal' }}>⛈ exposed <b>{exposedCount}</b></span>}
@@ -655,8 +655,8 @@ export default function App() {
             <span className="chip" style={{ whiteSpace: 'normal' }}>hungry <b>{hungryCount}</b> · starving <b>{starvingCount}</b></span>
           </div>
           {worlds.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 6, paddingTop: 6, borderTop: '1px solid #21262d', wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>
-              <span style={{ fontSize: 12, color: '#8b949e', flex: 'none', whiteSpace: 'normal' }}>{t('app.hud.historyRun')}</span>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' as const : 'row' as const, flexWrap: 'wrap', alignItems: isMobile ? 'stretch' : 'center', gap: 8, marginTop: 6, paddingTop: 6, borderTop: '1px solid #21262d', wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>
+              <span style={{ fontSize: 12, color: '#8b949e', flex: isMobile ? '0 0 100%' : 'none', whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.hud.historyRun')}</span>
               <select
                 className="run-select"
                 value={String(selectedRunId ?? liveWorldId ?? '')}
@@ -667,7 +667,7 @@ export default function App() {
                   }
                 }}
                 onChange={(e) => void selectRun(e.target.value)}
-                style={{ flex: 1, minHeight: 32, fontSize: 12 }}
+                style={{ flex: isMobile ? '0 0 100%' : 1, minHeight: 32, fontSize: 12, minWidth: 0, width: isMobile ? '100%' : undefined }}
               >
                 {worlds.map((w) => (
                   <option key={w.id} value={String(w.id)}>
