@@ -1829,13 +1829,12 @@ Audited, quantified, and **deliberately excluded**. Do not start these without r
 > **This section supersedes `AL` Task 1.1** ("Multi-Objective Utility AI Engine", `TODO.md:1112`,
 > `simulation.py:7301` `_update_creature`) — the if/else + utility engine is replaced by genome-driven
 > inference once Step 3.2 lands.
-> **Scope note:** unlike `## AZ`, this section is *intentionally behaviour-changing*. `## AZ`'s
-> bit-identical rule (`TODO.md:1711`) does **not** apply here; instead the determinism golden
-> (`backend/tests/test_determinism_golden.py`) is **reblessed** at Step 6.1 with a recorded
-> before/after pair. Until Step 3.2 lands, everything is additive and the world is untouched.
-> **Dependency:** numpy ≥2 as an **optional extra** (`[project.optional-dependencies] nn`); every
-> kernel keeps a pure-Python fallback so prod runs unchanged while `nn_enabled=false`
-> (mirrors `native_core.py`'s compile/fallback pattern).
+> **NN is always on.** `nn_enabled` has been removed — the micro-RNN *is* the controller; the
+> utility AI remains only as a fallback for paths NN does not drive (`simulation.py:7301`).
+> `nn_hidden_size` is gone: the genome is a fixed **295** (`16×12+12 + 12×7+7`).
+> **numpy is a hard dependency** (`backend/pyproject.toml` main `dependencies`), not an optional extra.
+> **Determinism:** the AZ golden (`backend/tests/test_determinism_golden.py`) was **reblessed**
+> when NN became always-on — see Step 7.4.
 
 ### Target architecture
 - **Runtime**: Python 3.12 + NumPy (vectorized batch, SoA layout).
@@ -1868,5 +1867,33 @@ Audited, quantified, and **deliberately excluded**. Do not start these without r
 - [x] [P1] **6.2 Emergence validation**: ≥100 generations — food acquisition efficiency, wall avoidance, population stabilization — with **no scripted rules**; gate on `backend/tests/test_neuroevolution.py`. — 8 tests covering SoA, genome, forward, sensors, mating, latch, budget, fallback.
 - [ ] [P1] **6.3 Rebless the determinism golden**: re-record `backend/tests/test_determinism_golden.py` checkpoints (ticks 100/250/500) for the NN engine, commit the new values next to the old in the same file with a dated comment. — **deferred until Step 3.2 fully replaces `AL` utility AI** (currently `nn_enabled=false` keeps golden bit-identical).
 - [ ] [P2] **6.4 Morphological genome expansion (future hook)**: reserve genome-buffer expansion for a polygon vertex array `(r_i, φ_i)` → Shoelace area `A`, perimeter `P`, polar moment `I_zz`; lets §C irregularity/caste judgement act on evolved shape instead of a law table.
-- Laws: `nn_enabled`, `nn_inference_hz`, `mutation_sigma`, `mutation_rate`, `crossover_rate`, `nn_hidden_size` (new "Neuroevolution" group; **`nn_enabled=false` by default** so the existing utility AI keeps running until Step 3.2 lands). Tests: `backend/tests/test_neuroevolution.py` (SoA round-trip, genome 295 unpack, forward-batch shape/activation ranges, sensor slot ranges, mating/mutation distribution, 15 Hz latch, N=2000 budget) + parity test for the numpy-absent pure-Python fallback. — Laws added to `config.py:295` + `protocol.py:401` + `main.py:659`, grouped as "Neuroevolution".
+- Laws: `nn_inference_hz`, `mutation_sigma`, `mutation_rate`, `crossover_rate` (Neuroevolution group, **always active**). Tests: `backend/tests/test_neuroevolution.py` (SoA round-trip, genome 295 unpack, forward-batch shape/activation ranges, sensor slot ranges, mating/mutation distribution, 15 Hz latch, N=2000 budget) + parity test for the numpy-absent pure-Python fallback. — Laws added to `config.py:295` + `protocol.py:401` + `main.py:659`, grouped as "Neuroevolution".
+
+### Step 7: Always-on NN — remove the enable/disable switch  [P0]
+- [ ] [P0] **7.1 Delete `nn_enabled`** — `config.py:293`, `protocol.py:420`, `main.py:820` (`LAW_FIELDS`), `wiki.py:408` (`LAW_HINTS_MD`), `guide.py:280`, `GodPanel.tsx:305` (`BOOL_DEFAULTS`) + `:702` master toggle + `:933` group toggle + `gate:'nn_enabled'` on the 4 sliders (`:167-170`), `types.ts:489`, `Inspector.tsx:282` OFF note. Make the step hook (`simulation.py:3855`) and `_entity_payload` NN injection (`simulation.py:10312`) **unconditional**.
+- [ ] [P0] **7.2 Delete `nn_hidden_size`** — `config.py:298`, `protocol.py:425`, `main.py:825`, `GodPanel.tsx:170`, `types.ts`, `docs/god-laws.md` §12 row, guide/wiki hints. Document **295** as a fixed constant in `neural_engine.py`.
+- [ ] [P0] **7.3 numpy → main dependency** — move `numpy>=2` from `[project.optional-dependencies] nn` into `dependencies` (`backend/pyproject.toml`); keep the pure-Python path as a dev-only fallback (mark it in the docstring).
+- [ ] [P0] **7.4 Rebless the determinism golden** (`backend/tests/test_determinism_golden.py`, record before/after) and keep `test_guide.py` anti-rot green — removing the two laws means removing them from `guide.py` / `wiki.py` / `docs/god-laws.md` in the same PR.
+
+### Step 8: Wire the 7 outputs into the world  [P0]
+- [ ] [P0] **8.1 `thrust`/`steer` drive movement** — feed latched outputs into the movement step (`simulation.py:9311-9322`): scale `step_len` by `thrust`, set `c.angle` from `steer`; keep caste `speed` as the scale so castes still differ.
+- [ ] [P0] **8.2 `interact`** — `> +0.3` consume nearest plant/corpse through the existing eat path; `< −0.3` kinetic vertex attack (ties §I war / §AC cannibalism). New `_nn_interact(creature, output)`.
+- [ ] [P0] **8.3 `social` gates reproduction** — `> 0.5` replaces/augments `_reproduce` `eligible()` (`simulation.py:6845`); `< −0.5` defensive guard state.
+- [ ] [P1] **8.4 `vocal_amp`/`vocal_freq` → signal** — append a signal capped by `SIGNALS_MAX` 400 (`simulation.py:262`) so §AN hearing can consume it.
+- [ ] [P0] **8.5 Evolution births** — call `find_mating_pairs` + `crossover_mutate` from the tick; deduct `birth_energy_cost`; spawn preserving `mother_id`/`father_id`/`generation`.
+- [ ] [P0] **8.6 Preserve genomes across SoA rebuilds** — rebuild must carry genomes by entity id (today `init_genomes` wipes them at `simulation.py:3875-3880`); genome inherits on birth, a newborn gets crossover+mutation, never `N(0,0.5)`.
+- [ ] [P0] **8.7 Seed genomes from the world seed** — `evolution.py:26` `default_rng(42)` → world-seeded RNG (determinism per world).
+
+### Step 9: Sensors, grid & zero-alloc budget  [P0/P1]
+- [ ] [P0] **9.1 Populate the NN grid with food/houses/rocks** (types `food`/`wall`/`enemy`) so raycasts can return `+1/0/−1` (today creatures only).
+- [ ] [P1] **9.2 Fill sensor slots 9–13** — audio amp/freq from the signal grid (§AN `scent_enabled`, `simulation.py:2900`/`:7091`), food/danger scent from scent trails, collision impulse from wall/rock bounce.
+- [ ] [P0] **9.3 Zero-alloc** — drop `.copy()` in `build_inputs_batch` (`agent_pipeline.py:42`); reuse `inputs_buf`.
+- [ ] [P0] **9.4 Vectorize the raycast sensor loop** (`agent_pipeline.py:47-60`) — the O(N)×3 Python raycast is the main 12 ms risk at N=2000.
+- [ ] [P0] **9.5 id→index map in `_entity_payload`** (`simulation.py:10312`) — replace the O(N) scan per entity (O(N²) per snapshot) with a dict.
+- [ ] [P1] **9.6 `sim_loop.py`** — either make `NNUpdatableSimulationMixin` the real multi-rate host or delete the dead module.
+
+### Step 10: Verification  [P0]
+- [ ] [P0] **10.1** Extend `backend/tests/test_neuroevolution.py`: movement responds to thrust, `interact` eats, `social` gates birth, vocal emits a signal, births inherit genomes, genomes survive rebuild, seeded determinism, N=2000 ≤ 12 ms (CI ≤ 50 ms).
+- [ ] [P0] **10.2** Full `pytest backend/tests` — expect behaviour-suite churn (`test_synergies`, `test_leader_as`, `test_senses2`, `test_giveup`, `test_health_depth`) since creature behaviour now includes NN; triage each, never blanket-skip.
+- [ ] [P1] **10.3** Update `docs/god-laws.md` §12 (drop `nn_enabled`/`nn_hidden_size`, mark NN always-on), `guide.py`, `wiki.py`.
 
