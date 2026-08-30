@@ -138,7 +138,7 @@ def test_15hz_latch_and_zero_alloc():
     from app.config import Config
     from app.simulation import Simulation
 
-    cfg = Config(seed=42, width=80, height=80, num_houses=0, food_count=20, nn_enabled=True, nn_inference_hz=15)
+    cfg = Config(seed=42, width=80, height=80, num_houses=0, food_count=20, nn_inference_hz=15)
     sim = Simulation(cfg)
     # run a few ticks, check that _soa is created and N matches
     for _ in range(8):

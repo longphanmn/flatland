@@ -817,12 +817,9 @@ LAW_FIELDS = (
     "markets_enabled",
     "omens_enabled",
     "dialect_drift_enabled",
-    "nn_enabled",
     "nn_inference_hz",
     "mutation_sigma",
-    "mutation_rate",
     "crossover_rate",
-    "nn_hidden_size",
 )
 
 
