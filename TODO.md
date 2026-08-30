@@ -3,11 +3,11 @@
 The Sphere model: The Sphere (God) sets **laws** from Spaceland, never touches individual creatures. Everything else emerges.
 Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observability · `- [ ]` open · `- [x]` done · *parked* = decided, not pending
 
-> **Active backlog only.** Completed roadmaps §F–§BC (587 items: 573 + 14 BC) → [`docs/roadmap-archive.md`](docs/roadmap-archive.md) (anchors stripped — all were stale after repeated rewrites; symbols kept). BC geometric physics now done (SoA/Morphology/Annealing/Laws/SAT). BD.5 & BD.6 dossiers done 2026-08-31. This file tracks the **29 open (13 AZ + 16 BD) + 8 parked** items that remain.
+> **Active backlog only.** Completed roadmaps §F–§BC (587 items: 573 + 14 BC) → [`docs/roadmap-archive.md`](docs/roadmap-archive.md) (anchors stripped — all were stale after repeated rewrites; symbols kept). BC geometric physics now done (SoA/Morphology/Annealing/Laws/SAT). BD.5 & BD.6 dossiers done 2026-08-31. This file tracks the **45 open (13 AZ + 32 BD) + 8 parked** items that remain.
 
 ---
 
-## Open work — 29 items (13 AZ + 16 BD; verified 2026-08-31, cleaned & sorted by priority, BD.5/6 done)
+## Open work — 45 items (13 AZ + 32 BD; verified 2026-08-31, cleaned & sorted by priority, BD.5/6 done, BD.7-10 added)
 
 All `file:line` anchors below were re-verified against `backend/app/simulation.py` (~10k lines), `world.py`, `db.py`, `agent_pipeline.py`, `frontend/src/`. Stale claims from the 200KB log are annotated.
 
@@ -81,7 +81,7 @@ Reduces bytes and CPU per frame without dropping data — coalesce and cache, ne
 - [x] [P2] **6.2 Telemetry** `GET /api/metrics/morphology` `main.py:2303`.
 - [x] [P2] **6.3 Zero-alloc** `<4ms/2000` verified 1.84s/100 ticks same as disabled.
 
-### BD. World Analytics & Telemetry Engine [P1–P2] — 24 open
+### BD. World Analytics & Telemetry Engine [P1–P2] — 32 open (8 done)
 
 > Objective: High-performance macro intelligence, biological evolution tracking, geopolitical analytics, ecological trophic balance, predictive early warning systems, and dedicated Observatory / Profile UI redesigns. Operates zero-alloc on the simulation hot loop via SoA batch aggregators and rolling ring buffers.
 
@@ -132,6 +132,34 @@ Reduces bytes and CPU per frame without dropping data — coalesce and cache, ne
 - [x] [P1] **6.2 4-Tab Modular Codex Architecture** — `Stronghold & Outposts | Demographics & Roster | Warfare & Diplomacy | Annals & Full History` tabs, `sessionStorage['clan-tab']` persisted.
 - [x] [P2] **6.3 Searchable & Filterable Member Roster (Roster Tab)** — chips All/Warriors/Harvesters/Elders/Sick, 2-col member cards with caste/stage/energy/health + inspect.
 - [x] [P2] **6.4 Warfare Record & Diplomatic Intelligence (War & Trade Tab)** — win/loss banner, specialization tri-wheel, diplomatic intelligence note + recent events.
+
+#### BD.7 Right-Stack Redesign & Unified Tabbed Sidebar Switcher (`App.tsx`, `index.css`, `OverviewPanel.tsx`, `ClanPanel.tsx`, `ChronicleFeed.tsx`) — 4 open
+
+- [ ] [P1] **7.1 Unified Tabbed Sidebar Switcher (`App.tsx`, `index.css`)** — replace cramped 3-collapsible vertical stack with a top tabbed switcher `[📊 Overview | 🏰 Clans (N) | 📜 Chronicle (● Live)]` in `.right-stack`; expand panel to full height with zero nested scroll contention, persist active tab in `sessionStorage['right-stack-tab']`, and bump sidebar width from `320px` to `350px` with frosted glassmorphism.
+- [ ] [P1] **7.2 Compact Overview Panel Redesign (`OverviewPanel.tsx`)** — merge Era & Season progress into a single top progress strip; implement interactive proportional caste spectrum bar with tooltips; add compact 2-row vitals pill strip and ranked mortality cause bars.
+- [ ] [P2] **7.3 High-Density Clan Leaderboard (`ClanPanel.tsx`)** — overhaul clan cards into compact banner rows with totem crest, active population badge, chieftain link, main house coords, sort selector (Pop/Wins/Larder/Age), and tri-color micro specialization bar.
+- [ ] [P2] **7.4 Streamlined Live Chronicle Feed (`ChronicleFeed.tsx`)** — single-row horizontal scroll category filter pills (`All | Conflict | Clan | Deaths | Plague | Nature`), compact inline search, category-colored left accent borders, and glowing live event animation pulses.
+
+#### BD.8 God Panel 2.0 — Lawgiver Hub Redesign (`GodPanel.tsx`, `index.css`) — 4 open
+
+- [ ] [P1] **8.1 6 Macro Domains & Domain Tab Navigation** — restructure 38 flat scattered groups into 6 cohesive domains (*1. 🌿 Ecology & Survival*, *2. 🧬 Biology & Evolution*, *3. ☀️ Climate & Sky*, *4. 🏰 Society, Warfare & Trade*, *5. 🔮 Theology & Sacred Avatars*, *6. ⚙️ World Physics & Disasters*) with responsive domain tab navigation and persistent state.
+- [ ] [P1] **8.2 Universal Law Search & 'Modified Only' Diff Filter** — implement real-time law search input with instant matching across all groups, plus a `[Show Modified Only (N)]` filter toggle isolating customized dials with one-click "Revert to Preset".
+- [ ] [P2] **8.3 Dual Slider + Number Pill with Safe/Extreme Range Zones** — replace raw desktop textboxes and plain mobile ranges with interactive dual slider + numerical pill inputs featuring default baseline markers and color-coded safe/strained/extreme zones.
+- [ ] [P2] **8.4 Preset Comparison Cards & Visual Impact Previews** — overhaul top preset deck with modifier badges (`Food: 120 (Harsh)`, `Winter: 0.3x`), clear active preset indicator, and instant `⚡ Apply Live` vs `🔄 Apply & Reset` triggers.
+
+#### BD.9 Mobile UI 2.0 — Handheld Experience Redesign (`App.tsx`, `CanvasRenderer.tsx`, `index.css`, `Inspector.tsx`) — 4 open
+
+- [ ] [P1] **9.1 Dynamic Island Top HUD & Metric Sheet (`App.tsx`, `index.css`)** — replace crowded multi-chip header with a sleek single-row status pill (`Season/Day`, `Era`, `Alive count`, `God/Menu icons`) and a slide-down frosted glass HUD drawer with clean 2x3 metrics and run selector.
+- [ ] [P1] **9.2 Floating Ergonomic Thumb Capsule (`App.tsx`, `index.css`)** — replace 7 rigid buttons with a floating capsule dock padded for `env(safe-area-inset-bottom)`, featuring primary play/pause thumb action, step, popover speed selector dial (1x-40x), and sheet toggle.
+- [ ] [P1] **9.3 Physics-Based Gesture Codex Sheet (`App.tsx`, `index.css`)** — rebuild mobile bottom sheet with 3 smooth snap points (Peek 72px / Half 50vh / Full 90vh), fluid swipe gesture physics, and horizontal swipeable tab pages (`Overview | Clans | Chronicle | Plots`).
+- [ ] [P2] **9.4 Magnetic Touch Lock-on & Follow Cam (`CanvasRenderer.tsx`, `Inspector.tsx`)** — implement 24px proximity lock-on for creature tapping with golden ripple visual touch feedback, plus a 1-tap "Follow on Map" tracking camera in the mobile creature dossier.
+
+#### BD.10 TUI 2.0 — Terminal Universe Redesign (`backend/tui/`) — 4 open
+
+- [ ] [P1] **10.1 High-Resolution Geometric Glyph & Braille Canvas (`backend/tui/widgets/world_view.py`)** — implement sub-pixel Braille ($2\times4$) / quadrant block modes and Abbott geometric runes (`—` Woman, `▲` Soldier, `△` Artisan, `□` Gentleman, `⬡` Noble, `◯` Priest) with 24-bit TrueColor, atmospheric weather ASCII particles (rain streaks, fog dither, fire sparks), and territory box borders.
+- [ ] [P1] **10.2 Sparkline HUD & Terminal Demographic Spectrum (`backend/tui/widgets/hud.py`, `overview.py`)** — add real-time Rich population sparklines (` ▂▃▅▆▇`) in terminal HUD, plus proportional ASCII caste spectrum bar and ranked cause-of-death breakdown in the Overview pane.
+- [ ] [P1] **10.3 4-Tab Modular TUI Dossiers (`backend/tui/screens/inspector.py`, `clan_details.py`)** — rebuild terminal Inspector and Clan Details into 4-tab screens (`[F1 Vitals] [F2 Skills & AI] [F3 Lineage] [F4 Chronicle]`) with interactive ASCII kinship pedigree trees and skill mastery progress bars.
+- [ ] [P2] **10.4 Vim Navigation & Fuzzy Search (`backend/tui/app.py`, `screens/god_laws.py`)** — add mouse wheel zoom/pan, `/` fuzzy search in Chronicle and God Laws, 1-key preset switcher (`1-7`), and vim camera controls (`h/j/k/l`, `w` follow, `f` fit).
 
 ---
 
