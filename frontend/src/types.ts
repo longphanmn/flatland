@@ -481,4 +481,11 @@ export interface GodLaws {
   relation_drift_rate?: number
   alliance_threshold?: number
   rivalry_threshold?: number
+
+  // Neuroevolution (BA)
+  nn_enabled?: boolean
+  nn_inference_hz?: number
+  mutation_sigma?: number
+  crossover_rate?: number
+  nn_hidden_size?: number
 }

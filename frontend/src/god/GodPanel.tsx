@@ -163,6 +163,11 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'lightning_strike_rate', label: 'Bolt rate / storm tick', min: 0, max: 0.02, step: 0.0005, group: 'Electrostatics', gate: 'lightning_enabled' },
   // Cosmology (§AQ PH-10)
   { key: 'anomaly_count', label: 'Anomaly zones', min: 0, max: 8, step: 1, group: 'Cosmology' },
+  // Neuroevolution — micro-RNN & evolution (BA)
+  { key: 'nn_inference_hz', label: 'NN inference Hz', min: 1, max: 60, step: 1, group: 'Neuroevolution', gate: 'nn_enabled' },
+  { key: 'mutation_sigma', label: 'Mutation σ', min: 0, max: 0.5, step: 0.01, group: 'Neuroevolution', gate: 'nn_enabled' },
+  { key: 'crossover_rate', label: 'Crossover rate', min: 0, max: 1, step: 0.05, group: 'Neuroevolution', gate: 'nn_enabled' },
+  { key: 'nn_hidden_size', label: 'Hidden size', min: 4, max: 64, step: 1, group: 'Neuroevolution', gate: 'nn_enabled' },
 ]
 
 const GROUP_ORDER = [
@@ -202,6 +207,7 @@ const GROUP_ORDER = [
   'Seismic & Waves',
   'Electrostatics',
   'Cosmology',
+  'Neuroevolution',
 ]
 
 const GROUP_KEY: Record<string, string> = {
@@ -241,6 +247,7 @@ const GROUP_KEY: Record<string, string> = {
   'Seismic & Waves': 'seismic',
   'Electrostatics': 'electrostatics',
   'Cosmology': 'cosmology',
+  'Neuroevolution': 'neuroevolution',
 }
 
 // Backend Config defaults — switches render these until laws load.
@@ -295,6 +302,7 @@ const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
   rubble_blocking_enabled: true,
   earthquake_enabled: false,
   lightning_enabled: true,
+  nn_enabled: false,
 }
 
 const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
@@ -345,6 +353,10 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   earthquake_rate: 'chance/tick an earthquake begins (0.00008)',
   lightning_strike_rate: 'chance/tick of a bolt during a storm (0.0015)',
   anomaly_count: 'hidden zones of altered physics at world creation (3)',
+  nn_inference_hz: 'NN inference frequency per second (15) — 60Hz physics, 15Hz brain, rest latched',
+  mutation_sigma: 'Gaussian mutation σ for genome (0.08) — per-gene noise on crossover',
+  crossover_rate: 'crossover rate (0.5) — uniform 50/50 parent blend; higher = more mixing',
+  nn_hidden_size: 'RNN hidden size (12) — 16→hidden→7, 295 weights total',
   fire_spread_rate: 'spread to neighboring plants within 6 (0.08) — kills creatures/plants, ash fertilizes',
   disaster_rate: 'meteor/flood stochastic gated by this per tick (0.0003) — crater/water reshapes terrain',
   signal_radius: 'heard within this range (12) — clan-mates respond strongly, strangers weakly',
@@ -908,6 +920,9 @@ export default function GodPanel({ open, onClose }: Props) {
                 )}
                 {group === 'Cosmology' && (
                   <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>Hidden zones of altered physics — fertile ground, heavy gravity, calm air. Skilled foragers discover them; shrines beside one draw extra power. Law changes sweep a shimmer wave across the land (§AQ PH-10).</div>
+                )}
+                {group === 'Neuroevolution' && (
+                  <ToggleRow k="nn_enabled" label="Neural engine" title="micro-RNN 16→12→7 (295 weights) replaces the utility AI — 60Hz physics, 15Hz brain, evolved by selection (BA)" />
                 )}
                 {group === 'Materials' && (
                   <>

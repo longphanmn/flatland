@@ -274,6 +274,10 @@ A complete Textual terminal interface (`backend/tui/`) attaches to running world
 - Category-filtered Chronicle (`t`) (All, Birth, Death, War, Politics, Settlement).
 - Full creature dossier inspector (`enter` / `i`) and clan details modal (`c`).
 - God laws manager (`g`) and ASCII/half-block renderer (`a` / `f`).
+
+## Micro-Neural Network & Evolutionary Engine (BA)
+
+When `nn_enabled` is true, every creature carries a **micro Elman RNN** (`16 → 12 → 7`, 295 `float32` weights) evolved by selection. Sensors (16): vitals, three raycasts ±35°, audio, scent, collision, slope and hidden state. Outputs (7): `thrust`/`steer` (movement + energy drain), `interact` (consume/attack), `social` (mating readiness replaces §B gating `simulation.py:6750`), `vocal_amp`/`vocal_freq`, `recurrent_out` (writes `hidden_state`). Physics runs at 60 Hz, inference at `nn_inference_hz` (default 15 Hz, every 4th tick latched, zero-alloc `inputs_buf`/`outputs_buf`). Genomes init `N(0,0.5)` clipped `[-4,4]`; mating via spatial query when `energy > mate_energy_min` and `social > 0.5`; uniform crossover 50/50 + Gaussian mutation `N(0,0.08²)` `p=0.03` (`mutation_sigma`/`mutation_rate`/`crossover_rate`/`nn_hidden_size` laws). God Panel **Neuroevolution** group is gated by `nn_enabled` (off by default, existing utility AI stays in charge). See `backend/app/agent_soa.py`, `neural_engine.py`, `agent_pipeline.py`, `evolution.py`, `sim_loop.py`, `spatial_grid.py`.
 """
 
 
