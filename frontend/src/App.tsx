@@ -236,9 +236,21 @@ export default function App() {
       onHello: (msg) => {
         setHello(msg)
         setSpeed(msg.tick_rate)
+        if (msg.paused !== undefined) {
+          setPaused(msg.paused)
+        }
         refreshWorlds()
       },
+      onControl: (msg) => {
+        setPaused(msg.paused)
+        if (msg.speed) {
+          setSpeed(msg.speed)
+        }
+      },
       onState: (msg) => {
+        if (msg.paused !== undefined && !archiveModeRef.current) {
+          setPaused(msg.paused)
+        }
         // New world detection: tick reset or seed change → clear chronicle
         const isNewWorld =
           (prevTickRef.current !== null && msg.tick < prevTickRef.current) ||
@@ -620,7 +632,7 @@ export default function App() {
           <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )" data-hint="Wiki — documentation & API ( /wiki )">
             📖
           </button>
-          <button className="god-btn" onClick={() => setAnalyticsOpen(true)} title="Analytics — Observatory (BD)" data-hint="Analytics — Observatory (BD)">
+          <button className="god-btn" onClick={() => setAnalyticsOpen(true)} title={t('analytics.hint')} data-hint={t('analytics.hint')}>
             📊
           </button>
           <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="The Sphere (God) — sets laws from Spaceland, never touches a life" data-hint="The Sphere (God) — sets laws from Spaceland, never touches a life">
@@ -690,7 +702,7 @@ export default function App() {
               📖 Wiki
             </button>
             <button className="god-btn" onClick={() => { setStatusExpanded(false); setAnalyticsOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
-              📊 Analytics
+              📊 {t('analytics.open')}
             </button>
             <button className="god-btn god-main-btn" onClick={() => { setStatusExpanded(false); setGodOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
               ⚖ The Sphere
@@ -895,8 +907,8 @@ export default function App() {
             <button
               className="right-stack-expand"
               onClick={() => setRightCollapsed(false)}
-              title="Expand right panel"
-              aria-label="Expand right panel"
+              title={t('app.rightStack.expand')}
+              aria-label={t('app.rightStack.expand')}
             >
               ◀
             </button>
@@ -917,7 +929,7 @@ export default function App() {
               className={`right-stack-tab ${rightTab === 'overview' ? 'active' : ''}`}
               onClick={() => setRightTab('overview')}
             >
-              📊 Overview
+              📊 {t('app.rightStack.overview')}
             </button>
             <button
               role="tab"
@@ -925,7 +937,7 @@ export default function App() {
               className={`right-stack-tab ${rightTab === 'clans' ? 'active' : ''}`}
               onClick={() => setRightTab('clans')}
             >
-              🏰 Clans ({clanCount})
+              🏰 {t('app.rightStack.clans')} ({clanCount})
             </button>
             <button
               role="tab"
@@ -933,13 +945,13 @@ export default function App() {
               className={`right-stack-tab ${rightTab === 'chronicle' ? 'active' : ''}`}
               onClick={() => setRightTab('chronicle')}
             >
-              📜 Chronicle <span className="live-dot">Live</span>
+              📜 {t('app.rightStack.chronicle')} <span className="live-dot">{t('app.rightStack.live')}</span>
             </button>
             <button
               className="right-stack-collapse"
               onClick={() => setRightCollapsed(true)}
-              title="Collapse right panel"
-              aria-label="Collapse right panel"
+              title={t('app.rightStack.collapse')}
+              aria-label={t('app.rightStack.collapse')}
             >
               ▶
             </button>
@@ -995,8 +1007,8 @@ export default function App() {
         <div className="wiki-backdrop" onClick={() => setAnalyticsOpen(false)}>
           <div className="wiki-panel" style={{ maxHeight: '90vh', width: 'min(900px, 96vw)' }} onClick={(e) => e.stopPropagation()}>
             <header className="god-head">
-              <h2>🔭 Observatory — Analytics</h2>
-              <button className="god-close" onClick={() => setAnalyticsOpen(false)} aria-label="close">×</button>
+              <h2>🔭 {t('analytics.title')}</h2>
+              <button className="god-close" onClick={() => setAnalyticsOpen(false)} aria-label={t('common.close')}>×</button>
             </header>
             <div style={{ maxHeight: '70vh', overflowY: 'auto', padding: '8px 0' }}>
               <Observatory state={state} />

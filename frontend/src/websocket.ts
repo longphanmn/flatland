@@ -5,6 +5,7 @@ export type ConnStatus = 'connecting' | 'open' | 'closed'
 interface Handlers {
   onHello?: (msg: HelloMessage) => void
   onState?: (msg: StateMessage) => void
+  onControl?: (msg: { type: 'control'; paused: boolean; speed: number; tick: number }) => void
   onStatus?: (status: ConnStatus) => void
   /** server rejected a control message for lack of a valid passkey */
   onAuthError?: () => void
@@ -109,11 +110,14 @@ export class WorldSocket {
           bridges: delta.bridges ?? this.lastFullState?.bridges ?? [],
           dams: delta.dams ?? this.lastFullState?.dams ?? [],
           entities: Array.from(this.entitiesMap.values()),
+          paused: delta.paused ?? this.lastFullState.paused,
         }
         this.lastFullState = reconstructed
         this.handlers.onState?.(reconstructed)
       } else if (msg.type === 'hello') {
         this.handlers.onHello?.(msg as HelloMessage)
+      } else if (msg.type === 'control') {
+        this.handlers.onControl?.(msg)
       } else if (msg.type === 'auth_error') {
         this.handlers.onAuthError?.()
       }

@@ -286,7 +286,20 @@ Flatland includes 7 balanced environmental presets applicable in real-time via `
 
 ---
 
-## 17. God Passkey Authentication & REST API
+## 17. World Analytics & Observatory (BD — read-only, no law)
+
+`backend/app/analytics.py` (`AnalyticsEngine`, `TelemetryRing` 300, `MortalityDecomposer` 500) runs **zero-alloc** outside the hot loop via SoA batch aggregators (`<0.8ms/100 ticks` for 2000 agents). It exposes:
+- **Ring**: population, biomass, $E/E_{\max}$, avg lifespan, dead, birth/death velocity/min
+- **Mortality**: stacked distribution (starvation/combat/predation/disease/old_age/chill)
+- **Trophic**: Lotka-Volterra herbivores/predators/plant + phase trajectory, Shannon $H$, evenness, richness
+- **Hegemony**: HHI clan concentration, territory dominance, Gini (larder + basket)
+- **Warnings**: famine horizon ($larder/burn-regrowth$), $N_e$ extinction cliff (fertile♀), unrest (crowding+hunger+personality), casus belli tension
+
+All `GET /api/analytics/*` are **1s memoised** + rate-limited (`_ANALYTICS_CACHE`) to avoid `RT.lock` contention. The WebSocket stream coalesces the summary at **1 Hz** (`main.py:346` `payload["analytics"]`) so side panels (`Inspector`, `ClanPanel`, `PlotsPanel`, `ClanDetails`) are driven from the stream with no `DB.flush()` or `json` overhead. The **🔭 Observatory** (`frontend/src/analytics/Observatory.tsx`, top-right `📊` next to `📖` Wiki, and `right-stack` `Overview` bottom) renders sparklines, trophic, hegemony, famine/unrest warnings, and `📖` Wiki. No new God laws — pure observability. Collapse the right panel via `▶` (persisted `sessionStorage['right-stack-collapsed']`) or expand via `◀`.
+
+---
+
+## 18. God Passkey Authentication & REST API
 
 To protect running worlds from unauthorized intervention, all god-touching endpoints are guarded by SHA-256 passkey authentication:
 
@@ -301,6 +314,15 @@ To protect running worlds from unauthorized intervention, all god-touching endpo
 | `/api/clans` | `GET` | Live clan settlements with alive population, dead counts, and founded days. |
 | `/api/clans/{id}` | `GET` | Detailed clan dossier with member rosters, history events, and main house coordinates. |
 | `/api/history` | `GET` | Paginated chronicle events with caste, cause, and clan metadata. |
+| `/api/analytics/summary` | `GET` | **BD Analytics** — instant snapshot (ring, mortality, trophic, hegemony, famine, extinction) — 1s memoization, no `RT.lock` contention. |
+| `/api/analytics/timeseries` | `GET` | Rolling `deque(300)` sparklines (population, biomass, saturation) + mortality window. |
+| `/api/analytics/trophic` | `GET` | Lotka-Volterra (herbivores/predators/plant) + Shannon biodiversity. |
+| `/api/analytics/hegemony` | `GET` | HHI + Gini + territory dominance. |
+| `/api/analytics/warnings` | `GET` | Famine horizon, extinction Ne, unrest & casus belli tensions. |
+| `/api/metrics/morphology` | `GET` | BC Morphology telemetry (K, traits, SAT). |
+| `/api/state` | `GET` | Full `StateMessage` snapshot (entities, clans, relations, rivers, etc.). |
+| `/api/config` | `GET` | Current `Config` dump. |
+| `/api/version` | `GET` | Version + `healthz` (`tick`, `paused`, `actual_tps`, `avg_tick_ms`). |
 
 ---
 

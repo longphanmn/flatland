@@ -148,6 +148,7 @@ export interface StateMessage {
   age_tick: number
   age_day?: number
   age_total_days?: number
+  paused?: boolean
 }
 
 export interface DeltaStateMessage {
@@ -186,6 +187,7 @@ export interface DeltaStateMessage {
   age_tick: number
   age_day?: number
   age_total_days?: number
+  paused?: boolean
 }
 
 
@@ -214,6 +216,7 @@ export interface HelloMessage {
   width: number
   height: number
   boundary: 'wrap' | 'clamp'
+  paused?: boolean
 }
 
 /** One row of GET /api/worlds — a past or current world run. */

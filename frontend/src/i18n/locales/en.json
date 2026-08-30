@@ -117,6 +117,14 @@
       "eldest": "Eldest: {{name}} #{{id}} (Age {{age}}t · Gen {{gen}})",
       "topChief": "Top Leader: #{{id}} ({{clan}} · {{wins}}W)",
       "none": "None"
+    },
+    "rightStack": {
+      "overview": "Overview",
+      "clans": "Clans",
+      "chronicle": "Chronicle",
+      "collapse": "Collapse right panel",
+      "expand": "Expand right panel",
+      "live": "Live"
     }
   },
   "god": {
@@ -206,6 +214,14 @@
       "wrap": "wrap",
       "walls": "walls",
       "readingTablets": "reading the tablets…"
+    },
+    "domains": {
+      "ecology": "Ecology & Survival",
+      "biology": "Biology & Evolution",
+      "climate": "Climate & Sky",
+      "society": "Society, Warfare & Trade",
+      "theology": "Theology & Sacred Avatars",
+      "physics": "World Physics & Disasters"
     }
   },
   "history": {
@@ -376,7 +392,9 @@
     "moreLaws": "…+{{count}} more",
     "footerLive": "Wiki is live — {{laws}} laws · {{routes}} routes · {{presets}} presets",
     "developedBy": "Developed by",
-    "inspiration": "Built with OpenCode & Antigravity · Inspired by Edwin A. Abbott's Flatland"
+    "inspiration": "Built with OpenCode & Antigravity · Inspired by Edwin A. Abbott's Flatland",
+    "readOnly": "read-only · use ⚖ God Panel to apply",
+    "presetsReadOnlyNote": "Presets are displayed for reference — apply via The Sphere (⚖ God Panel)."
   },
   "chronicle": {
     "title": "Chronicle",
@@ -468,7 +486,11 @@
     "close": "close",
     "noRecorded": "No recorded clan events.",
     "loadOlder": "load older",
-    "inspectCreature": "Inspect creature #{{id}}"
+    "inspectCreature": "Inspect creature #{{id}}",
+    "tabStronghold": "Stronghold",
+    "tabRoster": "Roster",
+    "tabWarfare": "Warfare & Diplomacy",
+    "tabAnnals": "Annals"
   },
   "inspector": {
     "creature": "Creature",
@@ -526,7 +548,13 @@
     "roseTo": "rose to {{caste}}",
     "demoted": "judged irregular → {{caste}}",
     "recovered": "recovered from disease {{id}}",
-    "diedOf": "died of {{cause}} ({{x}}, {{y}})"
+    "diedOf": "died of {{cause}} ({{x}}, {{y}})",
+    "tabVitals": "Vitals & Morph",
+    "tabSkills": "Skills & Neural",
+    "tabLineage": "Lineage & Kin",
+    "tabChronicle": "Life Chronicle",
+    "alive": "alive",
+    "children": "Offspring"
   },
   "plots": {
     "noPlots": "no plots — the world is calm",
@@ -949,5 +977,11 @@
     "worshipNote": "the Sacred Avatars of the Sphere: settled clans consecrate shrines, the devout tithe at dawn & dusk, faith works miracles, chimes ring when laws change, and high faith raises temples",
     "edgeOfWorld": "Edge of world",
     "edgeHint": "what happens at the edge of the world"
+  },
+  "analytics": {
+    "title": "Observatory — Analytics",
+    "gathering": "Analytics — gathering…",
+    "open": "Analytics",
+    "hint": "Analytics — Observatory (BD)"
   }
 }

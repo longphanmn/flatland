@@ -41,7 +41,7 @@ try:
     import orjson
 
     def _dumps(payload: dict) -> str:
-        return orjson.dumps(payload).decode("utf-8")
+        return orjson.dumps(payload, option=orjson.OPT_NON_STR_KEYS).decode("utf-8")
 except ModuleNotFoundError:  # pragma: no cover - fallback envs
 
     def _dumps(payload: dict) -> str:
@@ -296,10 +296,13 @@ def advance_world(rt: RuntimeState, hub: Hub | None = None, force_keyframe: bool
 
     # Phase 1 AJ: Broadcast full keyframe every 60 ticks (~2-3s) or when forced/uninitialized;
     # otherwise broadcast lightweight delta payload (85-95% bandwidth reduction).
-    # Extinction forces a full keyframe so reconnecting clients reconstruct correctly.
     if is_extinct or force_keyframe or rt.sim.tick % 60 == 0 or not getattr(rt.sim, "_last_broadcast_state", None):
-        return rt.sim.snapshot_payload()
-    return rt.sim.snapshot_delta_payload()
+        p = rt.sim.snapshot_payload()
+    else:
+        p = rt.sim.snapshot_delta_payload()
+    if p is not None and isinstance(p, dict):
+        p["paused"] = rt.paused
+    return p
 
 
 
@@ -361,7 +364,7 @@ class SimEngine:
                 if getattr(self.rt, "sim", None) and (self.rt.sim.tick % 10 == 0 or getattr(self.rt, "_cached_clans_payload", None) is None):
                     try:
                         with self.rt.lock:
-                            self.rt._cached_clans_payload = _clans_payload()  # type: ignore[attr-defined]
+                            self.rt._cached_clans_payload = _clans_payload(self.rt.sim)  # type: ignore[attr-defined]
                             self.rt._cached_plots_payload = {"plots": self.rt.sim.get_plots(), "tick": self.rt.sim.tick}  # type: ignore[attr-defined]
                     except Exception:
                         self.rt._cached_clans_payload = None  # type: ignore[attr-defined]
@@ -370,7 +373,7 @@ class SimEngine:
             elif getattr(self.rt, "sim", None) and getattr(self.rt, "_cached_clans_payload", None) is None:
                 try:
                     with self.rt.lock:
-                        self.rt._cached_clans_payload = _clans_payload()  # type: ignore[attr-defined]
+                        self.rt._cached_clans_payload = _clans_payload(self.rt.sim)  # type: ignore[attr-defined]
                         self.rt._cached_plots_payload = {"plots": self.rt.sim.get_plots(), "tick": self.rt.sim.tick}  # type: ignore[attr-defined]
                 except Exception:
                     self.rt._cached_clans_payload = None  # type: ignore[attr-defined]
@@ -633,6 +636,7 @@ async def apply_control(msg: ControlMessage) -> dict:
         elif msg.action is ControlAction.STEP:
             RT.sim.step()
             payload = RT.sim.snapshot_payload()
+            payload["paused"] = RT.paused
         elif msg.action is ControlAction.RESET:
             # A new world is born with fresh laws of chance: a new random seed.
             # Save persists across worlds, Apply does not — use saved baseline.
@@ -647,6 +651,7 @@ async def apply_control(msg: ControlMessage) -> dict:
             RT.paused = False
             start_world()
             payload = RT.sim.snapshot_payload()
+            payload["paused"] = False
         elif msg.action is ControlAction.SET_SPEED:
             if msg.value is not None:
                 RT.speed = min(MAX_SPEED, max(MIN_SPEED, float(msg.value)))
@@ -667,6 +672,7 @@ def hello_payload() -> dict:
         width=RT.config.width,
         height=RT.config.height,
         boundary=RT.config.boundary,
+        paused=RT.paused,
     ).model_dump(mode="json")
 
 
@@ -2753,12 +2759,13 @@ async def get_clans() -> dict:
             raise
 
 
-def _clans_payload() -> dict:
+def _clans_payload(sim: Simulation | None = None) -> dict:
+    sim = sim or RT.sim
     # live clan dict + live population + house territory + war history
     # N150: limit to top 100 alive clans to avoid 1.5MB/5s at 4000 clans
     war_wins: dict[int, int] = {}
     war_losses: dict[int, int] = {}
-    for e in RT.sim.history:
+    for e in sim.history:
         if e.type == "war":
             a = int(e.payload.get("a", 0) or 0)
             b = int(e.payload.get("b", 0) or 0)
@@ -2768,12 +2775,12 @@ def _clans_payload() -> dict:
                 war_losses[a] = war_losses.get(a, 0) + 1
     # houses by clan
     houses_by_clan: dict[int, dict] = {}
-    for ent in RT.sim.world.entities.values():
+    for ent in sim.world.entities.values():
         if ent.kind == "house" and getattr(ent, "clan_id", 0):
             houses_by_clan[ent.clan_id] = {"x": ent.x, "y": ent.y, "size": getattr(ent, "size", 0), "is_ruin": getattr(ent, "is_ruin", False)}
     # single pass for population count across all clans
     pop_by_clan: dict[int, int] = {}
-    for c in RT.sim._get_creatures():
+    for c in sim._get_creatures():
         if c.clan_id:
             pop_by_clan[c.clan_id] = pop_by_clan.get(c.clan_id, 0) + 1
     # §X clan memory — only for top 50 alive clans to avoid 4000× overhead
@@ -2781,12 +2788,12 @@ def _clans_payload() -> dict:
     alive_cids.sort(key=lambda cid: -pop_by_clan.get(cid, 0))
     top_cids = set(alive_cids[:50])
     knowledge_by_clan = {}
-    if RT.sim.config.knowledge_enabled and top_cids:
+    if sim.config.knowledge_enabled and top_cids:
         # compute only for top 50, not all 4000
-        all_know = RT.sim.clan_knowledge()
+        all_know = sim.clan_knowledge()
         knowledge_by_clan = {cid: all_know.get(cid) for cid in top_cids if cid in all_know}
     clans = []
-    for cid, info in RT.sim.clans.items():
+    for cid, info in sim.clans.items():
         pop = pop_by_clan.get(cid, 0)
         if pop == 0:
             continue  # skip ghost clans (exile/schism remnants) — saves 1.5MB
@@ -2801,13 +2808,13 @@ def _clans_payload() -> dict:
             "founder_id": info.get("founder_id"),
             "leader_id": info.get("leader_id"),
             "born_tick": info.get("born_tick") or 0,
-            "founded_day": (info.get("born_tick") or 0) // max(1, RT.sim.config.day_length),
-            "dead_count": getattr(RT.sim, "_clan_deaths", {}).get(cid, 0),
+            "founded_day": (info.get("born_tick") or 0) // max(1, sim.config.day_length),
+            "dead_count": getattr(sim, "_clan_deaths", {}).get(cid, 0),
             "population": pop,
             "house": house,
             "war_wins": war_wins.get(cid, 0),
             "war_losses": war_losses.get(cid, 0),
-            "territory_radius": RT.sim.config.territory_radius if RT.sim.config.territory_enabled else None,
+            "territory_radius": sim.config.territory_radius if sim.config.territory_enabled else None,
             "specialization": info.get("specialization"),
             "culture": info.get("culture"),
             "culture_id": info.get("culture_id"),
@@ -2816,7 +2823,7 @@ def _clans_payload() -> dict:
             "larder": round(float(info.get("larder", 0.0)), 1),  # §AB clan store
             "granary": round(float(info.get("granary", 0.0)), 1),  # §AM grain store
             "harvest_total": round(float(info.get("harvest_total", 0.0)), 1),  # §AM
-            "feast": RT.sim.tick < int(info.get("feast_until", 0)),  # §AM banqueting
+            "feast": sim.tick < int(info.get("feast_until", 0)),  # §AM banqueting
             "dialect": round(float(info.get("dialect", 0.0)), 3),  # §AN speech drift
             "tribute_to": info.get("tribute_to"),  # §AB subjugation
             "faith": round(float(info.get("faith", 0.0)), 1),  # §AP clan faith pool
@@ -2829,8 +2836,8 @@ def _clans_payload() -> dict:
     # sort by population desc and cap at 100
     clans.sort(key=lambda c: (-c["population"], c["id"]))
     clans = clans[:100]
-    names = {str(cid): info.get("name") for cid, info in RT.sim.clans.items() if info.get("name")}
-    return {"clans": clans, "names": names, "tick": RT.sim.tick}
+    names = {str(cid): info.get("name") for cid, info in sim.clans.items() if info.get("name")}
+    return {"clans": clans, "names": names, "tick": sim.tick}
 
 @app.get("/api/plots")
 async def get_plots() -> dict:

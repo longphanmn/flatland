@@ -117,6 +117,14 @@
       "eldest": "Cao tuổi nhất: {{name}} #{{id}} (Tuổi {{age}}t · Đời {{gen}})",
       "topChief": "Thủ lĩnh hàng đầu: #{{id}} ({{clan}} · {{wins}} thắng)",
       "none": "Không có"
+    },
+    "rightStack": {
+      "overview": "Tổng quan",
+      "clans": "Thị tộc",
+      "chronicle": "Biên niên",
+      "collapse": "Thu gọn",
+      "expand": "Mở rộng",
+      "live": "Trực tiếp"
     }
   },
   "god": {
@@ -206,6 +214,14 @@
       "wrap": "cuộn vòng tròn (vô tận)",
       "walls": "tường chắn biên giới",
       "readingTablets": "đang đọc phiến đá thần…"
+    },
+    "domains": {
+      "ecology": "Sinh thái",
+      "biology": "Sinh học & Tiến hóa",
+      "climate": "Khí hậu",
+      "society": "Xã hội & Chiến tranh",
+      "theology": "Thần học",
+      "physics": "Vật lý & Thảm họa"
     }
   },
   "history": {
@@ -376,7 +392,9 @@
     "moreLaws": "…+{{count}} luật khác",
     "footerLive": "Wiki trực tiếp — {{laws}} luật · {{routes}} routes · {{presets}} presets",
     "developedBy": "Phát triển bởi",
-    "inspiration": "Xây dựng với OpenCode & Antigravity · Lấy cảm hứng từ tiểu thuyết Flatland của Edwin A. Abbott"
+    "inspiration": "Xây dựng với OpenCode & Antigravity · Lấy cảm hứng từ tiểu thuyết Flatland của Edwin A. Abbott",
+    "readOnly": "chỉ đọc · dùng ⚖",
+    "presetsReadOnlyNote": "Xem trước preset — áp dụng qua Sphere."
   },
   "chronicle": {
     "title": "Biên niên",
@@ -468,7 +486,11 @@
     "close": "đóng",
     "noRecorded": "Chưa ghi nhận sự kiện nào của tộc.",
     "loadOlder": "tải thêm sự kiện cũ",
-    "inspectCreature": "Xem sinh vật #{{id}}"
+    "inspectCreature": "Xem sinh vật #{{id}}",
+    "tabStronghold": "Thành trì",
+    "tabRoster": "Đội hình",
+    "tabWarfare": "Chiến tranh & Ngoại giao",
+    "tabAnnals": "Biên niên"
   },
   "inspector": {
     "creature": "Sinh vật",
@@ -526,7 +548,13 @@
     "roseTo": "thăng lên đẳng cấp {{caste}}",
     "demoted": "bị xét bất thường → giáng thành {{caste}}",
     "recovered": "đã khỏi bệnh {{id}}",
-    "diedOf": "chết vì {{cause}} tại ({{x}}, {{y}})"
+    "diedOf": "chết vì {{cause}} tại ({{x}}, {{y}})",
+    "tabVitals": "Sinh tồn & Hình thái",
+    "tabSkills": "Kỹ năng & Thần kinh",
+    "tabLineage": "Dòng dõi & Họ hàng",
+    "tabChronicle": "Biên niên cuộc đời",
+    "alive": "còn sống",
+    "children": "Con cái"
   },
   "plots": {
     "noPlots": "không có âm mưu — thế giới đang yên bình",
@@ -949,5 +977,11 @@
     "worshipNote": "các Avatar Thiêng của Quả Cầu: các tộc định cư cung hiến miếu thờ, tín đồ nộp cống đức tin sáng tối, đức tin làm nên phép màu, chuông ngân khi luật đổi và đức tin cao dựng nên Đền Thờ",
     "edgeOfWorld": "Rìa thế giới",
     "edgeHint": "hiện tượng vật lý xảy ra tại rìa bản đồ"
+  },
+  "analytics": {
+    "title": "Đài quan sát — Phân tích",
+    "gathering": "Đang thu thập…",
+    "open": "Phân tích",
+    "hint": "Phân tích — Đài quan sát"
   }
 }

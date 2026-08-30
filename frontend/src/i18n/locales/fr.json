@@ -117,6 +117,14 @@
       "eldest": "Doyen : {{name}} #{{id}} (Âge {{age}}t · Gén {{gen}})",
       "topChief": "Grand Chef : #{{id}} ({{clan}} · {{wins}}V)",
       "none": "Aucun"
+    },
+    "rightStack": {
+      "overview": "Aperçu",
+      "clans": "Clans",
+      "chronicle": "Chronique",
+      "collapse": "Réduire",
+      "expand": "Agrandir",
+      "live": "En direct"
     }
   },
   "god": {
@@ -206,6 +214,14 @@
       "wrap": "bouclage toroïdal",
       "walls": "murs infranchissables",
       "readingTablets": "lecture des tablettes…"
+    },
+    "domains": {
+      "ecology": "Écologie & Survie",
+      "biology": "Biologie & Évolution",
+      "climate": "Climat & Ciel",
+      "society": "Société, Guerre & Commerce",
+      "theology": "Théologie & Avatars",
+      "physics": "Physique & Catastrophes"
     }
   },
   "history": {
@@ -376,7 +392,9 @@
     "moreLaws": "…+{{count}} de plus",
     "footerLive": "Le Wiki est en direct — {{laws}} lois · {{routes}} routes · {{presets}} préréglages",
     "developedBy": "Développé par",
-    "inspiration": "Créé avec OpenCode & Antigravity · Inspiré du roman Flatland d'Edwin A. Abbott"
+    "inspiration": "Créé avec OpenCode & Antigravity · Inspiré du roman Flatland d'Edwin A. Abbott",
+    "readOnly": "lecture seule · utilisez ⚖",
+    "presetsReadOnlyNote": "Aperçu des presets — appliquez via la Sphère."
   },
   "chronicle": {
     "title": "Chronique",
@@ -468,7 +486,11 @@
     "close": "fermer",
     "noRecorded": "Aucun événement enregistré pour ce clan.",
     "loadOlder": "charger plus ancien",
-    "inspectCreature": "Inspecter la créature #{{id}}"
+    "inspectCreature": "Inspecter la créature #{{id}}",
+    "tabStronghold": "Bastion",
+    "tabRoster": "Effectif",
+    "tabWarfare": "Guerre & Diplomatie",
+    "tabAnnals": "Annales"
   },
   "inspector": {
     "creature": "Créature",
@@ -526,7 +548,13 @@
     "roseTo": "élevé au rang de {{caste}}",
     "demoted": "jugé irrégulier → rétrogradé en {{caste}}",
     "recovered": "guéri de la maladie {{id}}",
-    "diedOf": "mort de {{cause}} à ({{x}}, {{y}})"
+    "diedOf": "mort de {{cause}} à ({{x}}, {{y}})",
+    "tabVitals": "Signes vitaux",
+    "tabSkills": "Compétences & Neuronal",
+    "tabLineage": "Lignée & Parentèle",
+    "tabChronicle": "Chronique de vie",
+    "alive": "vivant",
+    "children": "Progéniture"
   },
   "plots": {
     "noPlots": "aucun complot — le monde est paisible",
@@ -949,5 +977,11 @@
     "worshipNote": "les Avatars Sacrés de la Sphère : les clans consacrent des sanctuaires, payent la dîme à l'aube et au crépuscule, déclenchent des miracles et élèvent des Temples lumineux",
     "edgeOfWorld": "Limite du monde",
     "edgeHint": "comportement physique au bord de la carte"
+  },
+  "analytics": {
+    "title": "Observatoire — Analytique",
+    "gathering": "Analytique — collecte…",
+    "open": "Analytique",
+    "hint": "Analytique — Observatoire"
   }
 }

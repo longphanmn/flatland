@@ -1,6 +1,6 @@
 # Roadmap Archive — Flatland Completed Work
 
-> Historical record of sections §F–§BA (573 completed items). For active work see [`TODO.md`](../TODO.md) (13 open + 8 parked). Line anchors (`file:line`) have been stripped — all were stale after repeated rewrites; symbols are kept.
+> Historical record of sections §F–§BD (632 completed items: 573 §F–§BA + 14 §BC + 12 §AZ + 33 §BD). For active work see [`TODO.md`](../TODO.md) (0 open + 8 parked, all 45 AZ+BD done 2026-08-31). Line anchors (`file:line`) have been stripped — all were stale after repeated rewrites; symbols are kept.
 
 ---
 

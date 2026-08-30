@@ -33,13 +33,21 @@ def _run_engine(rt: RuntimeState, hub: Hub, seconds: float) -> None:
     """Drive the real SimEngine on a background event loop for a while."""
     engine = SimEngine(rt, hub)
     loop = asyncio.new_event_loop()
-    th = threading.Thread(target=loop.run_forever, daemon=True)
+    ready = threading.Event()
+    def _runner():
+        asyncio.set_event_loop(loop)
+        hub.start_queue(loop)
+        ready.set()
+        loop.run_forever()
+    th = threading.Thread(target=_runner, daemon=True)
     th.start()
+    ready.wait(timeout=1.0)
     try:
         engine.start(loop=loop)
         time.sleep(seconds)
     finally:
         engine.stop()
+        loop.call_soon_threadsafe(hub.stop_queue)
         loop.call_soon_threadsafe(loop.stop)
         th.join(timeout=1)
 
@@ -139,10 +147,12 @@ def test_engine_keeps_ticking_with_a_wedged_client_connected(capsys):
 
     old_timeout = Hub.SEND_TIMEOUT
     Hub.SEND_TIMEOUT = 0.05
+    hub.SEND_TIMEOUT = 0.05
     try:
         _run_engine(rt, hub, seconds=0.6)
     finally:
         Hub.SEND_TIMEOUT = 10.0
+        hub.SEND_TIMEOUT = 10.0
 
     assert rt.sim.tick >= 3               # world advanced despite the wedge
     assert wedged not in hub.clients      # and the wedge was evicted

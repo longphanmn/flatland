@@ -126,6 +126,7 @@ class StateMessage(BaseModel):
     age_tick: int = 0
     age_day: int = 1
     age_total_days: int = 10
+    paused: bool = False
 
 
 class DeltaStateMessage(BaseModel):
@@ -164,6 +165,7 @@ class DeltaStateMessage(BaseModel):
     age_tick: int = 0
     age_day: int = 1
     age_total_days: int = 10
+    paused: bool = False
 
 
 
@@ -196,6 +198,7 @@ class HelloMessage(BaseModel):
     width: float
     height: float
     boundary: str
+    paused: bool = False
 
 
 class GodLaws(BaseModel):

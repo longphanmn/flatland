@@ -6,7 +6,7 @@ interface Props {
 }
 
 export default function Observatory({ state }: Props) {
-  const {} = useI18n()
+  const { t } = useI18n()
   const [data, setData] = useState<any>(null)
 
   // Prefer WS analytics if present, else fetch
@@ -28,7 +28,7 @@ export default function Observatory({ state }: Props) {
   }, [state])
 
   if (!data || data.error) {
-    return <p className="chip">Analytics — gathering…</p>
+    return <p className="chip">{t('analytics.gathering')}</p>
   }
 
   const ring = data.ring ?? {}
@@ -42,7 +42,7 @@ export default function Observatory({ state }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 11 }}>
-      <h4 style={{ margin: '4px 0', fontSize: 12 }}>🔭 Observatory — tick {data.tick}</h4>
+      <h4 style={{ margin: '4px 0', fontSize: 12 }}>🔭 {t('analytics.title')} — tick {data.tick}</h4>
 
       {/* Macro sparklines */}
       <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}>
