@@ -86,16 +86,28 @@ Evolution emerges 100% autonomously without artificial intervention:
 - **Python 3.12+** (with [`uv`](https://docs.astral.sh/uv/) recommended)
 - **Node.js 18+** & **npm**
 
-### One-Line Launch
+### One-Line Launch (local dev)
 ```bash
 ./run.sh          # Starts FastAPI backend (:8000) and Vite frontend (:5173)
 ./run.sh tui      # Launches terminal client attached to local backend
 ```
 
-- **Web UI**: [http://localhost:5173](http://localhost:5173)
+### Docker Compose (local production)
+```bash
+cp .env.example .env          # optional — tweak ports / FLATWORLD_* laws
+docker compose up --build -d  # backend :8000, frontend :5173 (nginx proxy)
+docker compose logs -f        # tail both services
+docker compose down           # stop
+docker compose down -v        # stop + wipe SQLite volume (fresh world)
+```
+
+- **Web UI**: [http://localhost:5173](http://localhost:5173) (Docker or `run.sh`)
 - **API Docs (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
 - **Living Wiki**: [http://localhost:8000/wiki](http://localhost:8000/wiki)
 - **Living Guide**: [http://localhost:8000/guide](http://localhost:8000/guide)
+- **Health**: [http://localhost:8000/healthz](http://localhost:8000/healthz)
+
+> `docker-compose.yml` builds `backend/Dockerfile` (Python 3.12 + gcc, compiles the OpenMP native core) and `frontend/Dockerfile` (multi-stage node → nginx). The frontend nginx proxies `/ws`, `/api`, `/wiki`, `/guide`, `/docs`, etc. to `backend:8000`, so the browser only needs port `5173`. SQLite persists in the named volume `flatland-data` (`FLATWORLD_DB=/data/flatworld.db`).
 
 ---
 

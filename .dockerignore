@@ -1,0 +1,19 @@
+# Root dockerignore (build contexts are ./backend and ./frontend,
+# but compose still sends the root context for some tooling)
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+node_modules
+dist
+*.log
+*.db
+*.db-shm
+*.db-wal
+flatworld.db*
+snapshot.json
+.DS_Store

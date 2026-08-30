@@ -1,0 +1,13 @@
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.venv
+venv
+*.db
+*.db-shm
+*.db-wal
+*.log
+_flatland_core.so
+_flatland_core.dylib
+.DS_Store
