@@ -40,7 +40,7 @@ try:
 except Exception:
     _parallel = None  # type: ignore
 
-# BA: micro-neural engine (optional, gated by nn_enabled)
+# BA: micro-neural engine — always on (295 fixed)
 try:
     from . import agent_soa as _agent_soa  # type: ignore
     from . import neural_engine as _neural_engine  # type: ignore

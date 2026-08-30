@@ -1895,5 +1895,5 @@ Audited, quantified, and **deliberately excluded**. Do not start these without r
 ### Step 10: Verification  [P0]
 - [ ] [P0] **10.1** Extend `backend/tests/test_neuroevolution.py`: movement responds to thrust, `interact` eats, `social` gates birth, vocal emits a signal, births inherit genomes, genomes survive rebuild, seeded determinism, N=2000 ≤ 12 ms (CI ≤ 50 ms).
 - [ ] [P0] **10.2** Full `pytest backend/tests` — expect behaviour-suite churn (`test_synergies`, `test_leader_as`, `test_senses2`, `test_giveup`, `test_health_depth`) since creature behaviour now includes NN; triage each, never blanket-skip.
-- [ ] [P1] **10.3** Update `docs/god-laws.md` §12 (drop `nn_enabled`/`nn_hidden_size`, mark NN always-on), `guide.py`, `wiki.py`.
+- [x] [P1] **10.3** Update `docs/god-laws.md` §12 (drop `nn_enabled`/`nn_hidden_size`, mark NN always-on), `guide.py`, `wiki.py`. — done `guide.py:280` always-on 295 fixed, `wiki.py:407` 3 hints, `docs/god-laws.md:214` 3 rows always-on.
 
