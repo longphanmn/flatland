@@ -86,15 +86,11 @@ source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "numpy" },
     { name = "orjson" },
     { name = "textual" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "websockets" },
-]
-
-[package.optional-dependencies]
-nn = [
-    { name = "numpy" },
 ]
 
 [package.dev-dependencies]
@@ -107,13 +103,12 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
-    { name = "numpy", marker = "extra == 'nn'", specifier = ">=2" },
+    { name = "numpy", specifier = ">=2" },
     { name = "orjson", specifier = ">=3.10" },
     { name = "textual", specifier = ">=8" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
     { name = "websockets", specifier = ">=12" },
 ]
-provides-extras = ["nn"]
 
 [package.metadata.requires-dev]
 dev = [

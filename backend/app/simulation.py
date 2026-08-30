@@ -3851,8 +3851,8 @@ class Simulation:
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
-        # BA: micro-neural multi-rate update (60Hz physics done, 15Hz inference every 4th tick)
-        if getattr(self.config, "nn_enabled", False) and _agent_soa is not None and _neural_engine is not None:
+        # BA: micro-neural — always on (60Hz physics, 15Hz inference every 4th tick)
+        if _agent_soa is not None and _neural_engine is not None:
             try:
                 if self._soa is None:
                     # lazy init SoA with current creatures
@@ -10308,8 +10308,8 @@ class Simulation:
                 "title": getattr(e, "title", None),
                 "emote": getattr(e, "emote", None),
             }
-            # BA: NN state if enabled and SoA has this creature
-            if getattr(self.config, "nn_enabled", False) and getattr(self, "_soa", None) is not None:
+            # BA: NN state — always on, SoA has this creature
+            if getattr(self, "_soa", None) is not None:
                 try:
                     soa = self._soa  # type: ignore
                     idx = -1

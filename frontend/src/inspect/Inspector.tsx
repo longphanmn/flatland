@@ -274,12 +274,11 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
             </div>
           </Collapsible>
 
-          {/* Neural Engine (BA) — testable */}
-          <Collapsible id="inspector-nn" title={<h3 className="insp-h">🧠 Neural Engine (BA)</h3>} defaultOpen={false}>
+          {/* Neural Engine (BA) — always on */}
+          <Collapsible id="inspector-nn" title={<h3 className="insp-h">🧠 Neural Engine (BA)</h3>} defaultOpen={true}>
             {e.nn_hidden == null && !e.nn_outputs ? (
               <div className="chip" style={{ background: '#161b22', border: '1px solid #30363d', padding: '8px', borderRadius: 6, fontSize: 12, color: '#8b949e' }}>
-                <span style={{ color: '#d29922', fontWeight: 600 }}>OFF</span> — micro-RNN 16→12→7 (295 weights) is disabled.<br />
-                Enable in <b>God Panel → Neuroevolution → Neural engine</b> (<code>nn_enabled</code>), then tap a creature again to see live hidden + 7 outputs.
+                Gathering live neural state — 16→12→7 (295) at 15 Hz (every 4th tick). Move or tap again in a moment.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '4px 0' }}>
@@ -325,7 +324,7 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
                   </div>
                 )}
                 <div className="chip" style={{ fontSize: 10, color: '#8b949e', background: '#0d1117', border: '1px dashed #30363d', padding: '4px 6px', borderRadius: 4 }}>
-                  Live from SoA: <code>nn_hidden</code> + <code>nn_outputs[7]</code> + <code>nn_genome_preview[8/295]</code> — 60 Hz physics, 15 Hz inference (latched). Toggle via <b>God → Neuroevolution</b>.
+                  Live from SoA: <code>nn_hidden</code> + <code>nn_outputs[7]</code> + <code>nn_genome_preview[8/295]</code> — 60 Hz physics, 15 Hz brain (latched). Always on — 295 fixed.
                 </div>
               </div>
             )}
