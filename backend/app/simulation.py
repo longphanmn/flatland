@@ -10256,7 +10256,7 @@ class Simulation:
                 e.id, e.generation
             )
             c_meta = clans.get(e.clan_id) if e.clan_id else None
-            return {
+            base: dict = {
                 "id": e.id,
                 "kind": e.kind,
                 "x": round(e.x, 3),
@@ -10304,6 +10304,48 @@ class Simulation:
                 "title": getattr(e, "title", None),
                 "emote": getattr(e, "emote", None),
             }
+            # BA: NN state if enabled and SoA has this creature
+            if getattr(self.config, "nn_enabled", False) and getattr(self, "_soa", None) is not None:
+                try:
+                    soa = self._soa  # type: ignore
+                    idx = -1
+                    if hasattr(soa, "ids"):
+                        try:
+                            import numpy as _np  # type: ignore
+
+                            if hasattr(soa.ids, "shape"):
+                                arr = soa.ids[: soa.N]  # type: ignore
+                                w = _np.where(arr == e.id)[0]
+                                if len(w):
+                                    idx = int(w[0])
+                            else:
+                                for i in range(soa.N):
+                                    if int(soa.ids[i]) == e.id:  # type: ignore
+                                        idx = i
+                                        break
+                        except Exception:
+                            for i in range(getattr(soa, "N", 0)):
+                                try:
+                                    if int(soa.ids[i]) == e.id:  # type: ignore
+                                        idx = i
+                                        break
+                                except Exception:
+                                    continue
+                    if idx >= 0:
+                        try:
+                            if hasattr(soa.hidden_state, "shape"):
+                                base["nn_hidden"] = round(float(soa.hidden_state[idx, 0]), 3)  # type: ignore
+                                base["nn_outputs"] = [round(float(v), 3) for v in soa.outputs_buf[idx].tolist()]  # type: ignore
+                                base["nn_genome_preview"] = [round(float(v), 3) for v in soa.genomes[idx, :8].tolist()]  # type: ignore
+                            else:
+                                base["nn_hidden"] = round(float(soa.hidden_state[idx][0]), 3)  # type: ignore
+                                base["nn_outputs"] = [round(float(v), 3) for v in soa.outputs_buf[idx]]  # type: ignore
+                                base["nn_genome_preview"] = [round(float(v), 3) for v in soa.genomes[idx][:8]]  # type: ignore
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+            return base
         if isinstance(e, House):
             return {
                 "id": e.id,

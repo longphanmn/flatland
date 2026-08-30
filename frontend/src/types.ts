@@ -70,6 +70,9 @@ export interface EntityState {
   sex?: 'male' | 'female'
   mother_id?: number
   father_id?: number
+  nn_hidden?: number | null
+  nn_outputs?: number[] | null
+  nn_genome_preview?: number[] | null
 }
 
 export interface ClanHistoryEvent {

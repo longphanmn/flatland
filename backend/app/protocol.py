@@ -82,6 +82,9 @@ class EntityState(BaseModel):
     hearth_lit: Optional[bool] = None  # §AQ PH-1: fire burns on this hearth
     hp_frac: Optional[float] = None  # §AQ PH-6: structural integrity remaining
     rubble: Optional[bool] = None  # §AQ PH-6: collapsed lot, uncleared rubble
+    nn_hidden: Optional[float] = None  # BA: recurrent hidden state [-1,1]
+    nn_outputs: Optional[list[float]] = None  # BA: last 7 outputs [thrust,steer,interact,social,vocal_amp,vocal_freq,recurrent]
+    nn_genome_preview: Optional[list[float]] = None  # BA: first 8 genome weights preview
 
 
 class StateMessage(BaseModel):

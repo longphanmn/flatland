@@ -274,6 +274,63 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
             </div>
           </Collapsible>
 
+          {/* Neural Engine (BA) — testable */}
+          <Collapsible id="inspector-nn" title={<h3 className="insp-h">🧠 Neural Engine (BA)</h3>} defaultOpen={false}>
+            {e.nn_hidden == null && !e.nn_outputs ? (
+              <div className="chip" style={{ background: '#161b22', border: '1px solid #30363d', padding: '8px', borderRadius: 6, fontSize: 12, color: '#8b949e' }}>
+                <span style={{ color: '#d29922', fontWeight: 600 }}>OFF</span> — micro-RNN 16→12→7 (295 weights) is disabled.<br />
+                Enable in <b>God Panel → Neuroevolution → Neural engine</b> (<code>nn_enabled</code>), then tap a creature again to see live hidden + 7 outputs.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '4px 0' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  <div className="chip" style={{ background: '#161b22', border: '1px solid #30363d', padding: '6px 8px', borderRadius: 6 }}>
+                    <span style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase' }}>Hidden state</span>
+                    <div style={{ fontWeight: 700, color: '#58a6ff', fontSize: 13 }}>{e.nn_hidden?.toFixed(3) ?? '—'} <span style={{ opacity: 0.6 }}>∈ [-1,1]</span></div>
+                  </div>
+                  <div className="chip" style={{ background: '#161b22', border: '1px solid #30363d', padding: '6px 8px', borderRadius: 6 }}>
+                    <span style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase' }}>Genome preview (8/295)</span>
+                    <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 10, color: '#e6edf3', wordBreak: 'break-all' }}>
+                      {e.nn_genome_preview ? e.nn_genome_preview.map((v) => v.toFixed(2)).join(', ') : '—'}
+                    </div>
+                  </div>
+                </div>
+                {e.nn_outputs && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {[
+                      { label: 'Thrust', idx: 0, range: '[0,1]', color: '#f0883e', hint: 'sigmoid → velocity + energy drain' },
+                      { label: 'Steer', idx: 1, range: '[-1,1]', color: '#79c0ff', hint: 'tanh → orientation' },
+                      { label: 'Interact', idx: 2, range: '[-1,1]', color: '#ff7b72', hint: '>+0.3 consume, <-0.3 attack' },
+                      { label: 'Social', idx: 3, range: '[-1,1]', color: '#a371f7', hint: '>+0.5 mating readiness' },
+                      { label: 'Vocal amp', idx: 4, range: '[0,1]', color: '#e3b341', hint: 'sigmoid → audio amplitude' },
+                      { label: 'Vocal freq', idx: 5, range: '[-1,1]', color: '#bc8cff', hint: 'tanh → audio freq' },
+                      { label: 'Recurrent', idx: 6, range: '[-1,1]', color: '#58a6ff', hint: '→ next hidden' },
+                    ].map((o) => {
+                      const v = e.nn_outputs![o.idx] ?? 0
+                      // map to 0-100% for bar
+                      const isSigmoid = o.idx === 0 || o.idx === 4
+                      const pct = isSigmoid ? Math.max(0, Math.min(100, v * 100)) : Math.max(0, Math.min(100, (v + 1) * 50))
+                      return (
+                        <div key={o.label} style={{ display: 'flex', flexDirection: 'column', gap: 2, background: 'rgba(22,27,34,0.6)', padding: '4px 6px', borderRadius: 4 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                            <span><b>{o.label}</b> <span style={{ color: '#8b949e' }}>{o.range}</span> <span style={{ opacity: 0.6, fontSize: 10 }}>{o.hint}</span></span>
+                            <span style={{ color: o.color, fontWeight: 700, fontFamily: 'ui-monospace, monospace' }}>{v.toFixed(3)}</span>
+                          </div>
+                          <div className="insp-track" style={{ height: 4 }}>
+                            <div className="insp-fill" style={{ width: `${pct}%`, background: o.color }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                <div className="chip" style={{ fontSize: 10, color: '#8b949e', background: '#0d1117', border: '1px dashed #30363d', padding: '4px 6px', borderRadius: 4 }}>
+                  Live from SoA: <code>nn_hidden</code> + <code>nn_outputs[7]</code> + <code>nn_genome_preview[8/295]</code> — 60 Hz physics, 15 Hz inference (latched). Toggle via <b>God → Neuroevolution</b>.
+                </div>
+              </div>
+            )}
+          </Collapsible>
+
           {/* Vitals & Affiliation Grid */}
           <div className="insp-grid">
             <span className="chip">
