@@ -859,6 +859,9 @@ LAW_FIELDS = (
 PRESETS: dict[str, dict] = {
     "balance": dict(
         # The Goldilocks condition: gentle harmony for steady 200-350 population multi-generational flourishing.
+
+        boundary="wrap",
+        door_clearance=1.5,
         food_count=240,
         plant_growth_rate=0.05,
         plant_spread_rate=0.006,
@@ -957,7 +960,6 @@ PRESETS: dict[str, dict] = {
         shelter_enabled=True,
         exposure_drain=0.025,
         house_capacity=12,
-        house_density=0.00065,
         house_min_size=5.5,
         house_max_size=8.0,
         house_claim_enabled=True,
@@ -1031,6 +1033,9 @@ PRESETS: dict[str, dict] = {
     ),
     "sustainable": dict(
         # 1000-Day Peace & Flourishing: 360 food, carrying 450, max 600, calm society, rich agriculture, granaries, banquets, temples & sacred avatars.
+
+        boundary="wrap",
+        door_clearance=1.5,
         food_count=360,
         plant_growth_rate=0.06,
         plant_spread_rate=0.008,
@@ -1129,7 +1134,6 @@ PRESETS: dict[str, dict] = {
         shelter_enabled=True,
         exposure_drain=0.02,
         house_capacity=16,
-        house_density=0.0008,
         house_min_size=5.5,
         house_max_size=8.0,
         house_claim_enabled=True,
@@ -1203,6 +1207,9 @@ PRESETS: dict[str, dict] = {
     ),
     "chaos": dict(
         # Total Turmoil: famine, predators, deadly wars, frequent plagues, wildfires, earthquakes, lightning strikes, landslides, collapses, betrayal, cannibalism, rapid seasons.
+
+        boundary="wrap",
+        door_clearance=1.5,
         food_count=280,
         plant_growth_rate=0.045,
         plant_spread_rate=0.006,
@@ -1301,7 +1308,6 @@ PRESETS: dict[str, dict] = {
         shelter_enabled=True,
         exposure_drain=0.06,
         house_capacity=12,
-        house_density=0.00075,
         house_min_size=5.5,
         house_max_size=8.0,
         house_claim_enabled=True,
@@ -1375,6 +1381,9 @@ PRESETS: dict[str, dict] = {
     ),
     "extinction": dict(
         # Cataclysmic Collapse & Grim Survival: Extreme famine (120 food), harsh winter (0.3x), rampant disease, severe weather chill, extreme exposure drain, collapsing shelters, deadly predators & wars, desperate cannibalism.
+
+        boundary="wrap",
+        door_clearance=1.5,
         food_count=120,
         plant_growth_rate=0.025,
         plant_spread_rate=0.003,
@@ -1473,7 +1482,6 @@ PRESETS: dict[str, dict] = {
         shelter_enabled=True,
         exposure_drain=0.08,
         house_capacity=8,
-        house_density=0.0006,
         house_min_size=5.5,
         house_max_size=8.0,
         house_claim_enabled=True,
@@ -1547,6 +1555,9 @@ PRESETS: dict[str, dict] = {
     ),
     "boom": dict(
         # High-Scale Population Boom: 500 food, carrying 800, max 1000, rapid reproduction, peaceful flourishing, rich granaries & banquets, temples & bridges.
+
+        boundary="wrap",
+        door_clearance=1.5,
         food_count=500,
         plant_growth_rate=0.08,
         plant_spread_rate=0.012,
@@ -1645,7 +1656,6 @@ PRESETS: dict[str, dict] = {
         shelter_enabled=True,
         exposure_drain=0.01,
         house_capacity=20,
-        house_density=0.0012,
         house_min_size=5.5,
         house_max_size=8.0,
         house_claim_enabled=True,
@@ -1719,6 +1729,9 @@ PRESETS: dict[str, dict] = {
     ),
     "theocracy": dict(
         # Age of the Sphere & Sacred Faith: Devout spiritual civilization, high faith tithes, glowing temples, avatar miracles, 3D epiphanies, and holy synods.
+
+        boundary="wrap",
+        door_clearance=1.5,
         food_count=320,
         plant_growth_rate=0.055,
         plant_spread_rate=0.007,
@@ -1817,7 +1830,6 @@ PRESETS: dict[str, dict] = {
         shelter_enabled=True,
         exposure_drain=0.02,
         house_capacity=14,
-        house_density=0.00075,
         house_min_size=5.5,
         house_max_size=8.0,
         house_claim_enabled=True,
@@ -1891,6 +1903,9 @@ PRESETS: dict[str, dict] = {
     ),
     "warlords": dict(
         # Clash of Clans & Imperial Conquest: Martial dominance, territorial conquests, defensive leagues, granary plunder, and high tactical engagement.
+
+        boundary="wrap",
+        door_clearance=1.5,
         food_count=290,
         plant_growth_rate=0.05,
         plant_spread_rate=0.006,
@@ -1989,7 +2004,6 @@ PRESETS: dict[str, dict] = {
         shelter_enabled=True,
         exposure_drain=0.03,
         house_capacity=12,
-        house_density=0.0007,
         house_min_size=5.5,
         house_max_size=8.0,
         house_claim_enabled=True,

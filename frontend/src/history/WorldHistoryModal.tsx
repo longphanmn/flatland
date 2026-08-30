@@ -76,6 +76,22 @@ export interface DayRecord {
   totalCasualties: number
 }
 
+type StoryStyle = 'saga' | 'chronicle' | 'mythos' | 'tragedy'
+
+const STYLE_LABELS: Record<StoryStyle, string> = {
+  saga: '⚔️ Epic Novel Saga',
+  chronicle: '📜 Ancient Historical Chronicle',
+  mythos: '🔮 Spiritual & Mythological Lore',
+  tragedy: '💀 Tragic Extinction & Decline',
+}
+
+const STYLE_PROMPTS: Record<StoryStyle, string> = {
+  saga: 'Write a dramatic, multi-chapter historical epic saga following specific chieftains, named warriors, and priests across the daily chronicle. Emphasize character journeys, tactical battles between named clans, political betrayals, and survival during harsh winters.',
+  chronicle: 'Write an ancient, scholarly historical chronicle recording the day-by-day rise and fall of named geometric clans, territorial conquests, legal philosophy, demographic curves, and military campaigns.',
+  mythos: 'Write a spiritual and philosophical mythos focusing on the 2D inhabitants discovering the divine 3D Sphere, worshipping sacred avatars, raising glowing temples, and experiencing cosmic epiphanies.',
+  tragedy: 'Write a poignant tragedy recording the golden heights of the geometric civilization, its slow descent into plague and ice, and the solemn extinction of the final living creature.',
+}
+
 const ADJECTIVES = ['Silent', 'Ancient', 'Crimson', 'Silver', 'Golden', 'Shadow', 'Azure', 'Iron', 'Emerald', 'Solar', 'Lunar', 'Obsidian', 'Dawn', 'Dusk', 'Misty', 'Starlight', 'Verdant', 'Echoing', 'Storm', 'Radiant']
 const NOUNS = ['Spire', 'Shield', 'Circle', 'Blade', 'Monolith', 'Sanctum', 'Vertex', 'Lineage', 'Hearth', 'Haven', 'Vanguard', 'Beacon', 'Sovereigns', 'Keepers', 'Pillars', 'Wardens', 'Foundry', 'Sands', 'Bridges', 'Valley']
 
@@ -96,7 +112,13 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
   const [search, setSearch] = useState('')
   const [copied, setCopied] = useState(false)
   const [expandedDay, setExpandedDay] = useState<number | null>(null)
-  const [storyStyle, setStoryStyle] = useState<'saga' | 'chronicle' | 'mythos' | 'tragedy'>('saga')
+  const [storyStyle, setStoryStyle] = useState<StoryStyle>(() => {
+    try {
+      const s = sessionStorage.getItem('history-story-style') as StoryStyle | null
+      if (s && s in STYLE_LABELS) return s
+    } catch { /* ignore */ }
+    return 'saga'
+  })
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768)
 
   useEffect(() => {
@@ -104,6 +126,11 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
+
+  // Persist the chosen writing style across modal reopens
+  useEffect(() => {
+    try { sessionStorage.setItem('history-story-style', storyStyle) } catch { /* ignore */ }
+  }, [storyStyle])
 
   // Close on Escape key
   useEffect(() => {
@@ -498,18 +525,14 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
       return `- **Day ${d.day}**: ${d.summaryLine}`
     }).join('\n')
 
-    let stylePrompt = ''
-    if (storyStyle === 'saga') {
-      stylePrompt = 'Write a dramatic, multi-chapter historical epic saga following specific chieftains, named warriors, and priests across the daily chronicle. Emphasize character journeys, tactical battles between named clans, political betrayals, and survival during harsh winters.'
-    } else if (storyStyle === 'chronicle') {
-      stylePrompt = 'Write an ancient, scholarly historical chronicle recording the day-by-day rise and fall of named geometric clans, territorial conquests, legal philosophy, demographic curves, and military campaigns.'
-    } else if (storyStyle === 'mythos') {
-      stylePrompt = 'Write a spiritual and philosophical mythos focusing on the 2D inhabitants discovering the divine 3D Sphere, worshipping sacred avatars, raising glowing temples, and experiencing cosmic epiphanies.'
-    } else {
-      stylePrompt = 'Write a poignant tragedy recording the golden heights of the geometric civilization, its slow descent into plague and ice, and the solemn extinction of the final living creature.'
-    }
+    const styleLabel = STYLE_LABELS[storyStyle]
+    const stylePrompt = STYLE_PROMPTS[storyStyle]
 
     return `# The Chronicles of Flatland: World Seed ${seed}
+
+## Writing Style — ${styleLabel}
+${stylePrompt}
+
 
 ## Context & World Lore
 You are an epic historian and bard recording the true history of a simulated 2D world inspired by Edwin A. Abbott's *Flatland*.
@@ -987,6 +1010,23 @@ ${stylePrompt}
                     <p style={{ fontSize: 11, color: '#8b949e', margin: '4px 0 0' }}>
                       Rich, day-by-day historical chronicle with specific clan wars, conquests, successions, and miracles ready for ChatGPT, Claude, or Gemini.
                     </p>
+                    {/* Live style badge — proves the dropdown took effect */}
+                    <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 10,
+                          background: 'rgba(56,139,253,0.18)',
+                          border: '1px solid #388bfd',
+                          color: '#79c0ff',
+                        }}
+                      >
+                        {STYLE_LABELS[storyStyle]}
+                      </span>
+                      <span style={{ fontSize: 10, color: '#8b949e' }}>instructions applied at the top of the prompt ↓</span>
+                    </div>
                   </div>
 
                   <div
@@ -1013,10 +1053,9 @@ ${stylePrompt}
                         minHeight: isMobile ? 44 : undefined,
                       }}
                     >
-                      <option value="saga">⚔️ Epic Novel Saga</option>
-                      <option value="chronicle">📜 Ancient Historical Chronicle</option>
-                      <option value="mythos">🔮 Spiritual & Mythological Lore</option>
-                      <option value="tragedy">💀 Tragic Extinction & Decline</option>
+                      {(Object.keys(STYLE_LABELS) as StoryStyle[]).map((k) => (
+                        <option key={k} value={k}>{STYLE_LABELS[k]}</option>
+                      ))}
                     </select>
 
                     <div style={{ display: 'flex', gap: 6, width: isMobile ? '100%' : 'auto' }}>
