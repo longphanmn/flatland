@@ -1,7 +1,25 @@
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { godFetch } from './auth'
 import { useI18n } from '../i18n'
 import type { GodLaws } from '../types'
+
+class GodPanelErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
+  state = { hasError: false, error: null as any }
+  static getDerivedStateFromError(error: any) { return { hasError: true, error } }
+  componentDidCatch(error: any, info: any) { console.error('[GodPanel] crash', error, info) }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 16, color: '#f85149' }}>
+          <h3 style={{ margin: '0 0 8px' }}>God Panel crashed</h3>
+          <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11, background: '#161b22', padding: 8, borderRadius: 6, border: '1px solid #30363d' }}>{String(this.state.error?.message ?? this.state.error)}</pre>
+          <button onClick={() => this.setState({ hasError: false, error: null })} style={{ marginTop: 8, padding: '6px 10px', background: '#21262d', border: '1px solid #30363d', borderRadius: 6, color: '#e6edf3', cursor: 'pointer' }}>Retry</button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 type NumberLawKey = Exclude<keyof GodLaws, 'boundary'>
 type BoolLawKey = {
@@ -439,7 +457,7 @@ function getZone(value: number, baseline: number | undefined, min: number, max: 
   return 'extreme'
 }
 
-export default function GodPanel({ open, onClose }: Props) {
+function GodPanelInner({ open, onClose }: Props) {
   const { t } = useI18n()
   const [laws, setLaws] = useState<GodLaws>({})
   const [baselineLaws, setBaselineLaws] = useState<GodLaws>({})
@@ -1318,7 +1336,7 @@ export default function GodPanel({ open, onClose }: Props) {
               <div key={domain.id} className="god-domain-section">
                 <div className="god-domain-header">
                   <span className="god-domain-title">{domain.icon} {domain.label}</span>
-                  <span className="god-domain-meta">{groupSections.length} groups · {groupSections.reduce((a, s: any) => a + (s?.props?.children?.[1]?.length || 0), 0)} laws</span>
+                  <span className="god-domain-meta">{groupSections.length} groups · {groupSections.length} sections</span>
                 </div>
                 {groupSections}
               </div>
@@ -1345,5 +1363,14 @@ export default function GodPanel({ open, onClose }: Props) {
       {body}
       {foot}
     </aside>
+  )
+}
+
+export default function GodPanel(props: Props) {
+  if (!props.open) return null
+  return (
+    <GodPanelErrorBoundary>
+      <GodPanelInner {...props} />
+    </GodPanelErrorBoundary>
   )
 }

@@ -52,6 +52,7 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [wikiOpen, setWikiOpen] = useState(false)
   const [worldHistoryOpen, setWorldHistoryOpen] = useState(false)
+  const [analyticsOpen, setAnalyticsOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768)
   const [statusExpanded, setStatusExpanded] = useState(false)
   const [sheetState, setSheetState] = useState<'hidden' | 'peek' | 'half' | 'full'>('hidden')
@@ -66,6 +67,12 @@ export default function App() {
   useEffect(() => {
     try { sessionStorage.setItem('right-stack-tab', rightTab) } catch {}
   }, [rightTab])
+  const [rightCollapsed, setRightCollapsed] = useState<boolean>(() => {
+    try { return sessionStorage.getItem('right-stack-collapsed') === '1' } catch { return false }
+  })
+  useEffect(() => {
+    try { sessionStorage.setItem('right-stack-collapsed', rightCollapsed ? '1' : '0') } catch {}
+  }, [rightCollapsed])
   const [versionInfo, setVersionInfo] = useState<{ version: string; revision: string } | null>(null)
   const [log, setLog] = useState<HistoryEvent[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -613,6 +620,9 @@ export default function App() {
           <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )" data-hint="Wiki — documentation & API ( /wiki )">
             📖
           </button>
+          <button className="god-btn" onClick={() => setAnalyticsOpen(true)} title="Analytics — Observatory (BD)" data-hint="Analytics — Observatory (BD)">
+            📊
+          </button>
           <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="The Sphere (God) — sets laws from Spaceland, never touches a life" data-hint="The Sphere (God) — sets laws from Spaceland, never touches a life">
             ⚖
           </button>
@@ -678,6 +688,9 @@ export default function App() {
             </button>
             <button className="god-btn" onClick={() => { setStatusExpanded(false); setWikiOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
               📖 Wiki
+            </button>
+            <button className="god-btn" onClick={() => { setStatusExpanded(false); setAnalyticsOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
+              📊 Analytics
             </button>
             <button className="god-btn god-main-btn" onClick={() => { setStatusExpanded(false); setGodOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
               ⚖ The Sphere
@@ -877,6 +890,18 @@ export default function App() {
 
       {!isMobile && (() => {
         const clanCount = state ? Object.keys(state.clans ?? {}).length : 0
+        if (rightCollapsed) {
+          return (
+            <button
+              className="right-stack-expand"
+              onClick={() => setRightCollapsed(false)}
+              title="Expand right panel"
+              aria-label="Expand right panel"
+            >
+              ◀
+            </button>
+          )
+        }
         return (
         <div
           className="right-stack"
@@ -909,6 +934,14 @@ export default function App() {
               onClick={() => setRightTab('chronicle')}
             >
               📜 Chronicle <span className="live-dot">Live</span>
+            </button>
+            <button
+              className="right-stack-collapse"
+              onClick={() => setRightCollapsed(true)}
+              title="Collapse right panel"
+              aria-label="Collapse right panel"
+            >
+              ▶
             </button>
           </div>
           <div className="right-stack-body">
@@ -958,8 +991,21 @@ export default function App() {
 
       <GodPanel open={godOpen} onClose={() => setGodOpen(false)} />
       <Wiki open={wikiOpen} onClose={() => setWikiOpen(false)} />
+      {analyticsOpen && (
+        <div className="wiki-backdrop" onClick={() => setAnalyticsOpen(false)}>
+          <div className="wiki-panel" style={{ maxHeight: '90vh', width: 'min(900px, 96vw)' }} onClick={(e) => e.stopPropagation()}>
+            <header className="god-head">
+              <h2>🔭 Observatory — Analytics</h2>
+              <button className="god-close" onClick={() => setAnalyticsOpen(false)} aria-label="close">×</button>
+            </header>
+            <div style={{ maxHeight: '70vh', overflowY: 'auto', padding: '8px 0' }}>
+              <Observatory state={state} />
+            </div>
+          </div>
+        </div>
+      )}
       {selectedClanId !== null && (
-        <ClanDetails clanId={selectedClanId} onClose={() => setSelectedClanId(null)} onSelectCreature={(id) => { setSelectedClanId(null); setSelectedId(id) }} />
+        <ClanDetails clanId={selectedClanId} state={state} onClose={() => setSelectedClanId(null)} onSelectCreature={(id) => { setSelectedClanId(null); setSelectedId(id) }} />
       )}
       {showWorldEnd && state && (
         <WorldEndSummary

@@ -198,6 +198,45 @@ body {
   background: rgba(33, 38, 45, 0.95);
   border-bottom-color: #58a6ff;
 }
+.right-stack-collapse {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #8b949e;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 4px;
+}
+.right-stack-collapse:hover { background: #30363d; color: #e6edf3; border-color: #8b949e; }
+.right-stack-expand {
+  position: fixed;
+  right: 14px;
+  top: 48px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13,17,23,0.85);
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #8b949e;
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 15;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+  backdrop-filter: blur(8px);
+}
+.right-stack-expand:hover { background: #21262d; color: #e6edf3; }
 .right-stack-tab .live-dot {
   display: inline-flex;
   align-items: center;
