@@ -697,6 +697,14 @@ export default function GodPanel({ open, onClose }: Props) {
     <>
       <p className="god-note">{t('god.subtitle')}</p>
 
+      {/* BA: master NN switch — always visible, outside group gating */}
+      <div className="god-group" style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: '6px 8px' }}>
+        <ToggleRow k="nn_enabled" label="🧠 Neural engine (BA)" title="micro-RNN 16→12→7 (295 weights) replaces utility AI — 60Hz physics, 15Hz brain" />
+        <div style={{ fontSize: 11, color: '#8b949e', padding: '2px 6px' }}>
+          God → Neuroevolution master switch. When ON, creatures carry a learned RNN (295 weights) evolved by selection; when OFF the hand-authored utility AI stays in charge. Toggle is always clickable — number sliders below are gated by this switch.
+        </div>
+      </div>
+
       <div className="god-group" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 2 }}>
           <span style={{ fontSize: 12, color: '#8b949e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
