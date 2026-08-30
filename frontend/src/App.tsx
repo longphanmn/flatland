@@ -922,31 +922,33 @@ export default function App() {
           onTouchStart={(e) => e.stopPropagation()}
           onWheel={(e) => e.stopPropagation()}
         >
-          <div className="right-stack-tabs" role="tablist" aria-label="Right stack panels">
-            <button
-              role="tab"
-              aria-selected={rightTab === 'overview'}
-              className={`right-stack-tab ${rightTab === 'overview' ? 'active' : ''}`}
-              onClick={() => setRightTab('overview')}
-            >
-              📊 {t('app.rightStack.overview')}
-            </button>
-            <button
-              role="tab"
-              aria-selected={rightTab === 'clans'}
-              className={`right-stack-tab ${rightTab === 'clans' ? 'active' : ''}`}
-              onClick={() => setRightTab('clans')}
-            >
-              🏰 {t('app.rightStack.clans')} ({clanCount})
-            </button>
-            <button
-              role="tab"
-              aria-selected={rightTab === 'chronicle'}
-              className={`right-stack-tab ${rightTab === 'chronicle' ? 'active' : ''}`}
-              onClick={() => setRightTab('chronicle')}
-            >
-              📜 {t('app.rightStack.chronicle')} <span className="live-dot">{t('app.rightStack.live')}</span>
-            </button>
+          <div className="right-stack-header">
+            <div className="right-stack-tabs" role="tablist" aria-label="Right stack panels">
+              <button
+                role="tab"
+                aria-selected={rightTab === 'overview'}
+                className={`right-stack-tab ${rightTab === 'overview' ? 'active' : ''}`}
+                onClick={() => setRightTab('overview')}
+              >
+                📊 {t('app.rightStack.overview')}
+              </button>
+              <button
+                role="tab"
+                aria-selected={rightTab === 'clans'}
+                className={`right-stack-tab ${rightTab === 'clans' ? 'active' : ''}`}
+                onClick={() => setRightTab('clans')}
+              >
+                🏰 {t('app.rightStack.clans')} ({clanCount})
+              </button>
+              <button
+                role="tab"
+                aria-selected={rightTab === 'chronicle'}
+                className={`right-stack-tab ${rightTab === 'chronicle' ? 'active' : ''}`}
+                onClick={() => setRightTab('chronicle')}
+              >
+                📜 {t('app.rightStack.chronicle')}
+              </button>
+            </div>
             <button
               className="right-stack-collapse"
               onClick={() => setRightCollapsed(true)}

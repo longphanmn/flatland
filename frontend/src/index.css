@@ -160,14 +160,21 @@ body {
   pointer-events: auto;
 }
 
-/* BD.7 tabbed switcher */
-.right-stack-tabs {
+/* BD.7 tabbed switcher — header wrapper prevents collapse button overlap */
+.right-stack-header {
   display: flex;
-  gap: 2px;
+  align-items: center;
+  gap: 6px;
   padding: 6px 6px 0;
   background: rgba(22, 27, 34, 0.6);
   border-bottom: 1px solid #21262d;
   flex: none;
+}
+.right-stack-tabs {
+  display: flex;
+  gap: 2px;
+  flex: 1 1 0;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -179,8 +186,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 7px 6px;
-  font-size: 11.5px;
+  padding: 7px 4px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -214,7 +221,6 @@ body {
   font-size: 12px;
   cursor: pointer;
   padding: 0;
-  margin-left: 4px;
 }
 .right-stack-collapse:hover { background: #30363d; color: #e6edf3; border-color: #8b949e; }
 .right-stack-expand {
