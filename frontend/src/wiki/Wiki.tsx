@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { godFetch } from '../god/auth'
 import { useI18n } from '../i18n'
 
 type WikiData = {
@@ -16,7 +15,6 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
   const [tab, setTab] = useState<'guide' | 'book' | 'api' | 'laws' | 'presets'>('guide')
   const [q, setQ] = useState('')
   const [laws, setLaws] = useState<Record<string, any> | null>(null)
-  const [presetFeedback, setPresetFeedback] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -42,21 +40,6 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
       : (laws?.food_count === 500 && laws?.carrying_capacity === 800) || (laws?.food_count === 650 && laws?.carrying_capacity === 3500)
       ? 'boom'
       : null
-
-  const applyPreset = async (name: string, reset: boolean = false) => {
-    try {
-      const r = await godFetch(`/api/presets/${name}?persist=true${reset ? '&reset=true' : ''}`, { method: 'POST' })
-      if (r.ok) {
-        setPresetFeedback(`✓ ${name} preset applied${reset ? ' (world reset)' : ''}`)
-        fetch('/api/laws').then(res => res.json()).then(setLaws).catch(() => {})
-      } else {
-        setPresetFeedback(`✗ Failed to apply ${name}`)
-      }
-      setTimeout(() => setPresetFeedback(null), 3000)
-    } catch {
-      /* cancelled */
-    }
-  }
 
   // filter helpers
   const match = (s: string) => !q || s.toLowerCase().includes(q.toLowerCase())
@@ -245,105 +228,22 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <h3 style={{ margin: 0 }}>{t('wiki.presetsTitle')}</h3>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                {presetFeedback && (
-                  <span style={{ fontSize: 12, color: presetFeedback.startsWith('✓') ? '#3fb950' : '#f85149', fontWeight: 600 }}>
-                    {presetFeedback}
-                  </span>
-                )}
                 {activePreset && (
                   <span className="chip" style={{ color: '#3fb950', borderColor: '#3fb950', background: 'rgba(63, 185, 80, 0.15)' }}>
                     {t('god.presets.active', { name: activePreset })}
                   </span>
                 )}
+                <span className="chip" style={{ color: '#8b949e', borderColor: '#30363d', background: '#161b22', fontSize: 11 }}>{t('wiki.readOnly') !== 'wiki.readOnly' ? t('wiki.readOnly') : 'read-only · use ⚖ God Panel to apply'}</span>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-              <button
-                onClick={() => applyPreset('balance')}
-                style={{
-                  borderColor: '#e3b341',
-                  color: '#e3b341',
-                  background: activePreset === 'balance' ? 'rgba(227, 179, 65, 0.2)' : undefined,
-                  fontWeight: activePreset === 'balance' ? 700 : undefined,
-                }}
-              >
-                {t('god.presets.balance')} {activePreset === 'balance' ? '✓' : ''}
-              </button>
-              <button
-                onClick={() => applyPreset('sustainable')}
-                style={{
-                  borderColor: '#3fb950',
-                  color: '#3fb950',
-                  background: activePreset === 'sustainable' ? 'rgba(63, 185, 80, 0.2)' : undefined,
-                  fontWeight: activePreset === 'sustainable' ? 700 : undefined,
-                }}
-              >
-                {t('god.presets.sustainable')} {activePreset === 'sustainable' ? '✓' : ''}
-              </button>
-              <button
-                onClick={() => applyPreset('theocracy')}
-                style={{
-                  borderColor: '#bc8cff',
-                  color: '#bc8cff',
-                  background: activePreset === 'theocracy' ? 'rgba(188, 140, 255, 0.2)' : undefined,
-                  fontWeight: activePreset === 'theocracy' ? 700 : undefined,
-                }}
-              >
-                {t('god.presets.theocracy')} {activePreset === 'theocracy' ? '✓' : ''}
-              </button>
-              <button
-                onClick={() => applyPreset('warlords')}
-                style={{
-                  borderColor: '#f0883e',
-                  color: '#f0883e',
-                  background: activePreset === 'warlords' ? 'rgba(240, 136, 62, 0.2)' : undefined,
-                  fontWeight: activePreset === 'warlords' ? 700 : undefined,
-                }}
-              >
-                {t('god.presets.warlords')} {activePreset === 'warlords' ? '✓' : ''}
-              </button>
-              <button
-                onClick={() => applyPreset('chaos')}
-                style={{
-                  borderColor: '#f85149',
-                  color: '#f85149',
-                  background: activePreset === 'chaos' ? 'rgba(248, 81, 73, 0.2)' : undefined,
-                  fontWeight: activePreset === 'chaos' ? 700 : undefined,
-                }}
-              >
-                {t('god.presets.chaos')} {activePreset === 'chaos' ? '✓' : ''}
-              </button>
-              <button
-                onClick={() => applyPreset('extinction')}
-                style={{
-                  borderColor: '#ff7b72',
-                  color: '#ff7b72',
-                  background: activePreset === 'extinction' ? 'rgba(255, 123, 114, 0.2)' : undefined,
-                  fontWeight: activePreset === 'extinction' ? 700 : undefined,
-                }}
-              >
-                {t('god.presets.extinction')} {activePreset === 'extinction' ? '✓' : ''}
-              </button>
-              <button
-                onClick={() => applyPreset('boom')}
-                style={{
-                  borderColor: '#79c0ff',
-                  color: '#79c0ff',
-                  background: activePreset === 'boom' ? 'rgba(121, 192, 255, 0.2)' : undefined,
-                  fontWeight: activePreset === 'boom' ? 700 : undefined,
-                }}
-              >
-                {t('god.presets.boom')} {activePreset === 'boom' ? '✓' : ''}
-              </button>
-            </div>
+            <p className="god-note" style={{ color: '#8b949e', fontSize: 12, margin: '0 0 10px' }}>{t('wiki.presetsReadOnlyNote') !== 'wiki.presetsReadOnlyNote' ? t('wiki.presetsReadOnlyNote') : 'Presets are displayed for reference — apply via The Sphere (⚖ God Panel).'}</p>
             {data?.presets && Object.entries(data.presets).map(([name, pLaws]) => {
               const isCurrent = activePreset === name
               return (
                 <div key={name} style={{ border: `1px solid ${isCurrent ? '#3fb950' : '#21262d'}`, borderRadius: 6, padding: 10, marginBottom: 8, background: isCurrent ? 'rgba(63, 185, 80, 0.06)' : '#161b22' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <b style={{ color: isCurrent ? '#3fb950' : '#e6edf3' }}>{name} {isCurrent && t('wiki.activeTag')}</b>
-                    <button onClick={() => applyPreset(name, false)} style={{ marginLeft: 'auto', padding: '4px 8px', fontSize: 12, cursor: 'pointer' }}>{t('wiki.apply')}</button>
-                    <button onClick={() => applyPreset(name, true)} style={{ padding: '4px 8px', fontSize: 12, background: '#238636', borderColor: '#2ea043', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>{t('wiki.applyReset')}</button>
+                    {isCurrent && <span className="chip" style={{ marginLeft: 'auto', color: '#3fb950', borderColor: '#3fb950', background: 'rgba(63,185,80,0.12)', fontSize: 11 }}>● {t('wiki.activeTag')}</span>}
                   </div>
                   <div style={{ fontSize: 11, color: '#8b949e', marginTop: 6, wordBreak: 'break-all' }}>
                     {Object.entries(pLaws).slice(0, 8).map(([k, v]) => <span key={k} style={{ marginRight: 8 }}><code>{k}={String(v)}</code></span>)}

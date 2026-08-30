@@ -197,10 +197,13 @@ A coarse ambient heat field (`TEMP_CELL` 25-unit cells, `_update_temperature`) r
 The sky has a breath: a wind vector (`wind_angle`/`wind_speed`, on every snapshot payload) whose strength follows the weather — calm 0.25, rain 0.55, storm howls at 1.0 (`WIND_*_SPEED`, relaxed each tick) — and whose direction re-rolls near the season's prevailing bearing whenever the weather turns (`WIND_SEASON_BIAS`). Fire obeys it: both random ignition and plant-to-plant spread multiply by a tailwind factor (`WIND_FIRE_MULT` × speed × alignment), so flame races downwind while upwind groves stand longer.
 
 ## Nature's Law inheritance (§B)
-Sex: polygons male, lines female (`entities.py:137`). Sons `sides = father.sides+1` capped at `max_sides` (24→Priest); daughters lines. Mutation `mutation_rate` ±1 side → `irregularity` 0.3–1.0. Isosceles triangles: `iso_angle+0.5°` per generation, `≥60°` promotes Soldier→Artisan. Fertility: per-caste table × crowding `carrying_capacity`/`max_population`.
+Sex: polygons male, lines female (`entities.py:137`). Sons `sides = father.sides+1` capped at `max_sides` (`24→Priest`, now `64` ultra-circles 32/48/64 via BC); daughters lines. Mutation `mutation_rate` ±1 side → `irregularity` 0.3–1.0. Isosceles triangles: `iso_angle+0.5°` per generation, `≥60°` promotes Soldier→Artisan. Fertility: per-caste table × crowding `carrying_capacity`/`max_population`. When `morphology_annealing_enabled` (BC), polar $(r_i,\phi_i)$ annealing supersedes side-count: $\lambda(g)$ blends Abbott template $K\in[3,64]$ with parental noisy genome, topo $p\cdot(1-\lambda)$.
+
+## Geometric Physics (BC)
+Polar genomes $K\in[3,64]$ SoA `morph_radii/morph_angles/morph_k/morph_traits (A,P,I_{zz},\theta_{\min},asym,Dmult)` — vectorized `morphology.py`. $\lambda(g)=morph\_lambda\_override ?? clamp(1-(g-g_{start})/g_{decay})$ (`g_start 50` `g_decay 150`). Baking $E_{\max}\cdot clamp(A/A_{ref})$ etc feeds $euthanasia$ via asymmetry, SAT broadphase $r_{\max}$ + edge normals + $D_{mult}$ impulse. Telemetry `/api/metrics/morphology` live $ \bar\lambda,\bar K,\bar A,\bar P$.
 
 ## Irregularity & caste (§C)
-Mutated children's `irregularity` judged at `adult_age`: `≥euthanasia_threshold` → consumed (`euthanasia`), else demoted to Soldier. `CASTE_TRAITS` (`entities.py:39`) gives lifespan/speed/sight_mult/fertility.
+Mutated children's `irregularity` judged at `adult_age`: `≥euthanasia_threshold` → consumed (`euthanasia`), else demoted to Soldier. `CASTE_TRAITS` (`entities.py:39`) gives lifespan/speed/sight_mult/fertility. BC maps $asymmetry$ → $irregularity$ for same gate.
 
 ## Disease (§D)
 `disease_enabled`, `disease_outbreak_rate` starts new `disease_id`, spreads within `disease_radius` at `disease_rate` (winter ×1.5), drains `disease_energy_drain` + health `2×disease_lethality`, recovers `recovery_rate`. Disabling freezes instantly.
@@ -292,7 +295,10 @@ CODEBASE_MAP_MD = """
 - `auth.py:1` — `require_god` FastAPI dependency for God passkey cryptographic verification (`X-God-Key`).
 - `protocol.py:7` — Pydantic wire schemas: `ControlAction`, `ControlMessage`, `EntityState`, `StateMessage`, `HistoryEvent`, `HelloMessage`, `GodLaws`.
 - `db.py:1` — `Database` stdlib `sqlite3` thin wrapper: `worlds`, `events`, `law_changes`, `creatures`, `snapshots`; WAL, thread-safe reentrant lock; §AD OS-log — RAM buffer + writer daemon (`log_event`/`log_birth`/`log_death`, `flush()` every 5s or 5000 ops, forced on world end/snapshot/close), reads may lag ≤5s.
-- `main.py:1` — FastAPI `app`, `Hub` broadcast, `RuntimeState`, `tick_loop`, `apply_control`, `hello_payload`, `LAW_FIELDS`, `get_laws`/`apply_laws`, WebSocket `/ws`, REST routes, `/guide`.
+- `main.py:1` — FastAPI `app`, `Hub` broadcast, `RuntimeState`, `tick_loop`, `apply_control`, `hello_payload`, `LAW_FIELDS`, `get_laws`/`apply_laws`, WebSocket `/ws`, REST routes, `/guide`, `/api/metrics/morphology`.
+- `morphology.py` — BC polar A/P/Izz/θmin/asym/Dmult, trait baking, SAT overlap.
+- `evolution_manager.py` — BC annealing λ(g), Abbott templates K3..64, child interpolation + topo mutation.
+- `agent_soa.py` — SoA (pos/vel/genomes + morph_radii/angles/k/traits) vectorized.
 
 ## Frontend (`frontend/src/`)
 - `App.tsx` — Main application layout, HUD, WebSocket synchronization, mobile drawer tabs.

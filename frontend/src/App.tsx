@@ -89,6 +89,7 @@ export default function App() {
   const prevSeedRef = useRef<number | null>(null)
   const lastUiUpdateRef = useRef<number>(0)
   const queuedEventsRef = useRef<HistoryEvent[]>([])
+  const prevDayHistRef = useRef<number | null>(null)
   const [estTps, setEstTps] = useState<number | null>(null)
   const lastTpsTimeRef = useRef<number>(0)
   const lastTpsTickRef = useRef<number | null>(null)
@@ -286,11 +287,17 @@ export default function App() {
         if (shouldUpdateReactState) {
           lastUiUpdateRef.current = now
           setState(msg)
-          setAliveHist((prev) =>
-            isNewWorld && !archiveModeRef.current
-              ? [msg.creatures_alive]
-              : [...prev.slice(-119), msg.creatures_alive],
-          )
+          // BC day-based trend: aliveHist stores one sample per in-game day, not per tick.
+          setAliveHist((prev) => {
+            if (isNewWorld && !archiveModeRef.current) {
+              prevDayHistRef.current = msg.day
+              return [msg.creatures_alive]
+            }
+            if (archiveModeRef.current) return prev
+            if (prevDayHistRef.current === msg.day) return prev
+            prevDayHistRef.current = msg.day
+            return [...prev.slice(-59), msg.creatures_alive]
+          })
           if (!archiveModeRef.current && queuedEventsRef.current.length > 0) {
             const batch = queuedEventsRef.current.splice(0)
             setLog((prev) => [...batch.reverse(), ...prev].slice(0, MAX_LOG))

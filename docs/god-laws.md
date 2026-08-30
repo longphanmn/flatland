@@ -223,7 +223,23 @@ Every creature carries a **16→12→7 Elman RNN** with **295 `float32` weights*
 
 ---
 
-## 13. Communication, Language & Diplomacy
+## 13. Geometric Physics & Morphological Evolution (BC)
+
+Polar-coordinate polygon genomes $(r_i,\phi_i)$, $K\in[3,64]$ (`PRIEST_SIDES 24` threshold, `max_sides 64`) governed by **Morphological Annealing** $\lambda(g)$ live-synced with ⚖ God Laws. Vectorized SoA buffers `morph_radii/morph_angles/morph_k/morph_traits (A,P,Izz,θmin,asym,Dmult)` + `reproduction_role`. Physics baked: $E_{\max}\cdot clamp(A/A_{ref},0.5,2)$, $decay\cdot clamp(P/P_{ref},0.7,1.8)$, $Damage\cdot max(0,(cosθ_{\min}-0.5)/0.5)$ stacked with Celestial Strike, $\Delta\theta=steer\cdot(steer\_turn/(1+I_{zz}/I_{ref}))$, $asymmetry\to irregularity$ for $euthanasia\_threshold$. Abbott templates per caste (Woman thin triangle, Soldier $30°$, Priest $K\ge24$ regular, ultra-circles 32/48/64) interpolated $r^{child}=λ·r_{template}+(1-λ)·clamp(r_{parent}+𝒩(σ_r))$ sorted $\phi$, topological $p=rate\cdot(1-λ)$ add longest edge / remove closest neighbor. Energetic asymmetry $median(A)$ → high $35-50\%$ vs low $5-10\%$ $E_{\max}$, SAT narrowphase broadphase $r_{\max}$ + edge normals, telemetry `/api/metrics/morphology`.
+
+| Law Parameter | Range | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `morphology_annealing_enabled` | Boolean | **false** | Master switch — off keeps classic `sides/irregularity` path (AZ hash); on enables polar annealing, trait baking & SAT. |
+| `annealing_start_generation` | 0–1000 | **50** | Generation where $\lambda$ decays $1\to0$; before, children snap to Abbott templates. |
+| `annealing_decay_generations` | 1–5000 | **150** | Generations to decay $\lambda$ $1\to0$; short = instant morph freedom. |
+| `morph_lambda_override` | 0.0–1.0 or `None` | **None** (auto) | Force $\lambda$ $0..1$ (`None`=auto); $1$ freezes Abbott castes, $0$ pure parental. |
+| `vertex_mutation_std` | 0.0–0.5 | **0.05** | Gaussian $\sigma_r$ per vertex radius $r_i$, clamped $[0.2,2.5]$. |
+| `angle_mutation_std` | 0.0–0.5 | **0.02** | Gaussian $\sigma_\phi$ per angle $\phi_i$, sorted circularly to avoid bow-tie. |
+| `topological_mutation_rate` | 0.0–0.2 | **0.01** | Add/remove vertex chance $p\cdot(1-\lambda)$, $K 3..64$. |
+
+---
+
+## 14. Communication, Language & Diplomacy
 
 Every caste has a voice: the priest's sonorous **liturgy** calms panic; moving women hum the law-mandated **peace-hum** that parts crowds; engaging soldiers blow **war-chirps** that rally allies onto the flagged target; artisans chime **greeting gifts** from their baskets; touching vertices in peace builds trust, and an elder's blessing touch passes skill to the young. Foragers drop **scent trails** home from rich finds; violent deaths and ruins leave **danger scent** the young learn to shun. Peaceful leaders commission banner-carrying **emissaries** (+15 relations on delivery); clans raise **boundary stones** that ring warning chimes at trespassers; tribute rides to suzerain granaries in **couriers' panniers**; allied neighbours found **markets** at shared borders while peddler **caravans** carry goods and news between distant settlements; isolated clans drift apart in **dialect** (strangers understand each other less); and at each season turn a shrine priest proclaims the coming season — worshippers who heed the **omen** head home prepared.
 
@@ -238,7 +254,7 @@ Every caste has a voice: the priest's sonorous **liturgy** calms panic; moving w
 
 ---
 
-## 14. Curated World Simulation Presets
+## 15. Curated World Simulation Presets
 
 Flatland includes 7 balanced environmental presets applicable in real-time via `POST /api/presets/{name}` or the **⚖ God Panel** / **📖 Wiki**:
 
@@ -254,7 +270,7 @@ Flatland includes 7 balanced environmental presets applicable in real-time via `
 
 ---
 
-## 15. World History, Daily Digests & Clan Dossiers
+## 16. World History, Daily Digests & Clan Dossiers
 
 - **Daily Chronicle Digest ($1\text{ Day} = 1200\text{ ticks}$)**:
   - Consolidates real-time events into narrative single-line daily summaries.
@@ -270,7 +286,7 @@ Flatland includes 7 balanced environmental presets applicable in real-time via `
 
 ---
 
-## 16. God Passkey Authentication & REST API
+## 17. God Passkey Authentication & REST API
 
 To protect running worlds from unauthorized intervention, all god-touching endpoints are guarded by SHA-256 passkey authentication:
 

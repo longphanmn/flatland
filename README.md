@@ -58,6 +58,9 @@ Evolution emerges 100% autonomously without artificial intervention:
 - **Thought Bubbles**: Real-time floating emote indicators (`🍖`, `❤️`, `⚔️`, `🌿`, `🏆`, `💤`, `🧺`, `😱`).
 - **Cognitive Agency & Tactical Intelligence**: Multi-objective utility AI scoring replaces rigid if/else trees (evaluating survival, duty, traits, and kin needs); spatial waypoint mental maps (`home`, `rich_food`, `danger`, `patrol`); tactical soldier phalanxes, line kiting maneuvers, and interpersonal trust-based buddy pairing.
 
+### 3.1 Geometric Physics & Morphological Evolution (BC)
+Polar genomes $(r_i,\phi_i)$, $K\in[3,64]$ (`PRIEST_SIDES 24` threshold, ultra-circles 32/48/64) with SoA buffers `morph_radii/morph_angles/morph_k/morph_traits (A,P,Izz,θmin,asym,Dmult)`. Annealing $\lambda(g)$: $\lambda=1$ at $g<g_{start}$ snaps to Abbott templates (Woman thin triangle, Soldier $30°$, Priest regular $K\ge24$), decays to $0$ over $g_{decay}$ → free evolution $r^{child}=λ·r_{template}+(1-λ)·clamp(r_{parent}+𝒩)$. Topological $p=rate·(1-λ)$ add longest edge / remove closest neighbor. Trait baking: $E_{\max}\cdot clamp(A/A_{ref},0.5,2)$, $decay\cdot clamp(P/P_{ref},0.7,1.8)$, $Damage\cdot max(0,(cosθ_{\min}-0.5)/0.5)$, $\Delta\theta$ inertia $1/(1+I_{zz}/I_{ref})$, asymmetry → irregularity for $euthanasia\_threshold$. Energetic asymmetry $median(A)$ → high $35-50\%$ vs low $5-10\%$ $E_{\max}$, SAT broadphase $r_{\max}$ + edge normals, telemetry `/api/metrics/morphology`. God laws `morphology_annealing_enabled` (`false` default keeps AZ hash), `annealing_start_generation 50`, `annealing_decay_generations 150`, `morph_lambda_override None|0..1`, `vertex_mutation_std 0.05`, `angle_mutation_std 0.02`, `topological_mutation_rate 0.01` live in ⚖ God Panel **Morphology** group.
+
 
 ### 4. Settlements, Clans & Diplomacy
 - **Settlement Houses**: Square walled halls with creature-sized doorways; houses block outside elements and wild carnivores.
@@ -175,7 +178,10 @@ ws/
 │   │   ├── db.py           # SQLite persistence for worlds, events, and lineage
 │   │   ├── guide.py        # Backend-rendered HTML Living Guide
 │   │   ├── wiki.py         # Living Wiki & API documentation
-│   │   └── main.py         # FastAPI app, WebSocket broadcaster, and REST endpoints
+│   │   ├── morphology.py   # BC polar traits: shoelace A/P/Izz/θmin, baking, SAT overlap
+│   │   ├── evolution_manager.py # BC annealing λ(g), Abbott templates, child interpolation
+│   │   ├── agent_soa.py    # SoA buffers (pos/vel/genomes + morph_radii/angles/k/traits)
+│   │   └── main.py         # FastAPI app, WebSocket broadcaster, REST + /api/metrics/morphology
 │   ├── tui/                # Textual terminal client
 │   └── tests/              # Pytest test suite (450+ automated tests)
 └── frontend/
@@ -185,19 +191,20 @@ ws/
         │   ├── ClanPanel.tsx         # Live clan settlements, totems, and war records
         │   ├── ChronicleFeed.tsx     # Filterable, scrollable real-time event log
         │   ├── PlotsPanel.tsx        # Multi-metric population and caste sparklines
+        │   ├── OverviewPanel.tsx     # Day-trend demographics, mortality, hegemon
         │   └── Collapsible.tsx       # Dynamic flex collapsible accordion component
         ├── clan/
         │   └── ClanDetails.tsx       # Clan profile, leader residence, founded day & casualty stats
         ├── history/
         │   └── WorldHistoryModal.tsx # Daily chronicle digest, wars, and AI Story export
         ├── god/
-        │   ├── GodPanel.tsx          # Interactive Laws of Nature control drawer
+        │   ├── GodPanel.tsx          # Interactive Laws of Nature control drawer (incl. Morphology)
         │   └── auth.tsx              # Passkey dialog and authorized godFetch client
         ├── inspect/
         │   └── Inspector.tsx         # Creature dossier, vitals, inventory & family tree
         ├── wiki/
-        │   └── Wiki.tsx              # In-app interactive wiki & API playground
-        └── App.tsx                   # Main application layout, HUD, and WebSocket synchronization
+        │   └── Wiki.tsx              # In-app wiki (content-only presets) & API playground
+        └── App.tsx                   # Main layout, HUD, WS sync, day-trend demographics
 ```
 
 ---
