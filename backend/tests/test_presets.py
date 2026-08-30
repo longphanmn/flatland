@@ -72,7 +72,7 @@ def test_preset_transition_hygiene(client):
     assert RT.config.war_enabled is False
     assert RT.config.disease_enabled is False
     assert RT.config.predation_enabled is False
-    assert RT.config.birth_rate == 0.25
+    assert RT.config.birth_rate == 0.18
 
     # 4. Transition to Extinction
     client.post("/api/presets/extinction?persist=true&reset=true")
@@ -83,8 +83,8 @@ def test_preset_transition_hygiene(client):
 
     # 5. Transition to Balance
     client.post("/api/presets/balance?persist=true&reset=true")
-    assert RT.config.food_count == 240
-    assert RT.config.carrying_capacity == 350
+    assert RT.config.food_count == 300
+    assert RT.config.carrying_capacity == 400
     assert RT.config.war_enabled is True
     assert RT.config.attack_damage == 30.0
 

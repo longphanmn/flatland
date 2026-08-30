@@ -122,8 +122,8 @@ def test_balance_preset_application_and_listing(client):
     r = client.post("/api/presets/balance?persist=true")
     assert r.status_code == 200
     laws = r.json()["laws"]
-    assert laws["food_count"] == 240
-    assert laws["carrying_capacity"] == 350
+    assert laws["food_count"] == 300
+    assert laws["carrying_capacity"] == 400
     assert laws["max_population"] == 500
     assert laws["predation_enabled"] is True
     assert laws["war_enabled"] is True
