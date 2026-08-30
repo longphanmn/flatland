@@ -416,13 +416,10 @@ class GodLaws(BaseModel):
     # Cosmological (§AQ PH-10)
     anomaly_count: Optional[int] = Field(None, ge=0, le=8)
 
-    # BA Micro-Neural Network & Evolutionary Engine
-    nn_enabled: Optional[bool] = None
+    # BA Micro-Neural Network & Evolutionary Engine — always on, 295 fixed
     nn_inference_hz: Optional[int] = Field(None, ge=1, le=60)
     mutation_sigma: Optional[float] = Field(None, ge=0, le=1)
-    mutation_rate: Optional[float] = Field(None, ge=0, le=1)
     crossover_rate: Optional[float] = Field(None, ge=0, le=1)
-    nn_hidden_size: Optional[int] = Field(None, ge=4, le=64)
 
     # T: soften winter
     winter_food_mult: Optional[float] = Field(None, ge=0.1, le=2)

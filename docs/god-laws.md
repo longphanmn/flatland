@@ -213,15 +213,13 @@ Caste gastronomy is Nature's table, not a law: priests and nobles demand refined
 
 ## 12. Micro-Neural Network & Evolutionary Engine (BA)
 
-When `nn_enabled` is **true**, the hand-authored utility AI (`AL` Task 1.1, `simulation.py:7301`) is replaced by **learned** micro-RNN controllers. Every creature carries a **16→12→7 Elman RNN** with **295 `float32` weights** (`16×12+12 = 204` + `12×7+7 = 91`), recurrent `hidden_state` carried per agent. Sensors (16): vitals (`energy/max`, `health/max`, `chill/max`), three raycasts ±35° (normalized distance + type `+1` food/ally, `0` wall, `-1` enemy), audio amplitude/frequency, food/danger scent, collision impulse, slope grade and hidden. Outputs (7): `thrust` (`sigmoid` → velocity + `ΔE=-thrust²×k`), `steer` (`tanh` → orientation), `interact` (consume/attack), `social` (mating readiness replaces §B gating `simulation.py:6750` when `>0.5`), `vocal_amp`/`vocal_freq`, `recurrent_out` (writes hidden). Physics runs at **60 Hz** every tick, inference at **`nn_inference_hz`** (default **15 Hz**, every 4th tick latched, zero-alloc `inputs_buf`/`outputs_buf`). Genomes init `N(0,0.5)` clipped `[-4,4]` (`mutation_rate`/`mutation_sigma`/`crossover_rate`/`nn_hidden_size`); mating via spatial query when `energy > mate_energy_min` and `social > 0.5`; uniform crossover 50/50 + Gaussian mutation `N(0,0.08²)` `p=0.03`. God Panel **Neuroevolution** group is gated by `nn_enabled` (off by default, existing utility AI stays in charge). See `backend/app/spatial_grid.py`, `agent_soa.py`, `neural_engine.py`, `agent_pipeline.py`, `evolution.py`, `sim_loop.py`.
+Every creature carries a **16→12→7 Elman RNN** with **295 `float32` weights** (`16×12+12 = 204` + `12×7+7 = 91`), recurrent `hidden_state` carried per agent — **always on** (295 fixed). Sensors (16): vitals (`energy/max`, `health/max`, `chill/max`), three raycasts ±35° (normalized distance + type `+1` food/ally, `0` wall, `-1` enemy), audio amplitude/frequency, food/danger scent, collision impulse, slope grade and hidden. Outputs (7): `thrust` (`sigmoid` → velocity + `ΔE=-thrust²×k`), `steer` (`tanh` → orientation), `interact` (consume/attack), `social` (mating readiness replaces §B gating `simulation.py:6750` when `>0.5`), `vocal_amp`/`vocal_freq`, `recurrent_out` (writes hidden). Physics runs at **60 Hz** every tick, inference at **`nn_inference_hz`** (default **15 Hz**, every 4th tick latched, zero-alloc `inputs_buf`/`outputs_buf`). Genomes init `N(0,0.5)` clipped `[-4,4]` (`mutation_sigma`/`crossover_rate`); mating via spatial query when `energy > mate_energy_min` and `social > 0.5`; uniform crossover 50/50 + Gaussian mutation `N(0,0.08²)` `p=0.03`. See `backend/app/spatial_grid.py`, `agent_soa.py`, `neural_engine.py`, `agent_pipeline.py`, `evolution.py`, `sim_loop.py`.
 
 | Law Parameter | Range | Default | Ecological Effect & Hint |
 |---|:---:|:---:|---|
-| `nn_enabled` | Boolean | **false** | Master switch — micro-RNN replaces utility AI when on (BA). |
-| `nn_inference_hz` | 1–60 | **15** | Inference frequency per second (60Hz physics, 15Hz brain, rest latched). |
+| `nn_inference_hz` | 1–60 | **15** | Inference frequency per second (60Hz physics, 15Hz brain, rest latched) — always on. |
 | `mutation_sigma` | 0–0.5 | **0.08** | Gaussian mutation σ per gene on crossover. |
 | `crossover_rate` | 0–1.0 | **0.5** | Uniform crossover rate (0.5 = 50/50 parent blend). |
-| `nn_hidden_size` | 4–64 | **12** | RNN hidden size (16→hidden→7, 295 weights total). |
 
 ---
 
