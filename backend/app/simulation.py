@@ -40,6 +40,20 @@ try:
 except Exception:
     _parallel = None  # type: ignore
 
+# BA: micro-neural engine (optional, gated by nn_enabled)
+try:
+    from . import agent_soa as _agent_soa  # type: ignore
+    from . import neural_engine as _neural_engine  # type: ignore
+    from . import agent_pipeline as _agent_pipeline  # type: ignore
+    from . import spatial_grid as _spatial_grid  # type: ignore
+    from . import evolution as _evolution  # type: ignore
+except Exception:  # pragma: no cover
+    _agent_soa = None  # type: ignore
+    _neural_engine = None  # type: ignore
+    _agent_pipeline = None  # type: ignore
+    _spatial_grid = None  # type: ignore
+    _evolution = None  # type: ignore
+
 
 # Life-stage multipliers (speed, sight) — the young are small and dim-sighted,
 # the elders slow. Fertility multiplier lives on Creature.FERTILITY_MULT.
@@ -782,6 +796,10 @@ class Simulation:
         self._c_creatures_buf = None  # type: ignore
         self._c_entities_buf = None  # type: ignore
         self._c_out_buf = None  # type: ignore
+        # BA: micro-neural SoA substrate (opt-in, gated by nn_enabled)
+        self._soa: object | None = None  # AgentSoA when enabled
+        self._nn_grid: object | None = None  # SpatialHashGrid when enabled
+        self._nn_tick: int = 0
         self._generate_elevation()  # §AQ PH-4: the shape of the land comes first
         self._generate_rivers()  # §AQ PH-3: channels follow the slope
         self._generate_anomalies()  # §AQ PH-10: hidden zones of strange physics
@@ -3829,6 +3847,79 @@ class Simulation:
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
+        # BA: micro-neural multi-rate update (60Hz physics done, 15Hz inference every 4th tick)
+        if getattr(self.config, "nn_enabled", False) and _agent_soa is not None and _neural_engine is not None:
+            try:
+                if self._soa is None:
+                    # lazy init SoA with current creatures
+                    self._soa = _agent_soa.AgentSoA(capacity=max(2000, len(self._cached_creatures) * 2 + 10))
+                    self._nn_grid = _spatial_grid.SpatialHashGrid(width=self.config.width, height=self.config.height, cell_size=32.0, boundary=self.config.boundary)
+                    for c in self._cached_creatures:
+                        self._soa.add_agent(int(c.id), float(c.x), float(c.y), angle=float(c.angle), energy=float(c.energy), health=float(c.health))
+                    # init genomes
+                    if _evolution is not None:
+                        _evolution.init_genomes(self._soa)
+                # 60Hz: sync positions from world to SoA and vice versa (pos += vel)
+                # For now keep SoA as shadow; update grid
+                if getattr(self, "_soa", None) is not None and self._soa is not None:
+                    # sync world pos -> SoA pos (one-way, keep SoA coherent)
+                    # simple linear scan to update SoA pos from creatures
+                    try:
+                        # rebuild SoA pos from current creatures (keep ids aligned)
+                        # If SoA size mismatches, rebuild
+                        if self._soa.N != len(self._cached_creatures):
+                            # rebuild SoA to match world (handles births/deaths)
+                            from .agent_soa import AgentSoA as _AS
+
+                            new_soa = _AS(capacity=max(2000, len(self._cached_creatures) * 2 + 10))
+                            for c in self._cached_creatures:
+                                new_soa.add_agent(int(c.id), float(c.x), float(c.y), angle=float(c.angle), energy=float(c.energy), health=float(c.health))
+                            if _evolution is not None:
+                                _evolution.init_genomes(new_soa)
+                            self._soa = new_soa
+                            self._nn_grid = _spatial_grid.SpatialHashGrid(width=self.config.width, height=self.config.height, cell_size=32.0, boundary=self.config.boundary)
+                        else:
+                            for idx, c in enumerate(self._cached_creatures):
+                                if _agent_soa.HAS_NUMPY:
+                                    self._soa.pos[idx, 0] = float(c.x)
+                                    self._soa.pos[idx, 1] = float(c.y)
+                                    self._soa.angle[idx] = float(c.angle)
+                                    self._soa.stats[idx, 0] = float(c.energy)
+                                    self._soa.stats[idx, 2] = float(c.health)
+                                else:
+                                    self._soa.pos[idx][0] = float(c.x)
+                                    self._soa.pos[idx][1] = float(c.y)
+                                    self._soa.angle[idx] = float(c.angle)
+                                    self._soa.stats[idx][0] = float(c.energy)
+                                    self._soa.stats[idx][2] = float(c.health)
+                    except Exception:
+                        pass
+                    # 15Hz inference every 4th tick
+                    self._nn_tick = getattr(self, "_nn_tick", 0) + 1
+                    if self._nn_tick % 4 == 0:
+                        try:
+                            from .agent_pipeline import build_inputs_batch, apply_outputs_batch
+                            from .neural_engine import forward_batch
+
+                            inputs = build_inputs_batch(self._soa, spatial_grid=self._nn_grid, world=self.world)
+                            hidden = self._soa.hidden_state[: self._soa.N] if _agent_soa.HAS_NUMPY else None
+                            outputs, _ = forward_batch(inputs, self._soa.genomes[: self._soa.N] if _agent_soa.HAS_NUMPY else [self._soa.genomes[i] for i in range(self._soa.N)], hidden_state=self._soa.hidden_state[: self._soa.N] if _agent_soa.HAS_NUMPY else None)
+                            apply_outputs_batch(self._soa, outputs)
+                            # optional: write back thrust/steer to creatures as velocity hints (additive, not replacing)
+                            for idx, c in enumerate(self._cached_creatures):
+                                if idx < self._soa.N:
+                                    if _agent_soa.HAS_NUMPY:
+                                        c.angle = float(self._soa.angle[idx])
+                                        # energy already drained in apply_outputs
+                                        c.energy = float(self._soa.stats[idx, 0])
+                                    else:
+                                        c.angle = float(self._soa.angle[idx])
+                                        c.energy = float(self._soa.stats[idx][0])
+                        except Exception as _e:
+                            # BA must never break the tick
+                            pass
+            except Exception:
+                pass
         # Manual GC every 200 ticks to avoid stop-the-world at 1300c
         if self.tick % 200 == 0:
             gc.collect(1)

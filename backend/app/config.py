@@ -289,6 +289,14 @@ class Config:
     omp_enabled: bool = True  # use 8-core OpenMP batch when pop exceeds threshold
     omp_threshold: int = 100  # min creatures to trigger parallel batch (tunable via FLATWORLD_OMP_THRESHOLD)
 
+    # BA Micro-Neural Network & Evolutionary Engine — disabled by default (opt-in)
+    nn_enabled: bool = False  # master switch; when false the utility AI stays in charge
+    nn_inference_hz: int = 15  # inference every N ticks = 60/nn_inference_hz
+    mutation_sigma: float = 0.08
+    mutation_rate: float = 0.03
+    crossover_rate: float = 0.5
+    nn_hidden_size: int = 12
+
     @classmethod
     def from_env(cls) -> "Config":
         """Live runtime config: defaults to the Balance Goldilocks preset."""
