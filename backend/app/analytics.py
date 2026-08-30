@@ -27,7 +27,7 @@ CAUSE_BUCKET = {
 def bucket_cause(cause: str) -> str:
     return CAUSE_BUCKET.get(cause, "other")
 class TelemetryRing:
-    def __init__(self, maxlen: int = 300):
+    def __init__(self, maxlen: int = 6000):
         self.maxlen = maxlen
         self.ticks: deque[int] = deque(maxlen=maxlen)
         self.population: deque[int] = deque(maxlen=maxlen)
@@ -107,7 +107,7 @@ class MortalityDecomposer:
     def stacked(self) -> dict:
         return {"distribution": self.distribution(), "counts": dict(self.counts), "window": len(self.window)}
 class AnalyticsEngine:
-    def __init__(self, maxlen: int = 300):
+    def __init__(self, maxlen: int = 6000):
         self.ring = TelemetryRing(maxlen=maxlen)
         self.mortality = MortalityDecomposer()
         self._last_summary: dict | None = None

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { TOTEMS, totemEmoji } from '../totems'
 import type { ClanHistoryEvent } from '../types'
 import { useI18n } from '../i18n'
@@ -82,6 +82,28 @@ export default function ClanDetails({
   const { t } = useI18n()
   const [data, setData] = useState<ClanDetailsData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [snap, setSnap] = useState<'peek' | 'half' | 'full'>('half')
+  const startYRef = useRef<number | null>(null)
+  const snapRef = useRef(snap)
+  useEffect(() => { snapRef.current = snap }, [snap])
+  const handleDragStart = (e: React.TouchEvent) => {
+    startYRef.current = e.touches[0].clientY
+  }
+  const handleDragEnd = (e: React.TouchEvent) => {
+    if (startYRef.current === null) return
+    const dy = e.changedTouches[0].clientY - startYRef.current
+    startYRef.current = null
+    const cur = snapRef.current
+    if (dy < -30) {
+      if (cur === 'peek') setSnap('half')
+      else if (cur === 'half') setSnap('full')
+    } else if (dy > 30) {
+      if (cur === 'full') setSnap('half')
+      else if (cur === 'half') setSnap('peek')
+      else if (cur === 'peek') onClose()
+    }
+  }
+  const cycleSnap = () => setSnap((s) => (s === 'peek' ? 'half' : s === 'half' ? 'full' : 'peek'))
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
     try {
       const s = sessionStorage.getItem('clan-tab') as TabKey | null
@@ -124,8 +146,9 @@ export default function ClanDetails({
 
   if (loading && !data) {
     return (
-      <aside className="inspector clan-inspector">
-        <header className="god-head">
+      <aside className="inspector clan-inspector" data-snap={snap}>
+        <div className="inspector-handle" role="button" aria-label="drag handle" onClick={cycleSnap} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd} />
+        <header className="god-head" onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
           <h2>Clan #{clanId}</h2>
           <button className="god-close" onClick={onClose} aria-label="close">×</button>
         </header>
@@ -136,8 +159,9 @@ export default function ClanDetails({
 
   if (!data) {
     return (
-      <aside className="inspector clan-inspector">
-        <header className="god-head">
+      <aside className="inspector clan-inspector" data-snap={snap}>
+        <div className="inspector-handle" role="button" aria-label="drag handle" onClick={cycleSnap} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd} />
+        <header className="god-head" onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
           <h2>Clan #{clanId}</h2>
           <button className="god-close" onClick={onClose} aria-label="close">×</button>
         </header>
@@ -158,9 +182,10 @@ export default function ClanDetails({
   })
 
   return (
-    <aside className="inspector clan-inspector">
+    <aside className="inspector clan-inspector" data-snap={snap}>
+      <div className="inspector-handle" role="button" aria-label="drag handle" onClick={cycleSnap} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd} />
       {/* Hero Header & Banner Crest */}
-      <header className="god-head" style={{ borderBottom: `2px solid ${data.color}`, background: `${data.color}12`, margin: '-12px -12px 0 -12px', padding: '10px 12px', borderRadius: '8px 8px 0 0' }}>
+      <header className="god-head" style={{ borderBottom: `2px solid ${data.color}`, background: `${data.color}12`, margin: '-12px -12px 0 -12px', padding: '10px 12px', borderRadius: '8px 8px 0 0' }} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, color: data.color, fontSize: 15 }}>
           <span style={{ width: 14, height: 14, borderRadius: '50%', background: data.color, display: 'inline-block', boxShadow: `0 0 8px ${data.color}` }} />
           {data.name} <span style={{ fontSize: 11, color: '#8b949e' }}>#{data.id}</span>

@@ -288,7 +288,7 @@ Flatland includes 7 balanced environmental presets applicable in real-time via `
 
 ## 17. World Analytics & Observatory (BD — read-only, no law)
 
-`backend/app/analytics.py` (`AnalyticsEngine`, `TelemetryRing` 300, `MortalityDecomposer` 500) runs **zero-alloc** outside the hot loop via SoA batch aggregators (`<0.8ms/100 ticks` for 2000 agents). It exposes:
+`backend/app/analytics.py` (`AnalyticsEngine`, `TelemetryRing` 6000, `MortalityDecomposer` 500) runs **zero-alloc** outside the hot loop via SoA batch aggregators (`<0.8ms/100 ticks` for 2000 agents). It exposes:
 - **Ring**: population, biomass, $E/E_{\max}$, avg lifespan, dead, birth/death velocity/min
 - **Mortality**: stacked distribution (starvation/combat/predation/disease/old_age/chill)
 - **Trophic**: Lotka-Volterra herbivores/predators/plant + phase trajectory, Shannon $H$, evenness, richness
@@ -315,7 +315,7 @@ To protect running worlds from unauthorized intervention, all god-touching endpo
 | `/api/clans/{id}` | `GET` | Detailed clan dossier with member rosters, history events, and main house coordinates. |
 | `/api/history` | `GET` | Paginated chronicle events with caste, cause, and clan metadata. |
 | `/api/analytics/summary` | `GET` | **BD Analytics** — instant snapshot (ring, mortality, trophic, hegemony, famine, extinction) — 1s memoization, no `RT.lock` contention. |
-| `/api/analytics/timeseries` | `GET` | Rolling `deque(300)` sparklines (population, biomass, saturation) + mortality window. |
+| `/api/analytics/timeseries` | `GET` | Rolling `deque(6000)` sparklines (population, biomass, saturation) + mortality window. |
 | `/api/analytics/trophic` | `GET` | Lotka-Volterra (herbivores/predators/plant) + Shannon biodiversity. |
 | `/api/analytics/hegemony` | `GET` | HHI + Gini + territory dominance. |
 | `/api/analytics/warnings` | `GET` | Famine horizon, extinction Ne, unrest & casus belli tensions. |

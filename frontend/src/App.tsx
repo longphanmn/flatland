@@ -707,10 +707,6 @@ export default function App() {
             <button className="god-btn god-main-btn" onClick={() => { setStatusExpanded(false); setGodOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
               ⚖ The Sphere
             </button>
-
-            <button className="god-btn" onClick={() => { setStatusExpanded(false); confirmReset(); }} style={{ flex: 1, minHeight: 34, fontSize: 12, borderColor: '#f85149', color: '#ff7b72' }} title="Reset world with new seed (R)">
-              🔄 Reset
-            </button>
           </div>
         </div>
       )}
@@ -815,7 +811,7 @@ export default function App() {
             {sheetTab === 'clans' && <ClanPanel state={state} onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />}
             {sheetTab === 'plots' && <PlotsPanel onSelectClan={setSelectedClanId} />}
             {sheetTab === 'chronicle' && (
-              <div className="chronicle" style={{ background: 'transparent', border: 'none', padding: 0, maxHeight: 'none' }}>
+              <div className="chronicle" style={{ background: 'transparent', border: 'none', padding: 0, maxHeight: 'none', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', flex: '1 1 0' }}>
                 <ChronicleFeed
                   events={log}
                   clanLabel={clanLabel}

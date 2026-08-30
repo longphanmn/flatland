@@ -37,7 +37,7 @@
     },
     "hud": {
       "alive": "Đang sống",
-      "dead": "Tử trận",
+      "dead": "Tử vong",
       "tick": "Tick",
       "day": "Ngày",
       "season": "Mùa",
@@ -239,7 +239,7 @@
     },
     "stats": {
       "battles": "trận đánh",
-      "fallen": "tử trận",
+      "fallen": "tử vong",
       "plagues": "dịch bệnh",
       "schisms": "vụ ly khai",
       "successions": "kế vị",

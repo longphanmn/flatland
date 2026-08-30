@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { EntityState, HistoryEvent } from '../types'
 import { totemEmoji } from '../totems'
 import { useI18n } from '../i18n'
@@ -156,6 +156,30 @@ type TabKey = 'vitals' | 'skills' | 'lineage' | 'chronicle'
 export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Props) {
   const { t } = useI18n()
   const [data, setData] = useState<CreatureResponse | null>(null)
+  const [snap, setSnap] = useState<'peek' | 'half' | 'full'>('half')
+  const startYRef = useRef<number | null>(null)
+  const snapRef = useRef(snap)
+  useEffect(() => { snapRef.current = snap }, [snap])
+  const handleDragStart = (e: React.TouchEvent) => {
+    startYRef.current = e.touches[0].clientY
+  }
+  const handleDragEnd = (e: React.TouchEvent) => {
+    if (startYRef.current === null) return
+    const dy = e.changedTouches[0].clientY - startYRef.current
+    startYRef.current = null
+    const cur = snapRef.current
+    if (dy < -30) {
+      if (cur === 'peek') setSnap('half')
+      else if (cur === 'half') setSnap('full')
+    } else if (dy > 30) {
+      if (cur === 'full') setSnap('half')
+      else if (cur === 'half') setSnap('peek')
+      else if (cur === 'peek') onClose()
+    }
+  }
+  const cycleSnap = () => {
+    setSnap((s) => (s === 'peek' ? 'half' : s === 'half' ? 'full' : 'peek'))
+  }
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
     try {
       const s = sessionStorage.getItem('insp-tab') as TabKey | null
@@ -197,9 +221,17 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
   if ((e?.chill ?? 0) >= 12) statusChips.push({ text: t('inspector.chilled', { v: (e?.chill ?? 0).toFixed(1) }), cls: 'st-asleep' })
 
   return (
-    <aside className="inspector">
+    <aside className="inspector" data-snap={snap}>
+      <div
+        className="inspector-handle"
+        role="button"
+        aria-label="drag handle"
+        onClick={cycleSnap}
+        onTouchStart={handleDragStart}
+        onTouchEnd={handleDragEnd}
+      />
       {/* Hero Header — compact geometric avatar */}
-      <header className="god-head" style={{ borderBottom: '1px solid #21262d', paddingBottom: 8 }}>
+      <header className="god-head" style={{ borderBottom: '1px solid #21262d', paddingBottom: 8 }} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 14 }}>
           <span style={{ color: (e?.caste && CASTE_COLORS[e.caste]) || '#e6edf3' }}>{e?.personal_name ?? `${e?.caste ?? t('inspector.creature')}`} #{id}</span>
           {e?.title ? <span style={{ color: '#e3b341', fontSize: '0.85em', fontWeight: 600, background: 'rgba(227,179,65,0.12)', border: '1px solid #e3b341', borderRadius: 4, padding: '1px 5px' }}>{e.title}</span> : null}

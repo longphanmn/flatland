@@ -42,14 +42,22 @@ export default function Observatory({ state }: Props) {
 
   const Sparkline = ({ data, color = '#79c0ff', height = 48 }: { data: number[]; color?: string; height?: number }) => {
     if (!data || data.length < 2) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b949e', fontSize: 10 }}>collecting…</div>
+    // Decimate for performance when holding 6000 ticks — cap rendered points at ~600
+    // to keep SVG polyline cheap while preserving shape; always keep last point.
+    let displayData = data
+    if (data.length > 600) {
+      const step = Math.ceil(data.length / 600)
+      displayData = data.filter((_, i) => i % step === 0)
+      if (displayData[displayData.length - 1] !== data[data.length - 1]) displayData.push(data[data.length - 1])
+    }
     const w = 280, h = height, pad = 6
-    const min = Math.min(...data), max = Math.max(...data)
+    const min = Math.min(...displayData), max = Math.max(...displayData)
     const range = max - min || 1
-    const step = (w - pad * 2) / (data.length - 1)
-    const points = data.map((v, i) => `${pad + i * step},${h - pad - ((v - min) / range) * (h - pad * 2)}`).join(' ')
+    const stepPx = (w - pad * 2) / (displayData.length - 1)
+    const points = displayData.map((v, i) => `${pad + i * stepPx},${h - pad - ((v - min) / range) * (h - pad * 2)}`).join(' ')
     const last = data[data.length - 1]
     return (
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', overflowX: displayData.length > 300 ? 'auto' : undefined }}>
         <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ display: 'block', background: '#0d1117', borderRadius: 6, border: '1px solid #21262d' }}>
           <polyline fill="none" stroke={color} strokeWidth={1.6} points={points} />
         </svg>
@@ -64,7 +72,7 @@ export default function Observatory({ state }: Props) {
 
       {/* Graphs — population & biomass history */}
       <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}>
-        <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase' }}>Population History (300 ticks)</div>
+        <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase' }}>Population History (6000 ticks)</div>
         <div style={{ marginTop: 6 }}>
           <Sparkline data={ring.population as number[]} color="#3fb950" height={56} />
         </div>
