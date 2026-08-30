@@ -458,8 +458,8 @@ def build_guide_html(app: Any) -> str:
         nav_items.append(f'<li><a href="#{slug}">{html.escape(title)}</a></li>')
         content_parts.append(f'<section id="{slug}">{html_body}</section>')
 
-    # Add roadmap linking back to TODO.md
-    roadmap_md = f"# Roadmap\n\nSee [TODO.md](../TODO.md) for full task list. This guide is auto-generated; `#{len(sections)}` sections + `{len(GodLaws.model_fields)}` laws + `{len(app.routes)}` routes."
+    # Add roadmap linking back to TODO.md (+ archive)
+    roadmap_md = f"# Roadmap\n\nSee [TODO.md](../TODO.md) for active tasks and [roadmap-archive.md](../docs/roadmap-archive.md) for completed work. This guide is auto-generated; `TODO.md` + `#{len(sections)}` sections + `{len(GodLaws.model_fields)}` laws + `{len(app.routes)}` routes."
     content_parts.append(f'<section id="roadmap">{_md_to_html(roadmap_md)}</section>')
     nav_items.append('<li><a href="#roadmap">Roadmap</a></li>')
 

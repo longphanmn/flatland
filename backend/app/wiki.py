@@ -310,7 +310,7 @@ def build_wiki_html(app: Any) -> str:
         nav_items.append(f'<li><a href="#{slug}">{html.escape(title)}</a></li>')
         content_parts.append(f'<section id="{slug}">{body}</section>')
     # roadmap
-    roadmap_md = f"# Roadmap\n\nSee `TODO.md` — {len(sections)} sections + {len(GodLaws.model_fields)} laws + {len(app.routes)} routes + {len(PRESETS)} presets. Wiki extends Guide with presets, sustainability & playground."
+    roadmap_md = f"# Roadmap\n\nSee `TODO.md` (active) + `docs/roadmap-archive.md` (completed) — {len(sections)} sections + {len(GodLaws.model_fields)} laws + {len(app.routes)} routes + {len(PRESETS)} presets. Wiki extends Guide with presets, sustainability & playground."
     content_parts.append(f'<section id="roadmap">{_md_to_html(roadmap_md)}</section>')
     nav_items.append('<li><a href="#roadmap">Roadmap</a></li>')
 
