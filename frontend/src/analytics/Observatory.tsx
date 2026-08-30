@@ -40,9 +40,55 @@ export default function Observatory({ state }: Props) {
   const hegemony = data.hegemony ?? {}
   const gini = data.gini ?? {}
 
+  const Sparkline = ({ data, color = '#79c0ff', height = 48 }: { data: number[]; color?: string; height?: number }) => {
+    if (!data || data.length < 2) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b949e', fontSize: 10 }}>collecting…</div>
+    const w = 280, h = height, pad = 6
+    const min = Math.min(...data), max = Math.max(...data)
+    const range = max - min || 1
+    const step = (w - pad * 2) / (data.length - 1)
+    const points = data.map((v, i) => `${pad + i * step},${h - pad - ((v - min) / range) * (h - pad * 2)}`).join(' ')
+    const last = data[data.length - 1]
+    return (
+      <div style={{ position: 'relative' }}>
+        <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ display: 'block', background: '#0d1117', borderRadius: 6, border: '1px solid #21262d' }}>
+          <polyline fill="none" stroke={color} strokeWidth={1.6} points={points} />
+        </svg>
+        <span style={{ position: 'absolute', right: 6, top: 4, fontSize: 10, color, fontWeight: 700 }}>{last}</span>
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 11 }}>
       <h4 style={{ margin: '4px 0', fontSize: 12 }}>🔭 {t('analytics.title')} — tick {data.tick}</h4>
+
+      {/* Graphs — population & biomass history */}
+      <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}>
+        <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase' }}>Population History (300 ticks)</div>
+        <div style={{ marginTop: 6 }}>
+          <Sparkline data={ring.population as number[]} color="#3fb950" height={56} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 6 }}>
+          <div>
+            <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', marginBottom: 4 }}>Biomass</div>
+            <Sparkline data={ring.biomass as number[]} color="#e3b341" height={40} />
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', marginBottom: 4 }}>Energy Saturation</div>
+            <Sparkline data={ring.energy_saturation as number[]} color="#79c0ff" height={40} />
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 6 }}>
+          <div>
+            <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', marginBottom: 4 }}>Birth / min</div>
+            <Sparkline data={ring.birth_velocity as number[]} color="#a371f7" height={36} />
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', marginBottom: 4 }}>Death / min</div>
+            <Sparkline data={ring.death_velocity as number[]} color="#f85149" height={36} />
+          </div>
+        </div>
+      </div>
 
       {/* Macro sparklines */}
       <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}>

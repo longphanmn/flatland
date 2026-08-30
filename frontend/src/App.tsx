@@ -958,17 +958,12 @@ export default function App() {
           </div>
           <div className="right-stack-body">
             {rightTab === 'overview' && (
-              <>
-                <OverviewPanel
-                  state={state}
-                  aliveHist={aliveHist}
-                  onSelectCreature={setSelectedId}
-                  onSelectClan={setSelectedClanId}
-                />
-                <div style={{ marginTop: 8, borderTop: '1px solid #21262d', paddingTop: 8 }}>
-                  <Observatory state={state} />
-                </div>
-              </>
+              <OverviewPanel
+                state={state}
+                aliveHist={aliveHist}
+                onSelectCreature={setSelectedId}
+                onSelectClan={setSelectedClanId}
+              />
             )}
             {rightTab === 'clans' && (
               <ClanPanel state={state} onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
