@@ -238,6 +238,7 @@ def advance_world(rt: RuntimeState, hub: Hub | None = None, force_keyframe: bool
     if rt.paused:
         return None
     t0 = time.monotonic()
+    is_extinct_tick = False
     try:
         # AD: chronicle/genealogy writes land in the RAM buffer; the writer
         # daemon commits them off-thread — step() never waits on SQLite.
@@ -245,6 +246,7 @@ def advance_world(rt: RuntimeState, hub: Hub | None = None, force_keyframe: bool
         # World End / Extinction: if all creatures die (tick > 30), pause ticking automatically
         if rt.sim.tick > 30 and len(rt.sim._cached_creatures) == 0:
             rt.paused = True
+            is_extinct_tick = True
     except Exception as exc:
         # The world must never die silently: one failed tick is logged
         # loudly and skipped — the loop keeps turning (a frozen tick
@@ -279,17 +281,21 @@ def advance_world(rt: RuntimeState, hub: Hub | None = None, force_keyframe: bool
                     rt._last_overrun_log = now  # type: ignore
         except Exception:
             pass
+    # Extinction tick must always be serialized & cached even with no listeners or throttling,
+    # otherwise the world freezes on the last alive tick forever (new WS clients never see extinct).
+    is_extinct = is_extinct_tick or (rt.sim.tick > 30 and len(rt.sim._cached_creatures) == 0)
     # If a hub is passed and has no active listeners, skip snapshot payload serialization
-    if hub is not None and not hub.clients:
+    if hub is not None and not hub.clients and not is_extinct:
         return None
-    # Throttle broadcast to ~20 Hz when tick rate is high
+    # Throttle broadcast to ~20 Hz when tick rate is high — never throttle extinction
     every = max(1, int(round(rt.speed / 20))) if rt.speed > 20 else 1
-    if every > 1 and rt.sim.tick % every != 0:
+    if every > 1 and rt.sim.tick % every != 0 and not is_extinct:
         return None
 
     # Phase 1 AJ: Broadcast full keyframe every 60 ticks (~2-3s) or when forced/uninitialized;
     # otherwise broadcast lightweight delta payload (85-95% bandwidth reduction).
-    if force_keyframe or rt.sim.tick % 60 == 0 or not getattr(rt.sim, "_last_broadcast_state", None):
+    # Extinction forces a full keyframe so reconnecting clients reconstruct correctly.
+    if is_extinct or force_keyframe or rt.sim.tick % 60 == 0 or not getattr(rt.sim, "_last_broadcast_state", None):
         return rt.sim.snapshot_payload()
     return rt.sim.snapshot_delta_payload()
 
@@ -2076,11 +2082,31 @@ async def ws_endpoint(ws: WebSocket) -> None:
         # AZ Phase 1 P0: use orjson + shared keyframe (stdlib json stalls event loop)
         hello_text = _dumps(hello_payload())
         await asyncio.wait_for(ws.send_text(hello_text), timeout=HUB.SEND_TIMEOUT)
-        # share one keyframe per tick across concurrent connects
+        # share one keyframe per tick across concurrent connects — but stale extinct cache
+        # (pre-fix) must be rebuilt so a reconnect after the world ended sees alive=0 and the dialog fires.
         snap_text = RT._cached_state_text
-        if snap_text is None:
+        need_fresh = snap_text is None
+        if not need_fresh:
+            try:
+                # cheap staleness/extinct check without full validation
+                is_extinct_live = RT.sim.tick > 30 and len(getattr(RT.sim, "_cached_creatures", [])) == 0
+                # quick parse of cached tick/alive to detect stale snapshot
+                import json as _json
+
+                cached = _json.loads(snap_text)  # type: ignore[arg-type]
+                if cached.get("tick") != RT.sim.tick:
+                    need_fresh = True
+                elif is_extinct_live and cached.get("creatures_alive") != 0:
+                    need_fresh = True
+            except Exception:
+                need_fresh = True
+        if need_fresh:
             with RT.lock:
                 snap_text = _dumps(RT.sim.snapshot_payload())
+                try:
+                    RT._cached_state_text = snap_text  # type: ignore[attr-defined]
+                except Exception:
+                    pass
         await asyncio.wait_for(
             ws.send_text(snap_text),
             timeout=HUB.SEND_TIMEOUT,
