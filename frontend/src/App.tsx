@@ -229,11 +229,14 @@ export default function App() {
         if (isNewWorld && !archiveModeRef.current) {
           setLog([])
           setAliveHist([])
+          prevDayHistRef.current = null
           seenEventsRef.current.clear()
           fetchedByIdRef.current.clear()
           oldestLoadedRef.current = null
           seededRef.current = false
           setNoMoreHistory(false)
+          setPaused(false)
+          setShowWorldEnd(false)
           refreshWorlds()
         }
         prevTickRef.current = msg.tick
@@ -311,7 +314,7 @@ export default function App() {
     return () => sock.dispose()
   }, [])
 
-  // World end detection — extinction summary & pause
+  // World end detection — extinction summary & pause; also resume when new alive world appears
   useEffect(() => {
     if (state && state.creatures_alive === 0 && state.tick > 30 && !showWorldEnd && !archiveMode) {
       setShowWorldEnd(true)
@@ -319,6 +322,8 @@ export default function App() {
     }
     if (state && state.creatures_alive > 0 && showWorldEnd) {
       setShowWorldEnd(false)
+      // world is alive again (reset after extinction) — clear stale pause HUD
+      setPaused(false)
     }
   }, [state?.creatures_alive, state?.tick, showWorldEnd, archiveMode])
 
@@ -335,9 +340,9 @@ export default function App() {
     void sendControl('resume', () => setPaused(false))
   }, [sendControl])
   const sendStep = useCallback(() => void sendControl('step'), [sendControl])
-  const sendReset = useCallback(() => void sendControl('reset'), [sendControl])
+  const sendReset = useCallback(() => void sendControl('reset', () => setPaused(false)), [sendControl])
   const confirmReset = useCallback(() => setResetConfirmOpen(true), [])
-  const doReset = useCallback(() => void sendControl('reset'), [sendControl])
+  const doReset = useCallback(() => void sendControl('reset', () => setPaused(false)), [sendControl])
   const changeSpeed = useCallback(
     (v: number) => {
       setSpeed(v)
