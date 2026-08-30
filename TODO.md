@@ -1818,6 +1818,55 @@ Audited, quantified, and **deliberately excluded**. Do not start these without r
 - **Suppress `recovery` events from persistence** — 1.07 M rows, **41% of the 448 MB database**. Excluded because it changes the visible chronicle, even though it has no simulation effect.
 - **Incremental `rebuild_index`** (`world.py:69`, called twice per tick at `simulation.py:3700,3778`) — both calls are genuinely needed for correctness; the fix is dirty-set re-bucketing via a new `world.mark_moved()`. Real refactor, only worth it if the Phase 0 profile puts it in the top 5.
 - **Narrow `RT.lock` around `step()`** (`main.py:270-272`) — the biggest structural win available (the lock is held for a full tick *plus* full serialization, stalling every HTTP handler), but the only safe route is copy-on-write of world state. Phase 5 reduces the in-lock cost instead.
-- **Wire up the native C core / add numpy** — `native_boids_forces` (`native_core.py:279`), `native_query_radius` (`native_core.py:192`) and `native_batch_update` (`native_core.py:345`) are built and exported with **zero call sites**, and `world.py:13` force-disables a seventh. Excluded: fast-math float drift breaks deterministic replay, and `native_core.py` has no per-creature batch caller. Revisit only behind a config flag plus a Python/native parity test.
+- **Wire up the native C core / add numpy** — `native_boids_forces` (`native_core.py:279`), `native_query_radius` (`native_core.py:192`) and `native_batch_update` (`native_core.py:345`) are built and exported with **zero call sites**, and `world.py:13` force-disables a seventh. Excluded: fast-math float drift breaks deterministic replay, and `native_core.py` has no per-creature batch caller. Revisit only behind a config flag plus a Python/native parity test. **Reversed by `## BA` below — see `## BA` scope note.**
 - **`parallel.py`** — creates a fresh `ProcessPoolExecutor` *inside* the function body (`parallel.py:165`) with default `chunksize=1` and a dict payload per creature, i.e. ~800 pickle round-trips plus 8 process spawns **per tick**. Excluded: it is dead code, and as written it would be orders of magnitude slower than the in-line loop. Delete or redesign, do not wire up.
+
+---
+
+## BA. Micro-Neural Network & Evolutionary Engine  [P0–P2]
+> Replace the hand-authored utility AI with **learned** micro-RNN controllers evolved by
+> selection. Target: 2,000 agents, ≤12 ms/frame on the N150, 60 Hz physics / 15–20 Hz inference.
+> **This section supersedes `AL` Task 1.1** ("Multi-Objective Utility AI Engine", `TODO.md:1112`,
+> `simulation.py:7301` `_update_creature`) — the if/else + utility engine is replaced by genome-driven
+> inference once Step 3.2 lands.
+> **Scope note:** unlike `## AZ`, this section is *intentionally behaviour-changing*. `## AZ`'s
+> bit-identical rule (`TODO.md:1711`) does **not** apply here; instead the determinism golden
+> (`backend/tests/test_determinism_golden.py`) is **reblessed** at Step 6.1 with a recorded
+> before/after pair. Until Step 3.2 lands, everything is additive and the world is untouched.
+> **Dependency:** numpy ≥2 as an **optional extra** (`[project.optional-dependencies] nn`); every
+> kernel keeps a pure-Python fallback so prod runs unchanged while `nn_enabled=false`
+> (mirrors `native_core.py`'s compile/fallback pattern).
+
+### Target architecture
+- **Runtime**: Python 3.12 + NumPy (vectorized batch, SoA layout).
+- **Topology**: micro Elman RNN — **16 inputs → 12 hidden → 7 outputs**, recurrent cell carried per agent.
+- **Genome**: **295 `float32`** weights (`16×12+12 = 204` + `12×7+7 = 91`).
+- **Rates**: physics/velocity/grid updates **60 Hz** (every tick); sensor extraction + inference **15 Hz** (every 4th tick), actuator outputs latched across intermediate ticks.
+
+### Step 1: Spatial hash grid & vectorized memory substrate (SoA)
+- [ ] [P0] **1.1 `backend/app/spatial_grid.py` — 2D spatial hash grid**: fixed cell size (32.0×32.0 units), flat 1D bucket array; `insert(entity_id, x, y, type)`, `update_positions(ids, pos_array)`, `query_radius(x, y, radius, filter_type=None) -> list[int]` (O(1) average), `raycast(origin, angle, max_dist, ignore_id) -> (hit_dist, hit_type)` walking only intersected cells. **Conflict:** `world.py:69` `rebuild_index` / `world.py:139` `query_radius` already provide pre-allocated wrap-aware buckets — decide *reuse-with-a-vectorized-view* vs *replace*, do not keep two hashes.
+- [ ] [P0] **1.2 `backend/app/agent_soa.py` — Structure of Arrays**: contiguous `numpy.ndarray` replacing per-creature OOP fields — `pos (N,2) f32`, `vel (N,2) f32`, `angle (N,) f32`, `stats (N,4) f32` `[energy, max_energy, health, chill]`, `hidden_state (N,1) f32` (recurrent cell), `genomes (N,295) f32`, `active_mask (N,) bool`. **Conflict:** `entities.py:122` `Creature` (68 fields, now `slots=True`) is the AoS mirror — SoA becomes the tick-time source of truth; `Creature` remains for REST/inspector/dossier paths.
+
+### Step 2: Micro-RNN forward kernel & fast math (`backend/app/neural_engine.py`)
+- [ ] [P0] **2.1 Branchless activations**: `fast_tanh(x) = x / (1.0 + |x|)` (or `np.clip(x,-1,1)`), `fast_sigmoid(x) = 0.5*(fast_tanh(0.5x)+1)`, `leaky_relu(x, alpha=0.01)`.
+- [ ] [P0] **2.2 Batch forward inference `forward_batch`**: unpack `W1 (N,16,12)`+`b1 (N,12)` (204 w) and `W2 (N,12,7)`+`b2 (N,7)` (91 w) from the `genomes` slice; `H = leaky_relu(einsum('bi,bij->bj', X, W1) + b1)` → `(N,12)`; `Y = einsum('bi,bij->bj', H, W2) + b2` → `(N,7)`; per-output activation — `Y[:,0] thrust`→fast_sigmoid `[0,1]`, `Y[:,1] steer`→fast_tanh `[-1,1]`, `Y[:,2] interact`→fast_tanh, `Y[:,3] social`→fast_tanh, `Y[:,4] vocal_amp`→fast_sigmoid `[0,1]`, `Y[:,5] vocal_freq`→fast_tanh, `Y[:,6] recurrent_out`→fast_tanh (writes back into `hidden_state`).
+
+### Step 3: Sensor pipeline & actuator integration (`backend/app/agent_pipeline.py`)
+- [ ] [P0] **3.1 Vectorize 16 sensor inputs `(N,16)`**: slots 0–2 `energy/max`, `health/max`, `chill/max`; slots 3–8 three raycasts (left −35°, mid 0°, right +35°) as normalized distance `[0,1]` **and** target type (+1.0 food/ally, 0.0 wall/obstacle, −1.0 enemy/predator); slots 9–10 audio amplitude `[0,1]` + dominant frequency `[-1,1]`; slots 11–12 food/danger scent density `[0,1]`; slots 13–15 collision impulse `[0,1]`, slope grade `[-1,1]`, `hidden_state` `[-1,1]`.
+- [ ] [P0] **3.2 Map 7 outputs to world state**: `thrust` → velocity force with `ΔE = -thrust² × k_thrust`; `steer` → orientation `θ`; `interact > +0.3` consume nearest plant/corpse, `< −0.3` kinetic vertex attack (ties §I war, §AC cannibalism); `social > +0.5` broadcast mating readiness (replaces §B `_reproduce` gating, `simulation.py:6750`), `< −0.5` defensive guard state; `vocal_amp`/`vocal_freq` published to the audio grid (**reuses** §AN vocalizations + `scent_enabled` `simulation.py:2900` — **pheromone grid is new**: no `pheromone` symbol exists in `backend/app/`).
+
+### Step 4: Neuroevolution engine (`backend/app/evolution.py`)
+- [ ] [P1] **4.1 Population init**: `genomes ~ N(0.0, 0.5)` clipped to `[-4.0, 4.0]`.
+- [ ] [P1] **4.2 Mating & reproduction**: eligible pairs via spatial query when both `energy > mate_energy_min` **and** `social > 0.5`; **uniform crossover** (50% parent A / 50% parent B); **mutation** additive `N(0.0, 0.08²)` at `P_mut = 0.03` per gene; deduct `birth_energy_cost` from both parents; spawn offspring in the nearest empty cell. Keeps §B lineage fields (`mother_id`/`father_id`/`generation`) so genealogy, `creatures` table and the inspector family tree keep working.
+
+### Step 5: Tick decoupling & zero-allocation (`backend/app/sim_loop.py`)
+- [ ] [P0] **5.1 Multi-rate loop**: physics/velocity/grid at 60 Hz every tick (`simulation.py:3648` `step`); sensor extraction + inference at 15 Hz every 4th tick, actuator outputs latched in between.
+- [ ] [P0] **5.2 Zero allocation**: pre-allocate `inputs_buf`, `hidden_buf`, `outputs_buf` (and reuse `simulation.py:778` `_c_creatures_buf` precedent); no per-tick array creation → no GC pauses.
+
+### Step 6: Verification, metrics & morphology hook
+- [ ] [P0] **6.1 Performance profiling**: benchmark N=2,000 agents; assert step ≤ 12 ms on target CPU. Record before/after in `backend/tests/test_scale_benchmarks.py:41` and `backend/scripts/bench_tick.py`.
+- [ ] [P1] **6.2 Emergence validation**: ≥100 generations — food acquisition efficiency, wall avoidance, population stabilization — with **no scripted rules**; gate on `backend/tests/test_neuroevolution.py`.
+- [ ] [P1] **6.3 Rebless the determinism golden**: re-record `backend/tests/test_determinism_golden.py` checkpoints (ticks 100/250/500) for the NN engine, commit the new values next to the old in the same file with a dated comment.
+- [ ] [P2] **6.4 Morphological genome expansion (future hook)**: reserve genome-buffer expansion for a polygon vertex array `(r_i, φ_i)` → Shoelace area `A`, perimeter `P`, polar moment `I_zz`; lets §C irregularity/caste judgement act on evolved shape instead of a law table.
+- Laws: `nn_enabled`, `nn_inference_hz`, `mutation_sigma`, `mutation_rate`, `crossover_rate`, `nn_hidden_size` (new "Neuroevolution" group; **`nn_enabled=false` by default** so the existing utility AI keeps running until Step 3.2 lands). Tests: `backend/tests/test_neuroevolution.py` (SoA round-trip, genome 295 unpack, forward-batch shape/activation ranges, sensor slot ranges, mating/mutation distribution, 15 Hz latch, N=2000 budget) + parity test for the numpy-absent pure-Python fallback.
 
