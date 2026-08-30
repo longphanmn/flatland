@@ -27,7 +27,7 @@ const CATEGORIES: Array<{ key: EventCategory; label: string; icon: string }> = [
   { key: 'nature', label: 'Nature', icon: '🌸' },
 ]
 
-function matchesCategory(ev: HistoryEvent, category: EventCategory): boolean {
+function matchesCategory(ev: any, category: EventCategory): boolean {
   if (category === 'all') {
     return ev.type !== 'bloom' && ev.type !== 'wither' && ev.type !== 'ruin'
   }
@@ -86,6 +86,15 @@ function matchesCategory(ev: HistoryEvent, category: EventCategory): boolean {
     return ['bloom', 'wither', 'ruin', 'fire', 'disaster', 'compost', 'anomaly'].includes(ev.type)
   }
   return true
+}
+
+function accentFor(ev: any): string {
+  if (ev.type === 'outbreak' || ev.type === 'recovery' || (ev.type === 'death' && ev.cause === 'disease')) return 'cat-plague'
+  if (['war','betrayal','schism','conquest','takeover','raid','coalition_formed','coalition_joined','coalition_dissolved','peace','peace_envoy','defection','cannibalism','exile','predation','rivalry'].includes(ev.type)) return 'cat-conflict'
+  if (['birth','settlement','succession','culture','alliance','tribute','promotion','demotion','miracle','sermon','synod','temple','epiphany','resonance','hospitality','banquet','market','caravan','omen','regicide','herald'].includes(ev.type)) return 'cat-clan'
+  if (ev.type === 'death' || ev.type === 'war' || ev.type === 'predation' || ev.type === 'cannibalism') return 'cat-deaths'
+  if (['bloom','wither','ruin','fire','disaster','compost','anomaly'].includes(ev.type)) return 'cat-nature'
+  return 'cat-clan'
 }
 
 function matchesSearch(ev: HistoryEvent, query: string, clanLabel: (id?: number | null) => string): boolean {
@@ -164,56 +173,15 @@ export default function ChronicleFeed({
           padding: '6px 8px',
         }}
       >
-        {/* Search input */}
+        {/* compact inline search */}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <span style={{ fontSize: 12, color: '#8b949e' }}>🔍</span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('chronicleEvents.searchPlaceholder')}
-            style={{
-              flex: 1,
-              background: '#0d1117',
-              border: '1px solid #30363d',
-              borderRadius: 6,
-              padding: '4px 8px',
-              fontSize: 12,
-              color: '#e6edf3',
-              minHeight: 28,
-            }}
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#8b949e',
-                fontSize: 12,
-                cursor: 'pointer',
-                padding: '2px 6px',
-                minHeight: 28,
-              }}
-              title="Clear search"
-            >
-              ✕
-            </button>
-          )}
+          <span style={{ fontSize: 12, color: '#8b949e', flex: 'none' }}>🔍</span>
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('chronicleEvents.searchPlaceholder')} className="chronicle-search-input" style={{ flex: 1 }} />
+          {search && <button type="button" onClick={() => setSearch('')} style={{ background: 'transparent', border: 'none', color: '#8b949e', fontSize: 12, cursor: 'pointer', padding: '2px 6px', minHeight: 28 }} title="Clear search">✕</button>}
         </div>
 
-        {/* Category Pills */}
-        <div
-          className="chronicle-pills"
-          style={{
-            display: 'flex',
-            gap: 4,
-            overflowX: 'auto',
-            scrollbarWidth: 'none',
-            paddingBottom: 2,
-          }}
-        >
+        {/* single-row horizontal scroll category pills */}
+        <div className="chronicle-controls-pill-row">
           {CATEGORIES.map((cat) => {
             const active = category === cat.key
             const label = t(`chronicle.categories.${cat.key}`) !== `chronicle.categories.${cat.key}` ? t(`chronicle.categories.${cat.key}`) : cat.label
@@ -305,15 +273,19 @@ export default function ChronicleFeed({
           className="chronicle-feed-list"
           style={{ margin: 0, padding: 0, listStyle: 'none', flex: '1 1 0', overflowY: 'auto', minHeight: 0 }}
         >
-          {displayed.map((ev) => {
+          {displayed.map((ev: any, idx: number) => {
             const key = `${ev.tick}:${ev.entity_id}:${ev.type}`
             const p = (ev.payload ?? {}) as Record<string, any>
+            const accent = accentFor(ev)
+            const isLive = idx < 3 && !archiveMode
+            const liveCls = isLive ? ' live-pulse' : ''
+            const accentCls = 'chronicle-accent ' + accent + liveCls
 
             if (ev.type === 'birth') {
               const nm = p.personal_name ?? ev.caste
               const gl = p.glyph ? ` ${p.glyph}` : ''
               return (
-                <li key={key} className="ev-birth">
+                <li key={key} className={"ev-birth " + accentCls}>
                   <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show profile">
                     <b>{nm}{gl}</b> #{ev.entity_id}
                   </button>{' '}
@@ -325,7 +297,7 @@ export default function ChronicleFeed({
             if (ev.type === 'promotion') {
               const nm = p.personal_name ? `${p.personal_name} ` : ''
               return (
-                <li key={key} className="ev-promo">
+                <li key={key} className={"ev-promo " + accentCls}>
                   <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show profile">
                     <b>{nm}#{ev.entity_id}</b>
                   </button>{' '}
@@ -338,7 +310,7 @@ export default function ChronicleFeed({
               const nm = p.personal_name ?? ev.caste
               const gl = p.glyph ? ` ${p.glyph}` : ''
               return (
-                <li key={key} className="ev-demote">
+                <li key={key} className={"ev-demote " + accentCls}>
                   <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show profile">
                     <b>{nm}{gl}</b> #{ev.entity_id}
                   </button>{' '}
@@ -351,7 +323,7 @@ export default function ChronicleFeed({
               const nm = p.personal_name ?? ev.caste
               const gl = p.glyph ? ` ${p.glyph}` : ''
               return (
-                <li key={key} className="ev-predation">
+                <li key={key} className={"ev-predation " + accentCls}>
                   <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show predator">
                     <b>{nm}{gl}</b> #{ev.entity_id}
                   </button>{' '}
@@ -364,7 +336,7 @@ export default function ChronicleFeed({
               const nm = p.personal_name ?? ev.caste
               const gl = p.glyph ? ` ${p.glyph}` : ''
               return (
-                <li key={key} className="ev-war">
+                <li key={key} className={"ev-war " + accentCls}>
                   <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show fallen">
                     <b>{nm}{gl}</b> #{ev.entity_id}
                   </button>{' '}
@@ -375,7 +347,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'alliance' || ev.type === 'rivalry') {
               return (
-                <li key={key} className={ev.type === 'alliance' ? 'ev-alliance' : 'ev-rivalry'}>
+                <li key={key} className={(ev.type === 'alliance' ? 'ev-alliance' : 'ev-rivalry') + ' ' + accentCls}>
                   {t('chronicleEvents.clansAlliance', { a: clanLabel(p.a), b: clanLabel(p.b), type: ev.type, score: p.score, tick: ev.tick })}
                 </li>
               )
@@ -383,7 +355,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'schism') {
               return (
-                <li key={key} className="ev-schism">
+                <li key={key} className={"ev-schism " + accentCls}>
                   {t('chronicleEvents.schismBreak', { parent: p.parent_name ?? clanLabel(p.parent), child: p.new_name ?? clanLabel(p.new_clan), count: (p.members as number[])?.length ?? 0, tick: ev.tick })}
                 </li>
               )
@@ -391,7 +363,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'conquest') {
               return (
-                <li key={key} className="ev-war">
+                <li key={key} className={"ev-war " + accentCls}>
                   {t('chronicleEvents.conquestHouse', { winner: clanLabel(p.winner_clan), house: p.house_id, loser: clanLabel(p.loser_clan), tick: ev.tick })}
                 </li>
               )
@@ -399,7 +371,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'takeover') {
               return (
-                <li key={key} className="ev-war">
+                <li key={key} className={"ev-war " + accentCls}>
                   {t('chronicleEvents.takeoverHouse', { invader: p.invader_name ?? clanLabel(p.invader_clan), house: p.house_id, victim: p.victim_name ?? clanLabel(p.victim_clan), tick: ev.tick })}
                 </li>
               )
@@ -412,7 +384,7 @@ export default function ChronicleFeed({
                   ? `${p.reason ?? 'dissolved'} —`
                   : t('chronicleEvents.coalitionFounded', { clan: clanLabel(p.leader_clan) })
               return (
-                <li key={key} className="ev-alliance" style={{ color: '#7ee787' }}>
+                <li key={key} className={"ev-alliance " + accentCls} style={{ color: '#7ee787' }}>
                   {t('chronicleEvents.coalitionLine', { formed: ev.type === 'coalition_formed' ? 'coalition: ' : '', who, name: String(p.name ?? `coalition #${p.coalition}`), count: (p.members as number[] | undefined)?.length ?? 0, tick: ev.tick })}
                 </li>
               )
@@ -420,7 +392,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'peace') {
               return (
-                <li key={key} className="ev-alliance">
+                <li key={key} className={"ev-alliance " + accentCls}>
                   {t('chronicleEvents.peaceArms', { a: clanLabel(p.a), b: clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
@@ -428,7 +400,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'tribute') {
               return (
-                <li key={key} className="ev-alliance">
+                <li key={key} className={"ev-alliance " + accentCls}>
                   {t('chronicleEvents.tributePay', { from: clanLabel(p.from), amount: p.amount ?? '?', to: clanLabel(p.to), tick: ev.tick })}
                 </li>
               )
@@ -436,7 +408,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'betrayal') {
               return (
-                <li key={key} className="ev-war">
+                <li key={key} className={"ev-war " + accentCls}>
                   {t('chronicleEvents.betrayalTurn', { a: clanLabel(p.a), b: clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
@@ -444,7 +416,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'defection') {
               return (
-                <li key={key} className="ev-schism">
+                <li key={key} className={"ev-schism " + accentCls}>
                   {t('chronicleEvents.defectionLeave', { id: ev.entity_id, from: clanLabel(p.from), to: clanLabel(p.to), tick: ev.tick })}
                 </li>
               )
@@ -452,7 +424,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'cannibalism') {
               return (
-                <li key={key} className="ev-predation">
+                <li key={key} className={"ev-predation " + accentCls}>
                   {t('chronicleEvents.cannibalismEat', { caste: ev.caste ?? 'Creature', id: ev.entity_id, kin: p.kin ? 'kin' : 'enemy', preyCaste: p.prey_caste ?? 'Creature', prey: p.prey ?? '?', tick: ev.tick })}
                 </li>
               )
@@ -460,7 +432,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'exile') {
               return (
-                <li key={key} className="ev-demote">
+                <li key={key} className={"ev-demote " + accentCls}>
                   {t('chronicleEvents.exileCast', { name: String(p.personal_name ?? '') + String(p.glyph ?? ''), id: ev.entity_id, clan: p.former_name ?? clanLabel(p.former_clan), tick: ev.tick })}
                 </li>
               )
@@ -468,7 +440,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'miracle') {
               return (
-                <li key={key} className="ev-bloom" style={{ color: '#7ee787' }}>
+                <li key={key} className={"ev-bloom " + accentCls} style={{ color: '#7ee787' }}>
                   {t('chronicleEvents.miracleBounty', { avatar: String(p.avatar ?? 'avatar'), clan: p.clan_name ?? clanLabel(p.clan_id), tick: ev.tick })}
                 </li>
               )
@@ -476,7 +448,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'sermon') {
               return (
-                <li key={key} className="ev-alliance" style={{ color: '#d2a8ff' }}>
+                <li key={key} className={"ev-alliance " + accentCls} style={{ color: '#d2a8ff' }}>
                   {t('chronicleEvents.sermonLaw', { caste: ev.caste ?? 'Priest', id: ev.entity_id, clan: p.clan_name ?? clanLabel(p.clan_id), text: String(p.text ?? ''), tick: ev.tick })}
                 </li>
               )
@@ -484,7 +456,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'synod') {
               return (
-                <li key={key} className="ev-alliance" style={{ color: '#e3b341' }}>
+                <li key={key} className={"ev-alliance " + accentCls} style={{ color: '#e3b341' }}>
                   {t('chronicleEvents.synodSphere', { count: (p.clans as number[] | undefined)?.length ?? '?', age: String(p.age ?? 'crisis'), tick: ev.tick })}
                 </li>
               )
@@ -492,7 +464,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'temple') {
               return (
-                <li key={key} className="ev-settlement" style={{ color: '#e3b341' }}>
+                <li key={key} className={"ev-settlement " + accentCls} style={{ color: '#e3b341' }}>
                   {t('chronicleEvents.templeRaise', { clan: p.clan_name ?? clanLabel(p.clan_id), avatar: String(p.avatar ?? 'avatar'), tick: ev.tick })}
                 </li>
               )
@@ -500,7 +472,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'epiphany') {
               return (
-                <li key={key} className="ev-miracle" style={{ color: '#bc8cff' }}>
+                <li key={key} className={"ev-miracle " + accentCls} style={{ color: '#bc8cff' }}>
                   {t('chronicleEvents.epiphanyBehold', { name: String(p.personal_name ?? '') + String(p.glyph ?? ''), id: ev.entity_id, tick: ev.tick })}
                 </li>
               )
@@ -508,7 +480,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'resonance') {
               return (
-                <li key={key} className="ev-alliance" style={{ color: '#e3b341' }}>
+                <li key={key} className={"ev-alliance " + accentCls} style={{ color: '#e3b341' }}>
                   {t('chronicleEvents.resonanceChimes', { laws: String(((p.laws as string[]) ?? []).join(', ') || 'the laws'), chimes: String(p.chimes ?? 0), sermons: String(p.sermons ?? 0), tick: ev.tick })}
                 </li>
               )
@@ -517,7 +489,7 @@ export default function ChronicleFeed({
             if (ev.type === 'settlement') {
               const byClan = p.clan_id ? t('chronicleEvents.settlementByClan', { clan: clanLabel(p.clan_id) }) : ''
               return (
-                <li key={key} className="ev-bloom">
+                <li key={key} className={"ev-bloom " + accentCls}>
                   {t('chronicleEvents.settlementFounded', { byClan, x: Math.round(ev.x), y: Math.round(ev.y), tick: ev.tick })}
                 </li>
               )
@@ -525,7 +497,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'succession') {
               return (
-                <li key={key} className="ev-promo">
+                <li key={key} className={"ev-promo " + accentCls}>
                   {t('chronicleEvents.successionLeader', { clan: p.clan_name ?? clanLabel(p.clan_id), newLeader: p.new_leader ?? '?', prevLeader: p.prev_leader ?? '?', tick: ev.tick })}
                 </li>
               )
@@ -533,7 +505,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'culture') {
               return (
-                <li key={key} className="ev-bloom">
+                <li key={key} className={"ev-bloom " + accentCls}>
                   {t('chronicleEvents.cultureEmbrace', { clan: clanLabel(p.clan_id), culture: p.culture, tick: ev.tick })}
                 </li>
               )
@@ -541,7 +513,7 @@ export default function ChronicleFeed({
 
             if (ev.type === 'bloom' || ev.type === 'wither') {
               return (
-                <li key={key} className={ev.type === 'bloom' ? 'ev-bloom' : 'ev-wither'} style={{ color: ev.type === 'bloom' ? '#3fb950' : '#8b949e' }}>
+                <li key={key} className={(ev.type === 'bloom' ? 'ev-bloom' : 'ev-wither') + ' ' + accentCls} style={{ color: ev.type === 'bloom' ? '#3fb950' : '#8b949e' }}>
                   {ev.type} at ({Math.round(ev.x)}, {Math.round(ev.y)}) tick {ev.tick}
                 </li>
               )
@@ -551,7 +523,7 @@ export default function ChronicleFeed({
               const nm = p.personal_name ?? ev.caste
               const gl = p.glyph ? ` ${p.glyph}` : ''
               return (
-                <li key={key} className={ev.type === 'outbreak' ? 'ev-outbreak' : 'ev-recovery'}>
+                <li key={key} className={(ev.type === 'outbreak' ? 'ev-outbreak' : 'ev-recovery') + ' ' + accentCls}>
                   <button className="chronicle-name" onClick={() => onSelectCreature(ev.entity_id)} title="show creature">
                     <b>{nm}{gl}</b> #{ev.entity_id}
                   </button>{' '}
@@ -562,14 +534,14 @@ export default function ChronicleFeed({
 
             if (ev.type === 'raid') {
               return (
-                <li key={key} style={{ color: '#f85149' }}>
+                <li key={key} className={accentCls} style={{ color: '#f85149' }}>
                   {t('chronicleEvents.raidGranary', { a: p.a_name ?? clanLabel(p.a), b: p.b_name ?? clanLabel(p.b), loot: p.loot ?? '?', tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'banquet') {
               return (
-                <li key={key} style={{ color: '#e3b341' }}>
+                <li key={key} className={accentCls} style={{ color: '#e3b341' }}>
                   {t('chronicleEvents.banquetFeast', { clan: p.clan_name ?? clanLabel(p.clan_id), tick: ev.tick })}
                 </li>
               )
@@ -577,49 +549,49 @@ export default function ChronicleFeed({
             if (ev.type === 'compost') {
               const nm = p.personal_name ?? ev.caste
               return (
-                <li key={key} style={{ color: '#3fb950' }}>
+                <li key={key} className={accentCls} style={{ color: '#3fb950' }}>
                   {t('chronicleEvents.compostFields', { name: nm, id: ev.entity_id, clan: p.clan_name ?? clanLabel(p.clan_id), tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'hospitality') {
               return (
-                <li key={key} style={{ color: '#79c0ff' }}>
+                <li key={key} className={accentCls} style={{ color: '#79c0ff' }}>
                   {t('chronicleEvents.hospitalityBread', { a: p.a_name ?? clanLabel(p.a), b: p.b_name ?? clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'peace_envoy') {
               return (
-                <li key={key} style={{ color: '#d2a8ff' }}>
+                <li key={key} className={accentCls} style={{ color: '#d2a8ff' }}>
                   {t('chronicleEvents.peaceEnvoyTerms', { a: p.a_name ?? clanLabel(p.a), b: p.b_name ?? clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'market') {
               return (
-                <li key={key} style={{ color: '#e3b341' }}>
+                <li key={key} className={accentCls} style={{ color: '#e3b341' }}>
                   {t('chronicleEvents.marketOpen', { a: p.a_name ?? clanLabel(p.a), b: p.b_name ?? clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'caravan') {
               return (
-                <li key={key} style={{ color: '#8b949e' }}>
+                <li key={key} className={accentCls} style={{ color: '#8b949e' }}>
                   {t('chronicleEvents.caravanTrade', { a: p.a_name ?? clanLabel(p.a), b: p.b_name ?? clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'regicide') {
               return (
-                <li key={key} style={{ color: '#f85149' }}>
+                <li key={key} className={accentCls} style={{ color: '#f85149' }}>
                   {t('chronicleEvents.regicideMurder', { assassin: p.assassin ?? 'assassin', clanA: p.assassin_clan_name ?? clanLabel(p.assassin_clan), victim: p.victim ?? '?', clanB: p.victim_clan_name ?? clanLabel(p.victim_clan), tick: ev.tick })}
                 </li>
               )
             }
             if (ev.type === 'herald') {
               return (
-                <li key={key} style={{ color: '#8b949e' }}>
+                <li key={key} className={accentCls} style={{ color: '#8b949e' }}>
                   {t('chronicleEvents.heraldTerms', { a: p.a_name ?? clanLabel(p.a), b: p.b_name ?? clanLabel(p.b), tick: ev.tick })}
                 </li>
               )
@@ -627,7 +599,7 @@ export default function ChronicleFeed({
             if (ev.type === 'omen') {
               const nm = p.personal_name ?? ev.caste
               return (
-                <li key={key} style={{ color: '#e3b341' }}>
+                <li key={key} className={accentCls} style={{ color: '#e3b341' }}>
                   {t('chronicleEvents.omenBehold', { name: nm, clan: p.clan_name ?? clanLabel(p.clan_id), season: String(p.season), tick: ev.tick })}
                 </li>
               )
@@ -637,7 +609,7 @@ export default function ChronicleFeed({
             const nm = p.personal_name ?? ev.caste
             const gl = p.glyph ? ` ${p.glyph}` : ''
             return (
-              <li key={key}>
+              <li key={key} className={accentCls}>
                 {t('chronicleEvents.deathEvent', { name: `${nm}${gl}`, id: ev.entity_id, cause: ev.cause ?? 'unknown', tick: ev.tick, x: Math.round(ev.x), y: Math.round(ev.y) })}
               </li>
             )

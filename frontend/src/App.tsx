@@ -3,12 +3,12 @@ import CanvasRenderer from './render/CanvasRenderer'
 import OverviewPanel from './render/OverviewPanel'
 import ClanPanel from './render/ClanPanel'
 import PlotsPanel from './render/PlotsPanel'
-import Collapsible from './render/Collapsible'
 import ChronicleFeed from './render/ChronicleFeed'
 import GodPanel from './god/GodPanel'
 import { AuthModal, ensureGodKey, forgetKey, getCachedKey } from './god/auth'
 import Wiki from './wiki/Wiki'
 import ClanDetails from './clan/ClanDetails'
+import Observatory from './analytics/Observatory'
 import WorldEndSummary from './summary/WorldEndSummary'
 import WorldHistoryModal from './history/WorldHistoryModal'
 import Inspector from './inspect/Inspector'
@@ -56,6 +56,16 @@ export default function App() {
   const [statusExpanded, setStatusExpanded] = useState(false)
   const [sheetState, setSheetState] = useState<'hidden' | 'peek' | 'half' | 'full'>('hidden')
   const [sheetTab, setSheetTab] = useState<'world' | 'clans' | 'chronicle' | 'plots'>('world')
+  const [rightTab, setRightTab] = useState<'overview' | 'clans' | 'chronicle'>(() => {
+    if (typeof window !== 'undefined') {
+      const v = sessionStorage.getItem('right-stack-tab')
+      if (v === 'overview' || v === 'clans' || v === 'chronicle') return v
+    }
+    return 'overview'
+  })
+  useEffect(() => {
+    try { sessionStorage.setItem('right-stack-tab', rightTab) } catch {}
+  }, [rightTab])
   const [versionInfo, setVersionInfo] = useState<{ version: string; revision: string } | null>(null)
   const [log, setLog] = useState<HistoryEvent[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -777,7 +787,7 @@ export default function App() {
                 onSelectClan={setSelectedClanId}
               />
             )}
-            {sheetTab === 'clans' && <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />}
+            {sheetTab === 'clans' && <ClanPanel state={state} onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />}
             {sheetTab === 'plots' && <PlotsPanel onSelectClan={setSelectedClanId} />}
             {sheetTab === 'chronicle' && (
               <div className="chronicle" style={{ background: 'transparent', border: 'none', padding: 0, maxHeight: 'none' }}>
@@ -865,7 +875,9 @@ export default function App() {
       )}
 
 
-      {!isMobile && (
+      {!isMobile && (() => {
+        const clanCount = state ? Object.keys(state.clans ?? {}).length : 0
+        return (
         <div
           className="right-stack"
           onPointerDown={(e) => e.stopPropagation()}
@@ -873,36 +885,71 @@ export default function App() {
           onTouchStart={(e) => e.stopPropagation()}
           onWheel={(e) => e.stopPropagation()}
         >
-          <Collapsible id="box-overview" title={t("app.overview.title")} hint={t("app.overview.hint")} defaultOpen={true}>
-            <OverviewPanel
-              state={state}
-              aliveHist={aliveHist}
-              onSelectCreature={setSelectedId}
-              onSelectClan={setSelectedClanId}
-            />
-          </Collapsible>
-          <Collapsible id="box-clans" title={t("app.controls.clans")} hint={t("app.overview.hint")} defaultOpen={true}>
-            <ClanPanel onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
-          </Collapsible>
-          <Collapsible id="box-chronicle" title={t("chronicle.title")} hint={t("chronicle.title")} defaultOpen={true}>
-            <ChronicleFeed
-              events={log}
-              clanLabel={clanLabel}
-              onSelectCreature={(id) => setSelectedId(id)}
-              onSelectClan={(id) => setSelectedClanId(id)}
-              onLoadOlder={loadOlder}
-              loadingOlder={loadingOlder}
-              noMoreHistory={noMoreHistory}
-              archiveMode={archiveMode}
-              selectedRunId={selectedRunId}
-            />
-          </Collapsible>
+          <div className="right-stack-tabs" role="tablist" aria-label="Right stack panels">
+            <button
+              role="tab"
+              aria-selected={rightTab === 'overview'}
+              className={`right-stack-tab ${rightTab === 'overview' ? 'active' : ''}`}
+              onClick={() => setRightTab('overview')}
+            >
+              📊 Overview
+            </button>
+            <button
+              role="tab"
+              aria-selected={rightTab === 'clans'}
+              className={`right-stack-tab ${rightTab === 'clans' ? 'active' : ''}`}
+              onClick={() => setRightTab('clans')}
+            >
+              🏰 Clans ({clanCount})
+            </button>
+            <button
+              role="tab"
+              aria-selected={rightTab === 'chronicle'}
+              className={`right-stack-tab ${rightTab === 'chronicle' ? 'active' : ''}`}
+              onClick={() => setRightTab('chronicle')}
+            >
+              📜 Chronicle <span className="live-dot">Live</span>
+            </button>
+          </div>
+          <div className="right-stack-body">
+            {rightTab === 'overview' && (
+              <>
+                <OverviewPanel
+                  state={state}
+                  aliveHist={aliveHist}
+                  onSelectCreature={setSelectedId}
+                  onSelectClan={setSelectedClanId}
+                />
+                <div style={{ marginTop: 8, borderTop: '1px solid #21262d', paddingTop: 8 }}>
+                  <Observatory state={state} />
+                </div>
+              </>
+            )}
+            {rightTab === 'clans' && (
+              <ClanPanel state={state} onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
+            )}
+            {rightTab === 'chronicle' && (
+              <ChronicleFeed
+                events={log}
+                clanLabel={clanLabel}
+                onSelectCreature={(id) => setSelectedId(id)}
+                onSelectClan={(id) => setSelectedClanId(id)}
+                onLoadOlder={loadOlder}
+                loadingOlder={loadingOlder}
+                noMoreHistory={noMoreHistory}
+                archiveMode={archiveMode}
+                selectedRunId={selectedRunId}
+              />
+            )}
+          </div>
         </div>
-      )}
+        )
+      })()}
 
       {selectedId !== null && (
         <Inspector
           id={selectedId}
+          state={state}
           onClose={() => setSelectedId(null)}
           onNavigate={(nid) => setSelectedId(nid)}
           onSelectClan={(cid) => setSelectedClanId(cid)}

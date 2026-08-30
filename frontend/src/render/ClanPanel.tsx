@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { totemEmoji } from '../totems'
 import { useI18n } from '../i18n'
 
@@ -8,7 +8,6 @@ interface ClanKnowledge {
   food_spots?: { x: number; y: number; conf: number }[]
   members_with_home_knowledge?: number
 }
-
 interface ClanInfo {
   id: number
   name: string
@@ -39,12 +38,52 @@ interface ClanInfo {
   shrine_level?: number
 }
 
-export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelectClan?: (id: number) => void; onSelectCreature?: (id: number) => void }) {
+type SortKey = 'pop' | 'wins' | 'larder' | 'age'
+
+export default function ClanPanel({ onSelectClan, onSelectCreature, state }: { onSelectClan?: (id: number) => void; onSelectCreature?: (id: number) => void; state?: any }) {
   const { t } = useI18n()
   const [clans, setClans] = useState<ClanInfo[]>([])
   const [tick, setTick] = useState(0)
+  const [sortBy, setSortBy] = useState<SortKey>('pop')
 
   useEffect(() => {
+    if (state && state.clans) {
+      const arr: ClanInfo[] = Object.entries(state.clans as Record<string, any>).map(([id, info]: any) => ({
+        id: Number(id),
+        name: info.name ?? `#${id}`,
+        color: info.color ?? '#8b949e',
+        totem: info.totem ?? null,
+        founder_id: info.founder_id ?? 0,
+        leader_id: info.leader_id ?? null,
+        born_tick: info.born_tick ?? 0,
+        founded_day: info.founded_day,
+        dead_count: info.dead_count ?? 0,
+        population: info.population ?? (state.entities ? state.entities.filter((e: any) => e.clan_id === Number(id)).length : 0),
+        house: info.main_house_id ? (() => {
+          const h = state.entities?.find((e: any) => e.id === info.main_house_id)
+          return h ? { x: h.x, y: h.y, size: h.size ?? 6, is_ruin: !!h.is_ruin } : null
+        })() : null,
+        war_wins: info.war_wins ?? 0,
+        war_losses: info.war_losses ?? 0,
+        territory_radius: info.territory_radius ?? null,
+        specialization: info.specialization ?? null,
+        culture: info.culture ?? null,
+        culture_id: info.culture_id ?? null,
+        knowledge: info.knowledge ?? null,
+        coalition_id: info.coalition_id ?? null,
+        larder: info.larder,
+        granary: info.granary,
+        harvest_total: info.harvest_total,
+        feast: info.feast,
+        dialect: info.dialect,
+        tribute_to: info.tribute_to ?? null,
+        faith: info.faith,
+        shrine_level: info.shrine_level,
+      }))
+      setClans(arr)
+      setTick(state.tick ?? 0)
+      return
+    }
     let alive = true
     const load = () =>
       fetch('/api/clans')
@@ -56,86 +95,80 @@ export default function ClanPanel({ onSelectClan, onSelectCreature }: { onSelect
         })
         .catch(() => {})
     load()
-    // 5s poll reduces proxy load; visibility check pauses when tab hidden
-    const t = setInterval(() => {
-      if (document.hidden) return
-      load()
-    }, 5000)
-    const onVis = () => {
-      if (!document.hidden) load()
-    }
-    document.addEventListener('visibilitychange', onVis)
-    return () => {
-      alive = false
-      clearInterval(t)
-      document.removeEventListener('visibilitychange', onVis)
-    }
-  }, [])
+    return () => { alive = false }
+  }, [state])
+
+  const sorted = useMemo(() => {
+    const alive = clans.filter((c) => c.population > 0)
+    const copy = [...alive]
+    if (sortBy === 'pop') copy.sort((a, b) => b.population - a.population)
+    else if (sortBy === 'wins') copy.sort((a, b) => (b.war_wins - a.war_wins) || (b.population - a.population))
+    else if (sortBy === 'larder') copy.sort((a, b) => ((b.larder ?? 0) + (b.granary ?? 0)) - ((a.larder ?? 0) + (a.granary ?? 0)))
+    else if (sortBy === 'age') copy.sort((a, b) => a.born_tick - b.born_tick)
+    return copy
+  }, [clans, sortBy])
 
   if (clans.length === 0) return <p className="chip">{t('clanPanel.noClans')}</p>
-  const alive = clans.filter((c) => c.population > 0)
+  if (sorted.length === 0) return <p className="chip">{t('clanPanel.noClans')} — all fallen</p>
 
   return (
-    <div className="clan-panel">
-      <h4 style={{ margin: '8px 0 6px', fontSize: '0.9em' }}>{t('clanPanel.title', { tick })}</h4>
+    <div className="clan-panel" style={{ gap: 6 }}>
+      <div className="clan-sort-bar">
+        <span style={{ fontWeight: 600, fontSize: 11, color: '#e6edf3' }}>🏰 {sorted.length} clans · tick {tick}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11 }}>Sort</span>
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortKey)} aria-label="Sort clans">
+          <option value="pop">Pop</option>
+          <option value="wins">Wins</option>
+          <option value="larder">Larder</option>
+          <option value="age">Age</option>
+        </select>
+      </div>
       <div style={{ display: 'grid', gap: 6 }}>
-        {alive.map((c) => (
-          <div key={c.id} className="clan-card" onClick={() => onSelectClan?.(c.id)} style={{ borderLeft: `4px solid ${c.color}`, padding: '6px 8px', background: '#161b22', border: '1px solid #30363d', borderLeftWidth: 4, borderRadius: 6, cursor: onSelectClan ? 'pointer' : 'default' }} title={onSelectClan ? t('clanPanel.clickForDetails') : undefined}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <b style={{ color: c.color }}>{c.name}</b>
-              <span className="chip" style={{ background: c.color, color: '#0b0f14' }}>{totemEmoji(c.totem)} {c.totem ?? '—'}</span>
+        {sorted.map((c) => {
+          const spec = c.specialization
+          const totalSpec = spec ? spec.warrior + spec.farmer + spec.scavenger : 0
+          const wPct = totalSpec ? (spec!.warrior / totalSpec) * 100 : 0
+          const fPct = totalSpec ? (spec!.farmer / totalSpec) * 100 : 0
+          const sPct = totalSpec ? (spec!.scavenger / totalSpec) * 100 : 0
+          const larderTotal = Math.round((c.larder ?? 0) + (c.granary ?? 0))
+          return (
+            <div
+              key={c.id}
+              className="clan-banner"
+              onClick={() => onSelectClan?.(c.id)}
+              style={{ borderLeft: `3px solid ${c.color}` }}
+              title={onSelectClan ? t('clanPanel.clickForDetails') : undefined}
+            >
+              <div className="clan-banner-head">
+                <span className="clan-crest" style={{ background: `${c.color}22`, borderColor: `${c.color}55` }}>{totemEmoji(c.totem)}</span>
+                <b style={{ color: c.color, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</b>
+                <span style={{ fontSize: 10, color: '#8b949e' }}>#{c.id}</span>
+                <span className="clan-pop-badge" style={{ background: c.color }}>{c.population} alive</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, fontSize: 10.5, color: '#8b949e', alignItems: 'center' }}>
+                <span>👑 <button className="chronicle-name" onClick={(e) => { e.stopPropagation(); c.leader_id != null && onSelectCreature?.(c.leader_id) }} title={t('clanPanel.showLeader')} style={{ fontSize: 10.5 }}>#{c.leader_id ?? '—'}</button></span>
+                <span>·</span>
+                <span title="Main house coords">{c.house ? (c.house.is_ruin ? `🏚 ruins @${Math.round(c.house.x)},${Math.round(c.house.y)}` : `🏠 @${Math.round(c.house.x)},${Math.round(c.house.y)}`) : 'homeless'}</span>
+                <span>·</span>
+                <span style={{ color: c.war_wins > 0 ? '#3fb950' : '#8b949e' }}>{c.war_wins}W</span>
+                <span style={{ color: c.war_losses > 0 ? '#f85149' : '#8b949e' }}>{c.war_losses}L</span>
+                {larderTotal > 0 && <><span>·</span><span>🏺 {larderTotal}</span></>}
+                {c.feast && <span>· 🍞 feast</span>}
+                {(c.shrine_level ?? 0) >= 1 && <><span>·</span><span style={{ color: '#bc8cff' }}>{(c.shrine_level ?? 0) >= 2 ? '⛪' : '🕯️'}</span></>}
+              </div>
+              {spec && totalSpec > 0 && (
+                <div className="micro-spec-bar" title={`⚔ warrior ${spec.warrior.toFixed(2)} · 🌾 farmer ${spec.farmer.toFixed(2)} · 🦴 scav ${spec.scavenger.toFixed(2)}`}>
+                  <div className="micro-spec-seg warrior" style={{ width: `${wPct}%` }} />
+                  <div className="micro-spec-seg farmer" style={{ width: `${fPct}%` }} />
+                  <div className="micro-spec-seg scavenger" style={{ width: `${sPct}%` }} />
+                </div>
+              )}
+              {c.culture && (
+                <div style={{ fontSize: 10, color: '#8b949e' }}>🎭 {c.culture}</div>
+              )}
             </div>
-            <div className="chip" style={{ marginTop: 4 }}>
-              #{c.id} · {t('clanPanel.pop')} <b>{c.population}</b> · {t('clanPanel.dead')} <b style={{ color: '#f85149' }}>{c.dead_count ?? 0}</b> · {c.house ? (c.house.is_ruin ? t('clanPanel.ruins') : t('clanPanel.house', { x: Math.round(c.house.x), y: Math.round(c.house.y) })) : t('clanPanel.homeless')} · {t('clanPanel.war')} {c.war_wins}W/{c.war_losses}L
-            </div>
-            <div className="chip">
-              {t('clanPanel.leader')}{' '}
-              <button className="chronicle-name" onClick={(e) => { e.stopPropagation(); c.leader_id != null && onSelectCreature?.(c.leader_id) }} title={t('clanPanel.showLeader')}>#{c.leader_id ?? '—'}</button>
-              {' · '}{t('clanPanel.founder')}{' '}
-              <button className="chronicle-name" onClick={(e) => { e.stopPropagation(); onSelectCreature?.(c.founder_id) }} title={t('clanPanel.showFounder')}>#{c.founder_id}</button>
-              {' · '}{t('clanPanel.day', { day: c.founded_day ?? Math.floor((c.born_tick ?? 0) / 1200) })}
-            </div>
-            {c.knowledge && (c.knowledge.enemy_clans?.length || c.knowledge.danger_zones?.length || c.knowledge.food_spots?.length) ? (
-              <div className="chip" title={t('clanPanel.culture')}>
-                🧠 {t('clanPanel.remembers')}:{' '}
-                {c.knowledge.enemy_clans?.length ? `${t('clanPanel.enemies', { list: c.knowledge.enemy_clans.map((id) => '#' + id).join(' ') })} · ` : ''}
-                {c.knowledge.danger_zones?.length ? `${t('clanPanel.danger', { count: c.knowledge.danger_zones.length })} · ` : ''}
-                {c.knowledge.food_spots?.length ? `${t('clanPanel.food', { count: c.knowledge.food_spots.length })}` : ''}
-              </div>
-            ) : null}
-            {c.specialization && (
-              <div className="chip">
-                <span style={{ color: '#f85149' }}>⚔ {t('inspector.combat')} {c.specialization.warrior.toFixed(2)}</span> · <span style={{ color: '#3fb950' }}>🌾 {t('inspector.farming')} {c.specialization.farmer.toFixed(2)}</span> · <span style={{ color: '#8b949e' }}>🦴 {t('inspector.foraging')} {c.specialization.scavenger.toFixed(2)}</span>
-              </div>
-            )}
-            {c.culture && (
-              <div className="chip" title={t('clanPanel.culture')}>
-                🎭 {c.culture}
-              </div>
-            )}
-            {(c.coalition_id != null || (c.tribute_to != null)) && (
-              <div className="chip">
-                {c.coalition_id != null && <span>🤝 #{c.coalition_id}{' · '}</span>}
-                {c.tribute_to != null && <span>🛡️ #{c.tribute_to}{' · '}</span>}
-              </div>
-            )}
-            {typeof c.larder === 'number' && c.larder > 0 && (
-              <div className="chip">
-                🏺 {t('clanPanel.larder', { count: Math.round(c.larder) })}
-              </div>
-            )}
-            {typeof c.granary === 'number' && (c.granary > 0 || c.feast) ? (
-              <div className="chip">
-                🌾 {t('clanPanel.granary', { count: Math.round(c.granary) })}{c.feast ? ` · 🍞 ${t('clanPanel.feasting')}` : ''}
-              </div>
-            ) : null}
-            {(typeof c.faith === 'number' && c.faith > 0) || (c.shrine_level ?? 0) >= 1 ? (
-              <div className="chip">
-                {(c.shrine_level ?? 0) >= 2 ? `⛪ ${t('clanPanel.temple')}` : `🕯️ ${t('clanPanel.shrine')}`}{typeof c.faith === 'number' ? ` · ⛲ ${t('clanPanel.faith', { count: Math.round(c.faith) })}` : ''}
-              </div>
-            ) : null}
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

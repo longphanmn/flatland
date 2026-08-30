@@ -145,6 +145,7 @@ function KinCardView({
 
 interface Props {
   id: number
+  state?: any
   onClose: () => void
   onNavigate: (id: number) => void
   onSelectClan?: (clanId: number) => void

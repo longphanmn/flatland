@@ -14,7 +14,7 @@ interface Plot {
   pop?: number
 }
 
-export default function PlotsPanel({ onSelectClan }: { onSelectClan?: (id: number) => void }) {
+export default function PlotsPanel({ onSelectClan, state: _state }: { onSelectClan?: (id: number) => void; state?: any }) {
   const { t } = useI18n()
   const [plots, setPlots] = useState<Plot[]>([])
   useEffect(() => {

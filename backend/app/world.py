@@ -157,7 +157,8 @@ class World:
         if is_wrap:
             cx_center = int(x // cs) % cols if cols else 0
             cy_center = int(y // cs) % rows if rows else 0
-            rx = int(radius / cs) + 1
+            # AZ fix: use ceil to ensure wrap neighbors are not missed (radius 15 / 16 → 1 → missed cell 5 at width 100)
+            rx = math.ceil(radius / cs) + 1 if cs else 1
             ry = rx
             need_seen = (rx * 2 + 1 >= cols) or (ry * 2 + 1 >= rows)
             if need_seen:
@@ -229,7 +230,7 @@ class World:
         if is_wrap:
             cx_center = int(x // cs) % cols if cols else 0
             cy_center = int(y // cs) % rows if rows else 0
-            rx = int(radius / cs) + 1
+            rx = math.ceil(radius / cs) + 1 if cs else 1
             ry = rx
             need_seen = (rx * 2 + 1 >= cols) or (ry * 2 + 1 >= rows)
 

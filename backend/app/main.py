@@ -32,6 +32,8 @@ _VERSION_CACHE: dict | None = None
 _GUIDE_CACHE: str | None = None
 _WIKI_CACHE: str | None = None
 _PROCSTAT_CACHE: tuple[float, list[dict]] | None = None  # (timestamp, cores)
+# BD.1.3 analytics cache (1s memoization)
+_ANALYTICS_CACHE: dict[str, tuple[float, dict]] = {}
 
 # AA: C-extension JSON for the ~30 Hz broadcast (GIL-releasing encode);
 # falls back to stdlib when orjson is not installed.
@@ -341,6 +343,13 @@ class SimEngine:
             with self.rt.lock:
                 if not self.rt.paused:
                     payload = advance_world(self.rt, self.hub)
+                    # BD.1.4 WebSocket Analytics Stream Coalescing — 1 Hz analytics frame piggybacks
+                    if payload is not None and isinstance(payload, dict) and payload.get("type") in ("state", "delta_state"):
+                        if getattr(self.rt.sim, "tick", 0) % max(1, int(round(self.rt.speed / 10)) or 10) == 0:
+                            try:
+                                payload["analytics"] = _analytics_payload(self.rt.sim)
+                            except Exception:
+                                pass
             if payload is not None:
                 try:
                     text = _dumps(payload)
@@ -2842,6 +2851,112 @@ async def get_plots() -> dict:
         except Exception:
             RT._cached_plots_payload = None  # type: ignore
             raise
+
+
+# BD.1.3 High-Performance Analytics REST API — 1s memoization, rate-limited
+def _analytics_payload(sim) -> dict:
+    try:
+        from .analytics import get_engine  # type: ignore
+
+        eng = get_engine()
+        if not eng.ring.ticks or eng.ring.ticks[-1] != sim.tick:
+            try:
+                eng.on_tick(sim)
+            except Exception:
+                pass
+        return eng.summary(sim)
+    except Exception as e:
+        return {"error": str(e), "tick": getattr(sim, "tick", 0)}
+
+
+@app.get("/api/analytics/summary")
+async def get_analytics_summary() -> dict:
+    now = time.monotonic()
+    cached = _ANALYTICS_CACHE.get("summary")
+    if cached and now - cached[0] < 1.0:
+        return cached[1]
+    with RT.lock:
+        payload = _analytics_payload(RT.sim)
+    _ANALYTICS_CACHE["summary"] = (now, payload)
+    return payload
+
+
+@app.get("/api/analytics/timeseries")
+async def get_analytics_timeseries() -> dict:
+    now = time.monotonic()
+    cached = _ANALYTICS_CACHE.get("timeseries")
+    if cached and now - cached[0] < 1.0:
+        return cached[1]
+    with RT.lock:
+        try:
+            from .analytics import get_engine  # type: ignore
+
+            eng = get_engine()
+            payload = {"tick": RT.sim.tick, "ring": eng.ring.snapshot(), "mortality": eng.mortality.stacked()}
+        except Exception as e:
+            payload = {"error": str(e)}
+    _ANALYTICS_CACHE["timeseries"] = (now, payload)
+    return payload
+
+
+@app.get("/api/analytics/trophic")
+async def get_analytics_trophic() -> dict:
+    now = time.monotonic()
+    cached = _ANALYTICS_CACHE.get("trophic")
+    if cached and now - cached[0] < 1.0:
+        return cached[1]
+    with RT.lock:
+        try:
+            from .analytics import get_engine  # type: ignore
+
+            eng = get_engine()
+            payload = {"tick": RT.sim.tick, **eng.lotka_volterra(RT.sim), "biodiversity": eng.biodiversity(RT.sim)}
+        except Exception as e:
+            payload = {"error": str(e)}
+    _ANALYTICS_CACHE["trophic"] = (now, payload)
+    return payload
+
+
+@app.get("/api/analytics/hegemony")
+async def get_analytics_hegemony() -> dict:
+    now = time.monotonic()
+    cached = _ANALYTICS_CACHE.get("hegemony")
+    if cached and now - cached[0] < 1.0:
+        return cached[1]
+    with RT.lock:
+        try:
+            from .analytics import get_engine  # type: ignore
+
+            eng = get_engine()
+            payload = {"tick": RT.sim.tick, **eng.hegemony(RT.sim), "gini": eng.gini(RT.sim)}
+        except Exception as e:
+            payload = {"error": str(e)}
+    _ANALYTICS_CACHE["hegemony"] = (now, payload)
+    return payload
+
+
+@app.get("/api/analytics/warnings")
+async def get_analytics_warnings() -> dict:
+    now = time.monotonic()
+    cached = _ANALYTICS_CACHE.get("warnings")
+    if cached and now - cached[0] < 1.0:
+        return cached[1]
+    with RT.lock:
+        try:
+            from .analytics import get_engine  # type: ignore
+
+            eng = get_engine()
+            payload = {
+                "tick": RT.sim.tick,
+                "famine": eng.famine_horizon(RT.sim),
+                "extinction": eng.extinction_cliff(RT.sim),
+                "unrest": eng.unrest(RT.sim),
+                "casus": eng.casus_belli(RT.sim),
+            }
+        except Exception as e:
+            payload = {"error": str(e)}
+    _ANALYTICS_CACHE["warnings"] = (now, payload)
+    return payload
 
 
 def _kin_card(entity_id: int) -> dict:

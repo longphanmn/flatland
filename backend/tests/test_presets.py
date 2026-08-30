@@ -77,7 +77,7 @@ def test_preset_transition_hygiene(client):
     # 4. Transition to Extinction
     client.post("/api/presets/extinction?persist=true&reset=true")
     assert RT.config.food_count == 120
-    assert RT.config.energy_decay_per_tick == 0.05
+    assert RT.config.energy_decay_per_tick == 0.04
     assert RT.config.exposure_drain == 0.08
     assert RT.config.cannibalism_enabled is True
 

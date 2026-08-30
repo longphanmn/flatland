@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { godFetch } from './auth'
 import { useI18n } from '../i18n'
 import type { GodLaws } from '../types'
@@ -15,24 +15,20 @@ interface LawSpec {
   max: number
   step: number
   group: string
-  /** master law(s) that must be enabled for this row to show */
   gate?: BoolLawKey | BoolLawKey[]
 }
 
 const NUMBER_LAWS: LawSpec[] = [
-  // Food & Energy — the economy of survival
   { key: 'food_count', label: 'Food abundance', min: 0, max: 1000, step: 5, group: 'Food & Energy' },
   { key: 'energy_max', label: 'Max energy', min: 10, max: 500, step: 5, group: 'Food & Energy' },
   { key: 'energy_decay_per_tick', label: 'Energy decay / tick', min: 0, max: 2, step: 0.01, group: 'Food & Energy' },
   { key: 'energy_from_food', label: 'Energy from food', min: 0, max: 100, step: 1, group: 'Food & Energy' },
-  // Ecosystem — biodiversity of the meadow
   { key: 'plant_growth_rate', label: 'Plant growth / tick', min: 0, max: 1, step: 0.01, group: 'Ecosystem' },
   { key: 'plant_spread_rate', label: 'Plant spread chance', min: 0, max: 1, step: 0.005, group: 'Ecosystem' },
   { key: 'nutrient_cycle_rate', label: 'Nutrient cycle ×', min: 0, max: 10, step: 0.1, group: 'Ecosystem' },
   { key: 'poison_rate', label: 'Poison sprout chance', min: 0, max: 1, step: 0.01, group: 'Ecosystem', gate: 'plant_variants_enabled' },
   { key: 'beast_ratio', label: 'Herbivore ratio', min: 0, max: 1, step: 0.01, group: 'Ecosystem' },
   { key: 'diet_strictness', label: 'Diet strictness', min: 0, max: 1, step: 0.05, group: 'Ecosystem' },
-  // Hunger & Sight — perception of the world
   { key: 'hungry_ratio', label: 'Hungry threshold', min: 0.05, max: 1, step: 0.05, group: 'Hunger & Sight' },
   { key: 'starving_ratio', label: 'Starving threshold', min: 0.01, max: 1, step: 0.01, group: 'Hunger & Sight' },
   { key: 'perceive_radius', label: 'Base sight radius', min: 1, max: 40, step: 0.5, group: 'Hunger & Sight' },
@@ -41,12 +37,9 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'desperate_perceive_mult', label: 'Starving sight ×', min: 1, max: 3, step: 0.1, group: 'Hunger & Sight' },
   { key: 'desperate_speed_mult', label: 'Starving speed ×', min: 1, max: 3, step: 0.05, group: 'Hunger & Sight' },
   { key: 'food_giveup_ticks', label: 'Give-up ticks', min: 0, max: 2000, step: 10, group: 'Hunger & Sight' },
-  // Movement — how bodies turn through the plane
   { key: 'wander_turn', label: 'Wander turn', min: 0, max: 2, step: 0.05, group: 'Movement' },
   { key: 'steer_turn', label: 'Steer turn', min: 0, max: 2, step: 0.05, group: 'Movement' },
-  // Life & Death — the span of beings
   { key: 'lifespan_mult', label: 'Lifespan ×', min: 0.05, max: 5, step: 0.05, group: 'Life & Death' },
-  // Reproduction — Nature's Law of lineage
   { key: 'adult_age', label: 'Adult age', min: 0, max: 5000, step: 50, group: 'Reproduction', gate: 'birth_enabled' },
   { key: 'mate_radius', label: 'Mate radius', min: 0.5, max: 30, step: 0.5, group: 'Reproduction', gate: 'birth_enabled' },
   { key: 'mate_energy_min', label: 'Mate energy ≥', min: 0, max: 200, step: 5, group: 'Reproduction', gate: 'birth_enabled' },
@@ -54,14 +47,12 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'sex_ratio', label: 'Son probability', min: 0, max: 1, step: 0.05, group: 'Reproduction', gate: 'birth_enabled' },
   { key: 'mutation_rate', label: 'Mutation rate', min: 0, max: 1, step: 0.01, group: 'Reproduction', gate: 'birth_enabled' },
   { key: 'euthanasia_threshold', label: 'Euthanasia ≥', min: 0.3, max: 1, step: 0.05, group: 'Reproduction', gate: 'birth_enabled' },
-  // Disease — plague and mercy
   { key: 'disease_outbreak_rate', label: 'Outbreak rate / tick', min: 0, max: 0.05, step: 0.0005, group: 'Disease', gate: 'disease_enabled' },
   { key: 'disease_rate', label: 'Contagion chance', min: 0, max: 1, step: 0.01, group: 'Disease', gate: 'disease_enabled' },
   { key: 'disease_radius', label: 'Contagion radius', min: 0.5, max: 20, step: 0.5, group: 'Disease', gate: 'disease_enabled' },
   { key: 'disease_energy_drain', label: 'Energy drain / tick', min: 0, max: 2, step: 0.05, group: 'Disease', gate: 'disease_enabled' },
   { key: 'recovery_rate', label: 'Recovery chance / tick', min: 0, max: 1, step: 0.005, group: 'Disease', gate: 'disease_enabled' },
   { key: 'disease_lethality', label: 'Lethality', min: 0, max: 1, step: 0.05, group: 'Disease', gate: 'disease_enabled' },
-  // Sky & Seasons — the turning of the world
   { key: 'day_length', label: 'Day length (ticks)', min: 4, max: 20000, step: 4, group: 'Sky & Seasons' },
   { key: 'season_length', label: 'Season length (ticks)', min: 4, max: 100000, step: 10, group: 'Sky & Seasons' },
   { key: 'winter_food_mult', label: 'Winter food ×', min: 0.1, max: 1.5, step: 0.05, group: 'Sky & Seasons' },
@@ -70,31 +61,25 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'fog_sight_mult', label: 'Fog sight ×', min: 0.05, max: 2, step: 0.05, group: 'Sky & Seasons', gate: 'weather_enabled' },
   { key: 'rain_speed_mult', label: 'Rain speed ×', min: 0.1, max: 2, step: 0.05, group: 'Sky & Seasons', gate: 'weather_enabled' },
   { key: 'storm_wander_bonus', label: 'Storm wander +', min: 0, max: 3.2, step: 0.05, group: 'Sky & Seasons', gate: 'weather_enabled' },
-  // Weather & Crops — rain waters, fog favours mushrooms, storms damage (§R)
   { key: 'rain_growth_mult', label: 'Rain growth ×', min: 0.5, max: 3, step: 0.05, group: 'Weather & Crops', gate: 'weather_enabled' },
   { key: 'fog_mushroom_mult', label: 'Fog mushroom ×', min: 0.5, max: 3, step: 0.05, group: 'Weather & Crops', gate: 'weather_enabled' },
   { key: 'storm_plant_damage', label: 'Storm plant damage', min: 0, max: 1, step: 0.005, group: 'Weather & Crops', gate: 'weather_enabled' },
-  // Weather Sickness — chill and wet contagion (§R)
   { key: 'chill_rate', label: 'Chill rate / tick', min: 0, max: 1, step: 0.005, group: 'Weather Sickness', gate: 'weather_sickness_enabled' },
   { key: 'chill_threshold', label: 'Chill threshold', min: 1, max: 100, step: 1, group: 'Weather Sickness', gate: 'weather_sickness_enabled' },
   { key: 'chill_drain', label: 'Chill drain / tick', min: 0, max: 5, step: 0.05, group: 'Weather Sickness', gate: 'weather_sickness_enabled' },
   { key: 'wet_disease_mult', label: 'Wet disease ×', min: 1, max: 5, step: 0.1, group: 'Weather Sickness', gate: 'weather_sickness_enabled' },
-  // Shelter — roofs against the sky
   { key: 'exposure_drain', label: 'Exposure drain / tick', min: 0, max: 2, step: 0.05, group: 'Shelter', gate: 'shelter_enabled' },
   { key: 'house_capacity', label: 'House capacity', min: 1, max: 20, step: 1, group: 'Shelter', gate: 'shelter_enabled' },
   { key: 'rest_recovery_mult', label: 'Rest healing ×', min: 0.5, max: 5, step: 0.25, group: 'Shelter', gate: 'shelter_enabled' },
   { key: 'house_decay_ticks', label: 'House decay ticks', min: 100, max: 100000, step: 100, group: 'Shelter', gate: 'shelter_enabled' },
-  // Territory — clan land and trespass
   { key: 'territory_radius', label: 'Territory radius', min: 1, max: 50, step: 1, group: 'Territory', gate: 'territory_enabled' },
   { key: 'trespass_decay', label: 'Trespass decay / tick', min: 0, max: 5, step: 0.05, group: 'Territory', gate: 'territory_enabled' },
-  // Clan founding (§V) — settlements define clans
   { key: 'max_clans', label: 'Max clans', min: -1, max: 24, step: 1, group: 'Clan' },
   { key: 'max_sides', label: 'Max sides', min: 3, max: 64, step: 1, group: 'Reproduction', gate: 'birth_enabled' },
   { key: 'birth_energy_cost', label: 'Birth energy cost', min: 0, max: 100, step: 1, group: 'Reproduction', gate: 'birth_enabled' },
   { key: 'reproduction_cooldown', label: 'Cooldown ticks', min: 0, max: 3000, step: 10, group: 'Reproduction', gate: 'birth_enabled' },
   { key: 'carrying_capacity', label: 'Carrying capacity', min: -1, max: 5000, step: 25, group: 'Reproduction', gate: 'birth_enabled' },
   { key: 'max_population', label: 'Hard pop cap', min: -1, max: 8000, step: 25, group: 'Reproduction', gate: 'birth_enabled' },
-  // Society — interaction & clan relations
   { key: 'cohesion_weight', label: 'Cohesion weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
   { key: 'alignment_weight', label: 'Alignment weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
   { key: 'separation_weight', label: 'Separation weight', min: 0, max: 3, step: 0.1, group: 'Interaction' },
@@ -102,72 +87,51 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'relation_drift_rate', label: 'Relation drift / tick', min: 0, max: 10, step: 0.5, group: 'Interaction' },
   { key: 'alliance_threshold', label: 'Alliance threshold', min: -100, max: 100, step: 5, group: 'Interaction' },
   { key: 'rivalry_threshold', label: 'Rivalry threshold', min: -100, max: 100, step: 5, group: 'Interaction' },
-  // Predation — hunters and prey
   { key: 'predator_ratio', label: 'Predator ratio', min: 0, max: 1, step: 0.01, group: 'Predation', gate: 'predation_enabled' },
   { key: 'hunt_radius', label: 'Hunt radius', min: 1, max: 40, step: 1, group: 'Predation', gate: 'predation_enabled' },
   { key: 'bite_damage', label: 'Bite damage', min: 0, max: 200, step: 10, group: 'Predation', gate: 'predation_enabled' },
   { key: 'bite_cooldown', label: 'Bite cooldown', min: 0, max: 100, step: 1, group: 'Predation', gate: 'predation_enabled' },
   { key: 'energy_from_prey', label: 'Energy from prey', min: 0, max: 200, step: 5, group: 'Predation', gate: 'predation_enabled' },
   { key: 'fear_radius', label: 'Fear radius', min: 1, max: 40, step: 1, group: 'Predation', gate: 'predation_enabled' },
-  // Communication — clan calls (§Q)
   { key: 'signal_radius', label: 'Signal radius', min: 3, max: 40, step: 1, group: 'Communication', gate: 'communication_enabled' },
   { key: 'food_call_rate', label: 'Food call rate', min: 0, max: 1, step: 0.01, group: 'Communication', gate: 'communication_enabled' },
   { key: 'alarm_call_rate', label: 'Alarm call rate', min: 0, max: 1, step: 0.01, group: 'Communication', gate: 'communication_enabled' },
-  // Communication II — knowledge, teaching & mobbing (§X)
   { key: 'knowledge_ttl', label: 'Knowledge TTL', min: 20, max: 100000, step: 10, group: 'Communication II', gate: 'knowledge_enabled' },
   { key: 'knowledge_share_rate', label: 'Share rate / tick', min: 0, max: 1, step: 0.01, group: 'Communication II', gate: 'knowledge_enabled' },
   { key: 'help_radius', label: 'Help radius', min: 2, max: 60, step: 1, group: 'Communication II', gate: ['knowledge_enabled', 'help_call_enabled'] },
   { key: 'defense_weight', label: 'Defense weight', min: 0, max: 5, step: 0.05, group: 'Communication II', gate: ['knowledge_enabled', 'help_call_enabled'] },
-  // Rebellion — clan schism (§S)
   { key: 'schism_threshold', label: 'Schism threshold', min: 0, max: 1, step: 0.05, group: 'Rebellion', gate: 'schism_enabled' },
   { key: 'schism_min_pop', label: 'Schism min pop', min: 2, max: 100, step: 1, group: 'Rebellion', gate: 'schism_enabled' },
-  // Ages — super-seasons (§S)
   { key: 'age_length', label: 'Age length (ticks)', min: 100, max: 1000000, step: 100, group: 'Ages', gate: 'age_enabled' },
-  // Culture (§S)
   { key: 'culture_spread_rate', label: 'Culture spread / tick', min: 0, max: 1, step: 0.0005, group: 'Culture', gate: 'culture_enabled' },
-  // Genetics — heritable traits (§S)
   { key: 'trait_mutation_rate', label: 'Trait mutation rate', min: 0, max: 1, step: 0.005, group: 'Genetics' },
-  // Wildfire & Disasters (§S)
   { key: 'fire_rate', label: 'Fire ignite / tick', min: 0, max: 0.05, step: 0.0001, group: 'Wildfire & Disasters', gate: 'wildfire_enabled' },
   { key: 'fire_spread_rate', label: 'Fire spread / tick', min: 0, max: 1, step: 0.01, group: 'Wildfire & Disasters', gate: 'wildfire_enabled' },
   { key: 'disaster_rate', label: 'Disaster / tick', min: 0, max: 0.05, step: 0.0001, group: 'Wildfire & Disasters', gate: 'disaster_enabled' },
-  // Clan war — rival blood
   { key: 'attack_radius', label: 'Attack radius', min: 0.5, max: 10, step: 0.1, group: 'Clan War', gate: 'war_enabled' },
   { key: 'attack_damage', label: 'Attack damage', min: 0, max: 200, step: 10, group: 'Clan War', gate: 'war_enabled' },
-  // Politics — coalitions, leaders, resources, betrayal (§AB)
   { key: 'coalition_threshold', label: 'Coalition threshold', min: -100, max: 100, step: 5, group: 'Politics', gate: 'coalitions_enabled' },
   { key: 'coalition_min_size', label: 'Coalition min size', min: 2, max: 16, step: 1, group: 'Politics', gate: 'coalitions_enabled' },
   { key: 'larder_capacity', label: 'Larder capacity', min: 0, max: 2000, step: 25, group: 'Politics', gate: ['resource_sharing_enabled', 'tribute_enabled', 'aid_rate' as unknown as BoolLawKey] },
   { key: 'aid_rate', label: 'Allied aid chance', min: 0, max: 1, step: 0.01, group: 'Politics', gate: 'resource_sharing_enabled' },
-  // Desperation — cannibalism (§AC)
   { key: 'cannibalism_hunger_ratio', label: 'Hunger threshold', min: 0.01, max: 0.6, step: 0.01, group: 'Desperation', gate: 'cannibalism_enabled' },
   { key: 'cannibalism_energy', label: 'Energy per kill', min: 0, max: 200, step: 5, group: 'Desperation', gate: 'cannibalism_enabled' },
   { key: 'kin_stigma', label: 'Kin stigma', min: 0, max: 100, step: 5, group: 'Desperation', gate: ['cannibalism_enabled', 'exile_on_kin_eat'] },
-  // Food decay — nothing lasts forever (§AE)
   { key: 'food_lifespan_ticks', label: 'Food lifespan (ticks)', min: 100, max: 100000, step: 100, group: 'Food Decay', gate: 'food_decay_enabled' },
-  // Unified Theology — shrines, tithes & faith (§AP)
   { key: 'tithe_rate', label: 'Tithe rate', min: 0, max: 0.5, step: 0.01, group: 'Theology', gate: 'theology_enabled' },
   { key: 'temple_faith_cost', label: 'Temple faith cost', min: 50, max: 5000, step: 50, group: 'Theology', gate: 'theology_enabled' },
-  // Agriculture — sowing, granaries & the living soil (§AM)
   { key: 'granary_capacity', label: 'Granary capacity', min: 0, max: 2000, step: 25, group: 'Agriculture', gate: 'granaries_enabled' },
-  // Bodies & Houses — geometry of the flat world
   { key: 'door_clearance', label: 'Door clearance ×', min: 1, max: 4, step: 0.1, group: 'Bodies & Houses' },
   { key: 'house_min_size', label: 'House min size', min: 4, max: 30, step: 1, group: 'Bodies & Houses' },
   { key: 'house_max_size', label: 'House max size', min: 6, max: 60, step: 1, group: 'Bodies & Houses' },
-  // Rivers — channels, floods & crossings (§AQ PH-3)
   { key: 'river_count', label: 'River count', min: 0, max: 8, step: 1, group: 'Rivers', gate: 'rivers_enabled' },
-  // Seismic & waves (§AQ PH-8)
   { key: 'earthquake_rate', label: 'Quake rate / tick', min: 0, max: 0.001, step: 0.00001, group: 'Seismic & Waves', gate: 'earthquake_enabled' },
   { key: 'signal_speed', label: 'News speed', min: 0, max: 40, step: 1, group: 'Seismic & Waves' },
-  // Electrostatics (§AQ PH-9)
   { key: 'lightning_strike_rate', label: 'Bolt rate / storm tick', min: 0, max: 0.02, step: 0.0005, group: 'Electrostatics', gate: 'lightning_enabled' },
-  // Cosmology (§AQ PH-10)
   { key: 'anomaly_count', label: 'Anomaly zones', min: 0, max: 8, step: 1, group: 'Cosmology' },
-  // Neuroevolution — micro-RNN & evolution (BA) — always on
   { key: 'nn_inference_hz', label: 'NN inference Hz', min: 1, max: 60, step: 1, group: 'Neuroevolution' },
   { key: 'mutation_sigma', label: 'Mutation σ', min: 0, max: 0.5, step: 0.01, group: 'Neuroevolution' },
   { key: 'crossover_rate', label: 'Crossover rate', min: 0, max: 1, step: 0.05, group: 'Neuroevolution' },
-  // Morphology — geometric physics & annealing (BC)
   { key: 'annealing_start_generation', label: 'Annealing start gen', min: 0, max: 1000, step: 10, group: 'Morphology', gate: 'morphology_annealing_enabled' },
   { key: 'annealing_decay_generations', label: 'Annealing decay gens', min: 1, max: 5000, step: 10, group: 'Morphology', gate: 'morphology_annealing_enabled' },
   { key: 'morph_lambda_override', label: 'λ override (0..1)', min: 0, max: 1, step: 0.05, group: 'Morphology', gate: 'morphology_annealing_enabled' },
@@ -176,45 +140,15 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'topological_mutation_rate', label: 'Topo mutation rate', min: 0, max: 0.2, step: 0.005, group: 'Morphology', gate: 'morphology_annealing_enabled' },
 ]
 
-const GROUP_ORDER = [
-  'Food & Energy',
-  'Ecosystem',
-  'Hunger & Sight',
-  'Movement',
-  'Life & Death',
-  'Reproduction',
-  'Disease',
-  'Sky & Seasons',
-  'Ages',
-  'Culture',
-  'Genetics',
-  'Wildfire & Disasters',
-  'Weather & Crops',
-  'Weather Sickness',
-  'Shelter',
-  'Territory',
-  'Clan',
-  'Communication',
-  'Communication II',
-  'Language & Diplomacy',
-  'Rebellion',
-  'Interaction',
-  'Predation',
-  'Clan War',
-  'Politics',
-  'Desperation',
-  'Food Decay',
-  'Agriculture',
-  'Theology',
-  'Bodies & Houses',
-  'Rivers',
-  'Terrain',
-  'Materials',
-  'Seismic & Waves',
-  'Electrostatics',
-  'Cosmology',
-  'Neuroevolution',
-  'Morphology',
+/* 6 Macro Domains — BD.8.1 */
+interface DomainSpec { id: string; icon: string; label: string; groups: string[] }
+const DOMAINS: DomainSpec[] = [
+  { id: 'ecology', icon: '🌿', label: 'Ecology & Survival', groups: ['Food & Energy', 'Ecosystem', 'Hunger & Sight', 'Food Decay', 'Agriculture'] },
+  { id: 'biology', icon: '🧬', label: 'Biology & Evolution', groups: ['Movement', 'Life & Death', 'Reproduction', 'Disease', 'Genetics', 'Neuroevolution', 'Morphology', 'Predation'] },
+  { id: 'climate', icon: '☀️', label: 'Climate & Sky', groups: ['Sky & Seasons', 'Weather & Crops', 'Weather Sickness', 'Shelter'] },
+  { id: 'society', icon: '🏰', label: 'Society, Warfare & Trade', groups: ['Territory', 'Clan', 'Communication', 'Communication II', 'Language & Diplomacy', 'Rebellion', 'Interaction', 'Clan War', 'Politics', 'Desperation'] },
+  { id: 'theology', icon: '🔮', label: 'Theology & Sacred Avatars', groups: ['Theology', 'Culture', 'Ages'] },
+  { id: 'physics', icon: '⚙️', label: 'World Physics & Disasters', groups: ['Bodies & Houses', 'Rivers', 'Terrain', 'Materials', 'Seismic & Waves', 'Electrostatics', 'Cosmology', 'Wildfire & Disasters'] },
 ]
 
 const GROUP_KEY: Record<string, string> = {
@@ -258,7 +192,6 @@ const GROUP_KEY: Record<string, string> = {
   'Morphology': 'morphology',
 }
 
-// Backend Config defaults — switches render these until laws load.
 const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
   birth_enabled: true,
   disease_enabled: false,
@@ -407,15 +340,7 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   dialect_drift_enabled: 'isolated clans drift apart in speech — strangers understand each other less the further their dialects split; allies converge on a shared tongue',
 }
 
-function Switch({
-  checked,
-  onChange,
-  title,
-}: {
-  checked: boolean
-  onChange: (v: boolean) => void
-  title?: string
-}) {
+function Switch({ checked, onChange, title }: { checked: boolean; onChange: (v: boolean) => void; title?: string }) {
   return (
     <button
       type="button"
@@ -458,10 +383,7 @@ function Switch({
   )
 }
 
-interface Props {
-  open: boolean
-  onClose: () => void
-}
+interface Props { open: boolean; onClose: () => void }
 
 const PRESET_META: Record<string, { color: string; border: string; bg: string; badge?: string }> = {
   balance: { color: '#e3b341', border: '#d29922', bg: 'rgba(227, 179, 65, 0.15)', badge: 'DEFAULT' },
@@ -473,11 +395,29 @@ const PRESET_META: Record<string, { color: string; border: string; bg: string; b
   boom: { color: '#79c0ff', border: '#388bfd', bg: 'rgba(121, 192, 255, 0.15)' },
 }
 
+const PRESET_BADGES: Record<string, string[]> = {
+  balance: ['Food: 240', 'Winter: 0.72×', 'Cap: 350'],
+  sustainable: ['Food: 360 (Abundant)', 'Winter: 0.78×', 'Cap: 450'],
+  theocracy: ['Food: 320 (Faith)', 'Winter: 0.75×', 'Temple: 180'],
+  warlords: ['Food: 290 (War)', 'Winter: 0.65×', 'Damage: 50'],
+  chaos: ['Food: 280 (Scarce)', 'Winter: 0.50× (Harsh)', 'Disease: 1.8×'],
+  extinction: ['Food: 120 (Harsh)', 'Winter: 0.30× (Cold)', 'Pop: 180'],
+  boom: ['Food: 500 (Boom)', 'Winter: 0.85×', 'Cap: 800'],
+}
+
+const PRESET_IMPACT: Record<string, string> = {
+  balance: '⚖ Stable equilibrium — all 15+ mechanics harmonized',
+  sustainable: '🌿 Flourishing growth — rich fields, full granaries, calm winters',
+  theocracy: '🔮 Divine devotion — miracles, temples & sacred resonance',
+  warlords: '⚔️ Martial age — conquests, alliances & plundered larders',
+  chaos: '🔥 Turmoil — predators, plague, fire & quakes test survival',
+  extinction: '💀 Collapse — famine, chill & cannibalism cull the weak',
+  boom: '🚀 Metropolis — rapid births, bumper harvests & grand settlements',
+}
+
 function detectPreset(laws: GodLaws): string | null {
   if (laws.food_count === 240 && laws.carrying_capacity === 350) return 'balance'
-  if (laws.food_count === 220 && laws.carrying_capacity === 600) return 'balance'
   if (laws.food_count === 360 && laws.carrying_capacity === 450) return 'sustainable'
-  if (laws.food_count === 450 && laws.carrying_capacity === 2200) return 'sustainable'
   if (laws.food_count === 320 && laws.carrying_capacity === 400) return 'theocracy'
   if (laws.food_count === 290 && laws.carrying_capacity === 380) return 'warlords'
   if (laws.food_count === 280 && laws.carrying_capacity === 350) return 'chaos'
@@ -489,9 +429,20 @@ function detectPreset(laws: GodLaws): string | null {
   return null
 }
 
+function getZone(value: number, baseline: number | undefined, min: number, max: number): 'safe' | 'strained' | 'extreme' {
+  if (baseline === undefined || baseline === null) return 'safe'
+  const range = max - min
+  if (range === 0) return 'safe'
+  const dist = Math.abs(value - baseline) / range
+  if (dist < 0.15) return 'safe'
+  if (dist < 0.32) return 'strained'
+  return 'extreme'
+}
+
 export default function GodPanel({ open, onClose }: Props) {
   const { t } = useI18n()
   const [laws, setLaws] = useState<GodLaws>({})
+  const [baselineLaws, setBaselineLaws] = useState<GodLaws>({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -499,6 +450,16 @@ export default function GodPanel({ open, onClose }: Props) {
   const [currentPreset, setCurrentPreset] = useState<string | null>('balance')
   const [expandedPreset, setExpandedPreset] = useState<string | null>('balance')
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showModifiedOnly, setShowModifiedOnly] = useState(false)
+  const [openHint, setOpenHint] = useState<string | null>(null)
+  const [activeDomain, setActiveDomain] = useState<string>(() => {
+    try { return sessionStorage.getItem('god-domain') || 'ecology' } catch { return 'ecology' }
+  })
+
+  useEffect(() => {
+    try { sessionStorage.setItem('god-domain', activeDomain) } catch { /* ignore */ }
+  }, [activeDomain])
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= 768)
@@ -516,6 +477,7 @@ export default function GodPanel({ open, onClose }: Props) {
     ])
       .then(([lawsData, presetsData]) => {
         setLaws(lawsData)
+        setBaselineLaws(lawsData)
         const detected = presetsData?.current || detectPreset(lawsData) || 'balance'
         setCurrentPreset(detected)
         setExpandedPreset(detected)
@@ -523,8 +485,6 @@ export default function GodPanel({ open, onClose }: Props) {
       .catch(() => setError('failed to load laws'))
       .finally(() => setLoading(false))
   }, [open])
-
-  const [openHint, setOpenHint] = useState<string | null>(null)
 
   if (!open) return null
 
@@ -535,6 +495,12 @@ export default function GodPanel({ open, onClose }: Props) {
       setCurrentPreset(detectPreset(updated))
       return updated
     })
+  }
+
+  const revertOne = (key: NumberLawKey) => {
+    const base = (baselineLaws as any)[key]
+    if (base === undefined) return
+    setLaws((l) => ({ ...l, [key]: base }))
   }
 
   const stepVal = (key: NumberLawKey, min: number, max: number, step: number, dir: 1 | -1) => {
@@ -554,14 +520,67 @@ export default function GodPanel({ open, onClose }: Props) {
   const gateOpen = (gate?: BoolLawKey | BoolLawKey[]) =>
     !gate || (Array.isArray(gate) ? gate : [gate]).every((g) => boolVal(g))
 
+  const modifiedKeys = useMemo(() => {
+    const set = new Set<string>()
+    for (const spec of NUMBER_LAWS) {
+      const cur = (laws as any)[spec.key]
+      const base = (baselineLaws as any)[spec.key]
+      if (cur !== undefined && base !== undefined && cur !== base) set.add(spec.key)
+      else if ((cur === undefined) !== (base === undefined) && cur !== base) set.add(spec.key)
+    }
+    // also boolean toggles count as modified for N badge
+    for (const k of Object.keys(BOOL_DEFAULTS) as BoolLawKey[]) {
+      if ((laws as any)[k] !== undefined && (laws as any)[k] !== (baselineLaws as any)[k]) set.add(k)
+    }
+    return set
+  }, [laws, baselineLaws])
+
+  const q = searchQuery.trim().toLowerCase()
+  const matchesSearch = (spec: LawSpec): boolean => {
+    if (!q) return true
+    const hint = (LAW_HINTS[spec.key] || '').toLowerCase()
+    const label = spec.label.toLowerCase()
+    const group = spec.group.toLowerCase()
+    const key = spec.key.toLowerCase()
+    return label.includes(q) || hint.includes(q) || group.includes(q) || key.includes(q)
+  }
+
+  const filteredSpecs = (specs: LawSpec[]) => {
+    let out = specs.filter((s) => gateOpen(s.gate))
+    out = out.filter(matchesSearch)
+    if (showModifiedOnly) out = out.filter((s) => modifiedKeys.has(s.key))
+    return out
+  }
+
   const ToggleRow = ({ k, label, title, hideIfOff }: { k: BoolLawKey; label: string; title?: string; hideIfOff?: BoolLawKey | BoolLawKey[] }) => {
     if (hideIfOff && !gateOpen(hideIfOff)) return null
+    // Apply modified filter: hide if modifiedOnly and not modified
+    if (showModifiedOnly && !modifiedKeys.has(k)) {
+      // also check search query for toggles
+      if (q) {
+        const trLabel2 = (t(`godToggles.${k}`) !== `godToggles.${k}` ? t(`godToggles.${k}`) : label).toLowerCase()
+        const trTitle2 = (t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint` ? t(`godToggles.${k}Hint`) : (title || '')).toLowerCase()
+        if (!trLabel2.includes(q) && !trTitle2.includes(q) && !k.includes(q)) return null
+      } else return null
+    }
+    if (q) {
+      const trLabel2 = (t(`godToggles.${k}`) !== `godToggles.${k}` ? t(`godToggles.${k}`) : label).toLowerCase()
+      const trTitle2 = (t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint` ? t(`godToggles.${k}Hint`) : (title || '')).toLowerCase()
+      if (!trLabel2.includes(q) && !trTitle2.includes(q) && !k.includes(q)) return null
+    }
     const trLabel = t(`godToggles.${k}`) !== `godToggles.${k}` ? t(`godToggles.${k}`) : label
     const trTitle = t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint` ? t(`godToggles.${k}Hint`) : title
+    const isMod = modifiedKeys.has(k)
     return (
-      <div className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, borderBottom: '1px solid #21262d', padding: '8px 10px' }}>
-        <span title={trTitle} style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500 }}>{trLabel}</span>
-        <Switch checked={boolVal(k)} onChange={(v) => setBool(k, v)} title={trTitle ?? trLabel} />
+      <div className="god-row god-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, borderBottom: '1px solid #21262d', padding: '8px 10px', background: isMod ? 'rgba(227,179,65,0.06)' : undefined, borderLeft: isMod ? '2px solid #d29922' : '2px solid transparent' }}>
+        <span title={trTitle} style={{ color: isMod ? '#e3b341' : '#e6edf3', fontSize: 13, fontWeight: isMod ? 600 : 500, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          {trLabel}
+          {isMod && <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 4, background: '#d29922', color: '#0d1117', fontWeight: 800 }}>MOD</span>}
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          {isMod && <button onClick={() => setBool(k, (baselineLaws as any)[k] ?? BOOL_DEFAULTS[k] ?? false)} title="Revert to preset" style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#21262d', border: '1px solid #484f58', color: '#c9d1d9', cursor: 'pointer' }}>↺ Revert</button>}
+          <Switch checked={boolVal(k)} onChange={(v) => setBool(k, v)} title={trTitle ?? trLabel} />
+        </span>
       </div>
     )
   }
@@ -587,6 +606,7 @@ export default function GodPanel({ open, onClose }: Props) {
       }
       const lawsData = body?.laws ?? body
       setLaws(lawsData)
+      setBaselineLaws(lawsData)
       setCurrentPreset(detectPreset(lawsData))
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -627,6 +647,7 @@ export default function GodPanel({ open, onClose }: Props) {
         )
       }
       setLaws(body.laws ?? body)
+      setBaselineLaws(body.laws ?? body)
       setCurrentPreset(name)
       setExpandedPreset(name)
       setSaved(true)
@@ -661,7 +682,7 @@ export default function GodPanel({ open, onClose }: Props) {
       <button
         onClick={apply}
         disabled={submitting}
-        title={t("god.footer.applyDesc")}
+        title={t('god.footer.applyDesc')}
         style={{ minHeight: isMobile ? 44 : undefined, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
       >
         Apply
@@ -669,7 +690,7 @@ export default function GodPanel({ open, onClose }: Props) {
       <button
         onClick={save}
         disabled={submitting}
-        title={t("god.footer.saveDesc")}
+        title={t('god.footer.saveDesc')}
         className="god-save"
         style={{ minHeight: isMobile ? 44 : undefined, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
       >{t('god.footer.save')}
@@ -677,7 +698,7 @@ export default function GodPanel({ open, onClose }: Props) {
       <button
         onClick={applyAndReset}
         disabled={submitting}
-        title={t("god.footer.applyResetDesc")}
+        title={t('god.footer.applyResetDesc')}
         style={{
           background: '#238636',
           borderColor: '#2ea043',
@@ -707,10 +728,22 @@ export default function GodPanel({ open, onClose }: Props) {
   const activePresetMeta = currentPreset ? (PRESET_META as any)[currentPreset] : null
   const presetKeys = ['balance','sustainable','theocracy','warlords','chaos','extinction','boom'] as const
 
+  // law count helpers
+  const domainLawCounts = useMemo(() => {
+    const m: Record<string, number> = {}
+    for (const d of DOMAINS) {
+      let c = 0
+      for (const g of d.groups) c += NUMBER_LAWS.filter(s => s.group === g && gateOpen(s.gate)).length
+      m[d.id] = c
+    }
+    return m
+  }, [laws, gateOpen])
+
   const body = (
     <>
       <p className="god-note">{t('god.subtitle')}</p>
 
+      {/* Preset deck — BD.8.4 */}
       <div className="god-group" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 2 }}>
           <span style={{ fontSize: 12, color: '#8b949e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -731,14 +764,14 @@ export default function GodPanel({ open, onClose }: Props) {
           </span>
         </div>
 
-        {/* Preset Cards Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
+        <div className="god-preset-grid">
           {presetKeys.map((key) => {
             const meta = PRESET_META[key as keyof typeof PRESET_META]
             const label = t(`god.presets.${key}`)
             const subtitle = t(`god.presets.${key}Subtitle`)
             const description = t(`god.presets.${key}Desc`)
-            const tags: string[] = []
+            const badges = PRESET_BADGES[key] || []
+            const impact = PRESET_IMPACT[key] || ''
             const { color, border, bg, badge } = meta as any
             const isActive = currentPreset === key
             const isExpanded = expandedPreset === key
@@ -746,6 +779,9 @@ export default function GodPanel({ open, onClose }: Props) {
               <div
                 key={key}
                 onClick={() => selectPreset(key)}
+                className="god-preset-card"
+                data-active={isActive ? 'true' : 'false'}
+                data-expanded={isExpanded ? 'true' : 'false'}
                 style={{
                   background: isActive ? bg : isExpanded ? '#1c2128' : '#161b22',
                   border: `1.5px solid ${isActive ? border : isExpanded ? '#444c56' : '#30363d'}`,
@@ -756,23 +792,22 @@ export default function GodPanel({ open, onClose }: Props) {
                   gap: 6,
                   cursor: 'pointer',
                   boxShadow: isActive ? `0 0 14px ${bg}` : 'none',
-                  transition: 'all 0.15s ease-in-out',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: isActive ? color : '#e6edf3' }}>{label}</span>
                     <span style={{ fontSize: 11, color: '#8b949e', fontStyle: 'italic' }}>({subtitle})</span>
                   </div>
-                  <div style={{ display: 'flex', gap: 4 }}>
+                  <div style={{ display: 'flex', gap: 4, flex: 'none' }}>
                     {badge && (
                       <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#d29922', color: '#0d1117', fontWeight: 800 }}>
                         {badge}
                       </span>
                     )}
                     {isActive && (
-                      <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: color, color: '#0d1117', fontWeight: 800 }}>
-                        ACTIVE
+                      <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: color, color: '#0d1117', fontWeight: 800 }}>
+                        ● ACTIVE
                       </span>
                     )}
                   </div>
@@ -781,11 +816,12 @@ export default function GodPanel({ open, onClose }: Props) {
                 <p style={{ fontSize: 12, color: '#c9d1d9', margin: 0, lineHeight: 1.4 }}>
                   {description}
                 </p>
+                <p style={{ fontSize: 11, color: '#8b949e', margin: 0, lineHeight: 1.3, fontStyle: 'italic' }}>{impact}</p>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
-                  {tags.map((t) => (
-                    <span key={t} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}>
-                      {t}
+                  {badges.map((b) => (
+                    <span key={b} className="god-preset-badge" style={{ fontSize: 10, padding: '2px 7px', borderRadius: 10, background: isActive ? 'rgba(0,0,0,0.25)' : '#21262d', color: isActive ? color : '#8b949e', border: `1px solid ${isActive ? border : '#30363d'}`, fontWeight: 600 }}>
+                      {b}
                     </span>
                   ))}
                 </div>
@@ -799,11 +835,8 @@ export default function GodPanel({ open, onClose }: Props) {
                       e.stopPropagation()
                       applyPreset(key, false)
                     }}
-                    onTouchEnd={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                    }}
-                    title={`Apply ${label} laws to live world`}
+                    title={`Apply ${label} laws live`}
+                    className="god-preset-apply"
                     style={{
                       flex: 1,
                       padding: isMobile ? '10px 8px' : '6px 8px',
@@ -819,7 +852,7 @@ export default function GodPanel({ open, onClose }: Props) {
                       WebkitTapHighlightColor: 'transparent',
                     }}
                   >
-                    ⚡ Apply Laws
+                    ⚡ Apply Live
                   </button>
                   <button
                     type="button"
@@ -829,11 +862,8 @@ export default function GodPanel({ open, onClose }: Props) {
                       e.stopPropagation()
                       applyPreset(key, true)
                     }}
-                    onTouchEnd={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                    }}
-                    title={`Apply ${label} + start fresh world`}
+                    title={`Apply ${label} + reset world`}
+                    className="god-preset-reset"
                     style={{
                       flex: 1,
                       padding: isMobile ? '10px 8px' : '6px 8px',
@@ -859,11 +889,44 @@ export default function GodPanel({ open, onClose }: Props) {
       </div>
 
       {loading ? (
-        <p className="god-note">{t("god.presets.loading" as any) || "reading the tablets…"}</p>
+        <p className="god-note">{t('god.presets.loading' as any) || 'reading the tablets…'}</p>
       ) : (
         <>
-          <label className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderBottom: '1px solid #30363d' }}>
-            <span title={t("godToggles.edgeHint" as any) || "what happens at the edge of the world"} style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500 }}>{t("godToggles.edgeOfWorld" as any) || "Edge of world"}</span>
+          {/* Law Search & Modified Filter — BD.8.2 */}
+          <div className="god-search-bar">
+            <div className="god-search-input-wrap">
+              <span className="god-search-icon">🔍</span>
+              <input
+                className="god-search-input"
+                type="text"
+                placeholder="Search laws… (e.g. food, winter, disease, food_count)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button className="god-search-clear" onClick={() => setSearchQuery('')} title="Clear search">×</button>
+              )}
+            </div>
+            <button
+              className={`god-filter-btn ${showModifiedOnly ? 'active' : ''}`}
+              onClick={() => setShowModifiedOnly(!showModifiedOnly)}
+              title="Show only laws that differ from preset baseline"
+            >
+              {showModifiedOnly ? '✓ ' : ''}Show Modified Only ({modifiedKeys.size})
+            </button>
+            {showModifiedOnly && modifiedKeys.size > 0 && (
+              <button
+                className="god-revert-all"
+                onClick={() => setLaws({ ...baselineLaws })}
+                title="Revert all modified laws to baseline"
+              >
+                ↺ Revert All
+              </button>
+            )}
+          </div>
+
+          <label className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderBottom: '1px solid #30363d', background: modifiedKeys.has('boundary' as any) ? 'rgba(227,179,65,0.06)' : undefined, borderLeft: (modifiedKeys.has('boundary' as any) ? '2px solid #d29922' : '2px solid transparent') }}>
+            <span title={t('godToggles.edgeHint' as any) || 'what happens at the edge of the world'} style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500 }}>{t('godToggles.edgeOfWorld' as any) || 'Edge of world'}</span>
             <select
               value={laws.boundary ?? 'wrap'}
               onChange={(e) =>
@@ -876,234 +939,389 @@ export default function GodPanel({ open, onClose }: Props) {
             </select>
           </label>
 
-          {GROUP_ORDER.map((group) => {
-            const lawsInGroup = NUMBER_LAWS.filter((l) => l.group === group && gateOpen(l.gate))
-            const special = (
-              <>
-                {group === 'Reproduction' && (
-                  <ToggleRow k="birth_enabled" label="Births allowed" title="whether new life may begin at all — off hides the lineage dials" />
-                )}
-                {group === 'Disease' && (
-                  <ToggleRow k="disease_enabled" label="Plagues allowed" title="plagues walk the world; disabling freezes all sickness" />
-                )}
-                {group === 'Sky & Seasons' && (
-                  <>
-                    <ToggleRow k="weather_enabled" label="Weather allowed" title="whether the weather ever turns — off hides rain/fog/storm dials everywhere" />
-                    <ToggleRow k="sleep_enabled" label="Night rest" title="creatures shelter in houses after dark" />
-                  </>
-                )}
-                {group === 'Shelter' && (
-                  <>
-                    <ToggleRow k="shelter_enabled" label="Shelter allowed" title="creatures may claim roofs; disabling leaves all exposed and hides the shelter dials" />
-                    <ToggleRow k="house_claim_enabled" label="Clan house claims" title="clans claim houses as settlements" hideIfOff="shelter_enabled" />
-                    <ToggleRow k="hearths_enabled" label="Hearths" title="kin buy hearth fuel from the larder — a lit hearth warms the roof through winter; unfed, it goes dark (§AQ PH-1)" hideIfOff="shelter_enabled" />
-                  </>
-                )}
-                {group === 'Territory' && (
-                  <ToggleRow k="territory_enabled" label="Territory claimed" title="clans claim a circle around their house; disabling removes borders" />
-                )}
-                {group === 'Weather Sickness' && (
-                  <ToggleRow k="weather_sickness_enabled" label="Weather sickness" title="chill and wet contagion — rain/storm/winter nights build chill, past threshold drains health; wet catches disease faster" />
-                )}
-                {group === 'Communication' && (
-                  <ToggleRow k="communication_enabled" label="Communication" title="food + alarm calls — clan-mates respond strongly, strangers weakly; rendered as ripples" />
-                )}
-                {group === 'Communication II' && (
-                  <>
-                    <ToggleRow k="knowledge_enabled" label="Knowledge" title="creatures learn facts from experience (food/danger/enemies/safe homes), share them as rumors at half confidence; the clan remembers" />
-                    <ToggleRow k="help_call_enabled" label="Help calls" title="an attacked creature calls its clan; warriors rally first and mob the attacker, defenders soften its blows" hideIfOff="knowledge_enabled" />
-                  </>
-                )}
-                {group === 'Wildfire & Disasters' && (
-                  <>
-                    <ToggleRow k="wildfire_enabled" label="Wildfire" title="fire ignites via storm lightning / fire_rate and spreads grass→plant→house; ash fertilizes" />
-                    <ToggleRow k="disaster_enabled" label="Disasters" title="meteor/flood stochastic — god sets frequency, never a specific strike" />
-                  </>
-                )}
-                {group === 'Rivers' && (
-                  <ToggleRow k="rivers_enabled" label="Rivers" title="horizontal channels: fords cost energy, the current sweeps infants and the wounded, rain floods the banks and leaves silt; builders span planks and raise dams (§AQ PH-3)" />
-                )}
-                {group === 'Terrain' && (
-                  <ToggleRow k="relief_enabled" label="Relief (height field)" title="the land has height: uphill burns energy, cliffs deal fall damage, rain slides steep slopes, feet pack fast roads that grow nothing (§AQ PH-4)" />
-                )}
-                {group === 'Seismic & Waves' && (
-                  <ToggleRow k="earthquake_enabled" label="Earthquakes" title="rare quakes throw bodies, drop weakened roofs and crack stone; Pentagons+ feel the deep hum three ticks early (§AQ PH-8)" />
-                )}
-                {group === 'Electrostatics' && (
-                  <ToggleRow k="lightning_enabled" label="Storm lightning" title="bolts kill under the arc, ignite the ground and fuse electrostatic rock (§AQ PH-9)" />
-                )}
-                {group === 'Cosmology' && (
-                  <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>Hidden zones of altered physics — fertile ground, heavy gravity, calm air. Skilled foragers discover them; shrines beside one draw extra power. Law changes sweep a shimmer wave across the land (§AQ PH-10).</div>
-                )}
-                {group === 'Materials' && (
-                  <>
-                    <ToggleRow k="structural_enabled" label="Structural integrity" title="storms & floodwater wear buildings down; builders mend what still stands; a spent roof collapses to ruin (§AQ PH-6)" />
-                    <ToggleRow k="rubble_blocking_enabled" label="Rubble blocks lots" title="collapsed ruins leave rubble that bars the ground until builders clear it" />
-                  </>
-                )}
-                {group === 'Culture' && (
-                  <ToggleRow k="culture_enabled" label="Culture" title="culture spreads to allied neighbours, can split into rival traditions; grants small collective bonus" />
-                )}
-                {group === 'Genetics' && (
-                  <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>Heritable traits: greedy/peaceful/paranoid/bold — mutation {laws.trait_mutation_rate ?? 0.02}</div>
-                )}
-                {group === 'Ages' && (
-                  <ToggleRow k="age_enabled" label="Ages" title="super-seasons: Golden/ Ice/ Chaos/ Plague — each bends food/mutation/disease/chill. God sets length, world cycles." />
-                )}
-                {group === 'Rebellion' && (
-                  <ToggleRow k="schism_enabled" label="Schism allowed" title="unhappy members (starving/homeless) split off to found new clan then war parent — schism_threshold fraction to trigger" />
-                )}
-                {group === 'Clan' && (
-                  <>
-                    <ToggleRow k="totems_enabled" label="Sacred Avatars" title="each clan bears one of the 8 Sacred Avatars of the Sphere (⭕ ⚡ 👁️ 🛡️ 🌿 ⚖️ 🌀 🕯️) granting a distinct divine blessing; disabling makes all clans plain" />
-                    <ToggleRow k="succession_enabled" label="Succession" title="leader succession on death emits succession event; disabling keeps founder as eternal leader" />
-                  </>
-                )}
-                {group === 'Ecosystem' && (
-                  <ToggleRow k="plant_variants_enabled" label="Plant variants" title="grass/berry/mushroom/poisonous diversity; disabling makes all plants grass" />
-                )}
-                {group === 'Predation' && (
-                  <ToggleRow k="predation_enabled" label="Predation allowed" title="predators hunt prey; disabling makes them docile" />
-                )}
-                {group === 'Clan War' && (
-                  <ToggleRow k="war_enabled" label="War allowed" title="rival clans fight on contact; disabling enforces peace" />
-                )}
-                {group === 'Politics' && (
-                  <>
-                    <ToggleRow k="coalitions_enabled" label="Coalitions" title="allied clans form defensive blocs — strike one member and every mate turns on you; soured relations dissolve the pact" />
-                    <ToggleRow k="leader_decisions_enabled" label="Leader decisions" title="leaders declare war on remembered enemies, sue for peace when weakened, demand tribute, betray allies (bold→war, peaceful→peace, paranoid→betrayal)" />
-                    <ToggleRow k="resource_sharing_enabled" label="Resource sharing" title="a food store at the settlement: well-fed members deposit surplus, starving members withdraw; allies aid each other in famine" />
-                    <ToggleRow k="tribute_enabled" label="Tribute" title="weak clans pay periodic tribute from their larder to a stronger protector" hideIfOff={['leader_decisions_enabled']} />
-                    <ToggleRow k="betrayal_enabled" label="Betrayal" title="a leader breaks an alliance and strikes — the betrayed clan's rivals are told the same tale (treason)" hideIfOff="leader_decisions_enabled" />
-                    <ToggleRow k="defection_enabled" label="Defection" title="unhappy members (starving/homeless) walk to a healthier nearby banner, even a rival's" />
-                  </>
-                )}
-                {group === 'Desperation' && (
-                  <>
-                    <ToggleRow k="cannibalism_enabled" label="Cannibalism" title="the starving may hunt and eat living creatures — sated/hungry never do; cooldown between kills" />
-                    <ToggleRow k="eat_enemy_enabled" label="Eat enemies" title="enemy-clan members (negative relation) and the weak (starving/elder/wounded) of any clan are legitimate prey; never predators, infants or indoor refugees" hideIfOff="cannibalism_enabled" />
-                    <ToggleRow k="eat_kin_enabled" label="Eat kin" title="weak kin may be eaten too — at a terrible price: exile, stigma, and a clan that now counts you an enemy" hideIfOff="cannibalism_enabled" />
-                    <ToggleRow k="exile_on_kin_eat" label="Exile on kin-eat" title="the kin-eater is cast out and founds a one-being outcast band; disabling keeps them in the clan but shunned" hideIfOff={['cannibalism_enabled', 'eat_kin_enabled']} />
-                  </>
-                )}
-                {group === 'Food Decay' && (
-                  <ToggleRow k="food_decay_enabled" label="Food decay" title="mature plants wither after their lifespan (× variant pace), fertilise nearby soil, then vanish — nothing lasts forever" />
-                )}
-                {group === 'Agriculture' && (
-                  <>
-                    <ToggleRow k="agriculture_enabled" label="Agriculture" title="seed pouches from wild harvests, cultivated farm plots near the settlement (2× growth, 2.5× yield), weeding & tending, irrigation furrows by fertile groves" />
-                    <ToggleRow k="granaries_enabled" label="Granaries" title="a dry roofed store: sated harvesters lay grain & cured berries by (35%), starving members withdraw, feasts burn it" hideIfOff="agriculture_enabled" />
-                    <ToggleRow k="soil_depletion_enabled" label="Living soil" title="monocropping exhausts the soil grid and slows regrowth; corpses, withered plants and farmer compost restore it" hideIfOff="agriculture_enabled" />
-                    <ToggleRow k="banquets_enabled" label="Banquets" title="granary ≥80% feeds a feast: energy, cheer, warmer relations and +30% fertility while it lasts" hideIfOff="granaries_enabled" />
-                  </>
-                )}
-                {group === 'Language & Diplomacy' && (
-                  <>
-                    <ToggleRow k="vocalizations_enabled" label="Caste voices & rituals" title="priest liturgy calms panic, women's peace-hum parts crowds, soldiers' war-chirps rally allies, artisan chimes gift basket food, touching vertices builds trust" />
-                    <ToggleRow k="scent_enabled" label="Scent trails & markers" title="foragers drop breadcrumb trails home from rich finds; violent deaths and ruins leave danger scent the young learn to avoid" />
-                    <ToggleRow k="envoys_enabled" label="Envoys & boundary stones" title="peaceful leaders send banner-carrying emissaries to rival houses; clans raise boundary stones that ring warning chimes at trespassers" />
-                    <ToggleRow k="markets_enabled" label="Markets & caravans" title="allied neighbours found neutral trading posts at shared borders and barter surplus; peddler caravans carry goods and news between distant settlements" />
-                    <ToggleRow k="omens_enabled" label="Season omens" title="at each season turn a shrine priest proclaims what comes; worshippers who hear it head home prepared" hideIfOff="theology_enabled" />
-                    <ToggleRow k="dialect_drift_enabled" label="Dialect drift" title="isolated clans drift apart in speech; strangers understand each other less the further dialects split, allies converge on a shared tongue" />
-                  </>
-                )}
-                {group === 'Theology' && (
-                  <>
-                    <ToggleRow k="theology_enabled" label="Theology of the Sphere" title="shrines beside main houses, dawn & dusk tithes fill the clan faith pool, the aura mends the faithful, seasonal miracles, law-change chimes & sermons, holy synods in crisis ages, temples at high faith" />
-                    <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>
-                      8 Sacred Avatars: ⭕ Abundance · ⚡ Wrath · 👁️ Omniscience · 🛡️ Permanence · 🌿 Renewal · ⚖️ Equilibrium · 🌀 Ascent · 🕯️ Sanctuary
-                    </div>
-                  </>
-                )}
-              </>
-            )
-            const rows = lawsInGroup.map(({ key, label, min, max, step }) => {
-              const translatedLabel = t(`godLaws.${key}`) !== `godLaws.${key}` ? t(`godLaws.${key}`) : label
-              const hint = (t(`godHints.${key}`) !== `godHints.${key}` ? t(`godHints.${key}`) : LAW_HINTS[key])
-              const isOpen = openHint === key
-              return (
-                <div key={key} style={{ borderBottom: '1px solid #30363d', padding: isOpen ? '8px 10px' : '6px 10px' }}>
-                  <label className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 8 }}>
-                    <span style={{ display: 'flex', gap: 6, alignItems: 'center', flex: 1, minWidth: 0 }}>
-                      <span title={hint} style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {translatedLabel}
+          {/* Domain tabs — BD.8.1 */}
+          {!q && !showModifiedOnly && (
+            <nav className="god-domain-tabs" role="tablist" aria-label="Law domains">
+              {DOMAINS.map((d) => (
+                <button
+                  key={d.id}
+                  role="tab"
+                  aria-selected={activeDomain === d.id}
+                  className={`god-domain-tab ${activeDomain === d.id ? 'active' : ''}`}
+                  onClick={() => setActiveDomain(d.id)}
+                  title={`${d.label} — ${d.groups.join(', ')}`}
+                >
+                  <span className="god-domain-icon">{d.icon}</span>
+                  <span className="god-domain-label">{d.label}</span>
+                  <span className="god-domain-count">{domainLawCounts[d.id] ?? 0}</span>
+                </button>
+              ))}
+            </nav>
+          )}
+          {(q || showModifiedOnly) && (
+            <div className="god-search-meta">
+              {q ? `🔍 ${filteredSpecs(NUMBER_LAWS).length} laws match "${q}"` : ''}
+              {q && showModifiedOnly ? ' · ' : ''}
+              {showModifiedOnly ? `✏️ ${modifiedKeys.size} modified` : ''}
+              {(q || showModifiedOnly) && (
+                <button className="god-search-clear-link" onClick={() => { setSearchQuery(''); setShowModifiedOnly(false) }}>Clear filters</button>
+              )}
+            </div>
+          )}
+
+          {/* Render domains */}
+          {(q || showModifiedOnly ? DOMAINS : DOMAINS.filter(d => d.id === activeDomain)).map((domain) => {
+            const domainGroups = q || showModifiedOnly ? domain.groups : domain.groups
+            // Build rows per group
+            const groupSections = domainGroups.map((group) => {
+              const allInGroup = NUMBER_LAWS.filter((l) => l.group === group)
+              const visibleSpecs = filteredSpecs(allInGroup)
+              // decide visibility: if search/modified filtering and group has zero visible specs, skip entirely
+              const hasVisibleToggle = (() => {
+                // check if any toggle belonging to this group would be visible under current filters
+                // We enumerate toggles per group below via special handling; for simplicity, if no numeric specs and not matching, we still may show toggle row
+                // So we compute toggle visibility lazily inside section rendering — here we just keep group if visibleSpecs>0 OR toggle would be visible
+                // For now, skip only if both specs and potential toggles are hidden
+                return false
+              })()
+              void hasVisibleToggle
+              // If filtering and no specs, we still need to check if group has a toggle that passes filter — handle via ToggleRow visibility later
+              // But to avoid empty groups, we will keep group hidden only if visibleSpecs.length===0 and we are filtering and toggles would also be hidden
+              // Simplify: hide group when filtering and visibleSpecs empty — ToggleRow will self-hide but we may show empty group header unnecessarily
+              // We instead render group only if visibleSpecs.length>0 or not filtering
+              const isFiltering = !!q || showModifiedOnly
+              if (isFiltering && visibleSpecs.length === 0) {
+                // still need to check if any toggle in this group would be visible — if not, skip
+                // we have hardcoded toggle groups below — approximate by returning null if no specs
+                // For groups without toggles, this correctly hides
+                // For groups with toggles, we let ToggleRow determine; we keep group if toggle group type
+                const toggleGroups = new Set(['Reproduction','Disease','Sky & Seasons','Shelter','Territory','Weather Sickness','Communication','Communication II','Wildfire & Disasters','Rivers','Terrain','Seismic & Waves','Electrostatics','Culture','Genetics','Ages','Rebellion','Clan','Ecosystem','Predation','Clan War','Politics','Desperation','Food Decay','Agriculture','Language & Diplomacy','Theology'])
+                if (!toggleGroups.has(group)) return null
+                // for toggle groups, we will check after rendering toggles — if none visible, skip
+              }
+
+              const special = (
+                <>
+                  {group === 'Reproduction' && (
+                    <ToggleRow k="birth_enabled" label="Births allowed" title="whether new life may begin at all — off hides the lineage dials" />
+                  )}
+                  {group === 'Disease' && (
+                    <ToggleRow k="disease_enabled" label="Plagues allowed" title="plagues walk the world; disabling freezes all sickness" />
+                  )}
+                  {group === 'Sky & Seasons' && (
+                    <>
+                      <ToggleRow k="weather_enabled" label="Weather allowed" title="whether the weather ever turns — off hides rain/fog/storm dials everywhere" />
+                      <ToggleRow k="sleep_enabled" label="Night rest" title="creatures shelter in houses after dark" />
+                    </>
+                  )}
+                  {group === 'Shelter' && (
+                    <>
+                      <ToggleRow k="shelter_enabled" label="Shelter allowed" title="creatures may claim roofs; disabling leaves all exposed and hides the shelter dials" />
+                      <ToggleRow k="house_claim_enabled" label="Clan house claims" title="clans claim houses as settlements" hideIfOff="shelter_enabled" />
+                      <ToggleRow k="hearths_enabled" label="Hearths" title="kin buy hearth fuel from the larder — a lit hearth warms the roof through winter; unfed, it goes dark (§AQ PH-1)" hideIfOff="shelter_enabled" />
+                    </>
+                  )}
+                  {group === 'Territory' && (
+                    <ToggleRow k="territory_enabled" label="Territory claimed" title="clans claim a circle around their house; disabling removes borders" />
+                  )}
+                  {group === 'Weather Sickness' && (
+                    <ToggleRow k="weather_sickness_enabled" label="Weather sickness" title="chill and wet contagion — rain/storm/winter nights build chill, past threshold drains health; wet catches disease faster" />
+                  )}
+                  {group === 'Communication' && (
+                    <ToggleRow k="communication_enabled" label="Communication" title="food + alarm calls — clan-mates respond strongly, strangers weakly; rendered as ripples" />
+                  )}
+                  {group === 'Communication II' && (
+                    <>
+                      <ToggleRow k="knowledge_enabled" label="Knowledge" title="creatures learn facts from experience (food/danger/enemies/safe homes), share them as rumors at half confidence; the clan remembers" />
+                      <ToggleRow k="help_call_enabled" label="Help calls" title="an attacked creature calls its clan; warriors rally first and mob the attacker, defenders soften its blows" hideIfOff="knowledge_enabled" />
+                    </>
+                  )}
+                  {group === 'Wildfire & Disasters' && (
+                    <>
+                      <ToggleRow k="wildfire_enabled" label="Wildfire" title="fire ignites via storm lightning / fire_rate and spreads grass→plant→house; ash fertilizes" />
+                      <ToggleRow k="disaster_enabled" label="Disasters" title="meteor/flood stochastic — god sets frequency, never a specific strike" />
+                    </>
+                  )}
+                  {group === 'Rivers' && (
+                    <ToggleRow k="rivers_enabled" label="Rivers" title="horizontal channels: fords cost energy, the current sweeps infants and the wounded, rain floods the banks and leaves silt; builders span planks and raise dams (§AQ PH-3)" />
+                  )}
+                  {group === 'Terrain' && (
+                    <ToggleRow k="relief_enabled" label="Relief (height field)" title="the land has height: uphill burns energy, cliffs deal fall damage, rain slides steep slopes, feet pack fast roads that grow nothing (§AQ PH-4)" />
+                  )}
+                  {group === 'Seismic & Waves' && (
+                    <ToggleRow k="earthquake_enabled" label="Earthquakes" title="rare quakes throw bodies, drop weakened roofs and crack stone; Pentagons+ feel the deep hum three ticks early (§AQ PH-8)" />
+                  )}
+                  {group === 'Electrostatics' && (
+                    <ToggleRow k="lightning_enabled" label="Storm lightning" title="bolts kill under the arc, ignite the ground and fuse electrostatic rock (§AQ PH-9)" />
+                  )}
+                  {group === 'Cosmology' && (
+                    <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>Hidden zones of altered physics — fertile ground, heavy gravity, calm air. Skilled foragers discover them; shrines beside one draw extra power. Law changes sweep a shimmer wave across the land (§AQ PH-10).</div>
+                  )}
+                  {group === 'Materials' && (
+                    <>
+                      <ToggleRow k="structural_enabled" label="Structural integrity" title="storms & floodwater wear buildings down; builders mend what still stands; a spent roof collapses to ruin (§AQ PH-6)" />
+                      <ToggleRow k="rubble_blocking_enabled" label="Rubble blocks lots" title="collapsed ruins leave rubble that bars the ground until builders clear it" />
+                    </>
+                  )}
+                  {group === 'Culture' && (
+                    <ToggleRow k="culture_enabled" label="Culture" title="culture spreads to allied neighbours, can split into rival traditions; grants small collective bonus" />
+                  )}
+                  {group === 'Genetics' && (
+                    <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>Heritable traits: greedy/peaceful/paranoid/bold — mutation {laws.trait_mutation_rate ?? 0.02}</div>
+                  )}
+                  {group === 'Ages' && (
+                    <ToggleRow k="age_enabled" label="Ages" title="super-seasons: Golden/ Ice/ Chaos/ Plague — each bends food/mutation/disease/chill. God sets length, world cycles." />
+                  )}
+                  {group === 'Rebellion' && (
+                    <ToggleRow k="schism_enabled" label="Schism allowed" title="unhappy members (starving/homeless) split off to found new clan then war parent — schism_threshold fraction to trigger" />
+                  )}
+                  {group === 'Clan' && (
+                    <>
+                      <ToggleRow k="totems_enabled" label="Sacred Avatars" title="each clan bears one of the 8 Sacred Avatars of the Sphere (⭕ ⚡ 👁️ 🛡️ 🌿 ⚖️ 🌀 🕯️) granting a distinct divine blessing; disabling makes all clans plain" />
+                      <ToggleRow k="succession_enabled" label="Succession" title="leader succession on death emits succession event; disabling keeps founder as eternal leader" />
+                    </>
+                  )}
+                  {group === 'Ecosystem' && (
+                    <ToggleRow k="plant_variants_enabled" label="Plant variants" title="grass/berry/mushroom/poisonous diversity; disabling makes all plants grass" />
+                  )}
+                  {group === 'Predation' && (
+                    <ToggleRow k="predation_enabled" label="Predation allowed" title="predators hunt prey; disabling makes them docile" />
+                  )}
+                  {group === 'Clan War' && (
+                    <ToggleRow k="war_enabled" label="War allowed" title="rival clans fight on contact; disabling enforces peace" />
+                  )}
+                  {group === 'Politics' && (
+                    <>
+                      <ToggleRow k="coalitions_enabled" label="Coalitions" title="allied clans form defensive blocs — strike one member and every mate turns on you; soured relations dissolve the pact" />
+                      <ToggleRow k="leader_decisions_enabled" label="Leader decisions" title="leaders declare war on remembered enemies, sue for peace when weakened, demand tribute, betray allies (bold→war, peaceful→peace, paranoid→betrayal)" />
+                      <ToggleRow k="resource_sharing_enabled" label="Resource sharing" title="a food store at the settlement: well-fed members deposit surplus, starving members withdraw; allies aid each other in famine" />
+                      <ToggleRow k="tribute_enabled" label="Tribute" title="weak clans pay periodic tribute from their larder to a stronger protector" hideIfOff={['leader_decisions_enabled']} />
+                      <ToggleRow k="betrayal_enabled" label="Betrayal" title="a leader breaks an alliance and strikes — the betrayed clan's rivals are told the same tale (treason)" hideIfOff="leader_decisions_enabled" />
+                      <ToggleRow k="defection_enabled" label="Defection" title="unhappy members (starving/homeless) walk to a healthier nearby banner, even a rival's" />
+                    </>
+                  )}
+                  {group === 'Desperation' && (
+                    <>
+                      <ToggleRow k="cannibalism_enabled" label="Cannibalism" title="the starving may hunt and eat living creatures — sated/hungry never do; cooldown between kills" />
+                      <ToggleRow k="eat_enemy_enabled" label="Eat enemies" title="enemy-clan members (negative relation) and the weak (starving/elder/wounded) of any clan are legitimate prey; never predators, infants or indoor refugees" hideIfOff="cannibalism_enabled" />
+                      <ToggleRow k="eat_kin_enabled" label="Eat kin" title="weak kin may be eaten too — at a terrible price: exile, stigma, and a clan that now counts you an enemy" hideIfOff="cannibalism_enabled" />
+                      <ToggleRow k="exile_on_kin_eat" label="Exile on kin-eat" title="the kin-eater is cast out and founds a one-being outcast band; disabling keeps them in the clan but shunned" hideIfOff={['cannibalism_enabled', 'eat_kin_enabled']} />
+                    </>
+                  )}
+                  {group === 'Food Decay' && (
+                    <ToggleRow k="food_decay_enabled" label="Food decay" title="mature plants wither after their lifespan (× variant pace), fertilise nearby soil, then vanish — nothing lasts forever" />
+                  )}
+                  {group === 'Agriculture' && (
+                    <>
+                      <ToggleRow k="agriculture_enabled" label="Agriculture" title="seed pouches from wild harvests, cultivated farm plots near the settlement (2× growth, 2.5× yield), weeding & tending, irrigation furrows by fertile groves" />
+                      <ToggleRow k="granaries_enabled" label="Granaries" title="a dry roofed store: sated harvesters lay grain & cured berries by (35%), starving members withdraw, feasts burn it" hideIfOff="agriculture_enabled" />
+                      <ToggleRow k="soil_depletion_enabled" label="Living soil" title="monocropping exhausts the soil grid and slows regrowth; corpses, withered plants and farmer compost restore it" hideIfOff="agriculture_enabled" />
+                      <ToggleRow k="banquets_enabled" label="Banquets" title="granary ≥80% feeds a feast: energy, cheer, warmer relations and +30% fertility while it lasts" hideIfOff="granaries_enabled" />
+                    </>
+                  )}
+                  {group === 'Language & Diplomacy' && (
+                    <>
+                      <ToggleRow k="vocalizations_enabled" label="Caste voices & rituals" title="priest liturgy calms panic, women's peace-hum parts crowds, soldiers' war-chirps rally allies, artisan chimes gift basket food, touching vertices builds trust" />
+                      <ToggleRow k="scent_enabled" label="Scent trails & markers" title="foragers drop breadcrumb trails home from rich finds; violent deaths and ruins leave danger scent the young learn to avoid" />
+                      <ToggleRow k="envoys_enabled" label="Envoys & boundary stones" title="peaceful leaders send banner-carrying emissaries to rival houses; clans raise boundary stones that ring warning chimes at trespassers" />
+                      <ToggleRow k="markets_enabled" label="Markets & caravans" title="allied neighbours found neutral trading posts at shared borders and barter surplus; peddler caravans carry goods and news between distant settlements" />
+                      <ToggleRow k="omens_enabled" label="Season omens" title="at each season turn a shrine priest proclaims what comes; worshippers who hear it head home prepared" hideIfOff="theology_enabled" />
+                      <ToggleRow k="dialect_drift_enabled" label="Dialect drift" title="isolated clans drift apart in speech; strangers understand each other less the further dialects split, allies converge on a shared tongue" />
+                    </>
+                  )}
+                  {group === 'Theology' && (
+                    <>
+                      <ToggleRow k="theology_enabled" label="Theology of the Sphere" title="shrines beside main houses, dawn & dusk tithes fill the clan faith pool, the aura mends the faithful, seasonal miracles, law-change chimes & sermons, holy synods in crisis ages, temples at high faith" />
+                      <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>
+                        8 Sacred Avatars: ⭕ Abundance · ⚡ Wrath · 👁️ Omniscience · 🛡️ Permanence · 🌿 Renewal · ⚖️ Equilibrium · 🌀 Ascent · 🕯️ Sanctuary
+                      </div>
+                    </>
+                  )}
+                </>
+              )
+
+              const rows = visibleSpecs.map(({ key, label, min, max, step }) => {
+                const translatedLabel = t(`godLaws.${key}`) !== `godLaws.${key}` ? t(`godLaws.${key}`) : label
+                const hint = (t(`godHints.${key}`) !== `godHints.${key}` ? t(`godHints.${key}`) : LAW_HINTS[key])
+                const isOpen = openHint === key
+                const curVal = (laws[key] as number | undefined) ?? min
+                const baseVal = (baselineLaws[key] as number | undefined)
+                const isModified = modifiedKeys.has(key)
+                const zone = getZone(curVal, baseVal, min, max)
+                const pct = max === min ? 0 : ((curVal - min) / (max - min)) * 100
+                const basePct = baseVal !== undefined && max !== min ? ((baseVal - min) / (max - min)) * 100 : null
+                const fmt = (v: number) => step < 1 ? v.toFixed(step < 0.01 ? 3 : 2) : String(Math.round(v))
+                // highlight match
+                const qLower = q
+                const labelMatch = qLower && translatedLabel.toLowerCase().includes(qLower)
+                return (
+                  <div key={key} className={`god-law-row zone-${zone} ${isModified ? 'modified' : ''}`} style={{ borderBottom: '1px solid #21262d', padding: isOpen ? '10px 10px 8px' : '8px 10px', background: isModified ? 'rgba(227,179,65,0.05)' : undefined }}>
+                    <div className="god-law-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flex: 1, minWidth: 0 }}>
+                        <span title={hint} style={{ color: isModified ? '#e3b341' : '#e6edf3', fontSize: 13, fontWeight: isModified ? 600 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: labelMatch ? 'rgba(227,179,65,0.2)' : undefined, padding: labelMatch ? '0 3px' : 0, borderRadius: 3 }}>
+                          {translatedLabel}
+                        </span>
+                        {isModified && <span className="god-mod-dot" title="Modified from preset">●</span>}
+                        {hint && (
+                          <button
+                            type="button"
+                            onClick={() => setOpenHint(isOpen ? null : key)}
+                            title={hint}
+                            style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #484f58', background: isOpen ? '#30363d' : '#21262d', color: isOpen ? '#f0f6fc' : '#8b949e', fontSize: 11, lineHeight: 1, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
+                            aria-label={`hint for ${translatedLabel}`}
+                          >
+                            ?
+                          </button>
+                        )}
                       </span>
-                      {hint && (
-                        <button
-                          type="button"
-                          onClick={() => setOpenHint(isOpen ? null : key)}
-                          title={hint}
-                          style={{ width: 22, height: 22, borderRadius: '50%', border: '1px solid #484f58', background: isOpen ? '#30363d' : '#21262d', color: isOpen ? '#f0f6fc' : '#8b949e', fontSize: 12, lineHeight: 1, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
-                          aria-label={`hint for ${translatedLabel}`}
-                        >
-                          ?
-                        </button>
-                      )}
-                    </span>
-                    {isMobile ? (
-                      <span style={{ display: 'flex', gap: 6, alignItems: 'center', flex: 'none' }}>
-                        <button
-                          type="button"
-                          onClick={() => stepVal(key, min, max, step, -1)}
-                          style={{ minHeight: 30, height: 30, width: 30, padding: 0, fontSize: 16, fontWeight: 700, borderRadius: 6, background: '#21262d', border: '1px solid #484f58', color: '#f0f6fc', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
-                        >
-                          -
-                        </button>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flex: 'none' }}>
+                        {isModified && (
+                          <button onClick={() => revertOne(key)} title="Revert to preset" className="god-revert-btn">↺ Revert</button>
+                        )}
+                        <span className={`god-zone-pill zone-${zone}`} title={`${zone} zone — distance from default`}>{zone}</span>
+                      </span>
+                    </div>
+                    {/* Dual slider + number pill — BD.8.3 */}
+                    <div className="god-dual-control">
+                      <div className="god-slider-wrap">
+                        <div className="god-slider-track">
+                          <div className="god-slider-zones">
+                            <span className="z-extreme-left" />
+                            <span className="z-strained-left" />
+                            <span className="z-safe" />
+                            <span className="z-strained-right" />
+                            <span className="z-extreme-right" />
+                          </div>
+                          <div className="god-slider-fill" style={{ width: `${pct}%` }} />
+                          {basePct !== null && <span className="god-baseline-marker" style={{ left: `${basePct}%` }} title={`Default: ${fmt(baseVal as number)}`} />}
+                        </div>
                         <input
                           type="range"
+                          className="god-range"
                           min={min}
                           max={max}
                           step={step}
-                          value={(laws[key] as number | undefined) ?? min}
+                          value={curVal}
                           onChange={(e) => set(key, e.target.value)}
-                          style={{ width: 88, height: 24, accentColor: '#e3b341', cursor: 'pointer' }}
+                          style={{ ['--pct' as any]: `${pct}%` }}
                         />
-                        <button
-                          type="button"
-                          onClick={() => stepVal(key, min, max, step, 1)}
-                          style={{ minHeight: 30, height: 30, width: 30, padding: 0, fontSize: 16, fontWeight: 700, borderRadius: 6, background: '#21262d', border: '1px solid #484f58', color: '#f0f6fc', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
-                        >
-                          +
-                        </button>
-                        <span style={{ minWidth: 42, textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#f0f6fc', fontVariantNumeric: 'tabular-nums' }}>
-                          {(laws[key] as number | undefined)?.toFixed?.(step < 1 ? 2 : 0) ?? ''}
-                        </span>
-                      </span>
-                    ) : (
-                      <input
-                        type="number"
-                        min={min}
-                        max={max}
-                        step={step}
-                        value={(laws[key] as number | undefined) ?? ''}
-                        onChange={(e) => set(key, e.target.value)}
-                      />
-                    )}
-                  </label>
-                  {isOpen && hint && (
-                    <div style={{ fontSize: 12, color: '#c9d1d9', background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '8px 10px', margin: '6px 0 4px', lineHeight: 1.45 }}>
-                      {hint}
-                      <div style={{ marginTop: 6 }}>
-                        <a href="/docs/god-laws.md" rel="noreferrer" style={{ fontSize: 11, color: '#58a6ff' }}>Open docs/god-laws.md ↗</a>
-                        {' · '}
-                        <a href="/wiki#god-laws" style={{ fontSize: 11, color: '#58a6ff' }}>Wiki → God laws</a>
                       </div>
+                      <span className={`god-number-pill zone-${zone}`}>
+                        <button type="button" className="god-pill-step" onClick={() => stepVal(key, min, max, step, -1)} aria-label="decrease">−</button>
+                        <input
+                          type="number"
+                          className="god-pill-input"
+                          min={min}
+                          max={max}
+                          step={step}
+                          value={curVal}
+                          onChange={(e) => set(key, e.target.value)}
+                        />
+                        <button type="button" className="god-pill-step" onClick={() => stepVal(key, min, max, step, 1)} aria-label="increase">+</button>
+                      </span>
                     </div>
-                  )}
-                </div>
+                    {baseVal !== undefined && (
+                      <div className="god-baseline-row">
+                        <span className="god-baseline-text">Default {fmt(baseVal)} · {curVal > baseVal ? `+${fmt(curVal - baseVal)}` : curVal < baseVal ? fmt(curVal - baseVal) : 'baseline'}</span>
+                        <span className="god-range-labels"><span>{fmt(min)}</span><span>{fmt(max)}</span></span>
+                      </div>
+                    )}
+                    {isOpen && hint && (
+                      <div style={{ fontSize: 12, color: '#c9d1d9', background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '8px 10px', margin: '6px 0 2px', lineHeight: 1.45 }}>
+                        {hint}
+                        <div style={{ marginTop: 6 }}>
+                          <a href="/docs/god-laws.md" rel="noreferrer" style={{ fontSize: 11, color: '#58a6ff' }}>Open docs/god-laws.md ↗</a>
+                          {' · '}
+                          <a href="/wiki#god-laws" style={{ fontSize: 11, color: '#58a6ff' }}>Wiki → God laws</a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+
+              // Determine if this group section should render: hide if filtering and no rows and no visible toggles
+              // We approximate by checking if rows empty and special toggles would be hidden
+              // Render a placeholder check: count toggles that would pass filter by calling visibility logic indirectly
+              // Simpler: if isFiltering and rows.length===0, attempt to render special separately and see if ToggleRow rendered anything
+              // We use a ref: if group has no rows and isFiltering, we will still render the section but rows will be empty — hide header if no toggles visible
+              // To detect empty toggles, we check if group is in toggleGroups and at least one ToggleRow would be visible
+              // Instead of complex logic, just hide groups with zero rows when filtering — toggles for those groups are tied to numeric laws, so hiding is acceptable
+              const hideGroup = visibleSpecs.length === 0 && (isFiltering ? true : false)
+              // But we must allow toggle-only groups (e.g., Ages has one numeric law, so not empty) etc.
+              // For groups like Cosmology which has one numeric + note, filter may still show note
+              if (hideGroup) {
+                // Check if group contains any bool toggle that would survive filter — if so, don't hide
+                // We cannot easily know without duplicating filter, so keep group if it has toggles and at least one toggle matches search (heuristic)
+                // Quick heuristic: keep all toggle-bearing groups when filtering if search empty (modifiedOnly)
+                if (showModifiedOnly && !q) {
+                  // keep group if any bool in BOOL_DEFAULTS gated to this group would be modified
+                  // For simplicity keep groups with modified toggles — we check via domainLawCounts? Skip hide
+                  // We'll hide only if showModifiedOnly and no modified keys in this group
+                  const groupBoolKeys: Record<string, BoolLawKey[]> = {
+                    'Reproduction': ['birth_enabled'],
+                    'Disease': ['disease_enabled'],
+                    'Sky & Seasons': ['weather_enabled','sleep_enabled'],
+                    'Shelter': ['shelter_enabled','house_claim_enabled','hearths_enabled'],
+                    'Territory': ['territory_enabled'],
+                    'Weather Sickness': ['weather_sickness_enabled'],
+                    'Communication': ['communication_enabled'],
+                    'Communication II': ['knowledge_enabled','help_call_enabled'],
+                    'Wildfire & Disasters': ['wildfire_enabled','disaster_enabled'],
+                    'Rivers': ['rivers_enabled'],
+                    'Terrain': ['relief_enabled'],
+                    'Seismic & Waves': ['earthquake_enabled'],
+                    'Electrostatics': ['lightning_enabled'],
+                    'Culture': ['culture_enabled'],
+                    'Ages': ['age_enabled'],
+                    'Rebellion': ['schism_enabled'],
+                    'Clan': ['totems_enabled','succession_enabled'],
+                    'Ecosystem': ['plant_variants_enabled'],
+                    'Predation': ['predation_enabled'],
+                    'Clan War': ['war_enabled'],
+                    'Politics': ['coalitions_enabled','leader_decisions_enabled','resource_sharing_enabled','tribute_enabled','betrayal_enabled','defection_enabled'],
+                    'Desperation': ['cannibalism_enabled','eat_enemy_enabled','eat_kin_enabled','exile_on_kin_eat'],
+                    'Food Decay': ['food_decay_enabled'],
+                    'Agriculture': ['agriculture_enabled','granaries_enabled','soil_depletion_enabled','banquets_enabled'],
+                    'Language & Diplomacy': ['vocalizations_enabled','scent_enabled','envoys_enabled','markets_enabled','omens_enabled','dialect_drift_enabled'],
+                    'Theology': ['theology_enabled'],
+                  }
+                  const bks = groupBoolKeys[group] || []
+                  if (bks.some(k => modifiedKeys.has(k))) { /* keep */ } else return null
+                } else if (q) {
+                  // keep if any bool label matches q
+                  // approximate: don't hide — let header show but rows empty and ToggleRow may show/hide internally
+                  // For search, we should hide groups where no bool matches; to avoid noise we hide if no spec rows
+                  // We'll attempt to keep only if group name matches q itself
+                  if (group.toLowerCase().includes(q)) { /* keep to show toggles */ } else return null
+                } else {
+                  return null
+                }
+              }
+
+              return (
+                <section key={group} className="god-group">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid #30363d', paddingBottom: 6 }}>
+                    <h3 style={{ margin: 0, fontSize: 13, color: '#e3b341', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{(t(`god.groups.${GROUP_KEY[group] ?? group}`) !== `god.groups.${GROUP_KEY[group] ?? group}` ? t(`god.groups.${GROUP_KEY[group] ?? group}`) : group)}</h3>
+                    <span style={{ fontSize: 10, color: '#8b949e', fontWeight: 600, background: '#21262d', padding: '1px 6px', borderRadius: 10, border: '1px solid #30363d' }}>
+                      {visibleSpecs.length} laws
+                    </span>
+                  </div>
+                  {special}
+                  {rows}
+                </section>
               )
-            })
+            }).filter(Boolean)
+
+            if (groupSections.length === 0) return null
             return (
-              <section key={group} className="god-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid #30363d', paddingBottom: 6 }}>
-                  <h3 style={{ margin: 0, fontSize: 13, color: '#e3b341', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{(t(`god.groups.${GROUP_KEY[group] ?? group}`) !== `god.groups.${GROUP_KEY[group] ?? group}` ? t(`god.groups.${GROUP_KEY[group] ?? group}`) : group)}</h3>
-                  <span style={{ fontSize: 10, color: '#8b949e', fontWeight: 600, background: '#21262d', padding: '1px 6px', borderRadius: 10, border: '1px solid #30363d' }}>
-                    {lawsInGroup.length} laws
-                  </span>
+              <div key={domain.id} className="god-domain-section">
+                <div className="god-domain-header">
+                  <span className="god-domain-title">{domain.icon} {domain.label}</span>
+                  <span className="god-domain-meta">{groupSections.length} groups · {groupSections.reduce((a, s: any) => a + (s?.props?.children?.[1]?.length || 0), 0)} laws</span>
                 </div>
-                {special}
-                {rows}
-              </section>
+                {groupSections}
+              </div>
             )
           })}
 
@@ -1113,8 +1331,6 @@ export default function GodPanel({ open, onClose }: Props) {
   )
 
   if (isMobile) {
-    // Phone: the laws are their own full-screen page — big text, scrollable
-    // body, sticky Apply/Save. No cramped sidebar, no backdrop squeeze.
     return (
       <div className="god-screen" role="dialog" aria-label="Laws of Nature">
         {head}

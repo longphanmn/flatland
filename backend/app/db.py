@@ -112,7 +112,10 @@ class Database:
         # own commit so a whole tick costs ONE fsync instead of one per event.
         self._batch_depth = 0
         # §AD OS-log: pending durable ops drained by the writer daemon.
+        # AZ Phase3 P2: pre-serialized tuples + high-water watermark
         self._pending: deque[tuple[str, tuple]] = deque()
+        self._pending_high_water: int = 0
+        self._pending_high_water_mark: int = 0
         self._writer: threading.Thread | None = None
         self._wake = threading.Event()
         self._stopping = False
@@ -178,6 +181,18 @@ class Database:
         """Ops waiting in the RAM buffer (observability / tests)."""
         return len(self._pending)
 
+    @property
+    def pending_high_water(self) -> int:
+        return self._pending_high_water
+
+    @property
+    def pending_high_water_mark(self) -> int:
+        return self._pending_high_water_mark
+
+    @property
+    def high_water_mark(self) -> int:
+        return self._pending_high_water
+
     def pending_events(self, world_id: int, limit: int = 500) -> list[dict[str, Any]]:
         """AZ Phase 1 P1: read-your-writes from RAM without forcing a flush."""
         out: list[dict[str, Any]] = []
@@ -209,10 +224,17 @@ class Database:
                 break
         return out
 
+    def _bump_high_water(self) -> None:
+        n = len(self._pending)
+        if n > self._pending_high_water:
+            self._pending_high_water = n
+            self._pending_high_water_mark = n
+
     # ------------------------------------------------------------- §AD queue
     def log_event(self, world_id: int, event: HistoryEvent) -> None:
         """Buffer one chronicle event (sim thread never touches SQLite)."""
         self._pending.append(("event", (world_id, event)))
+        self._bump_high_water()
         if len(self._pending) >= FLUSH_MAX_OPS:
             self._wake.set()
 
@@ -233,11 +255,13 @@ class Database:
                 (world_id, entity_id, caste, clan_id, generation, mother_id, father_id, born_tick),
             )
         )
+        self._bump_high_water()
         if len(self._pending) >= FLUSH_MAX_OPS:
             self._wake.set()
 
     def log_death(self, world_id: int, entity_id: int, died_tick: int) -> None:
         self._pending.append(("death", (world_id, entity_id, died_tick)))
+        self._bump_high_water()
         if len(self._pending) >= FLUSH_MAX_OPS:
             self._wake.set()
 

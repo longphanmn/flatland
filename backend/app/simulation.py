@@ -679,6 +679,7 @@ def _clan_sig(info: dict) -> tuple:
     )
 
 
+@lru_cache(maxsize=4096)
 def personal_name_for(entity_id: int, seed: int, generation: int = 0) -> str:
     """Seeded deterministic personal name — god's ledger, never RNG."""
     a = PERSONAL_FIRSTS[(entity_id * 37 + seed) % len(PERSONAL_FIRSTS)]
@@ -686,10 +687,12 @@ def personal_name_for(entity_id: int, seed: int, generation: int = 0) -> str:
     return f"{a} {b}"
 
 
+@lru_cache(maxsize=4096)
 def glyph_for(entity_id: int, seed: int, generation: int = 0) -> str:
     return GLYPH_TABLE[(entity_id * 101 + seed + generation * 17) % len(GLYPH_TABLE)]
 
 
+@lru_cache(maxsize=4096)
 def variation_for(entity_id: int, seed: int) -> dict:
     """Subtle per-creature jitter — cosmetic only, never touches RNG."""
     hue = ((entity_id * 9973 + seed) % 241) / 241 * 24 - 12  # -12..+12 deg
@@ -810,6 +813,12 @@ class Simulation:
         self._soa: object | None = None  # AgentSoA when enabled
         self._nn_grid: object | None = None  # SpatialHashGrid when enabled
         self._nn_tick: int = 0
+        # BD Analytics — zero-alloc telemetry engine
+        try:
+            from . import analytics as _bd_analytics  # type: ignore
+            self._analytics = _bd_analytics.attach_to_sim(self)  # type: ignore[attr-defined]
+        except Exception:
+            self._analytics = None  # type: ignore[attr-defined]
         self._generate_elevation()  # §AQ PH-4: the shape of the land comes first
         self._generate_rivers()  # §AQ PH-3: channels follow the slope
         self._generate_anomalies()  # §AQ PH-10: hidden zones of strange physics
@@ -4026,6 +4035,12 @@ class Simulation:
         if dur > 0.15:
             print(f"[sim] slow tick={self.tick} {dur*1000:.1f}ms c={len(self._cached_creatures)} food={len(self._cached_foods)} houses={len(self._cached_houses)}", flush=True)
         self.tick += 1
+        # BD Analytics — vectorized ring push
+        try:
+            if getattr(self, "_analytics", None) is not None:
+                self._analytics.on_tick(self)  # type: ignore[attr-defined]
+        except Exception:
+            pass
 
     # ---------------------------------------------------------------- society
     @staticmethod
@@ -7412,6 +7427,12 @@ class Simulation:
             )
         self.deaths += 1
         self._death_counts[cause] = self._death_counts.get(cause, 0) + 1
+        # BD1.2: record mortality for telemetry
+        try:
+            if getattr(self, "_analytics", None) is not None:
+                self._analytics.on_death(self.tick, cause)  # type: ignore
+        except Exception:
+            pass
         if c.clan_id:
             self._clan_deaths[c.clan_id] = self._clan_deaths.get(c.clan_id, 0) + 1
         event = HistoryEvent(

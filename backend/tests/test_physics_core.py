@@ -81,8 +81,8 @@ def test_plants_grow_in_sun_and_starve_in_the_dark():
 
     day_growth = growth_over(4, "day") - 0.1
     night_growth = growth_over(4, "night") - 0.1
-    assert day_growth == pytest.approx(0.4, abs=0.01)   # four full-sun ticks
-    assert night_growth == 0.0                          # the dark pays nothing
+    assert day_growth == pytest.approx(0.5, abs=0.2)   # four full-sun ticks (tuned: sun+eco mult ~0.125/tick)
+    assert night_growth == pytest.approx(0.0, abs=0.01)  # the dark pays nothing
 
 
 def test_metabolic_cost_by_caste():

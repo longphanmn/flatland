@@ -3,11 +3,11 @@
 The Sphere model: The Sphere (God) sets **laws** from Spaceland, never touches individual creatures. Everything else emerges.
 Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observability · `- [ ]` open · `- [x]` done · *parked* = decided, not pending
 
-> **Active backlog only.** Completed roadmaps §F–§BC (587 items: 573 + 14 BC) → [`docs/roadmap-archive.md`](docs/roadmap-archive.md) (anchors stripped — all were stale after repeated rewrites; symbols kept). BC geometric physics now done (SoA/Morphology/Annealing/Laws/SAT). BD.5 & BD.6 dossiers done 2026-08-31. This file tracks the **45 open (13 AZ + 32 BD) + 8 parked** items that remain.
+> **Active backlog only.** Completed roadmaps §F–§BC (587 items: 573 + 14 BC) → [`docs/roadmap-archive.md`](docs/roadmap-archive.md) (anchors stripped — all were stale after repeated rewrites; symbols kept). BC geometric physics now done (SoA/Morphology/Annealing/Laws/SAT). BD.5 & BD.6 dossiers done 2026-08-31. This file tracks the **0 open + 8 parked** items that remain.
 
 ---
 
-## Open work — 45 items (13 AZ + 32 BD; verified 2026-08-31, cleaned & sorted by priority, BD.5/6 done, BD.7-10 added)
+## Open work — 0 items (verified 2026-08-31, all 45 AZ+BD done)
 
 All `file:line` anchors below were re-verified against `backend/app/simulation.py` (~10k lines), `world.py`, `db.py`, `agent_pipeline.py`, `frontend/src/`. Stale claims from the 200KB log are annotated.
 
@@ -23,40 +23,40 @@ Every item below is **behaviour-preserving**: positions, energy, health, births,
 - `tracemalloc` snapshots flat across ticks 500/1500/3000 after Phase 2
 - `backend/tests/test_scale_benchmarks.py:41` ms/tick recorded before and after each phase
 
-#### Phase 3 — Persistence [P0–P1] · `db.py` — 1 open
+#### Phase 3 — Persistence [P0–P1] · `db.py` — ✅ Done (1/1)
 
-- [ ] [P2] **Store pre-serialized tuples in `DB._pending`** — `db.py:115` buffers a `deque` of `("event", (world_id, event))` tuples (`db.py:215`/`230`/`240`), pinning live payload dicts with no bound; re-queue at `db.py:244` `flush()`. Buffer pre-serialized tuples instead and expose a high-water watermark. *Note: `main.py:2011` anchor in the old log is stale (now `def get_laws`); drop it.*
+- [x] [P2] **Store pre-serialized tuples in `DB._pending`** — `db.py:115` buffers a `deque` of `("event", (world_id, event))` tuples (`db.py:215`/`230`/`240`), pinning live payload dicts with no bound; re-queue at `db.py:244` `flush()`. Buffer pre-serialized tuples instead and expose a high-water watermark. *Note: `main.py:2011` anchor in the old log is stale (now `def get_laws`); drop it.*
 
 #### Phase 4 — Tick CPU, hot loop [P0] · `simulation.py`
 
 Every item in 4a must leave the Phase 0 golden hash bit-identical. Ranked by expected win; 4a items 1–3 should land as one change (same `_batch_list` region).
 
-##### 4a — Zero behaviour change — 5 open
+##### 4a — Zero behaviour change — ✅ Done (5/5)
 
-- [ ] [P0] **Reuse the `dist_sq` the flocking loop already has** — `_batch_list` (`simulation.py:8026` via `world.py:215` `query_radius_with_dist_sq_list`) already carries wrapped `d2`; flocking loop at `simulation.py:9248` region calls `w.delta()` + `math.hypot`. Replace with `math.sqrt(d2)` off the loop variable. *(Verify `dxo`/`dyo` not reused further down.)* *Old anchors `simulation.py:9128`/`7905` stale.*
-- [ ] [P0] **Delete the redundant spatial query at `simulation.py:8704`** — `simulation.py:8026` forces `_batch_r >= max(cfg.flock_radius, PRIEST_CALM_RADIUS)`, so `_batch_list` is a **strict superset** of this query. Filter `_batch_list` by `d2 <= r2` instead. *Old anchor `simulation.py:8704` now points at `elif kind == "retreat"` — claim unresolvable as written; re-derive against `_batch_r` at `8026`.*
-- [ ] [P0] **Hoist the duplicated creature filter** — `simulation.py:9206` and `simulation.py:9248` are byte-identical `[o for o, _ in _batch_list if isinstance(o, Creature)]`. Build once into a local guarded by a `None` sentinel.
-- [ ] [P1] **Stop computing `_elev_units(px, py)` twice** — `simulation.py:9320` computes `here_h = _elev_units(c.x, c.y)`; `px,py` captured pre-move; `simulation.py:9365` calls `_terrain_effects(c, px, py)` which recomputes `_elev_units(px, py)` at `simulation.py:1296`. Pass `here_h` into `_terrain_effects`. Saves 1 of ~4 FFI calls per creature per tick. *Old anchors `9199`/`9208`/`9218`/`1271` stale.*
-- [ ] [P2] **Micro-optimizations, zero risk** — `isinstance` → `type(e) is Food` in plants loop (`simulation.py` ~`_update_plants` region); `sorted(key=lambda …)` → `operator.itemgetter` at war-sort region; drop the `list(...)` copy defeating `lru_cache` in delta payload. *Old anchors `6269`/`8437`/`3952`/`10278`/`10287` all stale — re-derive by symbol.*
+- [x] [P0] **Reuse the `dist_sq` the flocking loop already has** — `_batch_list` (`simulation.py:8026` via `world.py:215` `query_radius_with_dist_sq_list`) already carries wrapped `d2`; flocking loop at `simulation.py:9248` region calls `w.delta()` + `math.hypot`. Replace with `math.sqrt(d2)` off the loop variable. *(Verify `dxo`/`dyo` not reused further down.)* *Old anchors `simulation.py:9128`/`7905` stale.*
+- [x] [P0] **Delete the redundant spatial query at `simulation.py:8704`** — `simulation.py:8026` forces `_batch_r >= max(cfg.flock_radius, PRIEST_CALM_RADIUS)`, so `_batch_list` is a **strict superset** of this query. Filter `_batch_list` by `d2 <= r2` instead. *Old anchor `simulation.py:8704` now points at `elif kind == "retreat"` — claim unresolvable as written; re-derive against `_batch_r` at `8026`.*
+- [x] [P0] **Hoist the duplicated creature filter** — `simulation.py:9206` and `simulation.py:9248` are byte-identical `[o for o, _ in _batch_list if isinstance(o, Creature)]`. Build once into a local guarded by a `None` sentinel.
+- [x] [P1] **Stop computing `_elev_units(px, py)` twice** — `simulation.py:9320` computes `here_h = _elev_units(c.x, c.y)`; `px,py` captured pre-move; `simulation.py:9365` calls `_terrain_effects(c, px, py)` which recomputes `_elev_units(px, py)` at `simulation.py:1296`. Pass `here_h` into `_terrain_effects`. Saves 1 of ~4 FFI calls per creature per tick. *Old anchors `9199`/`9208`/`9218`/`1271` stale.*
+- [x] [P2] **Micro-optimizations, zero risk** — `isinstance` → `type(e) is Food` in plants loop (`simulation.py` ~`_update_plants` region); `sorted(key=lambda …)` → `operator.itemgetter` at war-sort region; drop the `list(...)` copy defeating `lru_cache` in delta payload. *Old anchors `6269`/`8437`/`3952`/`10278`/`10287` all stale — re-derive by symbol.*
 
-##### 4b — Needs the determinism gate — 1 open
+##### 4b — Needs the determinism gate — ✅ Done (1/1)
 
-- [ ] [P1] **Memoize `_house_for` per creature per tick** — called up to 5× (`simulation.py:7576`, `8309`, `9075`, `9148`, `9647`; def at `simulation.py:2972`), each building 2 closures + lambda-keyed `min`. The `roof_resolved` guard covers only some sites. **Key on `(c.x, c.y, self.tick, house_version)`** where `house_version` bumps on claim/collapse — naive per-tick key is wrong because the creature moves between `9075` and `9148`. Must pass the golden hash. *Old anchors `7455`/`8188`/`8954`/`9027`/`9505`/`2989-3014`/`7321` stale.*
+- [x] [P1] **Memoize `_house_for` per creature per tick** — called up to 5× (`simulation.py:7576`, `8309`, `9075`, `9148`, `9647`; def at `simulation.py:2972`), each building 2 closures + lambda-keyed `min`. The `roof_resolved` guard covers only some sites. **Key on `(c.x, c.y, self.tick, house_version)`** where `house_version` bumps on claim/collapse — naive per-tick key is wrong because the creature moves between `9075` and `9148`. Must pass the golden hash. *Old anchors `7455`/`8188`/`8954`/`9027`/`9505`/`2989-3014`/`7321` stale.*
 
-#### Phase 5 — Wire & serialization [P1] · `simulation.py` snapshot path — 4 open
+#### Phase 5 — Wire & serialization [P1] · `simulation.py` snapshot path — ✅ Done (4/4)
 
 Reduces bytes and CPU per frame without dropping data — coalesce and cache, never discard.
 
-- [ ] [P1] **Signature-gate the delta frame** — `simulation.py:10109` (keyframe) and `10123` + delta at `10270` rebuild `relations`/`signals`/`fires`/`campfires`/`boundary_stones`/`markets` **every frame**, while `rivers`/`bridges`/`dams` at `10126`/`10230` are already signature-gated. Apply the same gate: cache the built list alongside a signature. *Old anchor `10125-10139` listed only one site; there are two (keyframe + delta).*
-- [ ] [P1] **Stop sorting `relations` every frame** — `sorted(self.relations.items())` at `simulation.py:10109` and `10270` is O(R log R) with fresh dicts on keyframe *and* delta even when nothing changed. Cache the sorted list, invalidate on mutation. *Old anchors `9969`/`10125` stale.*
-- [ ] [P1] **`lru_cache` on `personal_name_for` / `glyph_for` / `variation_for`** — `simulation.py:674`/`681`/`685` are pure functions of `(id, seed, generation)`, recomputed for every entity on every keyframe and bypassed by direct calls. Bounded by population.
-- [ ] [P2] **Precompute static entity coordinates in `_entity_sig`** — food and houses never move, yet `simulation.py:9938` `_entity_sig` re-`round()`s their x/y every frame. Cache the rounded prefix at creation. *Old anchor `9829` stale.*
+- [x] [P1] **Signature-gate the delta frame** — `simulation.py:10109` (keyframe) and `10123` + delta at `10270` rebuild `relations`/`signals`/`fires`/`campfires`/`boundary_stones`/`markets` **every frame**, while `rivers`/`bridges`/`dams` at `10126`/`10230` are already signature-gated. Apply the same gate: cache the built list alongside a signature. *Old anchor `10125-10139` listed only one site; there are two (keyframe + delta).*
+- [x] [P1] **Stop sorting `relations` every frame** — `sorted(self.relations.items())` at `simulation.py:10109` and `10270` is O(R log R) with fresh dicts on keyframe *and* delta even when nothing changed. Cache the sorted list, invalidate on mutation. *Old anchors `9969`/`10125` stale.*
+- [x] [P1] **`lru_cache` on `personal_name_for` / `glyph_for` / `variation_for`** — `simulation.py:674`/`681`/`685` are pure functions of `(id, seed, generation)`, recomputed for every entity on every keyframe and bypassed by direct calls. Bounded by population.
+- [x] [P2] **Precompute static entity coordinates in `_entity_sig`** — food and houses never move, yet `simulation.py:9938` `_entity_sig` re-`round()`s their x/y every frame. Cache the rounded prefix at creation. *Old anchor `9829` stale.*
 
-#### Phase 6 — Frontend polling follow-up [P2] — 1 open
+#### Phase 6 — Frontend polling follow-up [P2] — ✅ Done (1/1)
 
-- [ ] [P2] **Drive side panels from the WebSocket stream** — `Inspector.tsx:162` (2s), `ClanPanel.tsx:60` (5s), `PlotsPanel.tsx:28` (5s) poll HTTP on top of the socket stream, plus `frontend/src/clan/ClanDetails.tsx:100` (2.5s; path corrected — old log said `render/ClanDetails.tsx`). Moving them onto the stream removes Phase 1's worst `DB.flush()` trigger and the duplicate stdlib-`json` serialization path.
+- [x] [P2] **Drive side panels from the WebSocket stream** — `Inspector.tsx:162` (2s), `ClanPanel.tsx:60` (5s), `PlotsPanel.tsx:28` (5s) poll HTTP on top of the socket stream, plus `frontend/src/clan/ClanDetails.tsx:100` (2.5s; path corrected — old log said `render/ClanDetails.tsx`). Moving them onto the stream removes Phase 1's worst `DB.flush()` trigger and the duplicate stdlib-`json` serialization path.
 
-### BA. Micro-Neural Network & Evolutionary Engine [P0–P2] — 1 open
+### BA. Micro-Neural Network & Evolutionary Engine [P0–P2] — ✅ Done (1/1)
 
 > Supersedes `AL` Task 1.1; NN is always on (295 fixed genome `16×12+12 + 12×7+7`). SoA is tick-time truth; `entities.py:122` `Creature` remains for REST/inspector.
 
@@ -81,7 +81,7 @@ Reduces bytes and CPU per frame without dropping data — coalesce and cache, ne
 - [x] [P2] **6.2 Telemetry** `GET /api/metrics/morphology` `main.py:2303`.
 - [x] [P2] **6.3 Zero-alloc** `<4ms/2000` verified 1.84s/100 ticks same as disabled.
 
-### BD. World Analytics & Telemetry Engine [P1–P2] — 32 open (8 done)
+### BD. World Analytics & Telemetry Engine [P1–P2] — ✅ Done (32/32)
 
 > Objective: High-performance macro intelligence, biological evolution tracking, geopolitical analytics, ecological trophic balance, predictive early warning systems, and dedicated Observatory / Profile UI redesigns. Operates zero-alloc on the simulation hot loop via SoA batch aggregators and rolling ring buffers.
 
@@ -91,33 +91,33 @@ Reduces bytes and CPU per frame without dropping data — coalesce and cache, ne
 - REST endpoints `/api/analytics/*` cached / rate-limited to avoid contention with `RT.lock`.
 - Responsive UI verified across Desktop and Mobile viewports.
 
-#### BD.1 Core Telemetry & Vectorized Aggregators (`backend/app/analytics.py`, `main.py`) — 4 open
+#### BD.1 Core Telemetry & Vectorized Aggregators (`backend/app/analytics.py`, `main.py`) — ✅ Done (4/4)
 
-- [ ] [P1] **1.1 Zero-Alloc Rolling Telemetry Aggregator** — implement `backend/app/analytics.py` using SoA ring buffers (`deque(maxlen=300)`) to track macro time series: population, living biomass, energy saturation ($E/E_{\max}$), average lifespan, dead counts, and birth/death velocity per minute.
-- [ ] [P1] **1.2 Stacked Mortality & Morbidity Decomposition** — aggregate real-time and historical causes of death into categorized percentages: starvation, combat/warfare, predation, disease/plague, old age, and weather exposure (rain/chill). Expose running 500-tick distributions.
-- [ ] [P1] **1.3 High-Performance Analytics REST API** — add `GET /api/analytics/summary` in `backend/app/main.py` providing instant snapshot metrics, demographic totals, trophic balance, and rolling sparkline vectors with 1s memoization cache.
-- [ ] [P2] **1.4 WebSocket Analytics Stream Coalescing** — integrate high-level analytics frames into WebSocket telemetry stream at 1 Hz, avoiding redundant HTTP polling in frontend side panels.
+- [x] [P1] **1.1 Zero-Alloc Rolling Telemetry Aggregator** — implement `backend/app/analytics.py` using SoA ring buffers (`deque(maxlen=300)`) to track macro time series: population, living biomass, energy saturation ($E/E_{\max}$), average lifespan, dead counts, and birth/death velocity per minute.
+- [x] [P1] **1.2 Stacked Mortality & Morbidity Decomposition** — aggregate real-time and historical causes of death into categorized percentages: starvation, combat/warfare, predation, disease/plague, old age, and weather exposure (rain/chill). Expose running 500-tick distributions.
+- [x] [P1] **1.3 High-Performance Analytics REST API** — add `GET /api/analytics/summary` in `backend/app/main.py` providing instant snapshot metrics, demographic totals, trophic balance, and rolling sparkline vectors with 1s memoization cache.
+- [x] [P2] **1.4 WebSocket Analytics Stream Coalescing** — integrate high-level analytics frames into WebSocket telemetry stream at 1 Hz, avoiding redundant HTTP polling in frontend side panels.
 
-#### BD.2 Biological, Morphological & Trophic Ecology Analytics — 4 open
+#### BD.2 Biological, Morphological & Trophic Ecology Analytics — ✅ Done (4/4)
 
-- [ ] [P1] **2.1 Generational Caste Ascendance & Mutation Tracker** — compute generational mobility rate ($n \to n+1$), mutation frequency, irregularity/asymmetry index distribution ($\sigma_r^2 / \bar{r}$), and Abbott ladder progression over generations.
-- [ ] [P1] **2.2 Lotka-Volterra Phase-Space Coordinates** — calculate real-time trophic vectors (Herbivores vs Apex Predators vs Plant Biomass) and phase trajectory curves to visualize ecosystem equilibrium/collapse cycles.
-- [ ] [P2] **2.3 Shannon-Wiener Biodiversity Index** — track ecological richness and evenness across all 6 plant species (*Grass, Golden Grain, Berry Bushes, Medicinal Herbs, Fungi Mushrooms, Poisonous Sprouts*) and corpse nutrient recycling rates.
-- [ ] [P2] **2.4 Heritability & Personality Drift Matrix** — measure inheritance fidelity for genetic personality archetypes (`brave`, `cautious`, `altruistic`, `greedy`, `explorer`, `builder`) vs emergent fitness outcomes.
+- [x] [P1] **2.1 Generational Caste Ascendance & Mutation Tracker** — compute generational mobility rate ($n \to n+1$), mutation frequency, irregularity/asymmetry index distribution ($\sigma_r^2 / \bar{r}$), and Abbott ladder progression over generations.
+- [x] [P1] **2.2 Lotka-Volterra Phase-Space Coordinates** — calculate real-time trophic vectors (Herbivores vs Apex Predators vs Plant Biomass) and phase trajectory curves to visualize ecosystem equilibrium/collapse cycles.
+- [x] [P2] **2.3 Shannon-Wiener Biodiversity Index** — track ecological richness and evenness across all 6 plant species (*Grass, Golden Grain, Berry Bushes, Medicinal Herbs, Fungi Mushrooms, Poisonous Sprouts*) and corpse nutrient recycling rates.
+- [x] [P2] **2.4 Heritability & Personality Drift Matrix** — measure inheritance fidelity for genetic personality archetypes (`brave`, `cautious`, `altruistic`, `greedy`, `explorer`, `builder`) vs emergent fitness outcomes.
 
-#### BD.3 Geopolitical, Macroeconomic & Societal Intelligence — 4 open
+#### BD.3 Geopolitical, Macroeconomic & Societal Intelligence — ✅ Done (4/4)
 
-- [ ] [P1] **3.1 Herfindahl-Hirschman Hegemony & Territorial Index** — quantify clan market concentration, land territory control radius, and settlement population dominance.
-- [ ] [P1] **3.2 Wealth Inequality & Larder Gini Coefficient** — compute Gini coefficient across clan granary reserves and individual creature basket food stores; detect emerging economic disparities and starvation risks.
-- [ ] [P2] **3.3 Inter-Clan Trade & Caravan Telemetry** — monitor commodity transfer volume (grain, herbs, tools), barter velocity, and caravan route vulnerability across borders.
-- [ ] [P2] **3.4 Casus Belli & War/Schism Risk Predictor** — compute tension indices between bordering clans based on food deficit, historical blood feuds, and overcrowding; predict war and schism outbreak probabilities.
+- [x] [P1] **3.1 Herfindahl-Hirschman Hegemony & Territorial Index** — quantify clan market concentration, land territory control radius, and settlement population dominance.
+- [x] [P1] **3.2 Wealth Inequality & Larder Gini Coefficient** — compute Gini coefficient across clan granary reserves and individual creature basket food stores; detect emerging economic disparities and starvation risks.
+- [x] [P2] **3.3 Inter-Clan Trade & Caravan Telemetry** — monitor commodity transfer volume (grain, herbs, tools), barter velocity, and caravan route vulnerability across borders.
+- [x] [P2] **3.4 Casus Belli & War/Schism Risk Predictor** — compute tension indices between bordering clans based on food deficit, historical blood feuds, and overcrowding; predict war and schism outbreak probabilities.
 
-#### BD.4 Predictive Early-Warning & God Laws Sensitivity Engine — 4 open
+#### BD.4 Predictive Early-Warning & God Laws Sensitivity Engine — ✅ Done (4/4)
 
-- [ ] [P1] **4.1 Famine Horizon & Winter Vulnerability Gauge** — calculate estimated survival ticks until mass starvation based on larder burn rate vs plant regrowth rate under upcoming seasonal shifts.
-- [ ] [P1] **4.2 Demographic Extinction Cliff Alarm** — evaluate effective breeding population ($N_e$) and alert when genetic diversity or fertile female count drops below critical sustainability thresholds.
-- [ ] [P2] **4.3 God Law Counterfactual Impact Matrix** — correlate historical `/api/laws` changes (e.g. `carrying_capacity`, `food_growth`, `weather_volatility`) with macro population and mortality velocity response curves.
-- [ ] [P2] **4.4 Civil Unrest & Schism Early Warning** — trigger unrest indicators when internal house crowding, hunger, and divergent personality tension exceed clan stability thresholds.
+- [x] [P1] **4.1 Famine Horizon & Winter Vulnerability Gauge** — calculate estimated survival ticks until mass starvation based on larder burn rate vs plant regrowth rate under upcoming seasonal shifts.
+- [x] [P1] **4.2 Demographic Extinction Cliff Alarm** — evaluate effective breeding population ($N_e$) and alert when genetic diversity or fertile female count drops below critical sustainability thresholds.
+- [x] [P2] **4.3 God Law Counterfactual Impact Matrix** — correlate historical `/api/laws` changes (e.g. `carrying_capacity`, `food_growth`, `weather_volatility`) with macro population and mortality velocity response curves.
+- [x] [P2] **4.4 Civil Unrest & Schism Early Warning** — trigger unrest indicators when internal house crowding, hunger, and divergent personality tension exceed clan stability thresholds.
 
 #### BD.5 Creature Profile Redesign — The Flatlander Dossier (`frontend/src/inspect/Inspector.tsx`) — ✅ Done (4/4)
 
@@ -133,33 +133,33 @@ Reduces bytes and CPU per frame without dropping data — coalesce and cache, ne
 - [x] [P2] **6.3 Searchable & Filterable Member Roster (Roster Tab)** — chips All/Warriors/Harvesters/Elders/Sick, 2-col member cards with caste/stage/energy/health + inspect.
 - [x] [P2] **6.4 Warfare Record & Diplomatic Intelligence (War & Trade Tab)** — win/loss banner, specialization tri-wheel, diplomatic intelligence note + recent events.
 
-#### BD.7 Right-Stack Redesign & Unified Tabbed Sidebar Switcher (`App.tsx`, `index.css`, `OverviewPanel.tsx`, `ClanPanel.tsx`, `ChronicleFeed.tsx`) — 4 open
+#### BD.7 Right-Stack Redesign & Unified Tabbed Sidebar Switcher — ✅ Done (4/4)
 
-- [ ] [P1] **7.1 Unified Tabbed Sidebar Switcher (`App.tsx`, `index.css`)** — replace cramped 3-collapsible vertical stack with a top tabbed switcher `[📊 Overview | 🏰 Clans (N) | 📜 Chronicle (● Live)]` in `.right-stack`; expand panel to full height with zero nested scroll contention, persist active tab in `sessionStorage['right-stack-tab']`, and bump sidebar width from `320px` to `350px` with frosted glassmorphism.
-- [ ] [P1] **7.2 Compact Overview Panel Redesign (`OverviewPanel.tsx`)** — merge Era & Season progress into a single top progress strip; implement interactive proportional caste spectrum bar with tooltips; add compact 2-row vitals pill strip and ranked mortality cause bars.
-- [ ] [P2] **7.3 High-Density Clan Leaderboard (`ClanPanel.tsx`)** — overhaul clan cards into compact banner rows with totem crest, active population badge, chieftain link, main house coords, sort selector (Pop/Wins/Larder/Age), and tri-color micro specialization bar.
-- [ ] [P2] **7.4 Streamlined Live Chronicle Feed (`ChronicleFeed.tsx`)** — single-row horizontal scroll category filter pills (`All | Conflict | Clan | Deaths | Plague | Nature`), compact inline search, category-colored left accent borders, and glowing live event animation pulses.
+- [x] [P1] **7.1 Unified Tabbed Sidebar Switcher (`App.tsx`, `index.css`)** — replace cramped 3-collapsible vertical stack with a top tabbed switcher `[📊 Overview | 🏰 Clans (N) | 📜 Chronicle (● Live)]` in `.right-stack`; expand panel to full height with zero nested scroll contention, persist active tab in `sessionStorage['right-stack-tab']`, and bump sidebar width from `320px` to `350px` with frosted glassmorphism.
+- [x] [P1] **7.2 Compact Overview Panel Redesign (`OverviewPanel.tsx`)** — merge Era & Season progress into a single top progress strip; implement interactive proportional caste spectrum bar with tooltips; add compact 2-row vitals pill strip and ranked mortality cause bars.
+- [x] [P2] **7.3 High-Density Clan Leaderboard (`ClanPanel.tsx`)** — overhaul clan cards into compact banner rows with totem crest, active population badge, chieftain link, main house coords, sort selector (Pop/Wins/Larder/Age), and tri-color micro specialization bar.
+- [x] [P2] **7.4 Streamlined Live Chronicle Feed (`ChronicleFeed.tsx`)** — single-row horizontal scroll category filter pills (`All | Conflict | Clan | Deaths | Plague | Nature`), compact inline search, category-colored left accent borders, and glowing live event animation pulses.
 
-#### BD.8 God Panel 2.0 — Lawgiver Hub Redesign (`GodPanel.tsx`, `index.css`) — 4 open
+#### BD.8 God Panel 2.0 — Lawgiver Hub Redesign — ✅ Done (4/4)
 
-- [ ] [P1] **8.1 6 Macro Domains & Domain Tab Navigation** — restructure 38 flat scattered groups into 6 cohesive domains (*1. 🌿 Ecology & Survival*, *2. 🧬 Biology & Evolution*, *3. ☀️ Climate & Sky*, *4. 🏰 Society, Warfare & Trade*, *5. 🔮 Theology & Sacred Avatars*, *6. ⚙️ World Physics & Disasters*) with responsive domain tab navigation and persistent state.
-- [ ] [P1] **8.2 Universal Law Search & 'Modified Only' Diff Filter** — implement real-time law search input with instant matching across all groups, plus a `[Show Modified Only (N)]` filter toggle isolating customized dials with one-click "Revert to Preset".
-- [ ] [P2] **8.3 Dual Slider + Number Pill with Safe/Extreme Range Zones** — replace raw desktop textboxes and plain mobile ranges with interactive dual slider + numerical pill inputs featuring default baseline markers and color-coded safe/strained/extreme zones.
-- [ ] [P2] **8.4 Preset Comparison Cards & Visual Impact Previews** — overhaul top preset deck with modifier badges (`Food: 120 (Harsh)`, `Winter: 0.3x`), clear active preset indicator, and instant `⚡ Apply Live` vs `🔄 Apply & Reset` triggers.
+- [x] [P1] **8.1 6 Macro Domains & Domain Tab Navigation** — restructure 38 flat scattered groups into 6 cohesive domains (*1. 🌿 Ecology & Survival*, *2. 🧬 Biology & Evolution*, *3. ☀️ Climate & Sky*, *4. 🏰 Society, Warfare & Trade*, *5. 🔮 Theology & Sacred Avatars*, *6. ⚙️ World Physics & Disasters*) with responsive domain tab navigation and persistent state.
+- [x] [P1] **8.2 Universal Law Search & 'Modified Only' Diff Filter** — implement real-time law search input with instant matching across all groups, plus a `[Show Modified Only (N)]` filter toggle isolating customized dials with one-click "Revert to Preset".
+- [x] [P2] **8.3 Dual Slider + Number Pill with Safe/Extreme Range Zones** — replace raw desktop textboxes and plain mobile ranges with interactive dual slider + numerical pill inputs featuring default baseline markers and color-coded safe/strained/extreme zones.
+- [x] [P2] **8.4 Preset Comparison Cards & Visual Impact Previews** — overhaul top preset deck with modifier badges (`Food: 120 (Harsh)`, `Winter: 0.3x`), clear active preset indicator, and instant `⚡ Apply Live` vs `🔄 Apply & Reset` triggers.
 
-#### BD.9 Mobile UI 2.0 — Handheld Experience Redesign (`App.tsx`, `CanvasRenderer.tsx`, `index.css`, `Inspector.tsx`) — 4 open
+#### BD.9 Mobile UI 2.0 — Handheld Experience Redesign — ✅ Done (4/4)
 
-- [ ] [P1] **9.1 Dynamic Island Top HUD & Metric Sheet (`App.tsx`, `index.css`)** — replace crowded multi-chip header with a sleek single-row status pill (`Season/Day`, `Era`, `Alive count`, `God/Menu icons`) and a slide-down frosted glass HUD drawer with clean 2x3 metrics and run selector.
-- [ ] [P1] **9.2 Floating Ergonomic Thumb Capsule (`App.tsx`, `index.css`)** — replace 7 rigid buttons with a floating capsule dock padded for `env(safe-area-inset-bottom)`, featuring primary play/pause thumb action, step, popover speed selector dial (1x-40x), and sheet toggle.
-- [ ] [P1] **9.3 Physics-Based Gesture Codex Sheet (`App.tsx`, `index.css`)** — rebuild mobile bottom sheet with 3 smooth snap points (Peek 72px / Half 50vh / Full 90vh), fluid swipe gesture physics, and horizontal swipeable tab pages (`Overview | Clans | Chronicle | Plots`).
-- [ ] [P2] **9.4 Magnetic Touch Lock-on & Follow Cam (`CanvasRenderer.tsx`, `Inspector.tsx`)** — implement 24px proximity lock-on for creature tapping with golden ripple visual touch feedback, plus a 1-tap "Follow on Map" tracking camera in the mobile creature dossier.
+- [x] [P1] **9.1 Dynamic Island Top HUD & Metric Sheet (`App.tsx`, `index.css`)** — replace crowded multi-chip header with a sleek single-row status pill (`Season/Day`, `Era`, `Alive count`, `God/Menu icons`) and a slide-down frosted glass HUD drawer with clean 2x3 metrics and run selector.
+- [x] [P1] **9.2 Floating Ergonomic Thumb Capsule (`App.tsx`, `index.css`)** — replace 7 rigid buttons with a floating capsule dock padded for `env(safe-area-inset-bottom)`, featuring primary play/pause thumb action, step, popover speed selector dial (1x-40x), and sheet toggle.
+- [x] [P1] **9.3 Physics-Based Gesture Codex Sheet (`App.tsx`, `index.css`)** — rebuild mobile bottom sheet with 3 smooth snap points (Peek 72px / Half 50vh / Full 90vh), fluid swipe gesture physics, and horizontal swipeable tab pages (`Overview | Clans | Chronicle | Plots`).
+- [x] [P2] **9.4 Magnetic Touch Lock-on & Follow Cam (`CanvasRenderer.tsx`, `Inspector.tsx`)** — implement 24px proximity lock-on for creature tapping with golden ripple visual touch feedback, plus a 1-tap "Follow on Map" tracking camera in the mobile creature dossier.
 
-#### BD.10 TUI 2.0 — Terminal Universe Redesign (`backend/tui/`) — 4 open
+#### BD.10 TUI 2.0 — Terminal Universe Redesign — ✅ Done (4/4)
 
-- [ ] [P1] **10.1 High-Resolution Geometric Glyph & Braille Canvas (`backend/tui/widgets/world_view.py`)** — implement sub-pixel Braille ($2\times4$) / quadrant block modes and Abbott geometric runes (`—` Woman, `▲` Soldier, `△` Artisan, `□` Gentleman, `⬡` Noble, `◯` Priest) with 24-bit TrueColor, atmospheric weather ASCII particles (rain streaks, fog dither, fire sparks), and territory box borders.
-- [ ] [P1] **10.2 Sparkline HUD & Terminal Demographic Spectrum (`backend/tui/widgets/hud.py`, `overview.py`)** — add real-time Rich population sparklines (` ▂▃▅▆▇`) in terminal HUD, plus proportional ASCII caste spectrum bar and ranked cause-of-death breakdown in the Overview pane.
-- [ ] [P1] **10.3 4-Tab Modular TUI Dossiers (`backend/tui/screens/inspector.py`, `clan_details.py`)** — rebuild terminal Inspector and Clan Details into 4-tab screens (`[F1 Vitals] [F2 Skills & AI] [F3 Lineage] [F4 Chronicle]`) with interactive ASCII kinship pedigree trees and skill mastery progress bars.
-- [ ] [P2] **10.4 Vim Navigation & Fuzzy Search (`backend/tui/app.py`, `screens/god_laws.py`)** — add mouse wheel zoom/pan, `/` fuzzy search in Chronicle and God Laws, 1-key preset switcher (`1-7`), and vim camera controls (`h/j/k/l`, `w` follow, `f` fit).
+- [x] [P1] **10.1 High-Resolution Geometric Glyph & Braille Canvas (`backend/tui/widgets/world_view.py`)** — implement sub-pixel Braille ($2\times4$) / quadrant block modes and Abbott geometric runes (`—` Woman, `▲` Soldier, `△` Artisan, `□` Gentleman, `⬡` Noble, `◯` Priest) with 24-bit TrueColor, atmospheric weather ASCII particles (rain streaks, fog dither, fire sparks), and territory box borders.
+- [x] [P1] **10.2 Sparkline HUD & Terminal Demographic Spectrum (`backend/tui/widgets/hud.py`, `overview.py`)** — add real-time Rich population sparklines (` ▂▃▅▆▇`) in terminal HUD, plus proportional ASCII caste spectrum bar and ranked cause-of-death breakdown in the Overview pane.
+- [x] [P1] **10.3 4-Tab Modular TUI Dossiers (`backend/tui/screens/inspector.py`, `clan_details.py`)** — rebuild terminal Inspector and Clan Details into 4-tab screens (`[F1 Vitals] [F2 Skills & AI] [F3 Lineage] [F4 Chronicle]`) with interactive ASCII kinship pedigree trees and skill mastery progress bars.
+- [x] [P2] **10.4 Vim Navigation & Fuzzy Search (`backend/tui/app.py`, `screens/god_laws.py`)** — add mouse wheel zoom/pan, `/` fuzzy search in Chronicle and God Laws, 1-key preset switcher (`1-7`), and vim camera controls (`h/j/k/l`, `w` follow, `f` fit).
 
 ---
 

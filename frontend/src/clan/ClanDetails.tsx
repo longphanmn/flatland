@@ -70,10 +70,12 @@ type TabKey = 'stronghold' | 'roster' | 'warfare' | 'annals'
 
 export default function ClanDetails({
   clanId,
+  state: _state,
   onClose,
   onSelectCreature,
 }: {
   clanId: number
+  state?: any
   onClose: () => void
   onSelectCreature?: (id: number) => void
 }) {
