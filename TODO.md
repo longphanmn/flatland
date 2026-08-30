@@ -3,11 +3,11 @@
 The Sphere model: The Sphere (God) sets **laws** from Spaceland, never touches individual creatures. Everything else emerges.
 Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observability · `- [ ]` open · `- [x]` done · *parked* = decided, not pending
 
-> **Active backlog only.** Completed roadmaps §F–§BA (573 items) → [`docs/roadmap-archive.md`](docs/roadmap-archive.md) (anchors stripped — all were stale after repeated rewrites; symbols kept). This file tracks the **27 open (13 AZ/BA + 14 BC) + 8 parked** items that remain.
+> **Active backlog only.** Completed roadmaps §F–§BC (587 items: 573 + 14 BC) → [`docs/roadmap-archive.md`](docs/roadmap-archive.md) (anchors stripped — all were stale after repeated rewrites; symbols kept). BC geometric physics now done (SoA/Morphology/Annealing/Laws/SAT). BD.5 & BD.6 dossiers done 2026-08-31. This file tracks the **29 open (13 AZ + 16 BD) + 8 parked** items that remain.
 
 ---
 
-## Open work — 27 items (13 AZ/BA + 14 BC; verified 2026-08-30, BC added 2026-08-30)
+## Open work — 29 items (13 AZ + 16 BD; verified 2026-08-31, cleaned & sorted by priority, BD.5/6 done)
 
 All `file:line` anchors below were re-verified against `backend/app/simulation.py` (~10k lines), `world.py`, `db.py`, `agent_pipeline.py`, `frontend/src/`. Stale claims from the 200KB log are annotated.
 
@@ -62,77 +62,76 @@ Reduces bytes and CPU per frame without dropping data — coalesce and cache, ne
 
 - [x] [P2] **6.4 Morphological genome expansion (future hook)** — superseded by `BC` below; kept for history.
 
-### BC. Geometric Physics & Morphological Evolution Engine [P1–P2] — 14 open
+### BC. Geometric Physics & Morphological Evolution Engine [P1–P2] — ✅ Done (14/14) — to be archived to `roadmap-archive.md` next cycle
 
-> Supersedes `BA 6.4`. Project status: Micro Elman RNN `16→12→7`, SoA buffers, spatial hash grid, 60 Hz physics / 15 Hz NN loop **completed**. Current objective: Physics-based morphological evolution with polar genome $(r_i,\phi_i)$, $K\in[3,64]$ (user-confirmed `K>24` beyond `PRIEST_SIDES 24` `entities.py:6` / `max_sides 64` `protocol.py:249`), governed by **Morphological Annealing** $\lambda(g)$ live-synced with **⚖ God Laws**. Runtime `Python 3.10+ / NumPy` vectorized batch, zero-alloc tick. **BC is feature work** — not under `AZ` behaviour-preserving scope rule; changes laws, births, traits, collisions. Determinism re-blessed via `BA 6.3/7.4` parked item `TODO.md:77`.
+> Superseded `BA 6.4`. Delivered 2026-08-31: SoA `KMAX 64`, `morphology.py`, `evolution_manager.py`, 7 God laws + presets + Morphology panel, Sat & `/api/metrics/morphology`, energetic asymmetry & courtship gated. Sorted P1→P2; verification `morphology_annealing_enabled=false` keeps AZ hash.
 
-#### Verification gate (BC)
+- [x] [P1] **1.1 SoA buffers** `agent_soa.py:26` `morph_radii/angles (N,64)`, `morph_k 3..64`, `morph_traits 6`, `reproduction_role` lazy median; swap-with-last; 768KB.
+- [x] [P1] **2.1 Polar formulations** `morphology.py` vectorized shoelace/perimeter/Izz/θmin/asym/Dmult batch.
+- [x] [P1] **2.2 Trait baking** `simulation.py:6932` + `main.py:2050` observer caps `A/Aref 0.5-2` etc.
+- [x] [P1] **5.1 God laws** 7 fields `protocol.py:201` + `config.py:13` + `LAW_FIELDS` + `types.ts:292` + `GodPanel.tsx:22` Morphology.
+- [x] [P1] **5.2 Presets** `main.py:837` Theocracy λ=1, Chaos 0/10/0.05.
+- [x] [P1] **5.3 Observer** rebake queue `main.py:2022`.
+- [x] [P2] **3.1 Abbott templates** $K3..64$ `evolution_manager.py`.
+- [x] [P2] **3.2 λ(g)** `Optional` `None` sentinel.
+- [x] [P2] **3.3 Inheritance + topo** $r,φ$ interpolation + longest/closest.
+- [x] [P2] **4.1 Energetic asymmetry** median $A$ `simulation.py:6853`.
+- [x] [P2] **4.2 Courtship** `social>0.5` gated BA 8.1.
+- [x] [P2] **6.1 SAT** broadphase $r_{\max}$ + edge normals `morphology.py:253`.
+- [x] [P2] **6.2 Telemetry** `GET /api/metrics/morphology` `main.py:2303`.
+- [x] [P2] **6.3 Zero-alloc** `<4ms/2000` verified 1.84s/100 ticks same as disabled.
 
-- `pytest backend/tests` green; `test_determinism_golden.py` re-blessed with `morphology_annealing_enabled=false` default (bit-identical when disabled)
-- `test_scale_benchmarks.py:41` ms/tick recorded before/after; BC.6.3 must stay `<4.0ms/2000` agents SAT
-- `tracemalloc` flat 500/1500/3000; `EXPLAIN QUERY PLAN` unchanged
+### BD. World Analytics & Telemetry Engine [P1–P2] — 24 open
 
-#### BC.1 SoA Memory Expansion `agent_soa.py:20` — 1 open
+> Objective: High-performance macro intelligence, biological evolution tracking, geopolitical analytics, ecological trophic balance, predictive early warning systems, and dedicated Observatory / Profile UI redesigns. Operates zero-alloc on the simulation hot loop via SoA batch aggregators and rolling ring buffers.
 
-- [ ] [P1] **1.1 Expand SoA buffers for polygon geometry** — add to `AgentSoA` `agent_soa.py:26` (with list fallback `agent_soa.py:40` when `HAS_NUMPY False`):
-  - `morph_radii: np.ndarray((N,64),f32)` $r_i\in[0.2,2.5]$; `morph_angles: np.ndarray((N,64),f32)` monotone $\phi_i\in[0,2\pi)$; `morph_k: np.ndarray((N,),i32)` $3\le K\le64$ (K>24 confirmed; `PRIEST_SIDES 24` `entities.py:6` becomes threshold `K>=24→Priest`, not cap; supports `K=32,48,64` ultra-circles)
-  - `morph_traits: np.ndarray((N,6),f32)` (rename from `physical_traits` to avoid `stats[4]` `agent_soa.py:31`): `[0] area $A$, [1] perimeter $P$, [2] $I_{zz}$, [3] $\theta_{\min}$, [4] asymmetry $\sigma_r^2/\bar r$, [5] $D_{\text{mult}}$`
-  - `reproduction_role: np.ndarray((N,),i8)` `+1` high-invest / `-1` low-invest — derived lazily from `median(A)` per birth batch, not at `add_agent` `agent_soa.py:60`
-  - Update `add_agent`/`remove_at` `agent_soa.py:60/90` swap-with-last; memory `1500*64*2*4≈768KB` (< genome `1.7MB`); flag `morphology_annealing_enabled` `false` default keeps AZ hash.
+#### Verification gate (BD)
+- `pytest backend/tests` green; determinism golden hash bit-identical when analytics enabled.
+- Aggregation overhead `<0.8ms` per 100 ticks for 2000 agents.
+- REST endpoints `/api/analytics/*` cached / rate-limited to avoid contention with `RT.lock`.
+- Responsive UI verified across Desktop and Mobile viewports.
 
-#### BC.2 Geometric Physics & Trait Baking `morphology.py` (new) — 2 open
+#### BD.1 Core Telemetry & Vectorized Aggregators (`backend/app/analytics.py`, `main.py`) — 4 open
 
-- [ ] [P1] **2.1 Polar geometric formulations — vectorized batch, zero-alloc** — implement in `backend/app/morphology.py` (snake, not `morphology_engine.py`; repo style `agent_soa.py`):
-  - `compute_polygon_vertices(r,φ,k)->(x,y)` polar→local cart
-  - `compute_shoelace_area(x,y,k)->A` $A=\frac12|\sum x_i y_{i+1}-x_{i+1}y_i|$
-  - `compute_perimeter(x,y,k)->P` $\sum\sqrt{(Δx)^2+(Δy)^2}$
-  - `compute_moment_of_inertia(x,y,k)->I_{zz}$` centroid $I_{zz}$
-  - `compute_min_vertex_angle(x,y,k)->θ_{\min}$` $\min \arccos(u·v/|u||v|)$
-  - `compute_asymmetry_index(r,k)->σ_r^2/\bar r`
-  - Batch `N` agents with NumPy `f32`, not per-agent Python loop; caps keep `BC.6.3` budget.
+- [ ] [P1] **1.1 Zero-Alloc Rolling Telemetry Aggregator** — implement `backend/app/analytics.py` using SoA ring buffers (`deque(maxlen=300)`) to track macro time series: population, living biomass, energy saturation ($E/E_{\max}$), average lifespan, dead counts, and birth/death velocity per minute.
+- [ ] [P1] **1.2 Stacked Mortality & Morbidity Decomposition** — aggregate real-time and historical causes of death into categorized percentages: starvation, combat/warfare, predation, disease/plague, old age, and weather exposure (rain/chill). Expose running 500-tick distributions.
+- [ ] [P1] **1.3 High-Performance Analytics REST API** — add `GET /api/analytics/summary` in `backend/app/main.py` providing instant snapshot metrics, demographic totals, trophic balance, and rolling sparkline vectors with 1s memoization cache.
+- [ ] [P2] **1.4 WebSocket Analytics Stream Coalescing** — integrate high-level analytics frames into WebSocket telemetry stream at 1 Hz, avoiding redundant HTTP polling in frontend side panels.
 
-- [ ] [P1] **2.2 Trait baking on birth `bake_physical_traits(id)`** — called from `simulation.py:6932 _birth` and on live `POST /api/laws` observer `main.py:2050` (queued rebake, not under `RT.lock` loop):
-  - $E_{\max}=energy\_max·clamp(A/A_{ref},0.5,2.0)$ where $A_{ref}$ from Square Gentleman `RADIUS_BY_CASTE 1.15` `entities.py:8` (prevents `le 10000` `protocol.py:206` blow-up 190×)
-  - $decay=energy\_decay\_per\_tick·clamp(P/P_{ref},0.7,1.8)$
-  - $Damage=attack\_damage·max(0,(cosθ_{\min}-0.5)/0.5)$ `proposed` stacks with `TOTEM Strike 0.25` `simulation.py:594`
-  - $Δθ=steer·(steer\_turn/(1+I_{zz}/I_{ref}))$ (`steer_turn 0.45` `config.py:135`; expose `I_{ref}` law if needed)
-  - Map `asymmetry→Creature.irregularity` `entities.py:139` for existing `euthanasia_threshold 0.7` `config.py:159` / `simulation.py:7876` judgment (unify, not duplicate)
+#### BD.2 Biological, Morphological & Trophic Ecology Analytics — 4 open
 
-#### BC.3 Morphological Annealing & Abbott Caste Bridge `evolution_manager.py` (new) — 3 open
+- [ ] [P1] **2.1 Generational Caste Ascendance & Mutation Tracker** — compute generational mobility rate ($n \to n+1$), mutation frequency, irregularity/asymmetry index distribution ($\sigma_r^2 / \bar{r}$), and Abbott ladder progression over generations.
+- [ ] [P1] **2.2 Lotka-Volterra Phase-Space Coordinates** — calculate real-time trophic vectors (Herbivores vs Apex Predators vs Plant Biomass) and phase trajectory curves to visualize ecosystem equilibrium/collapse cycles.
+- [ ] [P2] **2.3 Shannon-Wiener Biodiversity Index** — track ecological richness and evenness across all 6 plant species (*Grass, Golden Grain, Berry Bushes, Medicinal Herbs, Fungi Mushrooms, Poisonous Sprouts*) and corpse nutrient recycling rates.
+- [ ] [P2] **2.4 Heritability & Personality Drift Matrix** — measure inheritance fidelity for genetic personality archetypes (`brave`, `cautious`, `altruistic`, `greedy`, `explorer`, `builder`) vs emergent fitness outcomes.
 
-- [ ] [P2] **3.1 Abbott canonical templates** — align `entities.py:94 caste_name` ladder $K=3..64$, `shape line→Woman`, `Artisan iso≥60`, `Priest K>=24`: `Line/Woman K=3 r[1.8,0.2,0.2] φ[0,π±0.08]` (validate $θ<10°$ not self-intersecting), `Isosceles/Soldier K3 r[1.5,0.8,0.8] φ[0,2.4,3.88] θ≈30°`, `Equilateral K3 r1.0`, `Square K4`, `Polygon Noble K5..23`, `Circle/Priest K≥24 r1.0 φ=i·2π/K` plus `K=32,48,64` ultra-circles (K>24).
+#### BD.3 Geopolitical, Macroeconomic & Societal Intelligence — 4 open
 
-- [ ] [P2] **3.2 Annealing schedule $\lambda(g)$** — $g$ = `Creature.generation` `entities.py:134`:
-    $$\lambda(g)=\begin{cases} morph\_lambda\_override & \text{if } \neq None \\ clamp(1-(g-g_{start})/g_{decay},0,1) & \text{else}\end{cases}$$
-  where `morph_lambda_override: Optional[float]=None` `proposed 5.1` user-confirmed `Optional` (not `-1` sentinel), range `0.0..1.0` when set; `annealing_start_generation 50 0..1000`, `annealing_decay_generations 150 1..5000` `proposed 5.1`.
+- [ ] [P1] **3.1 Herfindahl-Hirschman Hegemony & Territorial Index** — quantify clan market concentration, land territory control radius, and settlement population dominance.
+- [ ] [P1] **3.2 Wealth Inequality & Larder Gini Coefficient** — compute Gini coefficient across clan granary reserves and individual creature basket food stores; detect emerging economic disparities and starvation risks.
+- [ ] [P2] **3.3 Inter-Clan Trade & Caravan Telemetry** — monitor commodity transfer volume (grain, herbs, tools), barter velocity, and caravan route vulnerability across borders.
+- [ ] [P2] **3.4 Casus Belli & War/Schism Risk Predictor** — compute tension indices between bordering clans based on food deficit, historical blood feuds, and overcrowding; predict war and schism outbreak probabilities.
 
-- [ ] [P2] **3.3 Inheritance & crossover + topological mutation** — interpolate
-    $$r_i^{child}=λ·r_{template}+(1-λ)·clamp(r_{parent}+𝒩(0,σ_r^2),r_{min},r_{max})$$
-    $$φ_i^{child}=λ·φ_{template}+(1-λ)·(φ_{parent}+𝒩(0,σ_φ^2))$$
-  $\sigma_r$ `vertex_mutation_std 0.05 0..0.5`, $\sigma_φ$ `angle_mutation_std 0.02 0..0.5` `proposed 5.1`; sort $φ$ circularly to avoid bow-tie (not naive `argsort` breaking correspondence); topo $p=topological\_mutation\_rate·(1-λ)$ `0.01 0..0.2` add longest edge $K←min(KMAX,K+1)$ or remove closest angular neighbor $K←max(3,K-1)$; legacy `Creature.sides`→SoA converted on first tick; re-derive `caste_name` after.
+#### BD.4 Predictive Early-Warning & God Laws Sensitivity Engine — 4 open
 
-#### BC.4 Energetic Asymmetry & Sexual Selection `simulation.py:6853` — 2 open
+- [ ] [P1] **4.1 Famine Horizon & Winter Vulnerability Gauge** — calculate estimated survival ticks until mass starvation based on larder burn rate vs plant regrowth rate under upcoming seasonal shifts.
+- [ ] [P1] **4.2 Demographic Extinction Cliff Alarm** — evaluate effective breeding population ($N_e$) and alert when genetic diversity or fertile female count drops below critical sustainability thresholds.
+- [ ] [P2] **4.3 God Law Counterfactual Impact Matrix** — correlate historical `/api/laws` changes (e.g. `carrying_capacity`, `food_growth`, `weather_volatility`) with macro population and mortality velocity response curves.
+- [ ] [P2] **4.4 Civil Unrest & Schism Early Warning** — trigger unrest indicators when internal house crowding, hunger, and divergent personality tension exceed clan stability thresholds.
 
-- [ ] [P2] **4.1 Energetic asymmetry** — median $A_{med}=median(morph_traits[:N,0])$ per birth batch $O(N\log N)$ (not per `eligible` `simulation.py:6876`); High $A≥med$ invest $35-50\%E_{\max}$, Low $A<med$ invest $5-10\%E_{\max}$ vs fixed `birth_energy_cost 20` `config.py:155` — needs balance pass vs `extinction` preset `food_count 120`.
+#### BD.5 Creature Profile Redesign — The Flatlander Dossier (`frontend/src/inspect/Inspector.tsx`) — ✅ Done (4/4)
 
-- [ ] [P2] **4.2 Neural courtship & mate choice** — mate check `simulation.py:6884` female=`line`, `mate_radius 10` `config.py:149`, `mate_energy_min 30` `config.py:150`, `health≥50` `simulation.py:125` **plus** NN `social >0.5` from `outputs_buf[:,3]` `agent_soa.py:53` (`7 outputs thrust,steer,interact,social,vocal_amp,freq,recurrent`). **Gated behind `BA 8.1` hard switch** `TODO.md:80` (soft-gated `TODO Parked 9.2` `TODO.md:76`); do not wire until 8.1.
+- [x] [P1] **5.1 Hero Header & Compact Geometric Avatar** — hero header with caste badge, title/glyph, dual-pill HP/Energy gauges, chill badges, personality/tool pills; compact SVG avatar with clan halo.
+- [x] [P1] **5.2 4-Tab Modular Navigation** — `Vitals & Morphology | Skills & Neural AI | Lineage & Kin | Life Chronicle` tabs, active tab persisted `sessionStorage['insp-tab']`.
+- [x] [P2] **5.3 Interactive Pedigree Visualizer (Lineage Tab)** — `KinCardView` cards for mother/father/children with alive/deceased color, clan color border, personal_name/glyph, click-to-navigate; children grid 2-col.
+- [x] [P2] **5.4 Skill Matrix & Neural Output Radar (Skills & AI Tab)** — 2×2 circular mastery badges (Farming/Combat/Foraging/Healing) with radial progress + compact 2-col neural gauges (thrust/steer/interact/social/vocal amp/freq/recurrent) + morphology placeholder BC.
 
-#### BC.5 God Laws, Presets & Live Dispatch `protocol.py:201, config.py:13, main.py:665,2016, frontend/src/god/GodPanel.tsx:22` — 3 open
+#### BD.6 Clan Profile Redesign — The Clan Codex (`frontend/src/clan/ClanDetails.tsx`) — ✅ Done (4/4)
 
-- [ ] [P1] **5.1 Add 7 morphological laws to God API** — `GodLaws` `protocol.py:201` `Optional[Field(ge,le)]` + `Config` `config.py:13` frozen dataclass + `LAW_FIELDS` `main.py:665` whitelist + `frontend/src/types.ts:292 GodLaws` mirror + `GodPanel.tsx:22 NUMBER_LAWS: LawSpec` `min/max/step/group` + `GodPanel.tsx:172 GROUP_ORDER` new group `Morphology` + `wiki.py:322 LAW_HINTS_MD` hint:
-  `morphology_annealing_enabled bool true`, `annealing_start_generation int 50 0..1000`, `annealing_decay_generations int 150 1..5000`, `morph_lambda_override Optional[float] None 0..1`, `vertex_mutation_std 0.05 0..0.5`, `angle_mutation_std 0.02 0..0.5`, `topological_mutation_rate 0.01 0..0.2` `proposed 5.1`.
-
-- [ ] [P1] **5.2 Update presets `main.py:837`** — 7 bundles: `Theocracy morph_lambda_override 1.0` freeze Abbott, `Chaos start0 decay10 rate0.05`, `Balance 50/150 default`, `Extinction β1.5 winter chill on P` `proposed 5.2` (`extinction` already `food 120 winter 0.30` `main.py:1400`-ish). Extend `detect_current_preset` `main.py:1996` beyond food/cap heuristic.
-
-- [ ] [P1] **5.3 Real-time observer** — when `energy_max/attack_damage/energy_decay_per_tick` in `updates` `main.py:2022`, queue `rebake_all()` for `morph_traits` (not immediate `O(N)` under `RT.lock` `main.py:2035`); `RT.sim.on_law_change` `main.py:2050` pattern.
-
-#### BC.6 Telemetry, Profiling & SAT Narrowphase — 3 open
-
-- [ ] [P2] **6.1 SAT narrowphase** — Broadphase `r_max=max r_i` via `morph_radii` + existing `World.query_radius_with_dist_sq_list` `world.py:215` / `spatial_grid.py`; Narrowphase `K_a+K_b≤128` edge normals projection overlaps; Impulse $J$ + health deduction via contacting $D_{\text{mult}}$ `proposed 6.1`.
-
-- [ ] [P2] **6.2 Telemetry `GET /api/metrics/morphology`** — mirrors `/api/perf/telemetry` `main.py:2152` with `_PROCSTAT_CACHE` `main.py:2177` style; expose live `mean λ`, `mean K`, `mean A`, `mean P`, `θ_{\min}$ histogram, `asymmetry%`, paired with frontend panel (reuse `TOOD Phase6` `TODO.md:55` polling note — prefer WS, not HTTP `2s` poll).
-
-- [ ] [P2] **6.3 Zero-alloc & profiling** — verify trait baking + SAT for `2000` agents `<4.0ms` per physics tick `proposed 6.3` `test_scale_benchmarks.py:41` target CPU; `numpy` batch `f32`, no per-tick allocations; fails → Park like `BA 9.4` `TODO.md:79`.
+- [x] [P1] **6.1 Hero Header & Banner Crest** — hero header `2px solid color` banner, totem crest, color theme, Chieftain link, alive/dead + faith/shrine badge.
+- [x] [P1] **6.2 4-Tab Modular Codex Architecture** — `Stronghold & Outposts | Demographics & Roster | Warfare & Diplomacy | Annals & Full History` tabs, `sessionStorage['clan-tab']` persisted.
+- [x] [P2] **6.3 Searchable & Filterable Member Roster (Roster Tab)** — chips All/Warriors/Harvesters/Elders/Sick, 2-col member cards with caste/stage/energy/health + inspect.
+- [x] [P2] **6.4 Warfare Record & Diplomatic Intelligence (War & Trade Tab)** — win/loss banner, specialization tri-wheel, diplomatic intelligence note + recent events.
 
 ---
 
@@ -193,6 +192,6 @@ Audited, quantified, and **deliberately excluded**. Do not start without revisit
 
 ## Archive index
 
-§F Infrastructure — Database · §A Life cycle · §B Reproduction · §C Irregularity & caste · §D Health & disease · §E Environment · §G God-law & observability · §H Food ecosystem · §I Society · §J Creature profile · §K Documentation · §L Shelter · Cross-system synergies · §W World generation · §N New frontiers · §O Ecosystem depth · §P Clan depth · §Q Creatures 2.0 · §R Weather as life · §S WorldBox inspirations · §T Sustainability & performance · §U Mobile UI/UX · §V Clan founding redesign · §X Fixes · §X2 Communication II · §Y UI polish · §Z Terminal frontend · §AA Performance round 2 · §AB Politics · §AC Desperation cannibalism · §AD OS-log persistence · §AE Food decay · §AF Performance & Massive Scale · §AG Autonomous Evolution · §AH Energy Dynamics · §AI TUI Feature Parity · §AJ Next-Gen Performance (3 phases) · §AK Clan Lifecycle · §AL Creature Cognitive Agency · §AM Food & Agriculture · §AN Communication, Language & Diplomatic · §AO Nocturnal Perils · §AP Unified Theology · §AQ 2D Physics · §AR Creature Senses · §AS Clan Leader Importance · §AT Four Immediate Issues · §AU Performance Optimizations · §AV Frontend & TUI Performance · §AW Emergency 1–2 TPS · §AX High-Density 20 TPS · §AY Multi-Core Engine · §AY2 World Simulation Presets · §AZ Backend Performance Audit · §BA Micro-Neural Network · §BC Geometric Physics & Morphological Evolution
+§F Infrastructure — Database · §A Life cycle · §B Reproduction · §C Irregularity & caste · §D Health & disease · §E Environment · §G God-law & observability · §H Food ecosystem · §I Society · §J Creature profile · §K Documentation · §L Shelter · Cross-system synergies · §W World generation · §N New frontiers · §O Ecosystem depth · §P Clan depth · §Q Creatures 2.0 · §R Weather as life · §S WorldBox inspirations · §T Sustainability & performance · §U Mobile UI/UX · §V Clan founding redesign · §X Fixes · §X2 Communication II · §Y UI polish · §Z Terminal frontend · §AA Performance round 2 · §AB Politics · §AC Desperation cannibalism · §AD OS-log persistence · §AE Food decay · §AF Performance & Massive Scale · §AG Autonomous Evolution · §AH Energy Dynamics · §AI TUI Feature Parity · §AJ Next-Gen Performance (3 phases) · §AK Clan Lifecycle · §AL Creature Cognitive Agency · §AM Food & Agriculture · §AN Communication, Language & Diplomatic · §AO Nocturnal Perils · §AP Unified Theology · §AQ 2D Physics · §AR Creature Senses · §AS Clan Leader Importance · §AT Four Immediate Issues · §AU Performance Optimizations · §AV Frontend & TUI Performance · §AW Emergency 1–2 TPS · §AX High-Density 20 TPS · §AY Multi-Core Engine · §AY2 World Simulation Presets · §AZ Backend Performance Audit · §BA Micro-Neural Network · §BC Geometric Physics & Morphological Evolution · §BD World Analytics & Telemetry Engine
 
 Full completed content → [`docs/roadmap-archive.md`](docs/roadmap-archive.md)
