@@ -167,6 +167,13 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'nn_inference_hz', label: 'NN inference Hz', min: 1, max: 60, step: 1, group: 'Neuroevolution' },
   { key: 'mutation_sigma', label: 'Mutation σ', min: 0, max: 0.5, step: 0.01, group: 'Neuroevolution' },
   { key: 'crossover_rate', label: 'Crossover rate', min: 0, max: 1, step: 0.05, group: 'Neuroevolution' },
+  // Morphology — geometric physics & annealing (BC)
+  { key: 'annealing_start_generation', label: 'Annealing start gen', min: 0, max: 1000, step: 10, group: 'Morphology', gate: 'morphology_annealing_enabled' },
+  { key: 'annealing_decay_generations', label: 'Annealing decay gens', min: 1, max: 5000, step: 10, group: 'Morphology', gate: 'morphology_annealing_enabled' },
+  { key: 'morph_lambda_override', label: 'λ override (0..1)', min: 0, max: 1, step: 0.05, group: 'Morphology', gate: 'morphology_annealing_enabled' },
+  { key: 'vertex_mutation_std', label: 'Vertex σ r', min: 0, max: 0.5, step: 0.01, group: 'Morphology', gate: 'morphology_annealing_enabled' },
+  { key: 'angle_mutation_std', label: 'Angle σ φ', min: 0, max: 0.5, step: 0.01, group: 'Morphology', gate: 'morphology_annealing_enabled' },
+  { key: 'topological_mutation_rate', label: 'Topo mutation rate', min: 0, max: 0.2, step: 0.005, group: 'Morphology', gate: 'morphology_annealing_enabled' },
 ]
 
 const GROUP_ORDER = [
@@ -207,6 +214,7 @@ const GROUP_ORDER = [
   'Electrostatics',
   'Cosmology',
   'Neuroevolution',
+  'Morphology',
 ]
 
 const GROUP_KEY: Record<string, string> = {
@@ -247,6 +255,7 @@ const GROUP_KEY: Record<string, string> = {
   'Electrostatics': 'electrostatics',
   'Cosmology': 'cosmology',
   'Neuroevolution': 'neuroevolution',
+  'Morphology': 'morphology',
 }
 
 // Backend Config defaults — switches render these until laws load.
@@ -301,6 +310,7 @@ const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
   rubble_blocking_enabled: true,
   earthquake_enabled: false,
   lightning_enabled: true,
+  morphology_annealing_enabled: false,
 }
 
 const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
@@ -354,6 +364,13 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   nn_inference_hz: 'NN inference frequency per second (15) — 60Hz physics, 15Hz brain, rest latched',
   mutation_sigma: 'Gaussian mutation σ for genome (0.08) — per-gene noise on crossover',
   crossover_rate: 'crossover rate (0.5) — uniform 50/50 parent blend; higher = more mixing',
+  morphology_annealing_enabled: 'master switch for geometric physics — off keeps classic sides, on enables polar (r,φ) annealing BC',
+  annealing_start_generation: 'generation where λ starts decaying 1→0 (50) — before, children snap to Abbott templates',
+  annealing_decay_generations: 'generations to decay λ 1→0 (150) — short = instant morph freedom',
+  morph_lambda_override: 'force λ 0..1 (empty=auto); 1 freezes Abbott, 0 pure parental (BC)',
+  vertex_mutation_std: 'radial mutation σ for r_i (0.05) — per-vertex Gaussian [0.2,2.5]',
+  angle_mutation_std: 'angular mutation σ for φ (0.02) — sorted circularly to avoid bow-tie',
+  topological_mutation_rate: 'topological p·(1-λ) (0.01) — add longest edge / remove closest neighbor, K 3..64',
   fire_spread_rate: 'spread to neighboring plants within 6 (0.08) — kills creatures/plants, ash fertilizes',
   disaster_rate: 'meteor/flood stochastic gated by this per tick (0.0003) — crater/water reshapes terrain',
   signal_radius: 'heard within this range (12) — clan-mates respond strongly, strangers weakly',

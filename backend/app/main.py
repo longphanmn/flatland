@@ -826,6 +826,13 @@ LAW_FIELDS = (
     "nn_inference_hz",
     "mutation_sigma",
     "crossover_rate",
+    "morphology_annealing_enabled",
+    "annealing_start_generation",
+    "annealing_decay_generations",
+    "morph_lambda_override",
+    "vertex_mutation_std",
+    "angle_mutation_std",
+    "topological_mutation_rate",
 )
 
 
@@ -999,6 +1006,13 @@ PRESETS: dict[str, dict] = {
         nn_inference_hz=15,
         mutation_sigma=0.08,
         crossover_rate=0.5,
+        morphology_annealing_enabled=False,
+        annealing_start_generation=50,
+        annealing_decay_generations=150,
+        morph_lambda_override=None,
+        vertex_mutation_std=0.05,
+        angle_mutation_std=0.02,
+        topological_mutation_rate=0.01,
     ),
     "sustainable": dict(
         # 1000-Day Peace & Flourishing: 360 food, carrying 450, max 600, calm society, rich agriculture, granaries, banquets, temples & sacred avatars.
@@ -1164,6 +1178,13 @@ PRESETS: dict[str, dict] = {
         nn_inference_hz=15,
         mutation_sigma=0.06,
         crossover_rate=0.4,
+        morphology_annealing_enabled=False,
+        annealing_start_generation=50,
+        annealing_decay_generations=150,
+        morph_lambda_override=None,
+        vertex_mutation_std=0.05,
+        angle_mutation_std=0.02,
+        topological_mutation_rate=0.01,
     ),
     "chaos": dict(
         # Total Turmoil: famine, predators, deadly wars, frequent plagues, wildfires, earthquakes, lightning strikes, landslides, collapses, betrayal, cannibalism, rapid seasons.
@@ -1329,6 +1350,13 @@ PRESETS: dict[str, dict] = {
         nn_inference_hz=20,
         mutation_sigma=0.12,
         crossover_rate=0.7,
+        morphology_annealing_enabled=True,
+        annealing_start_generation=0,
+        annealing_decay_generations=10,
+        morph_lambda_override=None,
+        vertex_mutation_std=0.05,
+        angle_mutation_std=0.02,
+        topological_mutation_rate=0.05,
     ),
     "extinction": dict(
         # Cataclysmic Collapse & Grim Survival: Extreme famine (120 food), harsh winter (0.3x), rampant disease, severe weather chill, extreme exposure drain, collapsing shelters, deadly predators & wars, desperate cannibalism.
@@ -1494,6 +1522,13 @@ PRESETS: dict[str, dict] = {
         nn_inference_hz=10,
         mutation_sigma=0.1,
         crossover_rate=0.5,
+        morphology_annealing_enabled=False,
+        annealing_start_generation=50,
+        annealing_decay_generations=150,
+        morph_lambda_override=None,
+        vertex_mutation_std=0.05,
+        angle_mutation_std=0.02,
+        topological_mutation_rate=0.01,
     ),
     "boom": dict(
         # High-Scale Population Boom: 500 food, carrying 800, max 1000, rapid reproduction, peaceful flourishing, rich granaries & banquets, temples & bridges.
@@ -1659,6 +1694,13 @@ PRESETS: dict[str, dict] = {
         nn_inference_hz=15,
         mutation_sigma=0.05,
         crossover_rate=0.3,
+        morphology_annealing_enabled=False,
+        annealing_start_generation=50,
+        annealing_decay_generations=150,
+        morph_lambda_override=None,
+        vertex_mutation_std=0.05,
+        angle_mutation_std=0.02,
+        topological_mutation_rate=0.01,
     ),
     "theocracy": dict(
         # Age of the Sphere & Sacred Faith: Devout spiritual civilization, high faith tithes, glowing temples, avatar miracles, 3D epiphanies, and holy synods.
@@ -1824,6 +1866,13 @@ PRESETS: dict[str, dict] = {
         nn_inference_hz=12,
         mutation_sigma=0.04,
         crossover_rate=0.3,
+        morphology_annealing_enabled=True,
+        annealing_start_generation=50,
+        annealing_decay_generations=150,
+        morph_lambda_override=1.0,
+        vertex_mutation_std=0.05,
+        angle_mutation_std=0.02,
+        topological_mutation_rate=0.01,
     ),
     "warlords": dict(
         # Clash of Clans & Imperial Conquest: Martial dominance, territorial conquests, defensive leagues, granary plunder, and high tactical engagement.
@@ -1989,6 +2038,13 @@ PRESETS: dict[str, dict] = {
         nn_inference_hz=18,
         mutation_sigma=0.09,
         crossover_rate=0.6,
+        morphology_annealing_enabled=False,
+        annealing_start_generation=50,
+        annealing_decay_generations=150,
+        morph_lambda_override=None,
+        vertex_mutation_std=0.05,
+        angle_mutation_std=0.02,
+        topological_mutation_rate=0.01,
     ),
 }
 
@@ -2241,6 +2297,70 @@ async def get_telemetry(window_seconds: int = 60) -> dict:
         "overruns": sum(1 for d in filtered_durs if d > (1000.0 / max(RT.speed, MIN_SPEED)) * 1.1),
         "proc_cores": cores_usage,
     }
+
+
+@app.get("/api/metrics/morphology")
+async def get_morphology_metrics() -> dict:
+    """BC.6.2 live generational metrics: λ, K, A, P, sharpness, asymmetry."""
+    try:
+        cfg = RT.config
+        soa = getattr(RT.sim, "_soa", None)
+        if soa is None or getattr(soa, "N", 0) == 0:
+            return {
+                "enabled": bool(getattr(cfg, "morphology_annealing_enabled", False)),
+                "count": 0,
+                "mean_lambda": 0.0,
+                "mean_K": 0.0,
+                "mean_A": 0.0,
+                "mean_P": 0.0,
+                "mean_Dmult": 0.0,
+                "asymmetry_pct": 0.0,
+                "theta_hist": [],
+            }
+        N = int(soa.N)
+        try:
+            from .evolution_manager import lambda_for_generation as _lam
+            gens = [c.generation for c in RT.sim._cached_creatures[:N] if hasattr(c, "generation")]
+            mean_lam = sum(_lam(g, cfg) for g in gens) / len(gens) if gens else 0.0
+        except Exception:
+            mean_lam = 0.0
+        try:
+            if hasattr(soa, "morph_traits") and hasattr(soa.morph_traits, "shape"):
+                import numpy as _np  # type: ignore
+                mt = soa.morph_traits[:N]
+                mask = mt[:, 0] > 0
+                if int(_np.sum(mask)) == 0:
+                    meanK = float(_np.mean(soa.morph_k[:N])) if hasattr(soa, "morph_k") else 0.0
+                    return {"enabled": True, "count": N, "mean_lambda": round(mean_lam, 3), "mean_K": round(meanK, 2), "mean_A": 0, "mean_P": 0, "mean_Dmult": 0, "asymmetry_pct": 0, "theta_hist": []}
+                meanK = float(_np.mean(soa.morph_k[:N][mask])) if hasattr(soa, "morph_k") else 0.0
+                meanA = float(_np.mean(mt[mask, 0]))
+                meanP = float(_np.mean(mt[mask, 1]))
+                meanD = float(_np.mean(mt[mask, 5]))
+                asym = mt[mask, 4]
+                pct = float(_np.sum(asym > 0.46) / len(asym) * 100.0) if len(asym) else 0.0
+                thetas = mt[mask, 3]
+                hist = []
+                bins = [0, 0.5, 1.0, 1.5, 2.0, 3.14]
+                for i in range(len(bins) - 1):
+                    cnt = int(_np.sum((thetas >= bins[i]) & (thetas < bins[i + 1])))
+                    hist.append(cnt)
+                return {
+                    "enabled": True,
+                    "count": int(_np.sum(mask)),
+                    "mean_lambda": round(mean_lam, 3),
+                    "mean_K": round(meanK, 2),
+                    "mean_A": round(meanA, 3),
+                    "mean_P": round(meanP, 3),
+                    "mean_Dmult": round(meanD, 3),
+                    "asymmetry_pct": round(pct, 1),
+                    "theta_hist": hist,
+                }
+            else:
+                return {"enabled": True, "count": N, "mean_lambda": round(mean_lam, 3), "mean_K": 0, "mean_A": 0, "mean_P": 0, "mean_Dmult": 0, "asymmetry_pct": 0, "theta_hist": []}
+        except Exception as e:
+            return {"enabled": True, "count": N, "error": str(e), "mean_lambda": round(mean_lam, 3)}
+    except Exception as e:
+        return {"enabled": False, "error": str(e), "count": 0}
 
 
 @app.get("/api/version")

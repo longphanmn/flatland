@@ -54,6 +54,14 @@ except Exception:  # pragma: no cover
     _spatial_grid = None  # type: ignore
     _evolution = None  # type: ignore
 
+# BC: morphological physics — optional, disabled keeps AZ hash
+try:
+    from . import morphology as _morphology  # type: ignore
+    from . import evolution_manager as _evo_mgr  # type: ignore
+except Exception:  # pragma: no cover
+    _morphology = None  # type: ignore
+    _evo_mgr = None  # type: ignore
+
 
 # Life-stage multipliers (speed, sight) — the young are small and dim-sighted,
 # the elders slow. Fertility multiplier lives on Creature.FERTILITY_MULT.
@@ -2178,6 +2186,66 @@ class Simulation:
         if parent_b and hasattr(parent_b, "id"):
             c.trust[parent_b.id] = 30.0
 
+    def _init_morph_for_child(self, child: Creature, mother: Creature, father: Creature) -> None:
+        """BC morphological inheritance — no-op when annealing disabled (keeps AZ hash)."""
+        cfg = self.config
+        if not getattr(cfg, "morphology_annealing_enabled", False):
+            return
+        if _evo_mgr is None or _morphology is None:
+            return
+        try:
+            # SoA may not yet exist (early ticks) — fall back to Creature sides for template
+            # Parent morph from SoA if available
+            parent_r = parent_phi = None
+            parent_k = 4
+            if getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map"):
+                pm = getattr(self, "_soa_id_map", {})
+                for p in (mother, father):
+                    if p.id in pm:
+                        idx = pm[p.id]
+                        if hasattr(self._soa, "morph_radii"):
+                            parent_r = self._soa.morph_radii[idx] if hasattr(self._soa.morph_radii, "__getitem__") else None
+                            parent_phi = self._soa.morph_angles[idx] if hasattr(self._soa.morph_angles, "__getitem__") else None
+                            parent_k = int(self._soa.morph_k[idx])
+                            break
+            # Fallback parent as template-derived if not in SoA
+            if parent_r is None:
+                # use father's sides as K
+                parent_k = max(3, father.sides if father.sides else 4)
+                parent_r = [1.0] * parent_k + [1.0] * (64 - parent_k)
+                parent_phi = [2 * math.pi * i / parent_k if i < parent_k else 2 * math.pi * i / 64 for i in range(64)]
+            template_r, template_phi, template_k = _evo_mgr.get_template_for_caste(child.caste)
+            lam = _evo_mgr.lambda_for_generation(child.generation, cfg)
+            cr, cphi, ck = _evo_mgr.child_morphology(
+                parent_r, parent_phi, parent_k, template_r, template_phi, template_k, lam, cfg, self.rng
+            )
+            # Store into child's SoA entry will be created lazily when SoA syncs;
+            # cache on Creature for later SoA insertion (store as attrs)
+            child._bc_morph_r = cr  # type: ignore
+            child._bc_morph_phi = cphi  # type: ignore
+            child._bc_morph_k = ck  # type: ignore
+            # Bake traits immediately to derive irregularity -> euthanasia mapping
+            # Use child's morph to compute asymmetry
+            import math as _m
+
+            # compute asymmetry quickly via morphology helper
+            if _morphology is not None:
+                # temporary single-row compute
+                xs = [cr[i] * _m.cos(cphi[i]) for i in range(ck)]
+                ys = [cr[i] * _m.sin(cphi[i]) for i in range(ck)]
+                area = abs(sum(xs[i] * ys[(i + 1) % ck] - xs[(i + 1) % ck] * ys[i] for i in range(ck))) * 0.5
+                # simple perimeter
+                perim = sum(_m.hypot(xs[(i + 1) % ck] - xs[i], ys[(i + 1) % ck] - ys[i]) for i in range(ck))
+                # asymmetry via var(r)
+                mean_r = sum(cr[i] for i in range(ck)) / ck if ck else 1.0
+                var_r = sum((cr[i] - mean_r) ** 2 for i in range(ck)) / ck if ck else 0.0
+                asym = (var_r / mean_r) if mean_r else 0.0
+                # bake irregularity for euthanasia gate
+                irr = max(0.0, min(1.0, asym * 1.5))
+                child.irregularity = round(irr, 3)
+        except Exception:
+            pass
+
 
     def _spawn_creature(self, shape: str, sides: int) -> None:
         cfg = self.config
@@ -3820,6 +3888,15 @@ class Simulation:
         self._prune_extinct_clans()  # §P0: keep clan bookkeeping bounded
         self._refresh_cache()
         self._reproduce()
+        # BC bake traits for any new SoA morph entries (lazy)
+        if getattr(self.config, "morphology_annealing_enabled", False) and getattr(self, "_soa", None) is not None and _morphology is not None:
+            try:
+                for idx in range(self._soa.N):
+                    if self._soa.morph_k[idx] and float(self._soa.morph_traits[idx, 0]) == 0.0:
+                        _morphology.bake_traits_for_index(idx, self._soa, self.config)
+                        # Dmult etc now ready for SAT
+            except Exception:
+                pass
         # N150 hotfix: throttle heavy clan/politics work when pop >800 — staggered offsets to avoid 15-tick pileup
         c_n = len(self._cached_creatures)
         if c_n > 400:
@@ -3855,6 +3932,12 @@ class Simulation:
             self._update_hearths()
             self._update_agriculture()
             self._update_faith()
+        # BC.6.1 SAT narrowphase — only when morphology enabled and SoA present
+        if getattr(self.config, "morphology_annealing_enabled", False) and getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map"):
+            try:
+                self._update_morph_collisions()
+            except Exception:
+                pass
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
@@ -3866,7 +3949,11 @@ class Simulation:
                     self._soa = _agent_soa.AgentSoA(capacity=max(2000, len(self._cached_creatures) * 2 + 10))
                     self._nn_grid = _spatial_grid.SpatialHashGrid(width=self.config.width, height=self.config.height, cell_size=32.0, boundary=self.config.boundary)
                     for c in self._cached_creatures:
-                        self._soa.add_agent(int(c.id), float(c.x), float(c.y), angle=float(c.angle), energy=float(c.energy), health=float(c.health))
+                        # BC morph — pass polar genome if present on creature
+                        _mr = getattr(c, "_bc_morph_r", None)
+                        _ma = getattr(c, "_bc_morph_phi", None)
+                        _mk = getattr(c, "_bc_morph_k", None)
+                        self._soa.add_agent(int(c.id), float(c.x), float(c.y), angle=float(c.angle), energy=float(c.energy), health=float(c.health), morph_radii=_mr, morph_angles=_ma, morph_k=_mk)
                     # init genomes
                     if _evolution is not None:
                         _evolution.init_genomes(self._soa)
@@ -5724,6 +5811,90 @@ class Simulation:
 
         # The 3D Epiphany — rare enlightenment at a temple (§AP Phase E).
         self._maybe_epiphany()
+    def _update_morph_collisions(self) -> None:
+        """BC.6.1 SAT narrowphase — broadphase via spatial hash, narrowphase SAT, impulse & Dmult damage."""
+        if not getattr(self.config, "morphology_annealing_enabled", False):
+            return
+        if getattr(self, "_soa", None) is None or _morphology is None:
+            return
+        soa = self._soa
+        N = getattr(soa, "N", 0)
+        if N < 2:
+            return
+        # broadphase radius = max r
+        try:
+            import math as _m
+            # Build id->idx map already
+            # Query each creature's neighbors via world spatial query using bounding radius
+            for idx in range(N):
+                if not soa.active_mask[idx] if hasattr(soa.active_mask, "__getitem__") else not soa.active_mask[idx]:
+                    continue
+                # world creature for position
+                eid = int(soa.ids[idx]) if hasattr(soa.ids, "__getitem__") else -1
+                ent = self.world.entities.get(eid)
+                if ent is None or not isinstance(ent, Creature):
+                    continue
+                # r_max = max radii
+                try:
+                    if hasattr(soa.morph_radii, "shape"):
+                        rmax = float(soa.morph_radii[idx, : int(soa.morph_k[idx])].max()) if int(soa.morph_k[idx]) > 0 else 1.0
+                    else:
+                        k = int(soa.morph_k[idx])
+                        rmax = max(soa.morph_radii[idx][:k]) if k else 1.0
+                except Exception:
+                    rmax = 1.0
+                # broadphase query
+                for other, _d2 in self.world.query_radius_with_dist_sq(ent.x, ent.y, rmax + 3.0):
+                    if not isinstance(other, Creature) or other.id == eid:
+                        continue
+                    j = getattr(self, "_soa_id_map", {}).get(other.id)
+                    if j is None or j <= idx:  # avoid double
+                        continue
+                    try:
+                        if hasattr(soa.morph_radii, "shape"):
+                            kr = int(soa.morph_k[idx]); ko = int(soa.morph_k[j])
+                            if kr < 3 or ko < 3:
+                                continue
+                            # build vertices local + world offset
+                            rr = soa.morph_radii[idx, :kr]; pa = soa.morph_angles[idx, :kr]
+                            ro = soa.morph_radii[j, :ko]; po = soa.morph_angles[j, :ko]
+                            import numpy as _np  # type: ignore
+                            # vertices
+                            xa = (rr * _np.cos(pa) + ent.x).tolist() if hasattr(rr, "tolist") else [rr[i]*_m.cos(pa[i])+ent.x for i in range(kr)]
+                            ya = (rr * _np.sin(pa) + ent.y).tolist() if hasattr(rr, "tolist") else [rr[i]*_m.sin(pa[i])+ent.y for i in range(kr)]
+                            xb = (ro * _np.cos(po) + other.x).tolist() if hasattr(ro, "tolist") else [ro[i]*_m.cos(po[i])+other.x for i in range(ko)]
+                            yb = (ro * _np.sin(po) + other.y).tolist() if hasattr(ro, "tolist") else [ro[i]*_m.sin(po[i])+other.y for i in range(ko)]
+                            overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+                        else:
+                            kr = int(soa.morph_k[idx]); ko = int(soa.morph_k[j])
+                            if kr < 3 or ko < 3:
+                                continue
+                            rr = soa.morph_radii[idx]; pa = soa.morph_angles[idx]
+                            ro = soa.morph_radii[j]; po = soa.morph_angles[j]
+                            xa = [rr[i]*_m.cos(pa[i])+ent.x for i in range(kr)]
+                            ya = [rr[i]*_m.sin(pa[i])+ent.y for i in range(kr)]
+                            xb = [ro[i]*_m.cos(po[i])+other.x for i in range(ko)]
+                            yb = [ro[i]*_m.sin(po[i])+other.y for i in range(ko)]
+                            overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+                        if overlap:
+                            # impulse & Dmult damage: use sharper Dmult
+                            try:
+                                da = float(soa.morph_traits[idx, 5]) if hasattr(soa.morph_traits, "shape") else float(soa.morph_traits[idx][5])
+                                db = float(soa.morph_traits[j, 5]) if hasattr(soa.morph_traits, "shape") else float(soa.morph_traits[j][5])
+                            except Exception:
+                                da = db = 0.0
+                            dmg = max(da, db) * self.config.attack_damage * 0.2  # scaled
+                            if dmg > 0:
+                                # apply to weaker
+                                target = other if other.health < ent.health else ent
+                                target.health -= dmg
+                                if target.health <= 0:
+                                    self._kill(target, "collision")
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+
 
     def _work_miracle(self, cid: int, clan: dict, shrine: tuple[float, float]) -> None:
         """A seasonal miracle — the avatar gifts a mature bounty around the
@@ -6874,12 +7045,32 @@ class Simulation:
             room = max(0.0, 1.0 - (pop - carrying) / gap)
 
         def eligible(c: Creature) -> bool:
-            return (
+            base = (
                 c.age >= cfg.adult_age
                 and c.repro_cooldown <= 0
                 and c.energy >= cfg.mate_energy_min
                 and c.health >= REPRO_MIN_HEALTH  # §AT-4 H-0: no heirs in sickness
             )
+            if not base:
+                return False
+            # BC.4.2 courtship — gated behind morphology annealing (and BA 8.1 hard switch deferred)
+            if getattr(cfg, "morphology_annealing_enabled", False) and getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map"):
+                try:
+                    idx = self._soa_id_map.get(c.id)
+                    if idx is not None and 0 <= idx < getattr(self._soa, "N", 0):
+                        if hasattr(self._soa, "outputs_buf"):
+                            import numpy as _np  # type: ignore
+                            try:
+                                social = float(self._soa.outputs_buf[idx, 3]) if hasattr(self._soa.outputs_buf, "shape") else float(self._soa.outputs_buf[idx][3])
+                            except Exception:
+                                social = 0.0
+                            # only gate when social is defined (non-zero latch) — keep disabled path identical
+                            # require social >0.5 when annealing is early (lam>0.5) is strict, else loose
+                            if social != 0.0 and social <= 0.5:
+                                return False
+                except Exception:
+                    pass
+            return True
 
         females = [c for c in creatures if c.shape == "line" and eligible(c)]
         if not females:
@@ -6965,6 +7156,7 @@ class Simulation:
                 trait=ptrait,
             )
             self._init_creature_evolution(child, mother, father)
+            self._init_morph_for_child(child, mother, father)
             self.world.add(child)
             event_payload = {
                 "mother": mother.id, "father": father.id,
@@ -7014,6 +7206,7 @@ class Simulation:
                 trait=htrait,
             )
             self._init_creature_evolution(child, mother, father)
+            self._init_morph_for_child(child, mother, father)
             self.world.add(child)
             event_payload = {
                 "mother": mother.id, "father": father.id,
@@ -7087,6 +7280,7 @@ class Simulation:
                 irregularity=irregularity,
                 trait=ntrait,
             )
+            self._init_morph_for_child(child, mother, father)
         else:
             dtrait = None
             if self.rng.random() < cfg.trait_mutation_rate:
@@ -7102,6 +7296,7 @@ class Simulation:
                 lifespan=traits_for("Woman").lifespan * cfg.lifespan_mult,
                 trait=dtrait,
             )
+            self._init_morph_for_child(child, mother, father)
 
         self._init_creature_evolution(child, mother, father)
         self.world.add(child)
@@ -7127,10 +7322,55 @@ class Simulation:
             "glyph": glyph_for(child.id, self.config.seed, gen),
         }
 
-        # The parents pay for it dearly.
-        for p in (mother, father):
-            p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
-            p.repro_cooldown = cfg.reproduction_cooldown
+        # BC.4.1 energetic asymmetry — when enabled, cost scales with morph area median
+        if getattr(cfg, "morphology_annealing_enabled", False) and getattr(self, "_soa", None) is not None and _morphology is not None:
+            try:
+                # median area from SoA morph_traits if available
+                if hasattr(self._soa, "morph_traits"):
+                    import numpy as _np2  # type: ignore
+                    try:
+                        if hasattr(self._soa.morph_traits, "shape"):
+                            areas = self._soa.morph_traits[: self._soa.N, 0]
+                            # filter zeros
+                            nz = areas[areas > 0]
+                            median_a = float(_np2.median(nz)) if len(nz) else 0.0
+                        else:
+                            areas = [row[0] for row in self._soa.morph_traits[: self._soa.N] if row[0] > 0]
+                            median_a = sorted(areas)[len(areas)//2] if areas else 0.0
+                    except Exception:
+                        median_a = 0.0
+                    # determine role per parent via their own area if in SoA else fallback
+                    for p in (mother, father):
+                        p_area = 0.0
+                        try:
+                            idx = getattr(self, "_soa_id_map", {}).get(p.id)
+                            if idx is not None:
+                                p_area = float(self._soa.morph_traits[idx, 0]) if hasattr(self._soa.morph_traits, "shape") else float(self._soa.morph_traits[idx][0])
+                        except Exception:
+                            p_area = 0.0
+                        is_high = p_area >= median_a if median_a else False
+                        # high invests 35-50% of baked E_max, low 5-10%
+                        try:
+                            baked = _morphology.bake_traits_for_index(idx, self._soa, cfg) if idx is not None else None
+                            emax_scale = baked.get("emax_scale", 1.0) if baked else 1.0
+                        except Exception:
+                            emax_scale = 1.0
+                        ratio = self.rng.uniform(0.35, 0.50) if is_high else self.rng.uniform(0.05, 0.10)
+                        cost = max(5.0, cfg.energy_max * emax_scale * ratio)
+                        p.energy = max(1.0, p.energy - cost)
+                        p.repro_cooldown = cfg.reproduction_cooldown
+                else:
+                    for p in (mother, father):
+                        p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
+                        p.repro_cooldown = cfg.reproduction_cooldown
+            except Exception:
+                for p in (mother, father):
+                    p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
+                    p.repro_cooldown = cfg.reproduction_cooldown
+        else:
+            for p in (mother, father):
+                p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
+                p.repro_cooldown = cfg.reproduction_cooldown
 
         event = HistoryEvent(
             type="birth", tick=tick, entity_id=child.id, caste=child.caste,
@@ -9671,6 +9911,27 @@ class Simulation:
                 decay_mult *= LEADER_DECAY_MULT
             elif leaderless:
                 decay_mult *= LEADERLESS_DECAY_MULT
+        # BC.2 trait baking — perimeter scales burn, inertia scales steer
+        if getattr(cfg, "morphology_annealing_enabled", False) and getattr(self, "_soa", None) is not None and _morphology is not None and hasattr(self, "_soa_id_map"):
+            try:
+                idx = self._soa_id_map.get(c.id)
+                if idx is not None and 0 <= idx < getattr(self._soa, "N", 0):
+                    # perimeter scale 0.7-1.8 already baked in morph_traits[:,1] -> decay_scale via area/perim, but we use direct bake scale
+                    try:
+                        # use baked decay_scale via morph_traits perim
+                        # bakeTraits scale 0.7-1.8, we apply 0.5*(1+scale) to keep moderate
+                        # Instead use morph bake helper
+                        baked = _morphology.bake_traits_for_index(idx, self._soa, cfg)
+                        decay_mult *= baked.get("decay_scale", 1.0)
+                        # Dmult for damage handled in combat via _damage_with_morph
+                        # steer resistance via izz
+                        izz = baked.get("izz", 0.0)
+                        # scale steer later via c._bc_steer_scale cached
+                        c._bc_steer_scale = 1.0 / (1.0 + izz / (_morphology.I_REF + 1e-6))  # type: ignore
+                    except Exception:
+                        pass
+            except Exception:
+                pass
         c.energy -= cfg.energy_decay_per_tick * decay_mult
         # §AT-4 H-2: morale — the second health axis. Starvation erodes the
         # will; the leader's aura, festivals and simple resilience mend it.

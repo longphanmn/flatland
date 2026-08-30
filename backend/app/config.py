@@ -294,6 +294,15 @@ class Config:
     mutation_sigma: float = 0.08
     crossover_rate: float = 0.5
 
+    # BC Geometric Physics & Morphological Evolution — annealing governs shape
+    morphology_annealing_enabled: bool = False  # BC: master flag, false keeps AZ hash
+    annealing_start_generation: int = 50  # g_start for λ(g)
+    annealing_decay_generations: int = 150  # g_decay for λ(g)
+    morph_lambda_override: float | None = None  # BC: Optional 0..1, None=auto
+    vertex_mutation_std: float = 0.05  # σr for radii
+    angle_mutation_std: float = 0.02  # σφ for angles
+    topological_mutation_rate: float = 0.01  # p_topo * (1-λ)
+
     @classmethod
     def from_env(cls) -> "Config":
         """Live runtime config: defaults to the Balance Goldilocks preset."""

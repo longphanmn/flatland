@@ -489,4 +489,13 @@ export interface GodLaws {
   nn_inference_hz?: number
   mutation_sigma?: number
   crossover_rate?: number
+
+  // Morphology (BC) — geometric physics & annealing
+  morphology_annealing_enabled?: boolean
+  annealing_start_generation?: number
+  annealing_decay_generations?: number
+  morph_lambda_override?: number | null
+  vertex_mutation_std?: number
+  angle_mutation_std?: number
+  topological_mutation_rate?: number
 }

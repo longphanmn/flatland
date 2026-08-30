@@ -421,5 +421,14 @@ class GodLaws(BaseModel):
     mutation_sigma: Optional[float] = Field(None, ge=0, le=1)
     crossover_rate: Optional[float] = Field(None, ge=0, le=1)
 
+    # BC Geometric Physics & Morphological Evolution — annealing governs shape
+    morphology_annealing_enabled: Optional[bool] = None
+    annealing_start_generation: Optional[int] = Field(None, ge=0, le=1000)
+    annealing_decay_generations: Optional[int] = Field(None, ge=1, le=5000)
+    morph_lambda_override: Optional[float] = Field(None, ge=0.0, le=1.0)
+    vertex_mutation_std: Optional[float] = Field(None, ge=0.0, le=0.5)
+    angle_mutation_std: Optional[float] = Field(None, ge=0.0, le=0.5)
+    topological_mutation_rate: Optional[float] = Field(None, ge=0.0, le=0.2)
+
     # T: soften winter
     winter_food_mult: Optional[float] = Field(None, ge=0.1, le=2)
