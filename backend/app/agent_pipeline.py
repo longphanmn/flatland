@@ -38,8 +38,8 @@ def build_inputs_batch(soa, spatial_grid=None, world=None, max_chill: float = 12
         return []
 
     if HAS_NUMPY:
-        inp = soa.inputs_buf[:N].copy()
-        # ensure zero
+        # 9.3 zero-alloc: reuse pre-allocated buffer directly, no copy
+        inp = soa.inputs_buf[:N]
         inp[:, :] = 0
         # 0-2: normalized vitals
         # stats: [energy, max_energy, health, chill]
@@ -102,8 +102,6 @@ def build_inputs_batch(soa, spatial_grid=None, world=None, max_chill: float = 12
             inp[:, 14] = 0.0
         # 15: hidden
         inp[:, 15] = soa.hidden_state[:N, 0]
-        # write back to buffer for zero-alloc reuse
-        soa.inputs_buf[:N] = inp
         return inp
     else:
         # pure python
@@ -142,7 +140,7 @@ def build_inputs_batch(soa, spatial_grid=None, world=None, max_chill: float = 12
         return inp
 
 
-def apply_outputs_batch(soa, outputs, k_thrust: float = 0.02) -> None:
+def apply_outputs_batch(soa, outputs, k_thrust: float = 0.005) -> None:
     """Map 7 outputs to SoA state: thrust->vel & energy, steer->angle, etc.
 
     This is the actuator side; world-level side effects (consume, attack,

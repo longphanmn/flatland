@@ -869,7 +869,7 @@ PRESETS: dict[str, dict] = {
         disaster_enabled=True,
         disaster_rate=0.00004,
         energy_max=100.0,
-        energy_decay_per_tick=0.025,
+        energy_decay_per_tick=0.022,
         energy_from_food=32.0,
         hungry_ratio=0.35,
         starving_ratio=0.15,
@@ -990,6 +990,9 @@ PRESETS: dict[str, dict] = {
         markets_enabled=True,
         omens_enabled=True,
         dialect_drift_enabled=True,
+        nn_inference_hz=15,
+        mutation_sigma=0.08,
+        crossover_rate=0.5,
     ),
     "sustainable": dict(
         # 1000-Day Peace & Flourishing: 360 food, carrying 450, max 600, calm society, rich agriculture, granaries, banquets, temples & sacred avatars.
@@ -1031,7 +1034,7 @@ PRESETS: dict[str, dict] = {
         disaster_enabled=False,
         disaster_rate=0.00002,
         energy_max=100.0,
-        energy_decay_per_tick=0.025,
+        energy_decay_per_tick=0.02,
         energy_from_food=32.0,
         hungry_ratio=0.35,
         starving_ratio=0.15,
@@ -1152,6 +1155,9 @@ PRESETS: dict[str, dict] = {
         markets_enabled=True,
         omens_enabled=True,
         dialect_drift_enabled=True,
+        nn_inference_hz=15,
+        mutation_sigma=0.06,
+        crossover_rate=0.4,
     ),
     "chaos": dict(
         # Total Turmoil: famine, predators, deadly wars, frequent plagues, wildfires, earthquakes, lightning strikes, landslides, collapses, betrayal, cannibalism, rapid seasons.
@@ -1193,7 +1199,7 @@ PRESETS: dict[str, dict] = {
         disaster_enabled=True,
         disaster_rate=0.0004,
         energy_max=100.0,
-        energy_decay_per_tick=0.04,
+        energy_decay_per_tick=0.025,
         energy_from_food=28.0,
         hungry_ratio=0.40,
         starving_ratio=0.18,
@@ -1314,6 +1320,9 @@ PRESETS: dict[str, dict] = {
         markets_enabled=True,
         omens_enabled=True,
         dialect_drift_enabled=True,
+        nn_inference_hz=20,
+        mutation_sigma=0.12,
+        crossover_rate=0.7,
     ),
     "extinction": dict(
         # Cataclysmic Collapse & Grim Survival: Extreme famine (120 food), harsh winter (0.3x), rampant disease, severe weather chill, extreme exposure drain, collapsing shelters, deadly predators & wars, desperate cannibalism.
@@ -1355,7 +1364,7 @@ PRESETS: dict[str, dict] = {
         disaster_enabled=True,
         disaster_rate=0.0003,
         energy_max=100.0,
-        energy_decay_per_tick=0.05,
+        energy_decay_per_tick=0.04,
         energy_from_food=25.0,
         hungry_ratio=0.45,
         starving_ratio=0.22,
@@ -1476,6 +1485,9 @@ PRESETS: dict[str, dict] = {
         markets_enabled=True,
         omens_enabled=True,
         dialect_drift_enabled=True,
+        nn_inference_hz=10,
+        mutation_sigma=0.1,
+        crossover_rate=0.5,
     ),
     "boom": dict(
         # High-Scale Population Boom: 500 food, carrying 800, max 1000, rapid reproduction, peaceful flourishing, rich granaries & banquets, temples & bridges.
@@ -1517,7 +1529,7 @@ PRESETS: dict[str, dict] = {
         disaster_enabled=False,
         disaster_rate=0.00001,
         energy_max=100.0,
-        energy_decay_per_tick=0.02,
+        energy_decay_per_tick=0.018,
         energy_from_food=35.0,
         hungry_ratio=0.30,
         starving_ratio=0.12,
@@ -1638,6 +1650,9 @@ PRESETS: dict[str, dict] = {
         markets_enabled=True,
         omens_enabled=True,
         dialect_drift_enabled=True,
+        nn_inference_hz=15,
+        mutation_sigma=0.05,
+        crossover_rate=0.3,
     ),
     "theocracy": dict(
         # Age of the Sphere & Sacred Faith: Devout spiritual civilization, high faith tithes, glowing temples, avatar miracles, 3D epiphanies, and holy synods.
@@ -1679,7 +1694,7 @@ PRESETS: dict[str, dict] = {
         disaster_enabled=True,
         disaster_rate=0.00003,
         energy_max=100.0,
-        energy_decay_per_tick=0.025,
+        energy_decay_per_tick=0.02,
         energy_from_food=34.0,
         hungry_ratio=0.35,
         starving_ratio=0.15,
@@ -1800,6 +1815,9 @@ PRESETS: dict[str, dict] = {
         markets_enabled=True,
         omens_enabled=True,
         dialect_drift_enabled=True,
+        nn_inference_hz=12,
+        mutation_sigma=0.04,
+        crossover_rate=0.3,
     ),
     "warlords": dict(
         # Clash of Clans & Imperial Conquest: Martial dominance, territorial conquests, defensive leagues, granary plunder, and high tactical engagement.
@@ -1841,7 +1859,7 @@ PRESETS: dict[str, dict] = {
         disaster_enabled=True,
         disaster_rate=0.00005,
         energy_max=100.0,
-        energy_decay_per_tick=0.028,
+        energy_decay_per_tick=0.024,
         energy_from_food=30.0,
         hungry_ratio=0.38,
         starving_ratio=0.16,
@@ -1962,6 +1980,9 @@ PRESETS: dict[str, dict] = {
         markets_enabled=True,
         omens_enabled=True,
         dialect_drift_enabled=True,
+        nn_inference_hz=18,
+        mutation_sigma=0.09,
+        crossover_rate=0.6,
     ),
 }
 

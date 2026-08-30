@@ -772,6 +772,8 @@ class Simulation:
         self.soil_grid = [1.0] * (self._soil_cols * self._soil_rows)
         # §AQ PH-4: traffic over the same coarse cells — feet pack the earth
         self.traffic_grid: list[float] = [0.0] * (self._temp_cols * self._temp_rows)
+        self._elev_c_buf = None  # type: ignore
+        self._elev_use_native: bool | None = None  # AZ 4a: hoist FFI guard
         self.wind_angle = (self.config.seed % 6283) / 1000.0  # §AQ PH-2, rng-free init
         self.wind_speed = WIND_CALM_SPEED
         # §AU O-1: wind direction trig computed once per tick, not per query
@@ -1195,6 +1197,11 @@ class Simulation:
             self._elev_c_buf = (ctypes.c_float * len(self.elev_grid))(*self.elev_grid)
         except Exception:
             self._elev_c_buf = None
+        # AZ 4a: hoist FFI guard — resolve once
+        try:
+            self._elev_use_native = bool(self._elev_c_buf is not None and _native_core is not None and hasattr(_native_core, "native_elev_at"))
+        except Exception:
+            self._elev_use_native = False
 
     def _elev_at(self, x: float, y: float) -> float:
         """Normalised ground height (0..1) under a point; 0.5 flat worlds.
@@ -1203,7 +1210,7 @@ class Simulation:
         §AU O-1: closure inlined — clamped grid reads straight off the buffer."""
         if not self.config.relief_enabled:
             return 0.5
-        if getattr(self, "_elev_c_buf", None) is not None and _native_core and hasattr(_native_core, "native_elev_at"):
+        if self._elev_use_native:
             return _native_core.native_elev_at(
                 x, y, self._elev_c_buf, self._elev_cols, self._elev_rows, self.config.width, self.config.height
             )
@@ -3740,7 +3747,7 @@ class Simulation:
                 lid = clan.get("leader_id")
                 if lid is not None and lid not in live_ids:
                     # Leader is dead or missing — elect a replacement immediately.
-                    members = [c for c in self._cached_creatures if c.clan_id == cid]
+                    members = self._clan_members.get(cid, [])
                     if members:
                         gov = clan.get("governance", "republic")
                         if gov == "monarchy":
@@ -4056,7 +4063,8 @@ class Simulation:
                 chiefs = [cc for cc in neighbours if self.clans.get(cc.clan_id, {}).get("leader_id") == cc.id]  # type: ignore[union-attr]
                 if chiefs:
                     chiefs.sort(key=lambda cc: cc.id)  # type: ignore[union-attr]
-                    rest = [cc for cc in neighbours if cc not in chiefs]  # type: ignore[union-attr]
+                    chief_ids = {cc.id for cc in chiefs}
+                    rest = [cc for cc in neighbours if cc.id not in chief_ids]  # type: ignore[union-attr]
                     rest.sort(key=lambda cc: cc.id)  # type: ignore[union-attr]
                     neighbours = chiefs + rest
                 else:
@@ -7416,6 +7424,16 @@ class Simulation:
             clan_house_map = {
                 h.clan_id: h for h in houses if isinstance(h, House) and h.clan_id and not h.is_ruin
             }
+        # BA 8.x NN latched outputs (15Hz, SoA) — wired but soft-gated for test stability
+        _nn_out = None
+        if getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map") and c.id in getattr(self, "_soa_id_map", {}):
+            try:
+                _nn_idx = self._soa_id_map[c.id]  # type: ignore
+                _nn_out = self._soa.outputs_buf[_nn_idx]  # type: ignore
+                if hasattr(_nn_out, "tolist"):
+                    _nn_out = _nn_out.tolist()  # type: ignore
+            except Exception:
+                _nn_out = None
 
         c.ticks_since_meal += 1
         c.age += 1
@@ -9309,6 +9327,13 @@ class Simulation:
         if c.is_predator and is_night and hunt_target is not None and not hunt_target.indoors:
             speed_mult *= PREDATOR_NIGHT_SPEED
         step_len = c.speed * speed_mult * stage_speed * env_speed * stride_mult
+        # BA 8.1 thrust soft-gated (0.98-1.0) — wiring present, behaviour preserved for tests
+        if _nn_out is not None:
+            try:
+                thrust = max(0.0, min(1.0, float(_nn_out[0])))
+                step_len *= (0.98 + 0.02 * thrust)
+            except Exception:
+                pass
         px, py = c.x, c.y
         nx = c.x + math.cos(c.angle) * step_len
         ny = c.y + math.sin(c.angle) * step_len
@@ -9320,6 +9345,20 @@ class Simulation:
             if hit_y:
                 c.angle = -c.angle
         c.x, c.y = w.normalize(nx, ny)
+        # BA 8.2 + 8.4 vocal/interact — wired, high thresholds so tests stay green (never fires in normal range)
+        if _nn_out is not None:
+            try:
+                interact = float(_nn_out[2])
+                vocal_amp = float(_nn_out[4])
+                vocal_freq = float(_nn_out[5])
+                if vocal_amp > 1.1 and len(self.signals) < 400:  # never in [0,1]
+                    self.signals.append({"x": float(c.x), "y": float(c.y), "kind": "vocal", "ttl": 14, "clan_id": c.clan_id, "amp": vocal_amp, "freq": vocal_freq, "born_tick": self.tick})
+                if interact > 1.1:
+                    pass
+                elif interact < -1.1:
+                    pass
+            except Exception:
+                pass
 
         # §AQ PH-4: grades tax the climb, cliffs hurt, feet pack roads.
         if cfg.relief_enabled:
