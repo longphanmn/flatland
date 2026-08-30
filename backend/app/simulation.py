@@ -2575,6 +2575,10 @@ class Simulation:
         every homeless clan settles at its nearest free house, each house hosts at
         most one clan. Clans left over (housing shortage) found a new settlement
         via `_claim_house_for_clan` (which respects pinned `num_houses`)."""
+        # exclude clanless 0
+        clan_ids = [cid for cid in clan_ids if cid and cid in self.clans]
+        if not clan_ids:
+            return
         if not self.config.house_claim_enabled:
             return
         houses = [h for h in self._functional_houses() if h.clan_id == 0]
@@ -2652,8 +2656,8 @@ class Simulation:
                 h.is_main = False
         # Clans that already own at least one house keep their claimed settlement
         claimed_clans = {h.clan_id for h in houses if h.clan_id}
-        # §P0: only living clans can be homeless — dead entries bloat settlement ticks
-        living = set(self._clan_members.keys()) if self._clan_members else {c.clan_id for c in self._get_creatures() if c.clan_id}
+        # §P0: only living clans can be homeless — dead entries bloat settlement ticks; exclude clanless 0
+        living = {cid for cid in (self._clan_members.keys() if self._clan_members else {c.clan_id for c in self._get_creatures() if c.clan_id}) if cid}
         homeless = [cid for cid in living if cid not in claimed_clans]
         if not homeless:
             return
