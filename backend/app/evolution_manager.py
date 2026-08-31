@@ -16,10 +16,10 @@ except Exception:
     np = None  # type: ignore
     HAS_NUMPY = False
 
-from .morphology import KMAX, R_MIN, R_MAX
+from .morphology_engine import KMAX, R_MIN, R_MAX
 
-# Abbott canonical templates — polar (r, phi) per caste
-# Woman line is degenerate: use thin triangle as proxy for area calc
+# Abbott canonical templates — polar (r, phi) per caste, K∈[3,24] per new spec
+# Woman line degenerate: thin triangle proxy
 TEMPLATES: dict[str, Tuple[list, list, int]] = {
     "Woman": ([1.8, 0.2, 0.2], [0.0, math.pi - 0.08, math.pi + 0.08], 3),
     "Soldier": ([1.5, 0.8, 0.8], [0.0, 2.4, 3.88], 3),
@@ -28,10 +28,6 @@ TEMPLATES: dict[str, Tuple[list, list, int]] = {
     "Professional": ([1.0] * 5, [i * 2 * math.pi / 5 for i in range(5)], 5),
     "Noble": ([1.0] * 8, [i * 2 * math.pi / 8 for i in range(8)], 8),
     "Priest": ([1.0] * 24, [i * 2 * math.pi / 24 for i in range(24)], 24),
-    # ultra circles K>24
-    "Priest32": ([1.0] * 32, [i * 2 * math.pi / 32 for i in range(32)], 32),
-    "Priest48": ([1.0] * 48, [i * 2 * math.pi / 48 for i in range(48)], 48),
-    "Priest64": ([1.0] * 64, [i * 2 * math.pi / 64 for i in range(64)], 64),
 }
 
 # caste -> template key
@@ -49,12 +45,14 @@ CASTE_TEMPLATE = {
 
 
 def lambda_for_generation(g: int, config) -> float:
-    """BC.3.2 λ(g) with Optional override."""
+    """3.2 λ(g) per new spec: override -1.0 means auto."""
     override = getattr(config, "morph_lambda_override", None)
+    # Spec: if override is not None and >=0, use it; -1.0 means auto annealing
     if override is not None:
         try:
             ov = float(override)
-            return max(0.0, min(1.0, ov))
+            if ov >= 0.0:
+                return max(0.0, min(1.0, ov))
         except Exception:
             pass
     if not getattr(config, "morphology_annealing_enabled", False):

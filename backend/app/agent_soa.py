@@ -21,10 +21,11 @@ class AgentSoA:
     """SoA storage for BA neural agents.
 
     Attributes are numpy arrays when available, else python lists.
+    Spec KMAX 24 (new) — was 64 for ultra-circles 32/48/64.
     """
 
-    # BC Kmax — 64 allows circles beyond priest (K>=24 threshold)
-    KMAX = 64
+    # Morphology KMAX 24 per new spec (was 64)
+    KMAX = 24
 
     def __init__(self, capacity: int, genome_size: int = 295):
         self.capacity = int(capacity)
@@ -50,7 +51,10 @@ class AgentSoA:
                 else:
                     self.morph_angles[:, k] = 2 * np.pi * k / self.KMAX
             self.morph_k = np.full((capacity,), 4, dtype=np.int32)
+            self.morph_k = np.clip(self.morph_k, 3, 24)  # clamp per spec
             self.morph_traits = np.zeros((capacity, 6), dtype=np.float32)  # A,P,Izz,theta_min,asym,Dmult
+            # new spec name physical_traits (alias for backward compat)
+            self.physical_traits = self.morph_traits  # alias, same buffer; slot names per spec
             self.reproduction_role = np.zeros((capacity,), dtype=np.int8)
         else:
             self.pos = [[0.0, 0.0] for _ in range(capacity)]
@@ -67,6 +71,7 @@ class AgentSoA:
             self.morph_angles = [[(2*_math.pi*k/4 if k<4 else 2*_math.pi*k/self.KMAX) for k in range(self.KMAX)] for _ in range(capacity)]
             self.morph_k = [4]*capacity
             self.morph_traits = [[0.0]*6 for _ in range(capacity)]
+            self.physical_traits = self.morph_traits  # alias
             self.reproduction_role = [0]*capacity
 
         # pre-allocated buffers for Step 5.2
@@ -111,10 +116,11 @@ class AgentSoA:
                 for ki in range(_k, self.KMAX):
                     self.morph_angles[idx, ki] = 2 * 3.141592653589793 * ki / self.KMAX
             if morph_k is not None:
-                self.morph_k[idx] = int(morph_k)
+                self.morph_k[idx] = int(max(3, min(24, int(morph_k))))
             else:
                 self.morph_k[idx] = 4
             self.morph_traits[idx, :] = 0.0
+            # physical_traits alias already 0
             self.reproduction_role[idx] = 0
         else:
             self.pos[idx] = [float(x), float(y)]
@@ -138,7 +144,7 @@ class AgentSoA:
                     if i < self.KMAX:
                         self.morph_angles[idx][i] = float(v)
             else:
-                _k = int(morph_k) if morph_k is not None else 4
+                _k = int(max(3, min(24, int(morph_k)))) if morph_k is not None else 4
                 import math as _mm
                 for ki in range(self.KMAX):
                     if ki < _k:
@@ -146,10 +152,11 @@ class AgentSoA:
                     else:
                         self.morph_angles[idx][ki] = 2 * _mm.pi * ki / self.KMAX
             if morph_k is not None:
-                self.morph_k[idx] = int(morph_k)
+                self.morph_k[idx] = int(max(3, min(24, int(morph_k))))
             else:
                 self.morph_k[idx] = 4
             self.morph_traits[idx] = [0.0]*6
+            # physical_traits alias same
             self.reproduction_role[idx] = 0
         self.N += 1
         return idx

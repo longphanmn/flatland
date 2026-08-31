@@ -170,7 +170,7 @@ def _api_table(app: Any) -> str:
 
 
 # Static markdown sections (How the world works etc)
-HOW_IT_WORKS_MD = """
+HOW_IT_WORKS_MD = r"""
 # How the world works
 
 **The Sphere (God model):** The Sphere (God) sets *laws* from Spaceland, never touches individual creatures. Everything else emerges.
@@ -197,10 +197,10 @@ A coarse ambient heat field (`TEMP_CELL` 25-unit cells, `_update_temperature`) r
 The sky has a breath: a wind vector (`wind_angle`/`wind_speed`, on every snapshot payload) whose strength follows the weather — calm 0.25, rain 0.55, storm howls at 1.0 (`WIND_*_SPEED`, relaxed each tick) — and whose direction re-rolls near the season's prevailing bearing whenever the weather turns (`WIND_SEASON_BIAS`). Fire obeys it: both random ignition and plant-to-plant spread multiply by a tailwind factor (`WIND_FIRE_MULT` × speed × alignment), so flame races downwind while upwind groves stand longer.
 
 ## Nature's Law inheritance (§B)
-Sex: polygons male, lines female (`entities.py:137`). Sons `sides = father.sides+1` capped at `max_sides` (`24→Priest`, now `64` ultra-circles 32/48/64 via BC); daughters lines. Mutation `mutation_rate` ±1 side → `irregularity` 0.3–1.0. Isosceles triangles: `iso_angle+0.5°` per generation, `≥60°` promotes Soldier→Artisan. Fertility: per-caste table × crowding `carrying_capacity`/`max_population`. When `morphology_annealing_enabled` (BC), polar $(r_i,\phi_i)$ annealing supersedes side-count: $\lambda(g)$ blends Abbott template $K\in[3,64]$ with parental noisy genome, topo $p\cdot(1-\lambda)$.
+Sex: polygons male, lines female (`entities.py:137`). Sons `sides = father.sides+1` capped at `max_sides` (`24→Priest` per new spec; `K∈[3,24]`); daughters lines. Mutation `mutation_rate` ±1 side → `irregularity` 0.3–1.0. Isosceles triangles: `iso_angle+0.5°` per generation, `≥60°` promotes Soldier→Artisan. Fertility: per-caste table × crowding `carrying_capacity`/`max_population`. When `morphology_annealing_enabled` (morphology_engine), polar $(r_i,\phi_i)$ annealing supersedes side-count: $\lambda(g)$ blends Abbott template $K\in[3,24]$ with parental noisy genome, topo $p\cdot(1-\lambda)$.
 
-## Geometric Physics (BC)
-Polar genomes $K\in[3,64]$ SoA `morph_radii/morph_angles/morph_k/morph_traits (A,P,I_{zz},\theta_{\min},asym,Dmult)` — vectorized `morphology.py`. $\lambda(g)=morph\_lambda\_override ?? clamp(1-(g-g_{start})/g_{decay})$ (`g_start 50` `g_decay 150`). Baking $E_{\max}\cdot clamp(A/A_{ref})$ etc feeds $euthanasia$ via asymmetry, SAT broadphase $r_{\max}$ + edge normals + $D_{mult}$ impulse. Telemetry `/api/metrics/morphology` live $ \bar\lambda,\bar K,\bar A,\bar P$.
+## Geometric Physics (Morphology Engine, K∈[3,24])
+Polar genomes $K\in[3,24]$ SoA `morph_radii/morph_angles/morph_k/physical_traits (A,P,I_{zz},\theta_{\min},asym,Dmult)` — vectorized `morphology_engine.py` `KMAX 24` (`morphology.py` shim). $\lambda(g)=morph\_lambda\_override ?? clamp(1-(g-g_{start})/g_{decay})$ (`g_start 50` `g_decay 150`, `override -1.0` = auto). Baking $E_{\max}\cdot clamp(A/A_{ref},0.5,2.5)$ $decay\cdot clamp(P/P_{ref},0.7,2.0)$ $steer\Delta\theta$ $D_{mult}$ $asym$→$irregularity$ with `safeguard_morph_mercy` ($\eta>0.3$ suspends euthanasia), SAT broadphase $r_{\max}$ + circle fallback ($K\ge24$ & $asym<0.05$) + edge normals + $D_{mult}$ impulse. Telemetry `/api/metrics/morphology` and `/api/metrics/safeguards` (`N,\eta,tier,miracles,mercy`) live.
 
 ## Irregularity & caste (§C)
 Mutated children's `irregularity` judged at `adult_age`: `≥euthanasia_threshold` → consumed (`euthanasia`), else demoted to Soldier. `CASTE_TRAITS` (`entities.py:39`) gives lifespan/speed/sight_mult/fertility. BC maps $asymmetry$ → $irregularity$ for same gate.

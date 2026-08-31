@@ -859,7 +859,12 @@ PRESETS: dict[str, dict] = {
         morph_lambda_override=None,
         vertex_mutation_std=0.05,
         angle_mutation_std=0.02,
-        topological_mutation_rate=0.01,
+                topological_mutation_rate=0.01,
+        safeguard_enabled=True,
+        safeguard_critical_pop=12,
+        safeguard_relief_ratio=0.30,
+        safeguard_genesis_batch=6,
+        safeguard_morph_mercy=True,
     ),
     "sustainable": dict(
         # 1000-Day Peace & Flourishing: 360 food, carrying 450, max 600, calm society, rich agriculture, granaries, banquets, temples & sacred avatars.
@@ -1033,7 +1038,14 @@ PRESETS: dict[str, dict] = {
         morph_lambda_override=None,
         vertex_mutation_std=0.05,
         angle_mutation_std=0.02,
-        topological_mutation_rate=0.01,
+                topological_mutation_rate=0.01,
+        crowding_stress_mult=0.2,
+        damping_steepness=8.0,
+        safeguard_enabled=True,
+        safeguard_critical_pop=12,
+        safeguard_relief_ratio=0.30,
+        safeguard_genesis_batch=6,
+        safeguard_morph_mercy=True,
     ),
     "chaos": dict(
         # Total Turmoil: famine, predators, deadly wars, frequent plagues, wildfires, earthquakes, lightning strikes, landslides, collapses, betrayal, cannibalism, rapid seasons.
@@ -1207,7 +1219,13 @@ PRESETS: dict[str, dict] = {
         morph_lambda_override=None,
         vertex_mutation_std=0.05,
         angle_mutation_std=0.02,
-        topological_mutation_rate=0.05,
+                topological_mutation_rate=0.05,
+        damping_steepness=10.0,
+        safeguard_enabled=True,
+        safeguard_critical_pop=6,
+        safeguard_relief_ratio=0.30,
+        safeguard_genesis_batch=6,
+        safeguard_morph_mercy=True,
     ),
     "extinction": dict(
         # Cataclysmic Collapse & Grim Survival: Extreme famine (120 food), harsh winter (0.3x), rampant disease, severe weather chill, extreme exposure drain, collapsing shelters, deadly predators & wars, desperate cannibalism.
@@ -1381,7 +1399,12 @@ PRESETS: dict[str, dict] = {
         morph_lambda_override=None,
         vertex_mutation_std=0.05,
         angle_mutation_std=0.02,
-        topological_mutation_rate=0.01,
+                topological_mutation_rate=0.01,
+        safeguard_enabled=False,
+        safeguard_critical_pop=12,
+        safeguard_relief_ratio=0.30,
+        safeguard_genesis_batch=6,
+        safeguard_morph_mercy=True,
     ),
     "boom": dict(
         # High-Scale Population Boom: 500 food, carrying 800, max 1000, rapid reproduction, peaceful flourishing, rich granaries & banquets, temples & bridges.
@@ -1449,7 +1472,7 @@ PRESETS: dict[str, dict] = {
         max_sides=24,
         birth_energy_cost=10.0,
         reproduction_cooldown=120,
-        carrying_capacity=650,
+        carrying_capacity=800,
         max_population=850,
         euthanasia_threshold=0.7,
         disease_enabled=False,
@@ -1555,7 +1578,13 @@ PRESETS: dict[str, dict] = {
         morph_lambda_override=None,
         vertex_mutation_std=0.05,
         angle_mutation_std=0.02,
-        topological_mutation_rate=0.01,
+                topological_mutation_rate=0.01,
+        damping_steepness=3.0,
+        safeguard_enabled=True,
+        safeguard_critical_pop=12,
+        safeguard_relief_ratio=0.30,
+        safeguard_genesis_batch=6,
+        safeguard_morph_mercy=True,
     ),
     "theocracy": dict(
         # Age of the Sphere & Sacred Faith: Devout spiritual civilization, high faith tithes, glowing temples, avatar miracles, 3D epiphanies, and holy synods.
@@ -1729,7 +1758,13 @@ PRESETS: dict[str, dict] = {
         morph_lambda_override=1.0,
         vertex_mutation_std=0.05,
         angle_mutation_std=0.02,
-        topological_mutation_rate=0.01,
+                topological_mutation_rate=0.01,
+        damping_steepness=4.0,
+                safeguard_enabled=True,
+        safeguard_critical_pop=12,
+        safeguard_relief_ratio=0.35,
+        safeguard_genesis_batch=6,
+        safeguard_morph_mercy=True,
     ),
     "warlords": dict(
         # Clash of Clans & Imperial Conquest: Martial dominance, territorial conquests, defensive leagues, granary plunder, and high tactical engagement.
@@ -1903,7 +1938,12 @@ PRESETS: dict[str, dict] = {
         morph_lambda_override=None,
         vertex_mutation_std=0.05,
         angle_mutation_std=0.02,
-        topological_mutation_rate=0.01,
+                topological_mutation_rate=0.01,
+        safeguard_enabled=True,
+        safeguard_critical_pop=12,
+        safeguard_relief_ratio=0.30,
+        safeguard_genesis_batch=6,
+        safeguard_morph_mercy=True,
     ),
 }
 
@@ -2220,6 +2260,93 @@ async def get_morphology_metrics() -> dict:
             return {"enabled": True, "count": N, "error": str(e), "mean_lambda": round(mean_lam, 3)}
     except Exception as e:
         return {"enabled": False, "error": str(e), "count": 0}
+
+
+@app.get("/api/metrics/safeguards")
+async def get_safeguards_metrics() -> dict:
+    """Phase 7.2 — safeguard telemetry: N, eta, tier, miracles, mercy."""
+    try:
+        cfg = RT.config
+        sim = getattr(RT, "sim", None)
+        if sim is None:
+            return {"enabled": False, "count": 0}
+        N = len(getattr(sim, "_cached_creatures", []) or [])
+        # also try SoA N
+        try:
+            soa = getattr(sim, "_soa", None)
+            if soa is not None and hasattr(soa, "N"):
+                N = int(soa.N)
+        except Exception:
+            pass
+        enabled = bool(getattr(cfg, "safeguard_enabled", False))
+        if not enabled:
+            return {"enabled": False, "N": N, "eta": 0.0, "tier": 0, "miracles": 0, "mercy": False}
+        # compute eta via safeguard engine if available
+        eta = 0.0
+        tier = 0
+        miracles = 0
+        mercy = False
+        try:
+            if hasattr(sim, "_safeguard") and getattr(sim, "_safeguard", None) is not None:
+                eta = float(getattr(sim, "_safeguard_eta", 0.0) or 0.0)
+                tier = int(getattr(sim, "_safeguard_tier", 0) or 0)
+                miracles = int(getattr(sim._safeguard, "miracles", 0) or 0)
+                mercy = bool(getattr(sim._safeguard, "mercy_active", lambda x: False)(eta)) if hasattr(sim._safeguard, "mercy_active") else bool(getattr(cfg, "safeguard_morph_mercy", False) and eta > 0.3)
+            else:
+                from .safeguard_engine import compute_eta, tier_for_eta
+
+                cc = int(getattr(cfg, "carrying_capacity", 350))
+                relief = float(getattr(cfg, "safeguard_relief_ratio", 0.30))
+                kcrit = int(getattr(cfg, "safeguard_critical_pop", 12))
+                eta = compute_eta(N, cc, relief, kcrit, enabled)
+                tier = tier_for_eta(eta, N, kcrit)
+                mercy = bool(getattr(cfg, "safeguard_morph_mercy", False) and eta > 0.3)
+        except Exception:
+            pass
+        return {"enabled": True, "N": N, "eta": round(eta, 3), "tier": tier, "miracles": miracles, "mercy": mercy, "Kcrit": int(getattr(cfg, "safeguard_critical_pop", 12)), "Ksafe": round(float(getattr(cfg, "carrying_capacity", 350)) * float(getattr(cfg, "safeguard_relief_ratio", 0.30)), 1)}
+    except Exception as e:
+        return {"enabled": False, "error": str(e), "N": 0}
+
+
+@app.get("/api/metrics/damping")
+async def get_damping_metrics() -> dict:
+    """Phase 7.2b — damping telemetry: N, xi, effective birth/decay."""
+    try:
+        cfg = RT.config
+        sim = getattr(RT, "sim", None)
+        if sim is None:
+            return {"enabled": False, "N": 0}
+        N = len(getattr(sim, "_cached_creatures", []) or [])
+        try:
+            soa = getattr(sim, "_soa", None)
+            if soa is not None and hasattr(soa, "N"):
+                N = int(soa.N)
+        except Exception:
+            pass
+        enabled = bool(getattr(cfg, "soft_cap_enabled", True))
+        if not enabled:
+            return {"enabled": False, "N": N, "xi": 0.0, "birth_rate_eff": float(getattr(cfg, "birth_rate", 0.05)), "decay_eff": float(getattr(cfg, "energy_decay_per_tick", 0.022))}
+        try:
+            from .density_damping import compute_xi, scales_for_xi
+
+            Kcap = int(getattr(cfg, "carrying_capacity", 350))
+            xi = compute_xi(N, Kcap, enabled)
+            scales = scales_for_xi(xi, cfg)
+            return {
+                "enabled": True,
+                "N": N,
+                "Kcap": Kcap,
+                "xi": round(xi, 3),
+                "birth_rate_eff": round(float(getattr(cfg, "birth_rate", 0.05)) * scales.get("birth_rate_eff", 1.0), 4),
+                "birth_cost_eff": round(float(getattr(cfg, "birth_energy_cost", 20)) * scales.get("birth_cost_eff", 1.0), 1),
+                "decay_eff": round(float(getattr(cfg, "energy_decay_per_tick", 0.022)) * scales.get("decay_eff", 1.0), 4),
+                "growth_eff": round(float(getattr(cfg, "plant_growth_rate", 0.05)) * scales.get("growth_eff", 1.0), 4),
+                "scales": {k: round(v, 3) for k, v in scales.items()},
+            }
+        except Exception as e:
+            return {"enabled": True, "N": N, "error": str(e), "xi": 0.0}
+    except Exception as e:
+        return {"enabled": False, "error": str(e), "N": 0}
 
 
 @app.get("/api/version")

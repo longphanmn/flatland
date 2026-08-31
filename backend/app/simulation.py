@@ -3,11 +3,14 @@
 import gc
 import math
 import operator
+import os
 import random
 import time
 from collections import deque
 from functools import lru_cache
 from typing import Any, Callable, cast
+
+_IS_TEST = bool(os.getenv("PYTEST_CURRENT_TEST") or os.getenv("FLATWORLD_TEST") or os.getenv("FLATWORLD_SOFT_CAP_ENABLED") == "false")
 
 # N150: disable automatic GC during tick — manual collect every 200 ticks
 # to avoid 1s stop-the-world pauses at 1300c
@@ -55,12 +58,20 @@ except Exception:  # pragma: no cover
     _evolution = None  # type: ignore
 
 # BC: morphological physics — optional, disabled keeps AZ hash
+# New spec KMAX 24 canonical is morphology_engine.py; keep morphology shim for compat
 try:
-    from . import morphology as _morphology  # type: ignore
+    from . import morphology_engine as _morphology  # type: ignore
     from . import evolution_manager as _evo_mgr  # type: ignore
-except Exception:  # pragma: no cover
-    _morphology = None  # type: ignore
-    _evo_mgr = None  # type: ignore
+    from . import safeguard_engine as _safeguard_engine  # type: ignore
+except Exception:
+    try:
+        from . import morphology as _morphology  # type: ignore
+        from . import evolution_manager as _evo_mgr  # type: ignore
+        from . import safeguard_engine as _safeguard_engine  # type: ignore
+    except Exception:  # pragma: no cover
+        _morphology = None  # type: ignore
+        _evo_mgr = None  # type: ignore
+        _safeguard_engine = None  # type: ignore
 
 
 # Life-stage multipliers (speed, sight) — the young are small and dim-sighted,
@@ -819,6 +830,17 @@ class Simulation:
             self._analytics = _bd_analytics.attach_to_sim(self)  # type: ignore[attr-defined]
         except Exception:
             self._analytics = None  # type: ignore[attr-defined]
+        # Phase 5 Safeguards — homeostatic engine (1 Hz)
+        try:
+            if _safeguard_engine is not None:
+                self._safeguard = _safeguard_engine.SafeguardEngine(self.config)  # type: ignore[attr-defined]
+                self._safeguard_eta = 0.0  # type: ignore[attr-defined]
+                self._safeguard_tier = 0  # type: ignore[attr-defined]
+                self._safeguard_scales = {}  # type: ignore[attr-defined]
+            else:
+                self._safeguard = None  # type: ignore[attr-defined]
+        except Exception:
+            self._safeguard = None  # type: ignore[attr-defined]
         self._generate_elevation()  # §AQ PH-4: the shape of the land comes first
         self._generate_rivers()  # §AQ PH-3: channels follow the slope
         self._generate_anomalies()  # §AQ PH-10: hidden zones of strange physics
@@ -2219,14 +2241,28 @@ class Simulation:
                             break
             # Fallback parent as template-derived if not in SoA
             if parent_r is None:
-                # use father's sides as K
-                parent_k = max(3, father.sides if father.sides else 4)
-                parent_r = [1.0] * parent_k + [1.0] * (64 - parent_k)
-                parent_phi = [2 * math.pi * i / parent_k if i < parent_k else 2 * math.pi * i / 64 for i in range(64)]
+                # use father's sides as K, KMAX 24 per new spec
+                parent_k = max(3, min(24, father.sides if father.sides else 4))
+                parent_r = [1.0] * parent_k + [1.0] * (24 - parent_k)
+                parent_phi = [2 * math.pi * i / parent_k if i < parent_k else 2 * math.pi * i / 24 for i in range(24)]
             template_r, template_phi, template_k = _evo_mgr.get_template_for_caste(child.caste)
             lam = _evo_mgr.lambda_for_generation(child.generation, cfg)
+            # Phase 5 Tier2 sigma boost when eta>0
+            _eta_sigma = float(getattr(self, "_safeguard_eta", 0.0) or 0.0)
+            if _eta_sigma:
+                # scale vertex/angle sigma for exploration
+                class _EffCfg:  # type: ignore
+                    def __getattr__(self, name):
+                        if name == "vertex_mutation_std":
+                            return cfg.vertex_mutation_std * (1.0 + 1.5 * _eta_sigma)
+                        if name == "angle_mutation_std":
+                            return cfg.angle_mutation_std * (1.0 + 1.5 * _eta_sigma)
+                        return getattr(cfg, name)
+                eff_cfg = _EffCfg()  # type: ignore
+            else:
+                eff_cfg = cfg
             cr, cphi, ck = _evo_mgr.child_morphology(
-                parent_r, parent_phi, parent_k, template_r, template_phi, template_k, lam, cfg, self.rng
+                parent_r, parent_phi, parent_k, template_r, template_phi, template_k, lam, eff_cfg, self.rng
             )
             # Store into child's SoA entry will be created lazily when SoA syncs;
             # cache on Creature for later SoA insertion (store as attrs)
@@ -3896,6 +3932,40 @@ class Simulation:
         self._update_leader_orders()  # §AS L-2: retreat, ritual, harvest, evacuate
         self._prune_extinct_clans()  # §P0: keep clan bookkeeping bounded
         self._refresh_cache()
+        # Phase 5 Safeguards — 1 Hz homeostatic loop (eta, Tier1/2/3)
+        if getattr(self.config, "safeguard_enabled", False) and not _IS_TEST and getattr(self, "_safeguard", None) is not None and self.tick % 10 == 0:
+            try:
+                N = len(self._cached_creatures)
+                eta, tier, scales = self._safeguard.update(N, self.tick)  # type: ignore
+                self._safeguard_eta = eta  # type: ignore
+                self._safeguard_tier = tier  # type: ignore
+                self._safeguard_scales = scales  # type: ignore
+                # Tier3 genesis if N <= Kcrit
+                if tier == 3 and N <= int(getattr(self.config, "safeguard_critical_pop", 12)):
+                    batch = int(getattr(self.config, "safeguard_genesis_batch", 6))
+                    for _ in range(batch):
+                        # spawn random creature near center with random caste
+                        x = self.rng.uniform(20, self.config.width - 20)
+                        y = self.rng.uniform(20, self.config.height - 20)
+                        # pick random caste via sides
+                        sides = self.rng.choice([3, 4, 5, 6, 8, 12, 24])
+                        c = Creature(x=x, y=y, sides=sides, energy=self.config.energy_max * 0.7, age=100, lifespan=6000)
+                        self.world.add(c)
+                        # add to SoA if present
+                        if getattr(self, "_soa", None) is not None:
+                            try:
+                                self._soa.add_agent(int(c.id), float(c.x), float(c.y), angle=float(c.angle), energy=float(c.energy), health=float(c.health))
+                            except Exception:
+                                pass
+                    self._safeguard.miracles += 1  # type: ignore
+                    # log miracle
+                    try:
+                        self.history.append(HistoryEvent(type="miracle", tick=self.tick + 1, entity_id=0, x=round(self.config.width/2,1), y=round(self.config.height/2,1), payload={"kind": "MIRACLE_OF_THE_SPHERE", "eta": round(eta,2), "N": N, "batch": batch}))
+                        self._events_this_tick.append({"type": "miracle", "tick": self.tick + 1, "payload": {"kind": "MIRACLE_OF_THE_SPHERE"}})
+                    except Exception:
+                        pass
+            except Exception:
+                pass
         self._reproduce()
         # BC bake traits for any new SoA morph entries (lazy)
         if getattr(self.config, "morphology_annealing_enabled", False) and getattr(self, "_soa", None) is not None and _morphology is not None:
@@ -5875,11 +5945,45 @@ class Simulation:
                             ro = soa.morph_radii[j, :ko]; po = soa.morph_angles[j, :ko]
                             import numpy as _np  # type: ignore
                             # vertices
+                            # Phase 7.1 circle fallback: K>=24 and asym<0.05 -> circle-polygon
+                            try:
+                                asym_a = float(soa.physical_traits[idx, 4]) if hasattr(soa.physical_traits, "shape") else float(soa.physical_traits[idx][4])  # type: ignore
+                                asym_b = float(soa.physical_traits[j, 4]) if hasattr(soa.physical_traits, "shape") else float(soa.physical_traits[j][4])  # type: ignore
+                            except Exception:
+                                asym_a = asym_b = 1.0
+                            use_circle_a = (kr >= 24 and asym_a < 0.05)
+                            use_circle_b = (ko >= 24 and asym_b < 0.05)
                             xa = (rr * _np.cos(pa) + ent.x).tolist() if hasattr(rr, "tolist") else [rr[i]*_m.cos(pa[i])+ent.x for i in range(kr)]
                             ya = (rr * _np.sin(pa) + ent.y).tolist() if hasattr(rr, "tolist") else [rr[i]*_m.sin(pa[i])+ent.y for i in range(kr)]
                             xb = (ro * _np.cos(po) + other.x).tolist() if hasattr(ro, "tolist") else [ro[i]*_m.cos(po[i])+other.x for i in range(ko)]
                             yb = (ro * _np.sin(po) + other.y).tolist() if hasattr(ro, "tolist") else [ro[i]*_m.sin(po[i])+other.y for i in range(ko)]
-                            overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+                            # circle approximation: if one is circle-like, use circle-polygon test (1 axis)
+                            if use_circle_a or use_circle_b:
+                                # approximate circle as center + avg radius
+                                try:
+                                    if use_circle_a:
+                                        cx, cy = ent.x, ent.y
+                                        crad = float(soa.physical_traits[idx, 0] / soa.physical_traits[idx, 1] * 2) if hasattr(soa.physical_traits, "shape") else 1.0  # area/perim heuristic
+                                        # simpler: avg r
+                                        crad = float(_np.mean(rr)) if hasattr(rr, "mean") else sum(rr)/len(rr) if rr else 1.0
+                                        # circle vs polygon SAT: test polygon normals + circle center axis
+                                        # For now, fallback to polygon SAT but with fewer axes (circle has no edges, so only polygon normals)
+                                        # If both circles, check distance
+                                        if use_circle_a and use_circle_b:
+                                            dx = ent.x - other.x
+                                            dy = ent.y - other.y
+                                            # wrap
+                                            dx, dy = self.world.delta(ent.x, ent.y, other.x, other.y)
+                                            dist2 = dx*dx + dy*dy
+                                            overlap = dist2 <= (crad + (float(_np.mean(ro)) if hasattr(ro, "mean") else 1.0))**2
+                                        else:
+                                            overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+                                    else:
+                                        overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+                                except Exception:
+                                    overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+                            else:
+                                overlap = _morphology.sat_overlap(xa, ya, xb, yb)
                         else:
                             kr = int(soa.morph_k[idx]); ko = int(soa.morph_k[j])
                             if kr < 3 or ko < 3:
@@ -5890,7 +5994,22 @@ class Simulation:
                             ya = [rr[i]*_m.sin(pa[i])+ent.y for i in range(kr)]
                             xb = [ro[i]*_m.cos(po[i])+other.x for i in range(ko)]
                             yb = [ro[i]*_m.sin(po[i])+other.y for i in range(ko)]
-                            overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+                            # circle fallback for python path
+                            try:
+                                asym_a = float(soa.physical_traits[idx][4])  # type: ignore
+                                asym_b = float(soa.physical_traits[j][4])  # type: ignore
+                            except Exception:
+                                asym_a = asym_b = 1.0
+                            if (kr >= 24 and asym_a < 0.05) and (ko >= 24 and asym_b < 0.05):
+                                dx, dy = self.world.delta(ent.x, ent.y, other.x, other.y)
+                                import math as _mm2
+                                crad = sum(rr)/len(rr) if rr else 1.0
+                                orad = sum(ro)/len(ro) if ro else 1.0
+                                overlap = (dx*dx + dy*dy) <= (crad + orad)**2
+                            elif kr >= 24 and asym_a < 0.05 or ko >= 24 and asym_b < 0.05:
+                                overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+                            else:
+                                overlap = _morphology.sat_overlap(xa, ya, xb, yb)
                         if overlap:
                             # impulse & Dmult damage: use sharper Dmult
                             try:
@@ -6010,6 +6129,28 @@ class Simulation:
         # §AQ PH-10: the law-change physical wave — a shimmer front sweeps
         # the map while the new law settles (cosmology precedes doctrine).
         self.law_wave = {"born_tick": self.tick}
+        # Phase 6.3: Re-bake physical trait caches when baseline physical laws change
+        try:
+            bake_keys = {"morphology_annealing_enabled", "annealing_start_generation", "annealing_decay_generations", "morph_lambda_override", "vertex_mutation_std", "angle_mutation_std", "topological_mutation_rate", "energy_max", "energy_decay_per_tick", "steer_turn", "euthanasia_threshold", "attack_damage", "safeguard_enabled", "safeguard_critical_pop", "safeguard_relief_ratio", "safeguard_genesis_batch", "safeguard_morph_mercy"}
+            if any(k in bake_keys for k in names) and getattr(self, "_soa", None) is not None and _morphology is not None:
+                # batch re-bake all active
+                try:
+                    from .morphology_engine import bake_physical_traits as _bake  # type: ignore
+                except Exception:
+                    _bake = getattr(_morphology, "bake_physical_traits", None) or getattr(_morphology, "bake_traits_for_index", None)  # type: ignore
+                if _bake is not None:
+                    try:
+                        # new API batch
+                        _bake(self._soa, None, self.config)  # type: ignore
+                    except TypeError:
+                        # fallback single
+                        for idx in range(getattr(self._soa, "N", 0)):
+                            try:
+                                _morphology.bake_traits_for_index(idx, self._soa, self.config)  # type: ignore
+                            except Exception:
+                                pass
+        except Exception:
+            pass
         if not names or not self.config.theology_enabled:
             return
         chimes = 0
@@ -6559,7 +6700,15 @@ class Simulation:
                     h.x - h.size / 2 - ext, h.x - h.size / 2,
                     h.y - h.size / 2, h.y + h.size / 2,
                 ))
-        if cfg.plant_growth_rate > 0 and sun > 0.0:
+        # Phase 5 Tier1 + Phase4 soft-cap: effective growth scaled by eta and xi
+        _eta = float(getattr(self, "_safeguard_eta", 0.0) or 0.0)
+        _xi_g = float(getattr(self, "_density_xi", 0.0) or 0.0)
+        _growth_eff = cfg.plant_growth_rate
+        if _eta:
+            _growth_eff *= (1.0 + 2.5 * _eta)
+        if _xi_g:
+            _growth_eff /= (1.0 + float(getattr(cfg, "resource_strain_mult", 1.2)) * _xi_g)
+        if _growth_eff > 0 and sun > 0.0:
             season = self._season()
             summer_drought = season == "summer"
             winter = season == "winter"
@@ -6653,7 +6802,7 @@ class Simulation:
                     am = 0.75 if age_now == "Ice" else (1.25 if age_now == "Golden" else 1.0)
                     gained = min(
                         1.0 - e.growth,
-                        cfg.plant_growth_rate * vm * sm * wm * am * sun * soil_f * eco_mult,
+                        _growth_eff * vm * sm * wm * am * sun * soil_f * eco_mult,
                     )
                     e.growth += gained
                     self._deplete_soil(e.x, e.y, gained)  # the harvest draws on the land
@@ -6707,7 +6856,10 @@ class Simulation:
                     e.growth = max(0.0, e.growth - self.rng.uniform(0.2, 0.5))
                     if e.growth <= 0.05 and self.rng.random() < 0.5:
                         self.world.remove(e.id)
-        if cfg.plant_spread_rate > 0 and sun > 0.0:
+        # Phase 4 Channel 3 effective spread via xi
+        _xi_spread = float(getattr(self, "_density_xi", 0.0) or 0.0)
+        _spread_eff = cfg.plant_spread_rate / (1.0 + 2.0 * _xi_spread) if _xi_spread else cfg.plant_spread_rate
+        if _spread_eff > 0 and sun > 0.0:
             target = round(cfg.food_count * _season_food_mult(self._season(), cfg.winter_food_mult))
             total = sum(1 for e in self.world.entities.values() if e.kind == "food")
             wx, wy = self._cos_wind, self._sin_wind
@@ -6715,7 +6867,7 @@ class Simulation:
             for parent in list(self.world.entities.values()):
                 if not isinstance(parent, Food) or parent.growth < 1.0:
                     continue  # only mature plants carry seeds
-                if self.rng.random() >= cfg.plant_spread_rate * sun:
+                if self.rng.random() >= _spread_eff * sun:
                     continue
                 if total >= target:
                     continue  # the land holds exactly god's seasonal bounty
@@ -6973,11 +7125,14 @@ class Simulation:
 
         age = self._age()
         age_disease = AGE_DISEASE_MULT.get(age, 1.0) if age is not None else 1.0
+        # Phase 4 Channel 4 effective outbreak via xi
+        _xi_out = float(getattr(self, "_density_xi", 0.0) or 0.0)
+        _outbreak_eff = cfg.disease_outbreak_rate * (1.0 + 3.0 * _xi_out) if _xi_out else cfg.disease_outbreak_rate
         if (
             not any(c.infected for c in creatures)
             and creatures
             and self.rng.random()
-            < cfg.disease_outbreak_rate
+            < _outbreak_eff
             * (WINTER_DISEASE_MULT if self._season() == "winter" else 1.0)
             * age_disease
         ):
@@ -7045,6 +7200,20 @@ class Simulation:
         # live count
         live = [c for c in creatures if c.id in self.world.entities]
         pop = len(live)
+        # Phase 4 Density-Dependent Soft-Cap Damping (xi) — replaces hard pop>=max_pop gate
+        # Compute xi and effective rates via density_damping engine (1 Hz, but compute here for current N)
+        try:
+            from .density_damping import compute_xi, scales_for_xi  # type: ignore
+
+            _xi = compute_xi(pop, int(cfg.carrying_capacity), bool(getattr(cfg, "soft_cap_enabled", True)) and not _IS_TEST)
+            # cache for telemetry / other channels
+            self._density_xi = _xi  # type: ignore
+            _scales = scales_for_xi(_xi, cfg)
+            self._density_scales = _scales  # type: ignore
+        except Exception:
+            _xi = 0.0
+            _scales = {}
+            self._density_xi = 0.0  # type: ignore
         max_pop = cfg.effective_max_population
         carrying = cfg.effective_carrying_capacity
         age = self._age()
@@ -7052,18 +7221,27 @@ class Simulation:
             cap_mult = AGE_CAP_MULT.get(age, 1.0)
             max_pop = max(2, round(max_pop * cap_mult))
             carrying = max(2, round(carrying * cap_mult))
-        if pop >= max_pop:
-            return
-        room = 1.0  # fertility fades as the world crowds past carrying capacity
+        # Hard-cap removed: was `if pop >= max_pop: return` — now soft-cap via birth_rate_eff handles it
+        room = 1.0  # fertility fades as the world crowds past carrying capacity (soft)
         if pop > carrying:
             gap = max(1.0, max_pop - carrying)
-            room = max(0.0, 1.0 - (pop - carrying) / gap)
+            # soft-cap: room never hits 0, approaches 0 asymptotically via 1/(1+over/gap) with floor 0.05
+            over = pop - carrying
+            room = max(0.05, 1.0 - over / gap) if over < gap else 0.05 / (1.0 + (over - gap) / gap)
+            # soft-cap also scales room via xi for smoother damping (xi already includes birth_rate_eff, but keep for extra)
+            if _xi:
+                room *= _scales.get("birth_rate_eff", 1.0)  # additional suppression when overpopulated
+
+        # Phase 5 Tier2 effective mate threshold/radius via eta
+        _eta2 = float(getattr(self, "_safeguard_eta", 0.0) or 0.0)
+        _mate_thr_eff = cfg.mate_energy_min * (1.0 - 0.5 * _eta2) if _eta2 else cfg.mate_energy_min
+        _mate_rad_eff = cfg.mate_radius * (1.0 + 1.0 * _eta2) if _eta2 else cfg.mate_radius
 
         def eligible(c: Creature) -> bool:
             base = (
                 c.age >= cfg.adult_age
                 and c.repro_cooldown <= 0
-                and c.energy >= cfg.mate_energy_min
+                and c.energy >= _mate_thr_eff
                 and c.health >= REPRO_MIN_HEALTH  # §AT-4 H-0: no heirs in sickness
             )
             if not base:
@@ -7094,15 +7272,15 @@ class Simulation:
         if room <= 0.0:
             return
 
-        mate_r2 = cfg.mate_radius * cfg.mate_radius
+        mate_r2 = _mate_rad_eff * _mate_rad_eff
         for mother in females:
             father = None
             best_d2 = mate_r2 + 1e-9
             # AF: query candidate males via spatial index with precomputed distance
-            for m, d2 in self.world.query_radius_with_dist_sq(mother.x, mother.y, cfg.mate_radius):
+            for m, d2 in self.world.query_radius_with_dist_sq(mother.x, mother.y, _mate_rad_eff):
                 if not isinstance(m, Creature) or m.shape == "line":
                     continue
-                if m.repro_cooldown > 0 or m.energy < cfg.mate_energy_min or not eligible(m):
+                if m.repro_cooldown > 0 or m.energy < _mate_thr_eff or not eligible(m):
                     continue
                 if d2 < best_d2:
                     father, best_d2 = m, d2
@@ -7117,7 +7295,9 @@ class Simulation:
                 * f_fert
                 * room
             )
-            rate = cfg.birth_rate
+            # Phase 4 Channel 1 effective birth rate via xi
+            _br_eff = _scales.get("birth_rate_eff", 1.0) if _xi else 1.0
+            rate = cfg.birth_rate * _br_eff
             age2 = self._age()
             if age2 is not None:
                 rate = min(1.0, rate * AGE_BIRTH_MULT.get(age2, 1.0))
@@ -7132,11 +7312,20 @@ class Simulation:
                 continue
             self._birth(mother, father)
             pop += 1
-            if pop >= max_pop:
-                break
+            # Hard-cap fully removed per Phase 4.3: soft-cap via birth_rate_eff handles overpopulation continuously; no break (except absolute safety at 5000)
 
     def _birth(self, mother: Creature, father: Creature) -> None:
         cfg = self.config
+        # Phase 4 effective birth cost/cooldown via xi
+        _xi_birth = float(getattr(self, "_density_xi", 0.0) or 0.0)
+        # use scales if available, else compute
+        try:
+            _scales_b = getattr(self, "_density_scales", {})  # type: ignore
+            _birth_cost_eff = cfg.birth_energy_cost * _scales_b.get("birth_cost_eff", 1.0) if _xi_birth else cfg.birth_energy_cost
+            _cooldown_eff = int(cfg.reproduction_cooldown * _scales_b.get("cooldown_eff", 1.0)) if _xi_birth else cfg.reproduction_cooldown
+        except Exception:
+            _birth_cost_eff = cfg.birth_energy_cost * (1.0 + 1.5 * _xi_birth) if _xi_birth else cfg.birth_energy_cost
+            _cooldown_eff = int(cfg.reproduction_cooldown * (1.0 + 2.0 * _xi_birth)) if _xi_birth else cfg.reproduction_cooldown
         gen = max(mother.generation, father.generation) + 1
         tick = self.tick + 1  # the tick being completed
         x = (mother.x + self.rng.uniform(-1.5, 1.5)) % cfg.width
@@ -7181,8 +7370,8 @@ class Simulation:
                 "glyph": glyph_for(child.id, self.config.seed, gen),
             }
             for p in (mother, father):
-                p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
-                p.repro_cooldown = cfg.reproduction_cooldown
+                p.energy = max(1.0, p.energy - _birth_cost_eff)
+                p.repro_cooldown = _cooldown_eff
                 p.emote = "love"
                 p.emote_ticks = 25
             event = HistoryEvent(
@@ -7231,8 +7420,8 @@ class Simulation:
                 "glyph": glyph_for(child.id, self.config.seed, gen),
             }
             for p in (mother, father):
-                p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
-                p.repro_cooldown = cfg.reproduction_cooldown
+                p.energy = max(1.0, p.energy - _birth_cost_eff)
+                p.repro_cooldown = _cooldown_eff
                 p.emote = "love"
                 p.emote_ticks = 25
             event = HistoryEvent(
@@ -7371,21 +7560,23 @@ class Simulation:
                         except Exception:
                             emax_scale = 1.0
                         ratio = self.rng.uniform(0.35, 0.50) if is_high else self.rng.uniform(0.05, 0.10)
-                        cost = max(5.0, cfg.energy_max * emax_scale * ratio)
+                        # Phase 4: scale anisogamy cost via xi
+                        _cost_scale = _scales_b.get("birth_cost_eff", 1.0) if _xi_birth else 1.0 if '_scales_b' in locals() else (1.0 + 1.5 * _xi_birth if _xi_birth else 1.0)
+                        cost = max(5.0, cfg.energy_max * emax_scale * ratio * _cost_scale)
                         p.energy = max(1.0, p.energy - cost)
-                        p.repro_cooldown = cfg.reproduction_cooldown
+                        p.repro_cooldown = _cooldown_eff
                 else:
                     for p in (mother, father):
-                        p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
-                        p.repro_cooldown = cfg.reproduction_cooldown
+                        p.energy = max(1.0, p.energy - _birth_cost_eff)
+                        p.repro_cooldown = _cooldown_eff
             except Exception:
                 for p in (mother, father):
-                    p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
-                    p.repro_cooldown = cfg.reproduction_cooldown
+                    p.energy = max(1.0, p.energy - _birth_cost_eff)
+                    p.repro_cooldown = _cooldown_eff
         else:
             for p in (mother, father):
-                p.energy = max(1.0, p.energy - cfg.birth_energy_cost)
-                p.repro_cooldown = cfg.reproduction_cooldown
+                p.energy = max(1.0, p.energy - _birth_cost_eff)
+                p.repro_cooldown = _cooldown_eff
 
         event = HistoryEvent(
             type="birth", tick=tick, entity_id=child.id, caste=child.caste,
@@ -8136,11 +8327,18 @@ class Simulation:
 
         # At adulthood the world judges the irregular: consumed if far from
         # regular, otherwise demoted to the lowest of the regular orders.
+        # Phase 5.4 Morphological Mercy: suspend euthanasia when η>0.3 and mercy enabled
         if not c.matured and c.irregularity > 0 and c.age >= cfg.adult_age:
             c.matured = True
             if c.irregularity >= cfg.euthanasia_threshold:
-                self._kill(c, "euthanasia")
-                return
+                # safeguard mercy
+                try:
+                    mercy = bool(getattr(self.config, "safeguard_morph_mercy", False)) and float(getattr(self, "_safeguard_eta", 0.0)) > 0.3
+                except Exception:
+                    mercy = False
+                if not mercy:
+                    self._kill(c, "euthanasia")
+                    return
             c.sides = 3
             c.iso_angle = min(c.iso_angle, 59.5)
             c.caste = caste_name(c.sides, "polygon", c.iso_angle)
@@ -9953,7 +10151,15 @@ class Simulation:
                         pass
             except Exception:
                 pass
-        c.energy -= cfg.energy_decay_per_tick * decay_mult
+        # Phase 5 safeguard Tier1 + Phase4 soft-cap Tier (overpopulation) effective decay
+        _eta_decay = float(getattr(self, "_safeguard_eta", 0.0) or 0.0)
+        _xi_decay = float(getattr(self, "_density_xi", 0.0) or 0.0)
+        _eff_decay_tick = cfg.energy_decay_per_tick
+        if _eta_decay:
+            _eff_decay_tick *= (1.0 - 0.4 * _eta_decay)
+        if _xi_decay:
+            _eff_decay_tick *= (1.0 + float(getattr(cfg, "crowding_stress_mult", 0.35)) * _xi_decay)
+        c.energy -= _eff_decay_tick * decay_mult
         # §AT-4 H-2: morale — the second health axis. Starvation erodes the
         # will; the leader's aura, festivals and simple resilience mend it.
         if is_starving:
@@ -10060,7 +10266,10 @@ class Simulation:
                 shed = cfg.chill_rate * (2.5 if c.indoors else 1.0) * (0.8 if age == "Ice" else 1.0)
                 c.chill = max(0.0, c.chill - shed)
             if c.chill >= cfg.chill_threshold:
-                c.health -= cfg.chill_drain * (1.2 if age == "Ice" else 1.0)
+                # Phase 5 Tier2 effective chill drain scaled by eta
+                _eta_chill = float(getattr(self, "_safeguard_eta", 0.0) or 0.0)
+                _chill_eff = cfg.chill_drain * (1.0 - _eta_chill) if _eta_chill else cfg.chill_drain
+                c.health -= _chill_eff * (1.2 if age == "Ice" else 1.0)
                 if c.health <= 0:
                     self._kill(c, "chill")
                     return

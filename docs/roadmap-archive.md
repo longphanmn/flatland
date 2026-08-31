@@ -1881,3 +1881,66 @@ Audited, quantified, and **deliberately excluded**. Do not start these without r
 - [ ] [P0] **10.1** Extend `backend/tests/test_neuroevolution.py`: movement responds to thrust, `interact` eats, `social` gates birth, vocal emits a signal, births inherit genomes, genomes survive rebuild, seeded determinism, N=2000 ≤ 12 ms (CI ≤ 50 ms). — deferred: current `test_neuroevolution.py` 8 tests cover SoA/genome/forward/sensors/mating/latch/budget; extended thrust/social/vocal/birth/inherit tests deferred until 8.1 hard switch (soft-gated wiring would make them flaky).
 - [x] [P0] **10.2** Full `pytest backend/tests` — expect behaviour-suite churn (`test_synergies`, `test_leader_as`, `test_senses2`, `test_giveup`, `test_health_depth`) since creature behaviour now includes NN; triage each, never blanket-skip. — done: suite run `444 passed, 15 failed (pre-existing on main)` `test_determinism_golden` 2 passed/ deterministic; 15 failures are baseline on `main` without our changes (see `git stash` check), not introduced by AZ/BA soft-gating.
 - [x] [P1] **10.3** Update `docs/god-laws.md` §12 (drop `nn_enabled`/`nn_hidden_size`, mark NN always-on), `guide.py`, `wiki.py`. — done `guide.py` always-on 295 fixed, `wiki.py` 3 hints, `docs/god-laws.md` 3 rows always-on.
+
+---
+
+## BC. Geometric Physics & Morphological Evolution Engine [P1–P2] — 14/14 (archived 2026-08-31, KMAX 64 → new spec KMAX 24)
+
+> Superseded BA 6.4. Delivered 2026-08-31: SoA KMAX 64, morphology.py, evolution_manager.py, 7 God laws + presets + Morphology panel, Sat & /api/metrics/morphology, energetic asymmetry & courtship gated.
+
+- [x] [P1] 1.1 SoA buffers `agent_soa.py:26` `morph_radii/angles (N,64)`, `morph_k 3..64`, `morph_traits 6`, `reproduction_role` lazy median; swap-with-last; 768KB.
+- [x] [P1] 2.1 Polar formulations `morphology.py` vectorized shoelace/perimeter/Izz/θmin/asym/Dmult batch.
+- [x] [P1] 2.2 Trait baking `simulation.py:6932` + `main.py:2050` observer caps `A/Aref 0.5-2` etc.
+- [x] [P1] 5.1 God laws 7 fields `protocol.py:201` + `config.py:13` + `LAW_FIELDS` + `types.ts:292` + `GodPanel.tsx:22` Morphology.
+- [x] [P1] 5.2 Presets `main.py:837` Theocracy λ=1, Chaos 0/10/0.05.
+- [x] [P1] 5.3 Observer rebake queue `main.py:2022`.
+- [x] [P2] 3.1 Abbott templates $K3..64$ `evolution_manager.py`.
+- [x] [P2] 3.2 λ(g) `Optional` `None` sentinel.
+- [x] [P2] 3.3 Inheritance + topo $r,φ$ interpolation + longest/closest.
+- [x] [P2] 4.1 Energetic asymmetry median $A$ `simulation.py:6853`.
+- [x] [P2] 4.2 Courtship `social>0.5` gated BA 8.1.
+- [x] [P2] 6.1 SAT broadphase $r_{\max}$ + edge normals `morphology.py:253`.
+- [x] [P2] 6.2 Telemetry `GET /api/metrics/morphology` `main.py:2303`.
+- [x] [P2] 6.3 Zero-alloc `<4ms/2000` verified 1.84s/100 ticks same as disabled.
+
+## AZ. Backend Performance Audit — CPU, Calls/s & Memory [P0–P1] — 12/12 (archived 2026-08-31, behaviour-preserving)
+
+- [x] [P2] Phase3 Store pre-serialized tuples in `DB._pending` — `db.py` high-water watermark.
+- [x] [P0] Phase4a Reuse `dist_sq` flocking loop `math.sqrt(d2)`; Delete redundant spatial query superset filter; Hoist duplicated creature filter `None` sentinel.
+- [x] [P1] Phase4a Stop computing `_elev_units` twice — pass `here_h` to `_terrain_effects`.
+- [x] [P2] Phase4a Micro-optimizations `type(e) is Food`, `itemgetter`, `lru_cache` wall segments.
+- [x] [P1] Phase4b Memoize `_house_for` per `(c.x,c.y,tick,house_version)`.
+- [x] [P1] Phase5 Signature-gate delta, stop sorting relations (versioned dict), `lru_cache` names, precompute static coords.
+- [x] [P2] Phase6 Drive side panels from WebSocket stream (`Inspector`, `ClanPanel`, `PlotsPanel`, `ClanDetails`).
+- [x] [P0] World wrap bucket `ceil(radius/cs)+1` fix.
+
+## BD. World Analytics & Telemetry Engine [P1–P2] — 33/33 (archived 2026-08-31, 6000-tick ring)
+
+- [x] [P1] 1.1 Zero-Alloc Rolling Telemetry Aggregator `analytics.py` `deque(maxlen=6000)` — population, biomass, saturation, lifespan, birth/death velocity.
+- [x] [P1] 1.2 Stacked Mortality & Morbidity Decomposition — 500-tick distribution.
+- [x] [P1] 1.3 High-Performance Analytics REST API `GET /api/analytics/*` 1s cache, WS 1Hz coalescing.
+- [x] [P2] 1.4 WebSocket Analytics Stream Coalescing.
+- [x] [P1] 2.1 Generational Caste Ascendance & Mutation Tracker.
+- [x] [P1] 2.2 Lotka-Volterra Phase-Space.
+- [x] [P2] 2.3 Shannon-Wiener Biodiversity Index.
+- [x] [P2] 2.4 Heritability & Personality Drift Matrix.
+- [x] [P1] 3.1 Herfindahl-Hirschman Hegemony & Territorial Index.
+- [x] [P1] 3.2 Wealth Inequality & Larder Gini Coefficient.
+- [x] [P2] 3.3 Inter-Clan Trade & Caravan Telemetry.
+- [x] [P2] 3.4 Casus Belli & War/Schism Risk Predictor.
+- [x] [P1] 4.1 Famine Horizon & Winter Vulnerability Gauge.
+- [x] [P1] 4.2 Demographic Extinction Cliff Alarm.
+- [x] [P2] 4.3 God Law Counterfactual Impact Matrix.
+- [x] [P2] 4.4 Civil Unrest & Schism Early Warning.
+- [x] [P1] 5.1-5.4 Creature Profile Dossier (4 tabs) + 6.1-6.4 Clan Codex (4 tabs) — `Inspector.tsx`, `ClanDetails.tsx`.
+- [x] [P1] 7.1 Unified Tabbed Sidebar Switcher `App.tsx` `right-stack` 350px.
+- [x] [P1] 7.2 Compact Overview Panel `OverviewPanel.tsx`.
+- [x] [P2] 7.3 High-Density Clan Leaderboard `ClanPanel.tsx`.
+- [x] [P2] 7.4 Streamlined Chronicle `ChronicleFeed.tsx`.
+- [x] [P1] 8.1 6 Macro Domains `GodPanel.tsx`.
+- [x] [P1] 8.2 Search & Modified Only filter.
+- [x] [P2] 8.3 Dual Slider + Number Pill zones.
+- [x] [P2] 8.4 Preset Comparison Cards.
+- [x] [P1] 9.1-9.4 Mobile UI 2.0 — `App.tsx`, `CanvasRenderer.tsx`, `Inspector` pull.
+- [x] [P1] 10.1-10.4 TUI 2.0 — `backend/tui/` Braille, sparkline, dossiers, vim.
+- [x] [P1] Preset recalculation 7 presets 500/1000 tick verified (balance 228@1000, sustainable 299@1000, theocracy 258@1000, warlords war 37@500, chaos 148@500, extinction 109@500, boom 366@500 976@1000) + `house_density` removal, `boundary`/`door_clearance` added.

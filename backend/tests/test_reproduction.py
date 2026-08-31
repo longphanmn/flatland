@@ -11,6 +11,8 @@ from app.simulation import Simulation
 
 def repro_cfg(**kw) -> Config:
     kw.setdefault("relief_enabled", False)
+    kw.setdefault("safeguard_enabled", False)
+    kw.setdefault("soft_cap_enabled", False)
     """Deterministic breeding-world config: adults, adjacent pairs conceive."""
     base = dict(
         seed=99,

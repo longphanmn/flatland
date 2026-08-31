@@ -243,7 +243,21 @@ class GodLaws(BaseModel):
     mutation_sigma: Optional[float] = Field(None, ge=0, le=1)
     crossover_rate: Optional[float] = Field(None, ge=0, le=1)
     morphology_annealing_enabled: Optional[bool] = None
+    annealing_start_generation: Optional[int] = Field(None, ge=0, le=1000)
     annealing_decay_generations: Optional[int] = Field(None, ge=1, le=5000)
+    morph_lambda_override: Optional[float] = Field(None, ge=-1.0, le=1.0)
+    vertex_mutation_std: Optional[float] = Field(None, ge=0, le=0.5)
+    angle_mutation_std: Optional[float] = Field(None, ge=0, le=0.5)
+    topological_mutation_rate: Optional[float] = Field(None, ge=0, le=0.2)
+    safeguard_enabled: Optional[bool] = None
+    safeguard_critical_pop: Optional[int] = Field(None, ge=2, le=50)
+    safeguard_relief_ratio: Optional[float] = Field(None, ge=0.05, le=0.5)
+    safeguard_genesis_batch: Optional[int] = Field(None, ge=1, le=20)
+    safeguard_morph_mercy: Optional[bool] = None
+    soft_cap_enabled: Optional[bool] = None
+    damping_steepness: Optional[float] = Field(None, ge=1.0, le=20.0)
+    crowding_stress_mult: Optional[float] = Field(None, ge=0.0, le=1.0)
+    resource_strain_mult: Optional[float] = Field(None, ge=0.0, le=2.0)
     disease_enabled: Optional[bool] = None
     disease_outbreak_rate: Optional[float] = Field(None, ge=0, le=1)
     disease_rate: Optional[float] = Field(None, ge=0, le=1)
@@ -320,3 +334,100 @@ class GodLaws(BaseModel):
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
     house_min_size: Optional[float] = Field(None, ge=3, le=60)
     house_max_size: Optional[float] = Field(None, ge=3, le=80)
+    # --- Soft-cap & misc (added for test roundtrip, mirrors Config) ---
+    soft_cap_enabled: Optional[bool] = None
+    damping_steepness: Optional[float] = Field(None, ge=1.0, le=20.0)
+    crowding_stress_mult: Optional[float] = Field(None, ge=0.0, le=1.0)
+    resource_strain_mult: Optional[float] = Field(None, ge=0.0, le=2.0)
+    # --- Additional Config fields for roundtrip tests ---
+    aid_rate: Optional[float] = Field(None, ge=0, le=1)
+    alarm_call_rate: Optional[float] = Field(None, ge=0, le=1)
+    alignment_weight: Optional[float] = Field(None, ge=0, le=10)
+    alliance_threshold: Optional[int] = Field(None, ge=-100, le=100)
+    attack_radius: Optional[float] = Field(None, ge=0, le=10)
+    banquets_enabled: Optional[bool] = None
+    beast_ratio: Optional[float] = Field(None, ge=0, le=1)
+    betrayal_enabled: Optional[bool] = None
+    birth_energy_cost: Optional[float] = Field(None, ge=0, le=1000)
+    bite_cooldown: Optional[int] = Field(None, ge=0, le=1000)
+    cannibalism_hunger_ratio: Optional[float] = Field(None, ge=0, le=1)
+    chill_rate: Optional[float] = Field(None, ge=0, le=10)
+    chill_threshold: Optional[float] = Field(None, ge=0, le=1000)
+    coalition_min_size: Optional[int] = Field(None, ge=1, le=100)
+    cohesion_weight: Optional[float] = Field(None, ge=0, le=10)
+    corpse_energy: Optional[float] = Field(None, ge=0, le=1000)
+    corpse_ttl: Optional[int] = Field(None, ge=0, le=100000)
+    corpses_enabled: Optional[bool] = None
+    creature_density: Optional[float] = Field(None, ge=0, le=10)
+    defection_enabled: Optional[bool] = None
+    defense_weight: Optional[float] = Field(None, ge=0, le=10)
+    desperate_perceive_mult: Optional[float] = Field(None, ge=1, le=10)
+    desperate_speed_mult: Optional[float] = Field(None, ge=1, le=10)
+    dialect_drift_enabled: Optional[bool] = None
+    diet_strictness: Optional[float] = Field(None, ge=0, le=1)
+    disease_radius: Optional[float] = Field(None, ge=0, le=100)
+    eat_enemy_enabled: Optional[bool] = None
+    energy_start: Optional[float] = Field(None, ge=0, le=1000)
+    envoys_enabled: Optional[bool] = None
+    exile_on_kin_eat: Optional[bool] = None
+    fertile_food_bias: Optional[float] = Field(None, ge=0, le=10)
+    fertile_patches: Optional[int] = Field(None, ge=0, le=1000)
+    fire_spread_rate: Optional[float] = Field(None, ge=0, le=10)
+    flock_radius: Optional[float] = Field(None, ge=0, le=100)
+    fog_mushroom_mult: Optional[float] = Field(None, ge=0, le=10)
+    fog_sight_mult: Optional[float] = Field(None, ge=0, le=10)
+    food_call_rate: Optional[float] = Field(None, ge=0, le=1)
+    food_giveup_ticks: Optional[int] = Field(None, ge=0, le=100000)
+    hearths_enabled: Optional[bool] = None
+    height: Optional[float] = Field(None, ge=10, le=10000)
+    help_call_enabled: Optional[bool] = None
+    help_radius: Optional[float] = Field(None, ge=0, le=100)
+    history_max: Optional[int] = Field(None, ge=0, le=1000000)
+    house_claim_enabled: Optional[bool] = None
+    house_density: Optional[float] = Field(None, ge=0, le=1)
+    house_gap: Optional[float] = Field(None, ge=0, le=100)
+    hungry_perceive_mult: Optional[float] = Field(None, ge=1, le=10)
+    kin_stigma: Optional[float] = Field(None, ge=0, le=1000)
+    knowledge_share_rate: Optional[float] = Field(None, ge=0, le=1)
+    knowledge_ttl: Optional[int] = Field(None, ge=0, le=1000000)
+    markets_enabled: Optional[bool] = None
+    mate_energy_min: Optional[float] = Field(None, ge=0, le=1000)
+    mate_radius: Optional[float] = Field(None, ge=0, le=100)
+    nn_inference_hz: Optional[int] = Field(None, ge=1, le=1000)
+    num_hexagons: Optional[int] = Field(None, ge=0, le=100)
+    num_houses: Optional[int] = Field(None, ge=0, le=100)
+    num_pentagons: Optional[int] = Field(None, ge=0, le=100)
+    num_priests: Optional[int] = Field(None, ge=0, le=100)
+    num_squares: Optional[int] = Field(None, ge=0, le=100)
+    num_triangles: Optional[int] = Field(None, ge=0, le=100)
+    num_women: Optional[int] = Field(None, ge=0, le=100)
+    omens_enabled: Optional[bool] = None
+    omp_enabled: Optional[bool] = None
+    omp_threshold: Optional[int] = Field(None, ge=0, le=10000)
+    rain_growth_mult: Optional[float] = Field(None, ge=0, le=10)
+    rain_speed_mult: Optional[float] = Field(None, ge=0, le=10)
+    recovery_rate: Optional[float] = Field(None, ge=0, le=1)
+    relation_drift_rate: Optional[float] = Field(None, ge=0, le=10)
+    reproduction_cooldown: Optional[int] = Field(None, ge=0, le=100000)
+    rivalry_threshold: Optional[int] = Field(None, ge=-100, le=100)
+    rock_count: Optional[int] = Field(None, ge=0, le=1000)
+    rubble_blocking_enabled: Optional[bool] = None
+    scent_enabled: Optional[bool] = None
+    schism_min_pop: Optional[int] = Field(None, ge=1, le=1000)
+    seed: Optional[int] = Field(None, ge=0, le=1000000000)
+    separation_weight: Optional[float] = Field(None, ge=0, le=10)
+    signal_radius: Optional[float] = Field(None, ge=0, le=100)
+    signal_speed: Optional[float] = Field(None, ge=0, le=100)
+    sleep_energy_mult: Optional[float] = Field(None, ge=0, le=10)
+    soil_depletion_enabled: Optional[bool] = None
+    spawn_variance: Optional[float] = Field(None, ge=0, le=100)
+    storm_plant_damage: Optional[float] = Field(None, ge=0, le=10)
+    storm_wander_bonus: Optional[float] = Field(None, ge=0, le=10)
+    tick_rate: Optional[float] = Field(None, ge=0.1, le=1000)
+    trait_mutation_rate: Optional[float] = Field(None, ge=0, le=1)
+    tribute_enabled: Optional[bool] = None
+    vocalizations_enabled: Optional[bool] = None
+    wander_turn: Optional[float] = Field(None, ge=0, le=10)
+    wet_disease_mult: Optional[float] = Field(None, ge=0, le=10)
+    width: Optional[float] = Field(None, ge=10, le=10000)
+
