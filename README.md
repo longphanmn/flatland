@@ -23,7 +23,7 @@
 
 ### 1. The Sphere (God Model): Laws over Fates
 In Flatland, The Sphere (God) sets the **laws of nature** from Spaceland but never touches an individual life. The Sphere cannot kill, heal, or move a single creature; the simulation advances deterministically under physical and biological rules.
-- **The Sphere Panel (`⚖ The Sphere`)**: Adjust carrying capacity, food growth, energy metabolism, weather volatility, disease virulence, or clan aggression in real-time.
+- **The Sphere Panel (`⚖ The Sphere`)**: Full control over world dynamics via a dedicated **🎯 Presets** selector and 6 streamlined **⚖️ Macro Domains** (Ecology & Survival, Biology & Evolution, Climate & Sky, Society, Warfare & Trade, Theology & Sacred Avatars, World Physics & Disasters) with instant search, modified-only filtering, baseline comparison, and real-time dual sliders.
 - **Curated World Presets**:
   - **⚖️ Balance (Default)**: Goldilocks harmony tuned for **200–350 inhabitants** with 240 food, carrying capacity 350 (max 500), gentle wars, rare predation, agriculture, and flourishing multi-generational clans.
   - **🌿 Sustainable**: 1000-day prosperous peace, abundant food (360), carrying capacity 450 (max 600), rich granaries, and banquets.

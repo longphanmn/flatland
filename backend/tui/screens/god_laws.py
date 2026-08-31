@@ -14,9 +14,6 @@ from textual.widgets import Button, Checkbox, Collapsible, Input, Label, Select,
 
 # Mirrors GodPanel.tsx SLIDERS/GROUP_ORDER. (key, label)
 NUMBER_LAWS: dict[str, list[tuple[str, str]]] = {
-    "World": [
-        ("boundary", "Boundary (wrap/clamp)"),
-    ],
     "Food & Energy": [
         ("food_count", "Food abundance"),
         ("energy_max", "Max energy"),
@@ -28,46 +25,42 @@ NUMBER_LAWS: dict[str, list[tuple[str, str]]] = {
         ("plant_spread_rate", "Plant spread chance"),
         ("nutrient_cycle_rate", "Nutrient cycle ×"),
         ("poison_rate", "Poison sprout chance"),
-        ("beast_ratio", "Herbivore ratio"),
-        ("diet_strictness", "Diet strictness"),
+        ("food_lifespan_ticks", "Food lifespan (ticks)"),
+        ("granary_capacity", "Granary capacity"),
     ],
     "Hunger & Sight": [
-        ("hungry_ratio", "Hungry threshold"),
+        ("hungry_ratio", "Hungry threshold (NN slot 0)"),
         ("starving_ratio", "Starving threshold"),
         ("perceive_radius", "Base sight radius"),
         ("eat_radius", "Eat radius"),
-        ("hungry_perceive_mult", "Hungry sight ×"),
-        ("desperate_perceive_mult", "Starving sight ×"),
-        ("desperate_speed_mult", "Starving speed ×"),
-        ("food_giveup_ticks", "Give-up ticks"),
     ],
     "Movement": [
-        ("wander_turn", "Wander turn"),
-        ("steer_turn", "Steer turn"),
+        ("steer_turn", "Turning agility"),
     ],
     "Life & Death": [
         ("lifespan_mult", "Lifespan ×"),
     ],
     "Reproduction": [
         ("adult_age", "Adult age"),
-        ("mate_radius", "Mate radius"),
-        ("mate_energy_min", "Mate energy ≥"),
         ("birth_rate", "Birth rate"),
-        ("sex_ratio", "Son probability"),
-        ("mutation_rate", "Mutation rate"),
-        ("max_sides", "Max sides"),
-        ("euthanasia_threshold", "Euthanasia ≥"),
-        ("birth_energy_cost", "Birth energy cost"),
-        ("reproduction_cooldown", "Cooldown ticks"),
         ("carrying_capacity", "Carrying capacity"),
         ("max_population", "Hard pop cap"),
+        ("mutation_rate", "Caste mutation rate"),
+        ("sex_ratio", "Son probability"),
+        ("max_sides", "Max caste sides"),
+        ("euthanasia_threshold", "Euthanasia ≥"),
+    ],
+    "Neuroevolution": [
+        ("mutation_sigma", "NN mutation σ"),
+        ("crossover_rate", "NN crossover rate"),
+    ],
+    "Morphology": [
+        ("annealing_decay_generations", "Morphology decay gens"),
     ],
     "Disease": [
         ("disease_outbreak_rate", "Outbreak rate / tick"),
         ("disease_rate", "Contagion chance"),
-        ("disease_radius", "Contagion radius"),
         ("disease_energy_drain", "Energy drain / tick"),
-        ("recovery_rate", "Recovery chance / tick"),
         ("disease_lethality", "Lethality"),
     ],
     "Sky & Seasons": [
@@ -76,88 +69,43 @@ NUMBER_LAWS: dict[str, list[tuple[str, str]]] = {
         ("winter_food_mult", "Winter food ×"),
         ("night_sight_mult", "Night sight ×"),
         ("weather_change_rate", "Weather turn chance"),
-        ("fog_sight_mult", "Fog sight ×"),
-        ("rain_speed_mult", "Rain speed ×"),
-        ("storm_wander_bonus", "Storm wander +"),
-    ],
-    "Weather & Crops": [
-        ("rain_growth_mult", "Rain growth ×"),
-        ("fog_mushroom_mult", "Fog mushroom ×"),
-        ("storm_plant_damage", "Storm plant damage"),
-    ],
-    "Weather Sickness": [
-        ("chill_rate", "Chill rate / tick"),
-        ("chill_threshold", "Chill threshold"),
-        ("chill_drain", "Chill drain / tick"),
-        ("wet_disease_mult", "Wet disease ×"),
     ],
     "Shelter": [
         ("exposure_drain", "Exposure drain / tick"),
         ("house_capacity", "House capacity"),
-        ("rest_recovery_mult", "Rest healing ×"),
         ("house_decay_ticks", "House decay ticks"),
+        ("rest_recovery_mult", "Rest healing ×"),
+    ],
+    "Weather Sickness": [
+        ("chill_drain", "Chill drain / tick"),
     ],
     "Territory": [
         ("territory_radius", "Territory radius"),
         ("trespass_decay", "Trespass decay / tick"),
     ],
     "Clan": [
-        ("max_clans", "Max clans (-1 = per house)"),
+        ("max_clans", "Max clans"),
     ],
-    "Communication": [
-        ("signal_radius", "Signal radius"),
-        ("food_call_rate", "Food call rate"),
-        ("alarm_call_rate", "Alarm call rate"),
-    ],
-    "Communication II": [
-        ("knowledge_ttl", "Knowledge TTL"),
-        ("knowledge_share_rate", "Share rate / tick"),
-        ("help_radius", "Help radius"),
-        ("defense_weight", "Defense weight"),
+    "Politics": [
+        ("larder_capacity", "Larder capacity"),
+        ("coalition_threshold", "Coalition threshold"),
     ],
     "Rebellion": [
         ("schism_threshold", "Schism threshold"),
-        ("schism_min_pop", "Schism min pop"),
-    ],
-    "Interaction": [
-        ("cohesion_weight", "Cohesion weight"),
-        ("alignment_weight", "Alignment weight"),
-        ("separation_weight", "Separation weight"),
-        ("flock_radius", "Flock radius"),
-        ("relation_drift_rate", "Relation drift / tick"),
-        ("alliance_threshold", "Alliance threshold"),
-        ("rivalry_threshold", "Rivalry threshold"),
     ],
     "Predation": [
         ("predator_ratio", "Predator ratio"),
         ("hunt_radius", "Hunt radius"),
         ("bite_damage", "Bite damage"),
-        ("bite_cooldown", "Bite cooldown"),
         ("energy_from_prey", "Energy from prey"),
         ("fear_radius", "Fear radius"),
     ],
     "Clan War": [
-        ("attack_radius", "Attack radius"),
         ("attack_damage", "Attack damage"),
     ],
-    "Politics": [
-        ("coalition_threshold", "Coalition threshold"),
-        ("coalition_min_size", "Coalition min size"),
-        ("larder_capacity", "Larder capacity"),
-        ("aid_rate", "Allied aid chance"),
-    ],
     "Desperation": [
-        ("cannibalism_hunger_ratio", "Hunger threshold"),
         ("cannibalism_energy", "Energy per kill"),
-        ("kin_stigma", "Kin stigma"),
     ],
-    "Food Decay": [
-        ("food_lifespan_ticks", "Food lifespan (ticks)"),
-    ],
-    "Agriculture": [
-        ("granary_capacity", "Granary capacity"),
-    ],
-    "Language & Diplomacy": [],
     "Theology": [
         ("tithe_rate", "Tithe rate"),
         ("temple_faith_cost", "Temple faith cost"),
@@ -168,12 +116,8 @@ NUMBER_LAWS: dict[str, list[tuple[str, str]]] = {
     "Culture": [
         ("culture_spread_rate", "Culture spread / tick"),
     ],
-    "Genetics": [
-        ("trait_mutation_rate", "Trait mutation rate"),
-    ],
     "Wildfire & Disasters": [
         ("fire_rate", "Fire ignite / tick"),
-        ("fire_spread_rate", "Fire spread / tick"),
         ("disaster_rate", "Disaster / tick"),
     ],
     "Rivers": [
@@ -183,7 +127,6 @@ NUMBER_LAWS: dict[str, list[tuple[str, str]]] = {
     "Materials": [],
     "Seismic & Waves": [
         ("earthquake_rate", "Quake rate / tick"),
-        ("signal_speed", "News speed (units/tick)"),
     ],
     "Electrostatics": [
         ("lightning_strike_rate", "Bolt rate / storm tick"),
@@ -193,32 +136,28 @@ NUMBER_LAWS: dict[str, list[tuple[str, str]]] = {
     ],
     "Bodies & Houses": [
         ("door_clearance", "Door clearance ×"),
-        ("house_min_size", "House min size"),
-        ("house_max_size", "House max size"),
     ],
 }
 
 BOOL_LAWS: dict[str, list[tuple[str, str]]] = {
-    "Life & Birth": [("birth_enabled", "Births enabled")],
+    "Reproduction": [("birth_enabled", "Births enabled")],
     "Disease": [("disease_enabled", "Plagues enabled")],
+    "Morphology": [("morphology_annealing_enabled", "Morphology annealing")],
     "Sky & Seasons": [
         ("weather_enabled", "Weather allowed"),
         ("sleep_enabled", "Night rest"),
     ],
     "Shelter": [
         ("shelter_enabled", "Shelter law"),
-        ("house_claim_enabled", "Clan house claims"),
-        ("hearths_enabled", "Hearths"),
     ],
     "Territory": [("territory_enabled", "Territory law")],
     "Clan": [
-        ("totems_enabled", "Totems"),
+        ("totems_enabled", "Sacred Avatars"),
         ("succession_enabled", "Succession"),
     ],
-    "Communication": [("communication_enabled", "Communication")],
-    "Communication II": [
+    "Communication": [
+        ("communication_enabled", "Communication & signals"),
         ("knowledge_enabled", "Knowledge sharing"),
-        ("help_call_enabled", "Help calls"),
     ],
     "Rebellion": [("schism_enabled", "Schism")],
     "Ages": [("age_enabled", "World ages")],
@@ -231,12 +170,14 @@ BOOL_LAWS: dict[str, list[tuple[str, str]]] = {
     "Terrain": [("relief_enabled", "Relief (height field)")],
     "Materials": [
         ("structural_enabled", "Structural integrity"),
-        ("rubble_blocking_enabled", "Rubble blocks lots"),
     ],
     "Seismic & Waves": [("earthquake_enabled", "Earthquakes")],
     "Electrostatics": [("lightning_enabled", "Storm lightning")],
     "Ecosystem": [
         ("plant_variants_enabled", "Plant variants"),
+        ("food_decay_enabled", "Food decay"),
+        ("agriculture_enabled", "Agriculture"),
+        ("granaries_enabled", "Granaries"),
     ],
     "Weather Sickness": [("weather_sickness_enabled", "Weather sickness")],
     "Predation": [("predation_enabled", "Predation")],
@@ -245,32 +186,12 @@ BOOL_LAWS: dict[str, list[tuple[str, str]]] = {
         ("coalitions_enabled", "Coalitions"),
         ("leader_decisions_enabled", "Leader decisions"),
         ("resource_sharing_enabled", "Resource sharing"),
-        ("tribute_enabled", "Tribute"),
-        ("betrayal_enabled", "Betrayal"),
-        ("defection_enabled", "Defection"),
     ],
     "Desperation": [
         ("cannibalism_enabled", "Cannibalism"),
-        ("eat_enemy_enabled", "Eat enemies"),
         ("eat_kin_enabled", "Eat kin"),
-        ("exile_on_kin_eat", "Exile on kin-eat"),
     ],
-    "Food Decay": [("food_decay_enabled", "Food decay")],
     "Theology": [("theology_enabled", "Theology of the Sphere")],
-    "Agriculture": [
-        ("agriculture_enabled", "Agriculture"),
-        ("granaries_enabled", "Granaries"),
-        ("soil_depletion_enabled", "Living soil"),
-        ("banquets_enabled", "Banquets"),
-    ],
-    "Language & Diplomacy": [
-        ("vocalizations_enabled", "Caste voices & rituals"),
-        ("scent_enabled", "Scent trails & markers"),
-        ("envoys_enabled", "Envoys & boundary stones"),
-        ("markets_enabled", "Markets & caravans"),
-        ("omens_enabled", "Season omens"),
-        ("dialect_drift_enabled", "Dialect drift"),
-    ],
 }
 
 GROUP_ORDER = list(NUMBER_LAWS.keys())
