@@ -75,7 +75,7 @@ Governs sensory perception, physical movement, life stages, reproduction, geneti
 | `safeguard_genesis_batch` | 1–20 | **6** | Number of pristine regular polygon beings created per Tier 3 Genesis miracle. |
 | `safeguard_morph_mercy` | Boolean | **true** | Suspends euthanasia of irregular infants during low-population relief states ($\eta > 0.30$). |
 | `soft_cap_enabled` | Boolean | **true** | Master switch for non-linear density-dependent damping ($\xi$) when population overshoots carrying capacity. |
-| `damping_steepness` | 1.0–20.0 | **6.0** | Non-linear birth suppression steepness ($1 / (1 + \text{steepness} \cdot \xi^2)$) under overpopulation. |
+| `damping_steepness` | 1.0–20.0 | **6.0** | Non-linear birth suppression steepness ($1 / (1 + 2 d \xi + (d \xi)^2)$) under overpopulation. |
 | `crowding_stress_mult` | 0.0–1.0 | **0.35** | Multiplier scaling metabolic energy decay under crowding stress ($1 + \text{mult} \cdot \xi$). |
 | `resource_strain_mult` | 0.0–2.0 | **1.2** | Multiplier scaling plant growth & spread slowdown under overpopulation resource strain ($1 / (1 + \text{mult} \cdot \xi)$). |
 | `disease_enabled` | Boolean | **true** | Master switch for infectious pathogen outbreaks and transmission. |
@@ -91,8 +91,8 @@ When population $N$ exceeds carrying capacity $K_{cap}$, the overshoot ratio is 
 $$\xi(N) = \max\left(0, \frac{N - K_{cap}}{K_{cap}}\right)$$
 
 Homeostatic damping modulates world dynamics continuously:
-- **Effective Birth Rate**: $R_{birth} = \frac{R_0}{1 + \text{damping\_steepness} \cdot \xi^2}$
-- **Metabolic Stress**: $M_{decay} = M_0 \cdot (1 + \text{crowding\_stress\_mult} \cdot \xi)$
+- **Effective Birth Rate**: $R_{birth} = \frac{R_0}{1 + 2 \cdot \text{damping\_steepness} \cdot \xi + (\text{damping\_steepness} \cdot \xi)^2}$
+- **Metabolic Stress**: $M_{decay} = M_0 \cdot (1 + \text{crowding\_stress\_mult} \cdot \xi + 0.5 \cdot \text{crowding\_stress\_mult} \cdot \xi^2)$
 - **Plant Growth**: $G_{plant} = \frac{G_0}{1 + \text{resource\_strain\_mult} \cdot \xi}$
 
 #### 2. Extinction Safeguards ($\eta$)

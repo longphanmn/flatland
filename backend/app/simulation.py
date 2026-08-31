@@ -841,6 +841,16 @@ class Simulation:
                 self._safeguard = None  # type: ignore[attr-defined]
         except Exception:
             self._safeguard = None  # type: ignore[attr-defined]
+        # Phase 4 Density Damping — homeostatic soft-cap engine
+        try:
+            from . import density_damping as _density_damping  # type: ignore
+            self._density_engine = _density_damping.DensityDampingEngine(self.config)  # type: ignore[attr-defined]
+            self._density_xi = 0.0  # type: ignore[attr-defined]
+            self._density_scales = {}  # type: ignore[attr-defined]
+        except Exception:
+            self._density_engine = None  # type: ignore[attr-defined]
+            self._density_xi = 0.0  # type: ignore[attr-defined]
+            self._density_scales = {}  # type: ignore[attr-defined]
         self._generate_elevation()  # §AQ PH-4: the shape of the land comes first
         self._generate_rivers()  # §AQ PH-3: channels follow the slope
         self._generate_anomalies()  # §AQ PH-10: hidden zones of strange physics
@@ -3837,6 +3847,28 @@ class Simulation:
         self._update_campfires()  # §AO E: explorers kindle the night's fire
         self._update_disasters()
         self._update_temperature()  # §AQ PH-1: the heat field breathes
+        # Phase 4 Density Damping — update xi and scales for current tick
+        if getattr(self.config, "soft_cap_enabled", True) and not _IS_TEST:
+            try:
+                pop_d = len(self._cached_creatures)
+                carrying_d = self.config.effective_carrying_capacity
+                age_d = self._age()
+                if age_d is not None:
+                    cap_mult_d = AGE_CAP_MULT.get(age_d, 1.0)
+                    carrying_d = max(2, round(carrying_d * cap_mult_d))
+                if getattr(self, "_density_engine", None) is not None:
+                    self._density_xi, self._density_scales = self._density_engine.update(pop_d, self.tick, carrying_d)
+                else:
+                    from .density_damping import compute_xi, scales_for_xi  # type: ignore
+                    _xi_d = compute_xi(pop_d, carrying_d, True)
+                    self._density_xi = _xi_d
+                    self._density_scales = scales_for_xi(_xi_d, self.config)
+            except Exception:
+                self._density_xi = 0.0
+                self._density_scales = {}
+        else:
+            self._density_xi = 0.0
+            self._density_scales = {}
         self._update_plants()
         self.world.rebuild_index()
         self._refresh_cache()
@@ -7193,20 +7225,7 @@ class Simulation:
         # live count
         live = [c for c in creatures if c.id in self.world.entities]
         pop = len(live)
-        # Phase 4 Density-Dependent Soft-Cap Damping (xi) — replaces hard pop>=max_pop gate
-        # Compute xi and effective rates via density_damping engine (1 Hz, but compute here for current N)
-        try:
-            from .density_damping import compute_xi, scales_for_xi  # type: ignore
 
-            _xi = compute_xi(pop, int(cfg.carrying_capacity), bool(getattr(cfg, "soft_cap_enabled", True)) and not _IS_TEST)
-            # cache for telemetry / other channels
-            self._density_xi = _xi  # type: ignore
-            _scales = scales_for_xi(_xi, cfg)
-            self._density_scales = _scales  # type: ignore
-        except Exception:
-            _xi = 0.0
-            _scales = {}
-            self._density_xi = 0.0  # type: ignore
         max_pop = cfg.effective_max_population
         carrying = cfg.effective_carrying_capacity
         age = self._age()
@@ -7214,20 +7233,39 @@ class Simulation:
             cap_mult = AGE_CAP_MULT.get(age, 1.0)
             max_pop = max(2, round(max_pop * cap_mult))
             carrying = max(2, round(carrying * cap_mult))
-        # Hard-cap removed: was `if pop >= max_pop: return` — now soft-cap via birth_rate_eff handles it
-        room = 1.0  # fertility fades as the world crowds past carrying capacity (soft)
+
+        # Absolute upper ceiling: no new births if at or above max population
+        if pop >= max_pop:
+            return
+
+        # Phase 4 Density-Dependent Soft-Cap Damping (xi) — computed via effective carrying capacity
+        try:
+            from .density_damping import compute_xi, scales_for_xi  # type: ignore
+
+            _xi = compute_xi(pop, carrying, bool(getattr(cfg, "soft_cap_enabled", True)) and not _IS_TEST)
+            self._density_xi = _xi  # type: ignore
+            _scales = scales_for_xi(_xi, cfg)
+            self._density_scales = _scales  # type: ignore
+        except Exception:
+            _xi = 0.0
+            _scales = {}
+            self._density_xi = 0.0  # type: ignore
+
+        # Fertility room fades continuously from 1.0 at carrying to 0.0 at max_pop
+        room = 1.0
         if pop > carrying:
             gap = max(1.0, max_pop - carrying)
-            # soft-cap: room never hits 0, approaches 0 asymptotically via 1/(1+over/gap) with floor 0.05
             over = pop - carrying
-            room = max(0.05, 1.0 - over / gap) if over < gap else 0.05 / (1.0 + (over - gap) / gap)
-            # soft-cap also scales room via xi for smoother damping (xi already includes birth_rate_eff, but keep for extra)
-            if _xi:
-                room *= _scales.get("birth_rate_eff", 1.0)  # additional suppression when overpopulated
+            room = max(0.0, 1.0 - over / gap)
 
-        # Phase 5 Tier2 effective mate threshold/radius via eta
+        if room <= 0.0:
+            return
+
+        # Phase 5 Tier2 effective mate threshold/radius via eta + soft-cap mate threshold
         _eta2 = float(getattr(self, "_safeguard_eta", 0.0) or 0.0)
         _mate_thr_eff = cfg.mate_energy_min * (1.0 - 0.5 * _eta2) if _eta2 else cfg.mate_energy_min
+        if _xi:
+            _mate_thr_eff *= _scales.get("mate_thr_eff", 1.0)
         _mate_rad_eff = cfg.mate_radius * (1.0 + 1.0 * _eta2) if _eta2 else cfg.mate_radius
 
         def eligible(c: Creature) -> bool:
@@ -7262,11 +7300,10 @@ class Simulation:
         if not females:
             return
 
-        if room <= 0.0:
-            return
-
         mate_r2 = _mate_rad_eff * _mate_rad_eff
         for mother in females:
+            if pop >= max_pop:
+                break
             father = None
             best_d2 = mate_r2 + 1e-9
             # AF: query candidate males via spatial index with precomputed distance
@@ -7305,7 +7342,6 @@ class Simulation:
                 continue
             self._birth(mother, father)
             pop += 1
-            # Hard-cap fully removed per Phase 4.3: soft-cap via birth_rate_eff handles overpopulation continuously; no break (except absolute safety at 5000)
 
     def _birth(self, mother: Creature, father: Creature) -> None:
         cfg = self.config

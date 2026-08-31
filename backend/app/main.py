@@ -604,7 +604,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Flatland World Simulation",
-    version="0.1.2",
+    version="0.1.5",
     description="Flatland — 2D world simulation by Long Phan <long@minhnhan.in>",
     contact={"name": "Long Phan", "email": "long@minhnhan.in", "url": "https://minhnhan.in"},
     lifespan=lifespan,
@@ -2352,7 +2352,15 @@ async def get_damping_metrics() -> dict:
         try:
             from .density_damping import compute_xi, scales_for_xi
 
-            Kcap = int(getattr(cfg, "carrying_capacity", 350))
+            Kcap = int(getattr(cfg, "effective_carrying_capacity", getattr(cfg, "carrying_capacity", 350)))
+            if sim is not None and hasattr(sim, "_age"):
+                try:
+                    from .simulation import AGE_CAP_MULT
+                    age_m = sim._age()
+                    if age_m is not None:
+                        Kcap = max(2, round(Kcap * AGE_CAP_MULT.get(age_m, 1.0)))
+                except Exception:
+                    pass
             xi = compute_xi(N, Kcap, enabled)
             scales = scales_for_xi(xi, cfg)
             return {
@@ -2379,7 +2387,7 @@ async def get_version() -> dict:
     if _VERSION_CACHE is not None:
         return _VERSION_CACHE
     import subprocess
-    version = "0.1.2"
+    version = "0.1.5"
     revision = ""
     try:
         import tomllib

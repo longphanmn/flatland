@@ -15,7 +15,7 @@ def compute_xi(N: int, Kcap: int, enabled: bool) -> float:
 
     xi = (N - Kcap)/Kcap if N > Kcap and soft_cap_enabled else 0
     """
-    if not enabled:
+    if not enabled or Kcap <= 0:
         return 0.0
     try:
         if N <= Kcap:
@@ -36,17 +36,31 @@ def scales_for_xi(xi: float, config) -> Dict[str, float]:
         crowding = 0.35
         resource = 1.2
 
-    # Channel 1: reproductive suppression
-    birth_rate_eff = 1.0 / (1.0 + damping * xi * xi) if xi else 1.0
-    birth_cost_eff = 1.0 + 1.5 * xi
-    cooldown_eff = 1.0 + 2.0 * xi
+    if xi <= 0.0:
+        return {
+            "birth_rate_eff": 1.0,
+            "birth_cost_eff": 1.0,
+            "cooldown_eff": 1.0,
+            "mate_thr_eff": 1.0,
+            "decay_eff": 1.0,
+            "growth_eff": 1.0,
+            "spread_eff": 1.0,
+            "outbreak_eff": 1.0,
+            "xi": 0.0,
+        }
+
+    # Channel 1: reproductive suppression (linear + quadratic for immediate slope at boundary)
+    birth_rate_eff = 1.0 / (1.0 + 2.0 * damping * xi + (damping * xi) ** 2)
+    birth_cost_eff = 1.0 + 2.0 * xi
+    cooldown_eff = 1.0 + 3.0 * xi + 3.0 * xi * xi
+    mate_thr_eff = 1.0 + 1.5 * xi
 
     # Channel 2: crowding stress
-    decay_eff = 1.0 + crowding * xi
+    decay_eff = 1.0 + crowding * xi + 0.5 * crowding * xi * xi
 
     # Channel 3: ecological strain
-    growth_eff = 1.0 / (1.0 + resource * xi) if xi else 1.0
-    spread_eff = 1.0 / (1.0 + 2.0 * xi) if xi else 1.0
+    growth_eff = 1.0 / (1.0 + resource * xi)
+    spread_eff = 1.0 / (1.0 + 2.0 * xi)
 
     # Channel 4: social friction (pathogens)
     outbreak_eff = 1.0 + 3.0 * xi
@@ -55,6 +69,7 @@ def scales_for_xi(xi: float, config) -> Dict[str, float]:
         "birth_rate_eff": birth_rate_eff,
         "birth_cost_eff": birth_cost_eff,
         "cooldown_eff": cooldown_eff,
+        "mate_thr_eff": mate_thr_eff,
         "decay_eff": decay_eff,
         "growth_eff": growth_eff,
         "spread_eff": spread_eff,
@@ -72,8 +87,9 @@ class DensityDampingEngine:
         self.last_scales: Dict[str, float] = {}
         self.last_N = 0
 
-    def update(self, N: int, tick: int) -> tuple[float, Dict[str, float]]:
-        Kcap = int(getattr(self.config, "carrying_capacity", 350))
+    def update(self, N: int, tick: int, Kcap: int | None = None) -> tuple[float, Dict[str, float]]:
+        if Kcap is None:
+            Kcap = int(getattr(self.config, "effective_carrying_capacity", getattr(self.config, "carrying_capacity", 350)))
         enabled = bool(getattr(self.config, "soft_cap_enabled", True))
         xi = compute_xi(N, Kcap, enabled)
         scales = scales_for_xi(xi, self.config)
