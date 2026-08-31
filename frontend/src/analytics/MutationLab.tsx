@@ -1,5 +1,6 @@
 import { useI18n } from '../i18n'
 import MetricCard from './MetricCard'
+import { CreatureAvatar, SIDES_COLORS } from '../components/CreatureAvatar'
 
 interface Props {
   data: any
@@ -19,51 +20,6 @@ const CASTE_NAMES: Record<number, string> = {
   24: 'Priest (Sphere)',
 }
 
-const CASTE_COLORS: Record<number, string> = {
-  2: '#ff9bce',
-  3: '#ff7b72',
-  4: '#ffa657',
-  5: '#d2a8ff',
-  6: '#79c0ff',
-  7: '#bc8cff',
-  8: '#58a6ff',
-  9: '#bc8cff',
-  10: '#7ee787',
-  24: '#e6edf3',
-}
-
-function MutantAvatar({ sides = 4, irregularity = 0, color = '#79c0ff', clanColor = '#30363d' }: { sides: number; irregularity?: number; color?: string; clanColor?: string }) {
-  const cx = 32
-  const cy = 32
-  const r = 20
-  const isLine = sides === 2
-  const isPriest = sides >= 24
-
-  let points: string | null = null
-  if (!isLine && !isPriest) {
-    points = Array.from({ length: sides }, (_, i) => {
-      // Perturb angle and radius slightly by irregularity to visually depict mutation!
-      const angleJitter = irregularity * 0.4 * Math.sin(i * 2.3)
-      const radiusJitter = 1.0 + irregularity * 0.35 * Math.cos(i * 1.7)
-      const a = (i / sides) * Math.PI * 2 - Math.PI / 2 + angleJitter
-      const pr = r * radiusJitter
-      return `${cx + Math.cos(a) * pr},${cy + Math.sin(a) * pr}`
-    }).join(' ')
-  }
-
-  return (
-    <svg width={64} height={64} viewBox="0 0 64 64" style={{ background: '#0d1117', borderRadius: 8, border: `1px solid ${clanColor}` }}>
-      <circle cx={cx} cy={cy} r={r + 4} fill="none" stroke={clanColor} strokeWidth={1} opacity={0.6} />
-      {isLine ? (
-        <line x1={cx - r} y1={cy} x2={cx + r} y2={cy} stroke={color} strokeWidth={3} strokeLinecap="round" />
-      ) : isPriest ? (
-        <circle cx={cx} cy={cy} r={r} fill={color} fillOpacity={0.25} stroke={color} strokeWidth={1.5} />
-      ) : (
-        <polygon points={points!} fill={color} fillOpacity={0.25} stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
-      )}
-    </svg>
-  )
-}
 
 export default function MutationLab({ data, onSelectCreature }: Props) {
   const { t } = useI18n()
@@ -225,7 +181,7 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
             .map(([sidesStr, count]) => {
               const k = Number(sidesStr)
               const name = CASTE_NAMES[k] || `${k}-gon (Aberration)`
-              const color = CASTE_COLORS[k] || '#bc8cff'
+              const color = SIDES_COLORS[k] || '#bc8cff'
               const pct = ((count / totalAbbott) * 100).toFixed(1)
               const isMutantSide = ![2, 3, 4, 5, 8, 24].includes(k)
 
@@ -294,11 +250,9 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
                   gap: 10,
                 }}
               >
-                <MutantAvatar
-                  sides={mutant.sides}
-                  irregularity={mutant.irregularity}
-                  color={CASTE_COLORS[mutant.sides] || '#bc8cff'}
-                  clanColor={mutant.clan_color || '#30363d'}
+                <CreatureAvatar
+                  e={mutant}
+                  size={64}
                 />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

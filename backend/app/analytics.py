@@ -207,6 +207,8 @@ class AnalyticsEngine:
             top_mutants.append({
                 "id": c.id,
                 "name": getattr(c, "personal_name", None) or f"Creature #{c.id}",
+                "glyph": getattr(c, "glyph", None),
+                "shape": getattr(c, "shape", "polygon"),
                 "caste": c.caste,
                 "sides": c.sides,
                 "irregularity": round(irr, 3),
@@ -214,6 +216,10 @@ class AnalyticsEngine:
                 "clan_id": c.clan_id,
                 "clan_name": clan_info.get("name"),
                 "clan_color": clan_info.get("color", "#8b949e"),
+                "stage": getattr(c, "stage", "adult"),
+                "trait": getattr(c, "trait", None),
+                "scale_jitter": round(float(getattr(c, "scale_jitter", 1.0)), 2),
+                "angle_jitter": round(float(getattr(c, "angle_jitter", 0.0)), 3),
             })
             if len(top_mutants) >= 6:
                 break
