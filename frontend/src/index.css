@@ -1265,99 +1265,108 @@ select {
   padding: 0;
   text-decoration: underline;
 }
-.god-section-nav {
+.god-segmented-control {
   display: flex;
-  gap: 6px;
-  background: #161b22;
+  background: #090d13;
   border: 1px solid #30363d;
-  border-radius: 8px;
-  padding: 4px;
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+  margin-bottom: 8px;
   flex-shrink: 0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
 }
-.god-section-btn {
+.god-segment-btn {
   flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 7px 12px;
+  gap: 8px;
+  padding: 8px 12px;
   font-size: 13px;
   font-weight: 600;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
   color: #8b949e;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.god-section-btn:hover {
+.god-segment-btn:hover {
   color: #e6edf3;
+  background: rgba(255, 255, 255, 0.04);
+}
+.god-segment-btn.active {
+  color: #f0f6fc;
   background: #21262d;
+  border-color: #38404a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
-.god-section-btn.active {
-  color: #e3b341;
-  background: #1f1a0a;
-  border-color: #d29922;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-.god-section-badge {
+.god-segment-pill {
   font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 10px;
-  background: #21262d;
+  padding: 1px 7px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
   color: #8b949e;
   font-weight: 700;
 }
-.god-section-btn.active .god-section-badge {
-  background: rgba(227, 179, 65, 0.2);
-  color: #e3b341;
+.god-segment-btn.active .god-segment-pill {
+  background: #e3b341;
+  color: #0d1117;
 }
-.god-domain-tabs {
-  display: flex;
+
+.god-domain-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: #30363d transparent;
-  padding: 4px 2px 8px;
-  border-bottom: 1px solid #21262d;
+  margin: 4px 0 8px;
   flex-shrink: 0;
-  min-height: 42px;
+}
+@media (max-width: 440px) {
+  .god-domain-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.god-domain-card-btn {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 10px;
+  min-height: 38px;
+  background: #161b22;
+  color: #c9d1d9;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+  text-align: left;
 }
-.god-domain-tabs::-webkit-scrollbar {
-  height: 4px;
+.god-domain-card-btn:hover {
+  background: #21262d;
+  border-color: #484f58;
+  color: #f0f6fc;
+  transform: translateY(-1px);
 }
-.god-domain-tabs::-webkit-scrollbar-track {
-  background: transparent;
+.god-domain-card-btn.active {
+  background: #1f1a0a;
+  border-color: #d29922;
+  color: #e3b341;
+  box-shadow: 0 0 10px rgba(227, 179, 65, 0.2);
 }
-.god-domain-tabs::-webkit-scrollbar-thumb {
-  background: #30363d;
-  border-radius: 2px;
-}
-.god-domain-tab {
-  flex: none;
+.god-domain-btn-label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  background: #161b22;
-  color: #8b949e;
-  border: 1px solid #30363d;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: background .15s, color .15s, border-color .15s;
-  height: 30px;
-  line-height: 1;
 }
-.god-domain-tab:hover { color: #e6edf3; border-color: #484f58; background: #21262d; }
-.god-domain-tab.active { color: #0d1117; background: #e3b341; border-color: #d29922; font-weight: 700; }
-.god-domain-icon { font-size: 13px; line-height: 1; }
-.god-domain-count { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: rgba(0,0,0,0.18); font-weight: 700; }
-.god-domain-tab.active .god-domain-count { background: rgba(0,0,0,0.22); color: #0d1117; }
+.god-domain-icon { font-size: 14px; line-height: 1; }
+.god-domain-count { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: rgba(0,0,0,0.25); color: #8b949e; font-weight: 700; flex: none; }
+.god-domain-card-btn.active .god-domain-count { background: #d29922; color: #0d1117; }
 .god-domain-section { display: flex; flex-direction: column; gap: 8px; border: 1px solid #21262d; border-radius: 8px; padding: 8px; background: rgba(22,27,34,0.55); }
 .god-domain-header { display: flex; justify-content: space-between; align-items: center; padding: 2px 0 6px; border-bottom: 1px dashed #30363d; }
 .god-domain-title { font-size: 13px; font-weight: 700; color: #e6edf3; }

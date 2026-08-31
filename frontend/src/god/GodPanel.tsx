@@ -678,7 +678,17 @@ function GodPanelInner({ open, onClose }: Props) {
 
   const head = (
     <header className="god-head">
-      <h2>{t('god.title')}</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 16 }}>⚖️</span>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, letterSpacing: '0.02em', color: '#f0f6fc' }}>
+            {t('god.title')}
+          </h2>
+        </div>
+        <span style={{ fontSize: 11, color: '#8b949e' }}>
+          {t('god.subtitle')}
+        </span>
+      </div>
       <button className="god-close" onClick={onClose} aria-label="close">
         ×
       </button>
@@ -701,31 +711,29 @@ function GodPanelInner({ open, onClose }: Props) {
 
   const body = (
     <>
-      <p className="god-note">{t('god.subtitle')}</p>
-
-      {/* Top Section Navigator: Presets vs Laws of Nature */}
-      <div className="god-section-nav" role="tablist" aria-label="God panel sections">
+      {/* Top Segmented Mode Switcher: Presets vs Laws of Nature */}
+      <div className="god-segmented-control" role="tablist" aria-label="God panel sections">
         <button
           type="button"
           role="tab"
           aria-selected={activeSection === 'presets'}
-          className={`god-section-btn ${activeSection === 'presets' ? 'active' : ''}`}
+          className={`god-segment-btn ${activeSection === 'presets' ? 'active' : ''}`}
           onClick={() => setActiveSection('presets')}
         >
-          <span className="god-section-icon">🎯</span>
-          <span>{t('god.presets.title')}</span>
-          <span className="god-section-badge">{presetKeys.length}</span>
+          <span style={{ fontSize: 14 }}>🎯</span>
+          <span>Curated Presets</span>
+          <span className="god-segment-pill">{presetKeys.length}</span>
         </button>
         <button
           type="button"
           role="tab"
           aria-selected={activeSection === 'laws'}
-          className={`god-section-btn ${activeSection === 'laws' ? 'active' : ''}`}
+          className={`god-segment-btn ${activeSection === 'laws' ? 'active' : ''}`}
           onClick={() => setActiveSection('laws')}
         >
-          <span className="god-section-icon">⚖️</span>
-          <span>{t('god.title')}</span>
-          <span className="god-section-badge">{NUMBER_LAWS.length}</span>
+          <span style={{ fontSize: 14 }}>⚖️</span>
+          <span>Laws of Nature</span>
+          <span className="god-segment-pill">{NUMBER_LAWS.length}</span>
         </button>
       </div>
 
@@ -974,24 +982,27 @@ function GodPanelInner({ open, onClose }: Props) {
                 </select>
               </label>
 
-              {/* Domain tabs — BD.8.1 */}
+              {/* Domain selector grid */}
               {!q && !showModifiedOnly && (
-                <nav className="god-domain-tabs" role="tablist" aria-label="Law domains">
+                <div className="god-domain-grid" role="tablist" aria-label="Law domains">
                   {DOMAINS.map((d) => (
                     <button
                       key={d.id}
+                      type="button"
                       role="tab"
                       aria-selected={activeDomain === d.id}
-                      className={`god-domain-tab ${activeDomain === d.id ? 'active' : ''}`}
+                      className={`god-domain-card-btn ${activeDomain === d.id ? 'active' : ''}`}
                       onClick={() => setActiveDomain(d.id)}
                       title={`${d.label} — ${d.groups.join(', ')}`}
                     >
-                      <span className="god-domain-icon">{d.icon}</span>
-                      <span className="god-domain-label">{d.shortLabel}</span>
+                      <span className="god-domain-btn-label">
+                        <span className="god-domain-icon">{d.icon}</span>
+                        <span>{d.shortLabel}</span>
+                      </span>
                       <span className="god-domain-count">{domainLawCounts[d.id] ?? 0}</span>
                     </button>
                   ))}
-                </nav>
+                </div>
               )}
               {(q || showModifiedOnly) && (
                 <div className="god-search-meta">
