@@ -8,7 +8,7 @@ Message flow:
 from enum import Enum
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ControlAction(str, Enum):
@@ -202,236 +202,121 @@ class HelloMessage(BaseModel):
 
 
 class GodLaws(BaseModel):
-    """Laws of nature god may set. God cannot touch individual creatures."""
+    """Laws of nature god may set across the 6 macro domains. God cannot touch individual creatures."""
+    model_config = ConfigDict(extra="ignore")
 
+    # Global Topology
     boundary: Optional[Literal["wrap", "clamp"]] = None
+
+    # 1. Ecology & Survival
     food_count: Optional[int] = Field(None, ge=0, le=2000)
     energy_max: Optional[float] = Field(None, gt=1, le=10000)
-
-    # Plants & nutrient cycle (§H) + biodiversity (§O)
+    energy_decay_per_tick: Optional[float] = Field(None, ge=0, le=2)
+    energy_from_food: Optional[float] = Field(None, ge=0, le=1000)
+    plant_variants_enabled: Optional[bool] = None
     plant_growth_rate: Optional[float] = Field(None, ge=0, le=1)
     plant_spread_rate: Optional[float] = Field(None, ge=0, le=1)
     nutrient_cycle_rate: Optional[float] = Field(None, ge=0, le=10)
-    plant_variants_enabled: Optional[bool] = None
     poison_rate: Optional[float] = Field(None, ge=0, le=1)
-    beast_ratio: Optional[float] = Field(None, ge=0, le=1)
-    diet_strictness: Optional[float] = Field(None, ge=0, le=1)
+    food_decay_enabled: Optional[bool] = None
+    food_lifespan_ticks: Optional[int] = Field(None, ge=100, le=1000000)
+    agriculture_enabled: Optional[bool] = None
+    granaries_enabled: Optional[bool] = None
+    granary_capacity: Optional[float] = Field(None, ge=0, le=100000)
 
-    # Territory & clan depth (§P)
-    territory_enabled: Optional[bool] = None
-    territory_radius: Optional[float] = Field(None, ge=1, le=50)
-    trespass_decay: Optional[float] = Field(None, ge=0, le=5)
-    totems_enabled: Optional[bool] = None
-    succession_enabled: Optional[bool] = None
-
-    # Clan founding (§V) — settlement granularity
-    max_clans: Optional[int] = Field(None, ge=-1, le=64)
-
-    energy_decay_per_tick: Optional[float] = Field(None, ge=0, le=2)
-    energy_from_food: Optional[float] = Field(None, ge=0, le=1000)
-    hungry_ratio: Optional[float] = Field(None, gt=0, le=1)
-    starving_ratio: Optional[float] = Field(None, gt=0, le=1)
+    # 2. Biology & Evolution
     perceive_radius: Optional[float] = Field(None, gt=0.5, le=60)
     eat_radius: Optional[float] = Field(None, gt=0.1, le=10)
-    wander_turn: Optional[float] = Field(None, ge=0, le=3.2)
+    hungry_ratio: Optional[float] = Field(None, gt=0, le=1)
+    starving_ratio: Optional[float] = Field(None, gt=0, le=1)
     steer_turn: Optional[float] = Field(None, ge=0, le=3.2)
-    desperate_perceive_mult: Optional[float] = Field(None, ge=1, le=4)
-    hungry_perceive_mult: Optional[float] = Field(None, ge=1, le=4)
-    desperate_speed_mult: Optional[float] = Field(None, ge=1, le=4)
-    food_giveup_ticks: Optional[int] = Field(None, ge=0, le=100000)
-    lifespan_mult: Optional[float] = Field(None, ge=0.01, le=100)
-
-    # Reproduction & inheritance (Nature's Law)
     birth_enabled: Optional[bool] = None
+    lifespan_mult: Optional[float] = Field(None, ge=0.01, le=100)
     adult_age: Optional[float] = Field(None, ge=0, le=100000)
-    mate_radius: Optional[float] = Field(None, ge=0.5, le=50)
-    mate_energy_min: Optional[float] = Field(None, ge=0, le=10000)
     birth_rate: Optional[float] = Field(None, ge=0, le=1)
-    sex_ratio: Optional[float] = Field(None, ge=0, le=1)
-    mutation_rate: Optional[float] = Field(None, ge=0, le=1)
-    max_sides: Optional[int] = Field(None, ge=3, le=64)
-    birth_energy_cost: Optional[float] = Field(None, ge=0, le=1000)
-    reproduction_cooldown: Optional[int] = Field(None, ge=0, le=100000)
     carrying_capacity: Optional[int] = Field(None, ge=-1, le=10000)
     max_population: Optional[int] = Field(None, ge=-1, le=15000)
+    mutation_rate: Optional[float] = Field(None, ge=0, le=1)
+    sex_ratio: Optional[float] = Field(None, ge=0, le=1)
+    max_sides: Optional[int] = Field(None, ge=3, le=64)
     euthanasia_threshold: Optional[float] = Field(None, ge=0, le=1)
-
-    # Health & disease
+    mutation_sigma: Optional[float] = Field(None, ge=0, le=1)
+    crossover_rate: Optional[float] = Field(None, ge=0, le=1)
+    morphology_annealing_enabled: Optional[bool] = None
+    annealing_decay_generations: Optional[int] = Field(None, ge=1, le=5000)
     disease_enabled: Optional[bool] = None
     disease_outbreak_rate: Optional[float] = Field(None, ge=0, le=1)
     disease_rate: Optional[float] = Field(None, ge=0, le=1)
-    disease_radius: Optional[float] = Field(None, ge=0.5, le=50)
     disease_energy_drain: Optional[float] = Field(None, ge=0, le=10)
-    recovery_rate: Optional[float] = Field(None, ge=0, le=1)
     disease_lethality: Optional[float] = Field(None, ge=0, le=1)
 
-    # Environment: sky, seasons, weather
+    # 3. Climate & Sky
+    weather_enabled: Optional[bool] = None
+    sleep_enabled: Optional[bool] = None
     day_length: Optional[int] = Field(None, ge=2, le=200000)
     season_length: Optional[int] = Field(None, ge=2, le=1000000)
+    winter_food_mult: Optional[float] = Field(None, ge=0.1, le=2)
     night_sight_mult: Optional[float] = Field(None, ge=0.05, le=2)
-    weather_enabled: Optional[bool] = None
     weather_change_rate: Optional[float] = Field(None, ge=0, le=1)
-    fog_sight_mult: Optional[float] = Field(None, ge=0.05, le=2)
-    rain_speed_mult: Optional[float] = Field(None, ge=0.1, le=2)
-    storm_wander_bonus: Optional[float] = Field(None, ge=0, le=3.2)
-
-    # Society — interaction & clan relations
-    cohesion_weight: Optional[float] = Field(None, ge=0, le=3)
-    alignment_weight: Optional[float] = Field(None, ge=0, le=3)
-    separation_weight: Optional[float] = Field(None, ge=0, le=3)
-    flock_radius: Optional[float] = Field(None, ge=1, le=40)
-    relation_drift_rate: Optional[float] = Field(None, ge=0, le=10)
-    alliance_threshold: Optional[int] = Field(None, ge=-100, le=100)
-    rivalry_threshold: Optional[int] = Field(None, ge=-100, le=100)
-    communication_enabled: Optional[bool] = None
-    signal_radius: Optional[float] = Field(None, ge=3, le=40)
-    food_call_rate: Optional[float] = Field(None, ge=0, le=1)
-    alarm_call_rate: Optional[float] = Field(None, ge=0, le=1)
-
-    # Communication II — knowledge, teaching & mobbing (§X)
-    knowledge_enabled: Optional[bool] = None
-    knowledge_ttl: Optional[int] = Field(None, ge=20, le=100000)
-    knowledge_share_rate: Optional[float] = Field(None, ge=0, le=1)
-    help_call_enabled: Optional[bool] = None
-    help_radius: Optional[float] = Field(None, ge=2, le=60)
-    defense_weight: Optional[float] = Field(None, ge=0, le=5)
-    age_enabled: Optional[bool] = None
-    age_length: Optional[int] = Field(None, ge=100, le=1000000)
-    culture_enabled: Optional[bool] = None
-    culture_spread_rate: Optional[float] = Field(None, ge=0, le=1)
-    trait_mutation_rate: Optional[float] = Field(None, ge=0, le=1)
-    wildfire_enabled: Optional[bool] = None
-    fire_rate: Optional[float] = Field(None, ge=0, le=0.05)
-    fire_spread_rate: Optional[float] = Field(None, ge=0, le=1)
-    disaster_enabled: Optional[bool] = None
-    disaster_rate: Optional[float] = Field(None, ge=0, le=0.05)
-
-    door_clearance: Optional[float] = Field(None, ge=1, le=5)
-    schism_enabled: Optional[bool] = None
-    schism_threshold: Optional[float] = Field(None, ge=0, le=1)
-    schism_min_pop: Optional[int] = Field(None, ge=2, le=100)
-
-    house_min_size: Optional[float] = Field(None, ge=3, le=60)
-    house_max_size: Optional[float] = Field(None, ge=3, le=80)
-
-    # Weather → crops (§R)
-    rain_growth_mult: Optional[float] = Field(None, ge=0.5, le=3)
-    fog_mushroom_mult: Optional[float] = Field(None, ge=0.5, le=3)
-    storm_plant_damage: Optional[float] = Field(None, ge=0, le=1)
-
-    # Weather → sickness (§R)
     weather_sickness_enabled: Optional[bool] = None
-    chill_rate: Optional[float] = Field(None, ge=0, le=1)
-    chill_threshold: Optional[float] = Field(None, ge=1, le=100)
     chill_drain: Optional[float] = Field(None, ge=0, le=5)
-    wet_disease_mult: Optional[float] = Field(None, ge=1, le=5)
-
-    # Shelter
     shelter_enabled: Optional[bool] = None
     exposure_drain: Optional[float] = Field(None, ge=0, le=10)
     house_capacity: Optional[int] = Field(None, ge=1, le=64)
-    house_claim_enabled: Optional[bool] = None
-    rest_recovery_mult: Optional[float] = Field(None, ge=0, le=10)
     house_decay_ticks: Optional[int] = Field(None, ge=100, le=100000)
+    rest_recovery_mult: Optional[float] = Field(None, ge=0, le=10)
 
-    # Hearths (§AQ PH-1)
-    hearths_enabled: Optional[bool] = None
-
-    # Predation (§I)
+    # 4. Society, Warfare & Trade
+    territory_enabled: Optional[bool] = None
+    territory_radius: Optional[float] = Field(None, ge=1, le=50)
+    trespass_decay: Optional[float] = Field(None, ge=0, le=5)
+    max_clans: Optional[int] = Field(None, ge=-1, le=64)
+    totems_enabled: Optional[bool] = None
+    succession_enabled: Optional[bool] = None
+    communication_enabled: Optional[bool] = None
+    knowledge_enabled: Optional[bool] = None
+    schism_enabled: Optional[bool] = None
+    schism_threshold: Optional[float] = Field(None, ge=0, le=1)
+    war_enabled: Optional[bool] = None
+    attack_damage: Optional[float] = Field(None, ge=0, le=1000)
     predation_enabled: Optional[bool] = None
     predator_ratio: Optional[float] = Field(None, ge=0, le=1)
     hunt_radius: Optional[float] = Field(None, ge=1, le=40)
     bite_damage: Optional[float] = Field(None, ge=0, le=1000)
-    bite_cooldown: Optional[int] = Field(None, ge=0, le=100000)
     energy_from_prey: Optional[float] = Field(None, ge=0, le=1000)
     fear_radius: Optional[float] = Field(None, ge=1, le=40)
-
-    # Clan war (§I)
-    war_enabled: Optional[bool] = None
-    attack_radius: Optional[float] = Field(None, ge=0.5, le=10)
-    attack_damage: Optional[float] = Field(None, ge=0, le=1000)
-
-    # Politics (§AB) — coalitions, leaders, resources, betrayal
     coalitions_enabled: Optional[bool] = None
     coalition_threshold: Optional[int] = Field(None, ge=-100, le=100)
-    coalition_min_size: Optional[int] = Field(None, ge=2, le=16)
     leader_decisions_enabled: Optional[bool] = None
     resource_sharing_enabled: Optional[bool] = None
     larder_capacity: Optional[float] = Field(None, ge=0, le=5000)
-    aid_rate: Optional[float] = Field(None, ge=0, le=1)
-    tribute_enabled: Optional[bool] = None
-    betrayal_enabled: Optional[bool] = None
-    defection_enabled: Optional[bool] = None
-
-    # Desperation cannibalism (§AC)
     cannibalism_enabled: Optional[bool] = None
-    cannibalism_hunger_ratio: Optional[float] = Field(None, ge=0, le=1)
-    cannibalism_energy: Optional[float] = Field(None, ge=0, le=1000)
-    eat_enemy_enabled: Optional[bool] = None
     eat_kin_enabled: Optional[bool] = None
-    kin_stigma: Optional[int] = Field(None, ge=0, le=100)
-    exile_on_kin_eat: Optional[bool] = None
+    cannibalism_energy: Optional[float] = Field(None, ge=0, le=1000)
 
-    # Food decay (§AE)
-    food_decay_enabled: Optional[bool] = None
-    food_lifespan_ticks: Optional[int] = Field(None, ge=100, le=1000000)
-
-    # Unified Theology (§AP) — shrines, tithes & the clan faith pool
+    # 5. Theology & Sacred Avatars
     theology_enabled: Optional[bool] = None
     tithe_rate: Optional[float] = Field(None, ge=0, le=1)
     temple_faith_cost: Optional[float] = Field(None, ge=0, le=100000)
+    age_enabled: Optional[bool] = None
+    age_length: Optional[int] = Field(None, ge=100, le=1000000)
+    culture_enabled: Optional[bool] = None
+    culture_spread_rate: Optional[float] = Field(None, ge=0, le=1)
 
-    # Agriculture (§AM) — sowing, farm plots, granaries, soil & feasts
-    agriculture_enabled: Optional[bool] = None
-    granaries_enabled: Optional[bool] = None
-    granary_capacity: Optional[float] = Field(None, ge=0, le=100000)
-    soil_depletion_enabled: Optional[bool] = None
-    banquets_enabled: Optional[bool] = None
-
-    # Communication, language & diplomacy (§AN)
-    vocalizations_enabled: Optional[bool] = None
-    scent_enabled: Optional[bool] = None
-    envoys_enabled: Optional[bool] = None
-    markets_enabled: Optional[bool] = None
-    omens_enabled: Optional[bool] = None
-    dialect_drift_enabled: Optional[bool] = None
-
-    # Rivers (§AQ PH-3)
+    # 6. World Physics & Disasters
     rivers_enabled: Optional[bool] = None
     river_count: Optional[int] = Field(None, ge=0, le=8)
-
-    # Relief (§AQ PH-4) — elevation, cliffs & roads
     relief_enabled: Optional[bool] = None
-
-    # Materials (§AQ PH-6)
     structural_enabled: Optional[bool] = None
-    rubble_blocking_enabled: Optional[bool] = None
-
-    # Seismic & wave physics (§AQ PH-8)
     earthquake_enabled: Optional[bool] = None
     earthquake_rate: Optional[float] = Field(None, ge=0, le=0.01)
-    signal_speed: Optional[float] = Field(None, ge=0, le=40)
-
-    # Electrostatics (§AQ PH-9)
     lightning_enabled: Optional[bool] = None
     lightning_strike_rate: Optional[float] = Field(None, ge=0, le=0.05)
-
-    # Cosmological (§AQ PH-10)
+    wildfire_enabled: Optional[bool] = None
+    fire_rate: Optional[float] = Field(None, ge=0, le=0.05)
+    disaster_enabled: Optional[bool] = None
+    disaster_rate: Optional[float] = Field(None, ge=0, le=0.05)
     anomaly_count: Optional[int] = Field(None, ge=0, le=8)
-
-    # BA Micro-Neural Network & Evolutionary Engine — always on, 295 fixed
-    nn_inference_hz: Optional[int] = Field(None, ge=1, le=60)
-    mutation_sigma: Optional[float] = Field(None, ge=0, le=1)
-    crossover_rate: Optional[float] = Field(None, ge=0, le=1)
-
-    # BC Geometric Physics & Morphological Evolution — annealing governs shape
-    morphology_annealing_enabled: Optional[bool] = None
-    annealing_start_generation: Optional[int] = Field(None, ge=0, le=1000)
-    annealing_decay_generations: Optional[int] = Field(None, ge=1, le=5000)
-    morph_lambda_override: Optional[float] = Field(None, ge=0.0, le=1.0)
-    vertex_mutation_std: Optional[float] = Field(None, ge=0.0, le=0.5)
-    angle_mutation_std: Optional[float] = Field(None, ge=0.0, le=0.5)
-    topological_mutation_rate: Optional[float] = Field(None, ge=0.0, le=0.2)
-
-    # T: soften winter
-    winter_food_mult: Optional[float] = Field(None, ge=0.1, le=2)
+    door_clearance: Optional[float] = Field(None, ge=1, le=5)
+    house_min_size: Optional[float] = Field(None, ge=3, le=60)
+    house_max_size: Optional[float] = Field(None, ge=3, le=80)

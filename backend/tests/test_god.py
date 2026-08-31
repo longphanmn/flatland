@@ -89,7 +89,7 @@ def test_partial_law_update_keeps_other_laws(client):
     client.post("/api/laws", json={"eat_radius": 2.5})
     after = client.get("/api/laws").json()
     assert after["eat_radius"] == pytest.approx(2.5)
-    for key in ("food_count", "energy_max", "wander_turn"):
+    for key in ("food_count", "energy_max", "steer_turn"):
         assert after[key] == before[key]
 
 
