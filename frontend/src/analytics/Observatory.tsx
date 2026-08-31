@@ -57,7 +57,11 @@ export default function Observatory({ state, onSelectCreature }: Props) {
   const hasCriticalCrisis = extinction.alarm || (famine.horizon_ticks ?? 9999) < 300 || unrest.schism_risk
   const hasWarningCrisis = (extinction.Ne ?? 20) < 18 || (famine.horizon_ticks ?? 9999) < 1000 || (unrest.unrest_score ?? 0) > 5
 
-  const worldStatusLabel = hasCriticalCrisis ? '⚠️ CRISIS ALERT' : hasWarningCrisis ? '🟡 ELEVATED STRAIN' : '🟢 STABLE HOMEOSTASIS'
+  const worldStatusLabel = hasCriticalCrisis
+    ? t('analytics.observatory.status_crisis')
+    : hasWarningCrisis
+    ? t('analytics.observatory.status_elevated')
+    : t('analytics.observatory.status_stable')
   const worldStatusColor = hasCriticalCrisis ? '#f85149' : hasWarningCrisis ? '#d29922' : '#3fb950'
 
   const tabs: { id: TabType; label: string; badge?: string; badgeColor?: string }[] = [
@@ -105,7 +109,7 @@ export default function Observatory({ state, onSelectCreature }: Props) {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontWeight: 700, color: '#f0f6fc', fontSize: 12 }}>
-            🔭 World Tick: <b style={{ color: '#58a6ff' }}>{data.tick}</b>
+            🔭 {t('analytics.observatory.world_tick')}: <b style={{ color: '#58a6ff' }}>{data.tick}</b>
           </span>
           <span
             style={{
@@ -123,9 +127,9 @@ export default function Observatory({ state, onSelectCreature }: Props) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#8b949e' }}>
-          <span>Max Gen: <b style={{ color: '#bc8cff' }}>{gen.max_generation ?? 0}</b></span>
+          <span>{t('analytics.mutation_lab.max_generation')}: <b style={{ color: '#bc8cff' }}>{gen.max_generation ?? 0}</b></span>
           <span>·</span>
-          <span>Speciation: <b style={{ color: '#79c0ff' }}>λ={(gen.lambda_val ?? 1.0).toFixed(2)}</b></span>
+          <span>{t('analytics.observatory.speciation')}: <b style={{ color: '#79c0ff' }}>λ={(gen.lambda_val ?? 1.0).toFixed(2)}</b></span>
         </div>
       </div>
 

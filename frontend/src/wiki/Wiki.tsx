@@ -5,8 +5,26 @@ type WikiData = {
   laws: string[]
   routes: string[]
   presets: Record<string, Record<string, any>>
+  current_preset?: string
   law_details: Record<string, { type: string; default: any; hint?: string }>
   overview: string
+}
+
+function matchPreset(laws: Record<string, any> | null, presets?: Record<string, Record<string, any>>): string | null {
+  if (!laws || !presets) return null
+  for (const [name, p] of Object.entries(presets)) {
+    if (Object.entries(p).every(([k, v]) => laws[k] === v)) return name
+  }
+  for (const [name, p] of Object.entries(presets)) {
+    if (
+      laws.food_count === p.food_count &&
+      laws.carrying_capacity === p.carrying_capacity &&
+      laws.max_population === p.max_population
+    ) {
+      return name
+    }
+  }
+  return null
 }
 
 export default function Wiki({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -15,31 +33,25 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
   const [tab, setTab] = useState<'guide' | 'book' | 'api' | 'laws' | 'presets'>('guide')
   const [q, setQ] = useState('')
   const [laws, setLaws] = useState<Record<string, any> | null>(null)
+  const [currentPreset, setCurrentPreset] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
-    fetch('/api/wiki').then(r => r.json()).then(setData).catch(() => {})
-    fetch('/api/laws').then(r => r.json()).then(setLaws).catch(() => {})
+    Promise.all([
+      fetch('/api/wiki').then(r => r.json()).catch(() => null),
+      fetch('/api/laws').then(r => r.json()).catch(() => null),
+      fetch('/api/presets').then(r => r.json()).catch(() => null),
+    ]).then(([wikiData, lawsData, presetsData]) => {
+      if (wikiData) setData(wikiData)
+      if (lawsData) setLaws(lawsData)
+      if (presetsData?.current) setCurrentPreset(presetsData.current)
+      else if (wikiData?.current_preset) setCurrentPreset(wikiData.current_preset)
+    })
   }, [open])
 
   if (!open) return null
 
-  const activePreset =
-    (laws?.food_count === 240 && laws?.carrying_capacity === 350) || (laws?.food_count === 220 && laws?.carrying_capacity === 600)
-      ? 'balance'
-      : (laws?.food_count === 360 && laws?.carrying_capacity === 450) || (laws?.food_count === 450 && laws?.carrying_capacity === 2200)
-      ? 'sustainable'
-      : laws?.food_count === 320 && laws?.carrying_capacity === 400
-      ? 'theocracy'
-      : laws?.food_count === 290 && laws?.carrying_capacity === 380
-      ? 'warlords'
-      : (laws?.food_count === 280 && laws?.carrying_capacity === 350) || (laws?.food_count === 320 && laws?.carrying_capacity === 800)
-      ? 'chaos'
-      : (laws?.food_count === 120 && laws?.carrying_capacity === 180) || (laws?.food_count === 100 && laws?.carrying_capacity === 250)
-      ? 'extinction'
-      : (laws?.food_count === 500 && laws?.carrying_capacity === 800) || (laws?.food_count === 650 && laws?.carrying_capacity === 3500)
-      ? 'boom'
-      : null
+  const activePreset = matchPreset(laws, data?.presets) || currentPreset || data?.current_preset || null
 
   // filter helpers
   const match = (s: string) => !q || s.toLowerCase().includes(q.toLowerCase())
@@ -225,12 +237,12 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
 
         {tab === 'presets' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
               <h3 style={{ margin: 0 }}>{t('wiki.presetsTitle')}</h3>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 {activePreset && (
-                  <span className="chip" style={{ color: '#3fb950', borderColor: '#3fb950', background: 'rgba(63, 185, 80, 0.15)' }}>
-                    {t('god.presets.active', { name: activePreset })}
+                  <span className="chip" style={{ color: '#3fb950', borderColor: '#3fb950', background: 'rgba(63, 185, 80, 0.15)', fontWeight: 600 }}>
+                    {t('god.presets.active', { name: t(`god.presets.${activePreset}`) !== `god.presets.${activePreset}` ? t(`god.presets.${activePreset}`) : activePreset })}
                   </span>
                 )}
                 <span className="chip" style={{ color: '#8b949e', borderColor: '#30363d', background: '#161b22', fontSize: 11 }}>{t('wiki.readOnly') !== 'wiki.readOnly' ? t('wiki.readOnly') : 'read-only · use ⚖ God Panel to apply'}</span>
@@ -239,12 +251,20 @@ curl ${location.origin}/api/history?limit=5 | jq`}</code></pre>
             <p className="god-note" style={{ color: '#8b949e', fontSize: 12, margin: '0 0 10px' }}>{t('wiki.presetsReadOnlyNote') !== 'wiki.presetsReadOnlyNote' ? t('wiki.presetsReadOnlyNote') : 'Presets are displayed for reference — apply via The Sphere (⚖ God Panel).'}</p>
             {data?.presets && Object.entries(data.presets).map(([name, pLaws]) => {
               const isCurrent = activePreset === name
+              const presetTitle = t(`god.presets.${name}`) !== `god.presets.${name}` ? t(`god.presets.${name}`) : name
+              const presetSub = t(`god.presets.${name}Subtitle`) !== `god.presets.${name}Subtitle` ? t(`god.presets.${name}Subtitle`) : ''
+              const presetDesc = t(`god.presets.${name}Desc`) !== `god.presets.${name}Desc` ? t(`god.presets.${name}Desc`) : ''
               return (
                 <div key={name} style={{ border: `1px solid ${isCurrent ? '#3fb950' : '#21262d'}`, borderRadius: 6, padding: 10, marginBottom: 8, background: isCurrent ? 'rgba(63, 185, 80, 0.06)' : '#161b22' }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <b style={{ color: isCurrent ? '#3fb950' : '#e6edf3' }}>{name} {isCurrent && t('wiki.activeTag')}</b>
-                    {isCurrent && <span className="chip" style={{ marginLeft: 'auto', color: '#3fb950', borderColor: '#3fb950', background: 'rgba(63,185,80,0.12)', fontSize: 11 }}>● {t('wiki.activeTag')}</span>}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <b style={{ color: isCurrent ? '#3fb950' : '#e6edf3', fontSize: 13 }}>{presetTitle}</b>
+                      <code style={{ fontSize: 11, color: '#8b949e' }}>({name})</code>
+                      {presetSub && <span style={{ fontSize: 11, color: '#8b949e' }}>— {presetSub}</span>}
+                    </div>
+                    {isCurrent && <span className="chip" style={{ color: '#3fb950', borderColor: '#3fb950', background: 'rgba(63,185,80,0.12)', fontSize: 11, fontWeight: 700 }}>● {t('wiki.activeTag') || 'ACTIVE'}</span>}
                   </div>
+                  {presetDesc && <p style={{ margin: '4px 0 6px', fontSize: 11, color: '#c9d1d9', lineHeight: 1.4 }}>{presetDesc}</p>}
                   <div style={{ fontSize: 11, color: '#8b949e', marginTop: 6, wordBreak: 'break-all' }}>
                     {Object.entries(pLaws).slice(0, 8).map(([k, v]) => <span key={k} style={{ marginRight: 8 }}><code>{k}={String(v)}</code></span>)}
                     {Object.keys(pLaws).length > 8 && <span>{t('wiki.moreLaws', { count: Object.keys(pLaws).length - 8 })}</span>}

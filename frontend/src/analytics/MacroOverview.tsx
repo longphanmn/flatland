@@ -29,7 +29,11 @@ export default function MacroOverview({ data }: Props) {
   const lastDeath = ring.death_velocity?.[ring.death_velocity.length - 1] ?? 0
 
   const satStatus = lastSat > 0.7 ? 'healthy' : lastSat > 0.4 ? 'warning' : 'critical'
-  const satLabel = lastSat > 0.7 ? 'Satiated' : lastSat > 0.4 ? 'Hungry' : 'Starving'
+  const satLabel = lastSat > 0.7
+    ? t('analytics.macro.sat_satiated')
+    : lastSat > 0.4
+    ? t('analytics.macro.sat_hungry')
+    : t('analytics.macro.sat_starving')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -49,11 +53,11 @@ export default function MacroOverview({ data }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 13 }}>📈</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Population Dynamics (6000 Ticks)
+              {t('analytics.macro.pop_dynamics', { ticks: 6000 })}
             </span>
           </div>
           <span style={{ fontSize: 11, color: '#3fb950', fontWeight: 700 }}>
-            {lastPop} Living Creatures
+            {t('analytics.macro.living_creatures', { count: lastPop })}
           </span>
         </div>
 
@@ -63,9 +67,9 @@ export default function MacroOverview({ data }: Props) {
       {/* Macro Metrics Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
         <MetricCard
-          title="Total Biomass"
+          title={t('analytics.macro.biomass_title')}
           value={lastBio >= 1000 ? `${(lastBio / 1000).toFixed(1)}k` : lastBio}
-          subvalue="health + energy sum"
+          subvalue={t('analytics.macro.biomass_sub')}
           status="neutral"
           icon="⚡"
           hint={t('analytics.hints.biomass')}
@@ -74,9 +78,9 @@ export default function MacroOverview({ data }: Props) {
           sparklineHeight={34}
         />
         <MetricCard
-          title="Energy Saturation"
+          title={t('analytics.macro.energy_sat_title')}
           value={`${(lastSat * 100).toFixed(0)}%`}
-          subvalue="average reserve"
+          subvalue={t('analytics.macro.energy_sat_sub')}
           status={satStatus}
           statusLabel={satLabel}
           icon="🍞"
@@ -86,9 +90,9 @@ export default function MacroOverview({ data }: Props) {
           sparklineHeight={34}
         />
         <MetricCard
-          title="Birth Velocity"
+          title={t('analytics.macro.birth_vel_title')}
           value={lastBirth.toFixed(1)}
-          subvalue="births / min"
+          subvalue={t('analytics.macro.birth_vel_sub')}
           status="neutral"
           icon="🌱"
           hint={t('analytics.hints.birth_vel')}
@@ -97,9 +101,9 @@ export default function MacroOverview({ data }: Props) {
           sparklineHeight={34}
         />
         <MetricCard
-          title="Death Velocity"
+          title={t('analytics.macro.death_vel_title')}
           value={lastDeath.toFixed(1)}
-          subvalue="deaths / min"
+          subvalue={t('analytics.macro.death_vel_sub')}
           status="neutral"
           icon="💀"
           hint={t('analytics.hints.death_vel')}
@@ -125,7 +129,7 @@ export default function MacroOverview({ data }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 13 }}>☠️</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Mortality Decomposition (Last 500 Deaths)
+              {t('analytics.macro.mortality_decomp')}
             </span>
           </div>
           <span style={{ fontSize: 10, color: '#8b949e' }}>
@@ -138,6 +142,7 @@ export default function MacroOverview({ data }: Props) {
           {Object.entries(dist).map(([cause, fraction]) => {
             if (fraction <= 0.001) return null
             const color = CAUSE_COLORS[cause] || '#8b949e'
+            const causeLabel = t(`analytics.causes.${cause}`) !== `analytics.causes.${cause}` ? t(`analytics.causes.${cause}`) : cause
             return (
               <div
                 key={cause}
@@ -146,7 +151,7 @@ export default function MacroOverview({ data }: Props) {
                   background: color,
                   height: '100%',
                 }}
-                title={`${cause}: ${(fraction * 100).toFixed(1)}%`}
+                title={`${causeLabel}: ${(fraction * 100).toFixed(1)}%`}
               />
             )
           })}
@@ -157,10 +162,11 @@ export default function MacroOverview({ data }: Props) {
           {Object.entries(dist).map(([cause, fraction]) => {
             const color = CAUSE_COLORS[cause] || '#8b949e'
             const pct = (fraction * 100).toFixed(0)
+            const causeLabel = t(`analytics.causes.${cause}`) !== `analytics.causes.${cause}` ? t(`analytics.causes.${cause}`) : cause
             return (
               <div key={cause} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-                <span style={{ color: '#c9d1d9', textTransform: 'capitalize' }}>{cause}</span>
+                <span style={{ color: '#c9d1d9', textTransform: 'capitalize' }}>{causeLabel}</span>
                 <span style={{ color: '#8b949e', fontWeight: 600 }}>{pct}%</span>
               </div>
             )

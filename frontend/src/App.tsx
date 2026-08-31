@@ -629,13 +629,13 @@ export default function App() {
           <button className="god-btn" onClick={() => setWorldHistoryOpen(true)} title="World History & AI Story Export (H)" data-hint="World History & AI Story Export (H)">
             📜
           </button>
-          <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title="Wiki — documentation & API ( /wiki )" data-hint="Wiki — documentation & API ( /wiki )">
+          <button className="god-btn wiki-btn" onClick={() => setWikiOpen(true)} title={t('wiki.open') || 'Wiki'} data-hint={t('wiki.open') || 'Wiki'}>
             📖
           </button>
           <button className="god-btn" onClick={() => setAnalyticsOpen(true)} title={t('analytics.hint')} data-hint={t('analytics.hint')}>
             📊
           </button>
-          <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title="The Sphere (God) — sets laws from Spaceland, never touches a life" data-hint="The Sphere (God) — sets laws from Spaceland, never touches a life">
+          <button className="god-btn god-main-btn" onClick={() => setGodOpen(true)} title={t('god.tooltip')} data-hint={t('god.tooltip')}>
             ⚖
           </button>
         </div>
@@ -696,16 +696,16 @@ export default function App() {
           )}
           <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
             <button className="god-btn" onClick={() => { setStatusExpanded(false); setWorldHistoryOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
-              📜 History
+              📜 {t('history.tabs.timeline') ? t('history.tabs.timeline').split(' ')[1] || 'History' : 'History'}
             </button>
             <button className="god-btn" onClick={() => { setStatusExpanded(false); setWikiOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
-              📖 Wiki
+              📖 {t('wiki.open') || 'Wiki'}
             </button>
             <button className="god-btn" onClick={() => { setStatusExpanded(false); setAnalyticsOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
               📊 {t('analytics.open')}
             </button>
             <button className="god-btn god-main-btn" onClick={() => { setStatusExpanded(false); setGodOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
-              ⚖ The Sphere
+              ⚖ {t('god.shortTitle')}
             </button>
           </div>
         </div>

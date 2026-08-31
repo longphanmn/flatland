@@ -114,7 +114,7 @@ export async function godFetch(url: string, init?: RequestInit): Promise<Respons
       statusKnown = false
       return fetch(url, init)
     } else {
-      key = await requestPasskey('enter', 'Wrong passkey — reset must be done in backend terminal (python -m app.godkey reset <key>)')
+      key = await requestPasskey('enter', 'auth.wrongPasskey')
     }
   }
   throw new Error('cancelled')
@@ -166,17 +166,17 @@ export function AuthModal() {
         }
         if (r.status === 409) {
           statusKnown = true
-          current = { mode: 'enter', error: 'A passkey already exists — enter it to unlock.' }
+          current = { mode: 'enter', error: 'auth.exists' }
           emit()
           return
         }
         const body = await r.json().catch(() => null)
-        const detail = typeof body?.detail === 'string' ? body.detail : 'could not save passkey'
+        const detail = typeof body?.detail === 'string' ? body.detail : 'auth.couldNotSave'
         current = { mode: currentMode, error: detail }
         emit()
         return
       } catch {
-        current = { mode: currentMode, error: 'backend unreachable — try again' }
+        current = { mode: currentMode, error: 'auth.unreachable' }
         emit()
         return
       }
@@ -228,7 +228,11 @@ export function AuthModal() {
           {currentMode === 'create' ? t('auth.createDesc') : t('auth.enterDesc')}
         </p>
 
-        {current.error && <p style={{ margin: 0, fontSize: 12, color: '#f85149', lineHeight: 1.4 }}>{current.error}</p>}
+        {current.error && (
+          <p style={{ margin: 0, fontSize: 12, color: '#f85149', lineHeight: 1.4 }}>
+            {t(current.error) !== current.error ? t(current.error) : current.error}
+          </p>
+        )}
         <input
           autoFocus
           type="password"

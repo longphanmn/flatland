@@ -404,13 +404,13 @@ const PRESET_META: Record<string, { color: string; border: string; bg: string; b
 }
 
 const PRESET_BADGES: Record<string, string[]> = {
-  balance: ['Food: 240', 'Winter: 0.72×', 'Cap: 350'],
-  sustainable: ['Food: 360 (Abundant)', 'Winter: 0.78×', 'Cap: 450'],
-  theocracy: ['Food: 320 (Faith)', 'Winter: 0.75×', 'Temple: 180'],
-  warlords: ['Food: 290 (War)', 'Winter: 0.65×', 'Damage: 50'],
-  chaos: ['Food: 280 (Scarce)', 'Winter: 0.50× (Harsh)', 'Disease: 1.8×'],
-  extinction: ['Food: 120 (Harsh)', 'Winter: 0.30× (Cold)', 'Pop: 180'],
-  boom: ['Food: 500 (Boom)', 'Winter: 0.85×', 'Cap: 800'],
+  balance: ['Food: 300', 'Winter: 0.80×', 'Cap: 400'],
+  sustainable: ['Food: 550 (Abundant)', 'Winter: 0.85×', 'Cap: 550'],
+  theocracy: ['Food: 400 (Faith)', 'Winter: 0.80×', 'Cap: 500'],
+  warlords: ['Food: 340 (War)', 'Winter: 0.70×', 'Cap: 450'],
+  chaos: ['Food: 320 (Scarce)', 'Winter: 0.55× (Harsh)', 'Cap: 350'],
+  extinction: ['Food: 120 (Harsh)', 'Winter: 0.30× (Cold)', 'Cap: 180'],
+  boom: ['Food: 440 (Boom)', 'Winter: 0.85×', 'Cap: 800'],
 }
 
 const PRESET_IMPACT: Record<string, string> = {
@@ -423,17 +423,26 @@ const PRESET_IMPACT: Record<string, string> = {
   boom: '🚀 Metropolis — rapid births, bumper harvests & grand settlements',
 }
 
-function detectPreset(laws: GodLaws): string | null {
-  if (laws.food_count === 240 && laws.carrying_capacity === 350) return 'balance'
-  if (laws.food_count === 360 && laws.carrying_capacity === 450) return 'sustainable'
-  if (laws.food_count === 320 && laws.carrying_capacity === 400) return 'theocracy'
-  if (laws.food_count === 290 && laws.carrying_capacity === 380) return 'warlords'
-  if (laws.food_count === 280 && laws.carrying_capacity === 350) return 'chaos'
-  if (laws.food_count === 320 && laws.carrying_capacity === 800) return 'chaos'
+function detectPreset(laws: GodLaws, presetsDetails?: Record<string, Record<string, any>>): string | null {
+  if (presetsDetails) {
+    for (const [name, p] of Object.entries(presetsDetails)) {
+      if (Object.entries(p).every(([k, v]) => (laws as any)[k] === v)) return name
+    }
+    for (const [name, p] of Object.entries(presetsDetails)) {
+      if (
+        laws.food_count === p.food_count &&
+        laws.carrying_capacity === p.carrying_capacity &&
+        laws.max_population === p.max_population
+      ) return name
+    }
+  }
+  if (laws.food_count === 300 && laws.carrying_capacity === 400) return 'balance'
+  if (laws.food_count === 550 && laws.carrying_capacity === 550) return 'sustainable'
+  if (laws.food_count === 400 && laws.carrying_capacity === 500) return 'theocracy'
+  if (laws.food_count === 340 && laws.carrying_capacity === 450) return 'warlords'
+  if (laws.food_count === 320 && laws.carrying_capacity === 350) return 'chaos'
   if (laws.food_count === 120 && laws.carrying_capacity === 180) return 'extinction'
-  if (laws.food_count === 100 && laws.carrying_capacity === 250) return 'extinction'
-  if (laws.food_count === 500 && laws.carrying_capacity === 800) return 'boom'
-  if (laws.food_count === 650 && laws.carrying_capacity === 3500) return 'boom'
+  if (laws.food_count === 440 && laws.carrying_capacity === 800) return 'boom'
   return null
 }
 
@@ -457,6 +466,7 @@ function GodPanelInner({ open, onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [currentPreset, setCurrentPreset] = useState<string | null>('balance')
   const [expandedPreset, setExpandedPreset] = useState<string | null>('balance')
+  const [presetsDetails, setPresetsDetails] = useState<Record<string, Record<string, any>> | null>(null)
   const [activeSection, setActiveSection] = useState<'presets' | 'laws'>(() => {
     try { return (sessionStorage.getItem('god-section') as 'presets' | 'laws') || 'presets' } catch { return 'presets' }
   })
@@ -493,7 +503,8 @@ function GodPanelInner({ open, onClose }: Props) {
       .then(([lawsData, presetsData]) => {
         setLaws(lawsData)
         setBaselineLaws(lawsData)
-        const detected = presetsData?.current || detectPreset(lawsData) || 'balance'
+        if (presetsData?.details) setPresetsDetails(presetsData.details)
+        const detected = presetsData?.current || detectPreset(lawsData, presetsData?.details) || 'balance'
         setCurrentPreset(detected)
         setExpandedPreset(detected)
       })
@@ -507,7 +518,7 @@ function GodPanelInner({ open, onClose }: Props) {
     const val = raw === '' ? undefined : Number(raw)
     setLaws((l) => {
       const updated = { ...l, [key]: val }
-      setCurrentPreset(detectPreset(updated))
+      setCurrentPreset(detectPreset(updated, presetsDetails ?? undefined))
       return updated
     })
   }
@@ -515,7 +526,11 @@ function GodPanelInner({ open, onClose }: Props) {
   const revertOne = (key: NumberLawKey) => {
     const base = (baselineLaws as any)[key]
     if (base === undefined) return
-    setLaws((l) => ({ ...l, [key]: base }))
+    setLaws((l) => {
+      const updated = { ...l, [key]: base }
+      setCurrentPreset(detectPreset(updated, presetsDetails ?? undefined))
+      return updated
+    })
   }
 
   const stepVal = (key: NumberLawKey, min: number, max: number, step: number, dir: 1 | -1) => {
@@ -528,7 +543,7 @@ function GodPanelInner({ open, onClose }: Props) {
   const setBool = (k: BoolLawKey, v: boolean) => {
     setLaws((l) => {
       const updated = { ...l, [k]: v }
-      setCurrentPreset(detectPreset(updated))
+      setCurrentPreset(detectPreset(updated, presetsDetails ?? undefined))
       return updated
     })
   }
@@ -569,20 +584,30 @@ function GodPanelInner({ open, onClose }: Props) {
 
   const ToggleRow = ({ k, label, title, hideIfOff }: { k: BoolLawKey; label: string; title?: string; hideIfOff?: BoolLawKey | BoolLawKey[] }) => {
     if (hideIfOff && !gateOpen(hideIfOff)) return null
+    const getTrLabel = () => {
+      if (t(`godToggles.${k}`) !== `godToggles.${k}`) return t(`godToggles.${k}`)
+      if (t(`godLaws.${k}`) !== `godLaws.${k}`) return t(`godLaws.${k}`)
+      return label
+    }
+    const getTrTitle = () => {
+      if (t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint`) return t(`godToggles.${k}Hint`)
+      if (t(`godHints.${k}`) !== `godHints.${k}`) return t(`godHints.${k}`)
+      return title || BOOL_HINTS[k] || ''
+    }
+    const trLabel = getTrLabel()
+    const trTitle = getTrTitle()
     if (showModifiedOnly && !modifiedKeys.has(k)) {
       if (q) {
-        const trLabel2 = (t(`godToggles.${k}`) !== `godToggles.${k}` ? t(`godToggles.${k}`) : label).toLowerCase()
-        const trTitle2 = (t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint` ? t(`godToggles.${k}Hint`) : (title || BOOL_HINTS[k] || '')).toLowerCase()
+        const trLabel2 = trLabel.toLowerCase()
+        const trTitle2 = trTitle.toLowerCase()
         if (!trLabel2.includes(q) && !trTitle2.includes(q) && !k.includes(q)) return null
       } else return null
     }
     if (q) {
-      const trLabel2 = (t(`godToggles.${k}`) !== `godToggles.${k}` ? t(`godToggles.${k}`) : label).toLowerCase()
-      const trTitle2 = (t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint` ? t(`godToggles.${k}Hint`) : (title || BOOL_HINTS[k] || '')).toLowerCase()
+      const trLabel2 = trLabel.toLowerCase()
+      const trTitle2 = trTitle.toLowerCase()
       if (!trLabel2.includes(q) && !trTitle2.includes(q) && !k.includes(q)) return null
     }
-    const trLabel = t(`godToggles.${k}`) !== `godToggles.${k}` ? t(`godToggles.${k}`) : label
-    const trTitle = t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint` ? t(`godToggles.${k}Hint`) : (title || BOOL_HINTS[k] || '')
     const isMod = modifiedKeys.has(k)
     const isOpen = openHint === k
     return (
@@ -606,7 +631,7 @@ function GodPanelInner({ open, onClose }: Props) {
             )}
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            {isMod && <button onClick={() => setBool(k, (baselineLaws as any)[k] ?? BOOL_DEFAULTS[k] ?? false)} title="Revert to preset" className="god-revert-btn">↺ Revert</button>}
+            {isMod && <button onClick={() => setBool(k, (baselineLaws as any)[k] ?? BOOL_DEFAULTS[k] ?? false)} title={t('god.ui.revert_title')} className="god-revert-btn">{t('god.ui.revert')}</button>}
             <Switch checked={boolVal(k)} onChange={(v) => setBool(k, v)} title={trTitle ?? trLabel} />
           </span>
         </div>
@@ -614,9 +639,9 @@ function GodPanelInner({ open, onClose }: Props) {
           <div className="god-hint-box" style={{ margin: '0 12px 8px' }}>
             {trTitle}
             <div style={{ marginTop: 6 }}>
-              <a href="/docs/god-laws.md" rel="noreferrer" style={{ fontSize: 11, color: '#58a6ff' }}>Open docs/god-laws.md ↗</a>
+              <a href="/docs/god-laws.md" rel="noreferrer" style={{ fontSize: 11, color: '#58a6ff' }}>{t('god.ui.open_docs')}</a>
               {' · '}
-              <a href="/wiki#god-laws" style={{ fontSize: 11, color: '#58a6ff' }}>Wiki → God laws</a>
+              <a href="/wiki#god-laws" style={{ fontSize: 11, color: '#58a6ff' }}>{t('god.ui.wiki_link')}</a>
             </div>
           </div>
         )}
@@ -646,7 +671,7 @@ function GodPanelInner({ open, onClose }: Props) {
       const lawsData = body?.laws ?? body
       setLaws(lawsData)
       setBaselineLaws(lawsData)
-      setCurrentPreset(detectPreset(lawsData))
+      setCurrentPreset(detectPreset(lawsData, presetsDetails ?? undefined))
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch (e) {
@@ -997,11 +1022,11 @@ function GodPanelInner({ open, onClose }: Props) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 11, color: '#8b949e' }}>Baseline:</span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: activePresetMeta ? activePresetMeta.color : '#e6edf3' }}>
-                    {activePresetMeta && currentPreset ? t(`god.presets.${currentPreset}`) : 'Custom'}
+                    {activePresetMeta && currentPreset ? t(`god.presets.${currentPreset}`) : (t('god.presets.custom') || 'Custom')}
                   </span>
                   {modifiedKeys.size > 0 && (
                     <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 6, background: 'rgba(227,179,65,0.18)', color: '#e3b341', fontWeight: 700 }}>
-                      {modifiedKeys.size} modified
+                      {t('god.ui.modified_count', { count: modifiedKeys.size })}
                     </span>
                   )}
                 </div>
@@ -1010,7 +1035,7 @@ function GodPanelInner({ open, onClose }: Props) {
                   onClick={() => setActiveSection('presets')}
                   style={{ fontSize: 11, color: '#58a6ff', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}
                 >
-                  🎯 Switch Preset ➔
+                  {t('god.ui.switch_preset')}
                 </button>
               </div>
 
@@ -1021,28 +1046,28 @@ function GodPanelInner({ open, onClose }: Props) {
                   <input
                     className="god-search-input"
                     type="text"
-                    placeholder="Search laws… (e.g. food, winter, disease, food_count)"
+                    placeholder={t('god.ui.search_placeholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                   {searchQuery && (
-                    <button className="god-search-clear" onClick={() => setSearchQuery('')} title="Clear search">×</button>
+                    <button className="god-search-clear" onClick={() => setSearchQuery('')} title={t('god.ui.clear_search')}>×</button>
                   )}
                 </div>
                 <button
                   className={`god-filter-btn ${showModifiedOnly ? 'active' : ''}`}
                   onClick={() => setShowModifiedOnly(!showModifiedOnly)}
-                  title="Show only laws that differ from preset baseline"
+                  title={t('god.ui.show_modified_title')}
                 >
-                  {showModifiedOnly ? '✓ ' : ''}Show Modified Only ({modifiedKeys.size})
+                  {showModifiedOnly ? '✓ ' : ''}{t('god.ui.show_modified', { count: modifiedKeys.size })}
                 </button>
                 {showModifiedOnly && modifiedKeys.size > 0 && (
                   <button
                     className="god-revert-all"
                     onClick={() => setLaws({ ...baselineLaws })}
-                    title="Revert all modified laws to baseline"
+                    title={t('god.ui.revert_all_title')}
                   >
-                    ↺ Revert All
+                    {t('god.ui.revert_all')}
                   </button>
                 )}
               </div>
@@ -1055,7 +1080,7 @@ function GodPanelInner({ open, onClose }: Props) {
                       type="button"
                       className={`god-hint-btn ${openHint === 'boundary' ? 'active' : ''}`}
                       onClick={() => setOpenHint(openHint === 'boundary' ? null : 'boundary')}
-                      title="Wrap (toroidal world) vs Walls (hard bounding borders)"
+                      title={t('god.ui.edge_hint_title')}
                       aria-label="hint for edge of world"
                     >
                       ?
@@ -1073,11 +1098,7 @@ function GodPanelInner({ open, onClose }: Props) {
                   </select>
                 </label>
                 {openHint === 'boundary' && (
-                  <div className="god-hint-box" style={{ margin: '0 12px 8px' }}>
-                    <strong>Edge of World Topology:</strong><br />
-                    • <code>wrap</code>: Toroidal topology — creatures walking off any border immediately emerge from the opposite side.<br />
-                    • <code>walls</code>: Rigid physical borders — creatures collide against boundary walls and cannot leave the simulation zone.
-                  </div>
+                  <div className="god-hint-box" style={{ margin: '0 12px 8px' }} dangerouslySetInnerHTML={{ __html: t('god.ui.edge_hint_body') }} />
                 )}
               </div>
 
@@ -1092,11 +1113,11 @@ function GodPanelInner({ open, onClose }: Props) {
                       aria-selected={activeDomain === d.id}
                       className={`god-domain-card-btn ${activeDomain === d.id ? 'active' : ''}`}
                       onClick={() => setActiveDomain(d.id)}
-                      title={`${d.label} — ${d.groups.join(', ')}`}
+                      title={`${t(`god.domains.${d.id}`) !== `god.domains.${d.id}` ? t(`god.domains.${d.id}`) : d.label}`}
                     >
                       <span className="god-domain-btn-label">
                         <span className="god-domain-icon">{d.icon}</span>
-                        <span>{d.shortLabel}</span>
+                        <span>{t(`god.domainShort.${d.id}`) !== `god.domainShort.${d.id}` ? t(`god.domainShort.${d.id}`) : d.shortLabel}</span>
                       </span>
                       <span className="god-domain-count">{domainLawCounts[d.id] ?? 0}</span>
                     </button>
@@ -1105,11 +1126,11 @@ function GodPanelInner({ open, onClose }: Props) {
               )}
               {(q || showModifiedOnly) && (
                 <div className="god-search-meta">
-                  {q ? `🔍 ${filteredSpecs(NUMBER_LAWS).length} laws match "${q}"` : ''}
+                  {q ? t('god.ui.match_count', { count: filteredSpecs(NUMBER_LAWS).length, q }) : ''}
                   {q && showModifiedOnly ? ' · ' : ''}
-                  {showModifiedOnly ? `✏️ ${modifiedKeys.size} modified` : ''}
+                  {showModifiedOnly ? t('god.ui.modified_indicator', { count: modifiedKeys.size }) : ''}
                   {(q || showModifiedOnly) && (
-                    <button className="god-search-clear-link" onClick={() => { setSearchQuery(''); setShowModifiedOnly(false) }}>Clear filters</button>
+                    <button className="god-search-clear-link" onClick={() => { setSearchQuery(''); setShowModifiedOnly(false) }}>{t('god.ui.clear_filters')}</button>
                   )}
                 </div>
               )}
@@ -1121,24 +1142,10 @@ function GodPanelInner({ open, onClose }: Props) {
             const groupSections = domainGroups.map((group) => {
               const allInGroup = NUMBER_LAWS.filter((l) => l.group === group)
               const visibleSpecs = filteredSpecs(allInGroup)
-              // decide visibility: if search/modified filtering and group has zero visible specs, skip entirely
-              const hasVisibleToggle = (() => {
-                // check if any toggle belonging to this group would be visible under current filters
-                // We enumerate toggles per group below via special handling; for simplicity, if no numeric specs and not matching, we still may show toggle row
-                // So we compute toggle visibility lazily inside section rendering — here we just keep group if visibleSpecs>0 OR toggle would be visible
-                // For now, skip only if both specs and potential toggles are hidden
-                return false
-              })()
-              void hasVisibleToggle
-              // If filtering and no specs, we still need to check if group has a toggle that passes filter — handle via ToggleRow visibility later
-              // But to avoid empty groups, we will keep group hidden only if visibleSpecs.length===0 and we are filtering and toggles would also be hidden
-              // Simplify: hide group when filtering and visibleSpecs empty — ToggleRow will self-hide but we may show empty group header unnecessarily
-              // We instead render group only if visibleSpecs.length>0 or not filtering
               const isFiltering = !!q || showModifiedOnly
               if (isFiltering && visibleSpecs.length === 0) {
                 const toggleGroups = new Set(['Reproduction','Disease','Neuroevolution','Morphology','Sky & Seasons','Shelter','Territory','Weather Sickness','Communication','Wildfire & Disasters','Rivers','Terrain','Materials','Seismic & Waves','Electrostatics','Cosmology','Culture','Ages','Rebellion','Clan','Ecosystem','Predation','Clan War','Politics','Desperation','Food Decay','Agriculture','Theology'])
                 if (!toggleGroups.has(group)) return null
-                // for toggle groups, we will check after rendering toggles — if none visible, skip
               }
 
               const special = (
@@ -1151,7 +1158,7 @@ function GodPanelInner({ open, onClose }: Props) {
                   )}
                   {group === 'Neuroevolution' && (
                     <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>
-                      ⚡ Micro-RNN Neural Engine: 16 sensory inputs (vitals, raycasts, sound, scent, slope) continuously drive 7 actuators (thrust, steer, vocal, interact).
+                      {t('god.ui.notes.neuroevolution')}
                     </div>
                   )}
                   {group === 'Morphology' && (
@@ -1197,7 +1204,9 @@ function GodPanelInner({ open, onClose }: Props) {
                     <ToggleRow k="lightning_enabled" label="Storm lightning" title="bolts kill under the arc, ignite the ground and fuse electrostatic rock" />
                   )}
                   {group === 'Cosmology' && (
-                    <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>Hidden zones of altered physics — fertile ground, heavy gravity, calm air. Skilled foragers discover them.</div>
+                    <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>
+                      {t('god.ui.notes.cosmology')}
+                    </div>
                   )}
                   {group === 'Materials' && (
                     <ToggleRow k="structural_enabled" label="Structural integrity" title="storms & floodwater wear buildings down; builders mend what stands" />
@@ -1252,7 +1261,7 @@ function GodPanelInner({ open, onClose }: Props) {
                     <>
                       <ToggleRow k="theology_enabled" label="Theology of the Sphere" title="shrines beside main houses, dawn & dusk tithes, healing aura, miracles, temples" />
                       <div className="god-note" style={{ fontSize: 11, opacity: 0.7, padding: '4px 10px' }}>
-                        8 Sacred Avatars: ⭕ Abundance · ⚡ Wrath · 👁️ Omniscience · 🛡️ Permanence · 🌿 Renewal · ⚖️ Equilibrium · 🌀 Ascent · 🕯️ Sanctuary
+                        {t('god.ui.notes.theology_avatars')}
                       </div>
                     </>
                   )}
@@ -1280,7 +1289,7 @@ function GodPanelInner({ open, onClose }: Props) {
                         <span title={hint} style={{ color: isModified ? '#e3b341' : '#e6edf3', fontSize: 13, fontWeight: isModified ? 600 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: labelMatch ? 'rgba(227,179,65,0.2)' : undefined, padding: labelMatch ? '0 3px' : 0, borderRadius: 3 }}>
                           {translatedLabel}
                         </span>
-                        {isModified && <span className="god-mod-dot" title="Modified from preset">●</span>}
+                        {isModified && <span className="god-mod-dot" title={t('god.ui.modified_from_preset')}>●</span>}
                         {hint && (
                           <button
                             type="button"
@@ -1295,9 +1304,9 @@ function GodPanelInner({ open, onClose }: Props) {
                       </span>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flex: 'none' }}>
                         {isModified && (
-                          <button onClick={() => revertOne(key)} title="Revert to preset" className="god-revert-btn">↺ Revert</button>
+                          <button onClick={() => revertOne(key)} title={t('god.ui.revert_title')} className="god-revert-btn">{t('god.ui.revert')}</button>
                         )}
-                        <span className={`god-zone-pill zone-${zone}`} title={`${zone} zone — distance from default`}>{zone}</span>
+                        <span className={`god-zone-pill zone-${zone}`} title={t('god.ui.zone_distance', { zone: t(`god.ui.zones.${zone}`) || zone })}>{t(`god.ui.zones.${zone}`) || zone}</span>
                       </span>
                     </div>
                     {/* Dual slider + number pill — BD.8.3 */}
@@ -1312,7 +1321,7 @@ function GodPanelInner({ open, onClose }: Props) {
                             <span className="z-extreme-right" />
                           </div>
                           <div className="god-slider-fill" style={{ width: `${pct}%` }} />
-                          {basePct !== null && <span className="god-baseline-marker" style={{ left: `${basePct}%` }} title={`Default: ${fmt(baseVal as number)}`} />}
+                          {basePct !== null && <span className="god-baseline-marker" style={{ left: `${basePct}%` }} title={`${t('god.ui.default_label', { val: fmt(baseVal as number) })}`} />}
                         </div>
                         <input
                           type="range"
@@ -1341,7 +1350,7 @@ function GodPanelInner({ open, onClose }: Props) {
                     </div>
                     {baseVal !== undefined && (
                       <div className="god-baseline-row">
-                        <span className="god-baseline-text">Default {fmt(baseVal)} · {curVal > baseVal ? `+${fmt(curVal - baseVal)}` : curVal < baseVal ? fmt(curVal - baseVal) : 'baseline'}</span>
+                        <span className="god-baseline-text">{t('god.ui.default_label', { val: fmt(baseVal) })} · {curVal > baseVal ? `+${fmt(curVal - baseVal)}` : curVal < baseVal ? fmt(curVal - baseVal) : (t('god.ui.baseline') || 'baseline')}</span>
                         <span className="god-range-labels"><span>{fmt(min)}</span><span>{fmt(max)}</span></span>
                       </div>
                     )}
@@ -1349,9 +1358,9 @@ function GodPanelInner({ open, onClose }: Props) {
                       <div className="god-hint-box">
                         {hint}
                         <div style={{ marginTop: 6 }}>
-                          <a href="/docs/god-laws.md" rel="noreferrer" style={{ fontSize: 11, color: '#58a6ff' }}>Open docs/god-laws.md ↗</a>
+                          <a href="/docs/god-laws.md" rel="noreferrer" style={{ fontSize: 11, color: '#58a6ff' }}>{t('god.ui.open_docs')}</a>
                           {' · '}
-                          <a href="/wiki#god-laws" style={{ fontSize: 11, color: '#58a6ff' }}>Wiki → God laws</a>
+                          <a href="/wiki#god-laws" style={{ fontSize: 11, color: '#58a6ff' }}>{t('god.ui.wiki_link')}</a>
                         </div>
                       </div>
                     )}
@@ -1393,10 +1402,6 @@ function GodPanelInner({ open, onClose }: Props) {
                   const bks = groupBoolKeys[group] || []
                   if (bks.some(k => modifiedKeys.has(k))) { /* keep */ } else return null
                 } else if (q) {
-                  // keep if any bool label matches q
-                  // approximate: don't hide — let header show but rows empty and ToggleRow may show/hide internally
-                  // For search, we should hide groups where no bool matches; to avoid noise we hide if no spec rows
-                  // We'll attempt to keep only if group name matches q itself
                   if (group.toLowerCase().includes(q)) { /* keep to show toggles */ } else return null
                 } else {
                   return null
@@ -1408,7 +1413,7 @@ function GodPanelInner({ open, onClose }: Props) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid #30363d', paddingBottom: 6 }}>
                     <h3 style={{ margin: 0, fontSize: 13, color: '#e3b341', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{(t(`god.groups.${GROUP_KEY[group] ?? group}`) !== `god.groups.${GROUP_KEY[group] ?? group}` ? t(`god.groups.${GROUP_KEY[group] ?? group}`) : group)}</h3>
                     <span style={{ fontSize: 10, color: '#8b949e', fontWeight: 600, background: '#21262d', padding: '1px 6px', borderRadius: 10, border: '1px solid #30363d' }}>
-                      {visibleSpecs.length} laws
+                      {t('god.ui.laws_count', { count: visibleSpecs.length })}
                     </span>
                   </div>
                   {special}
@@ -1421,8 +1426,8 @@ function GodPanelInner({ open, onClose }: Props) {
             return (
               <div key={domain.id} className="god-domain-section">
                 <div className="god-domain-header">
-                  <span className="god-domain-title">{domain.icon} {domain.label}</span>
-                  <span className="god-domain-meta">{groupSections.length} groups · {groupSections.length} sections</span>
+                  <span className="god-domain-title">{domain.icon} {t(`god.domains.${domain.id}`) !== `god.domains.${domain.id}` ? t(`god.domains.${domain.id}`) : domain.label}</span>
+                  <span className="god-domain-meta">{t('god.ui.groups_sections', { groups: groupSections.length, sections: groupSections.length })}</span>
                 </div>
                 {groupSections}
               </div>

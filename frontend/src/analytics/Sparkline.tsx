@@ -1,3 +1,5 @@
+import { useI18n } from '../i18n'
+
 interface Props {
   data?: number[]
   color?: string
@@ -15,6 +17,7 @@ export default function Sparkline({
   unit = '',
   showLast = true,
 }: Props) {
+  const { t } = useI18n()
   if (!data || data.length < 2) {
     return (
       <div
@@ -30,7 +33,7 @@ export default function Sparkline({
           border: '1px solid #21262d',
         }}
       >
-        collecting…
+        {t('analytics.collecting')}
       </div>
     )
   }

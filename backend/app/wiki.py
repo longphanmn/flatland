@@ -176,13 +176,17 @@ The most profound connection between the app and the book is the **role of the u
 
 
 def _presets_table() -> str:
-    from .main import PRESETS  # late import to avoid cycle
+    from .main import PRESETS, detect_current_preset  # late import to avoid cycle
+    current = detect_current_preset()
     rows = []
     for name, laws in PRESETS.items():
+        is_active = (name == current)
         preview = ", ".join(f"{k}={v}" for k, v in list(laws.items())[:6])
         if len(laws) > 6:
             preview += f" … +{len(laws)-6} more"
-        rows.append(f"<tr><td><code>{html.escape(name)}</code></td><td>{html.escape(preview)}</td><td><code>POST /api/presets/{html.escape(name)}?reset=true</code></td></tr>")
+        active_badge = ' <span class="badge" style="background:#238636;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">ACTIVE</span>' if is_active else ''
+        row_style = ' style="background:rgba(35,134,54,0.08);"' if is_active else ''
+        rows.append(f"<tr{row_style}><td><code>{html.escape(name)}</code>{active_badge}</td><td>{html.escape(preview)}</td><td><code>POST /api/presets/{html.escape(name)}?reset=true</code></td></tr>")
     header = "<tr><th>Preset</th><th>Key laws</th><th>Apply</th></tr>"
     return f"<table><thead>{header}</thead><tbody>{''.join(rows)}</tbody></table>"
 
@@ -453,7 +457,7 @@ LAW_HINTS_MD = {
 }
 
 def get_wiki_json(app: Any) -> dict:
-    from .main import PRESETS
+    from .main import PRESETS, detect_current_preset
     return {
         "overview": WIKI_OVERVIEW_MD,
         "book_comparison": FLATLAND_BOOK_COMPARISON_MD,
@@ -466,6 +470,7 @@ def get_wiki_json(app: Any) -> dict:
         "laws": list(GodLaws.model_fields.keys()),
         "routes": [getattr(r, "path", "") for r in app.routes],
         "presets": PRESETS,
+        "current_preset": detect_current_preset(),
         "law_details": {name: {"type": str(f.annotation), "default": getattr(Config(), name, None) if hasattr(Config(), name) else None, "hint": LAW_HINTS_MD.get(name, "")} for name, f in GodLaws.model_fields.items()},
     }
 

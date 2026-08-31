@@ -28,13 +28,25 @@ export default function CrisisTab({ data }: Props) {
   const tenseClans = unrest.tense_clans ?? 0
 
   const famineStatus = horizon < 300 ? 'critical' : horizon < 1000 ? 'warning' : 'healthy'
-  const famineLabel = horizon < 300 ? 'Famine Imminent' : horizon < 1000 ? 'Lean Reserves' : 'Food Secure'
+  const famineLabel = horizon < 300
+    ? t('analytics.crisis.famine_imminent')
+    : horizon < 1000
+    ? t('analytics.crisis.famine_lean')
+    : t('analytics.crisis.famine_secure')
 
   const neStatus = extAlarm ? 'critical' : ne < 18 ? 'warning' : 'healthy'
-  const neLabel = extAlarm ? 'Extinction Cliff' : ne < 18 ? 'Vulnerable' : 'Genetically Viable'
+  const neLabel = extAlarm
+    ? t('analytics.crisis.ext_cliff')
+    : ne < 18
+    ? t('analytics.crisis.ext_vulnerable')
+    : t('analytics.crisis.ext_viable')
 
   const unrestStatus = schismRisk ? 'critical' : unrestScore > 5 ? 'warning' : 'healthy'
-  const unrestLabel = schismRisk ? 'Schism Imminent' : unrestScore > 5 ? 'Tense' : 'Stable'
+  const unrestLabel = schismRisk
+    ? t('analytics.crisis.unrest_schism')
+    : unrestScore > 5
+    ? t('analytics.crisis.unrest_tense')
+    : t('analytics.crisis.unrest_stable')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -54,13 +66,13 @@ export default function CrisisTab({ data }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 16 }}>⚠️</span>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#f85149', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Ecological & Societal Threat Warning
+              {t('analytics.crisis.threat_warning')}
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, color: '#e6edf3' }}>
-            {extAlarm && <div>• <b>Extinction Danger</b>: Effective breeding population (Ne={ne}) is below safe viability threshold ({fertileFemales}♀ / {males}♂).</div>}
-            {horizon < 300 && <div>• <b>Starvation Threat</b>: Famine horizon is {horizon} ticks — granaries are depleting faster than plant regrowth.</div>}
-            {schismRisk && <div>• <b>Schism & Revolt</b>: Internal unrest score is {unrestScore} — clan splintering or desertion is imminent.</div>}
+            {extAlarm && <div dangerouslySetInnerHTML={{ __html: t('analytics.crisis.ext_danger_desc', { ne, females: fertileFemales, males }) }} />}
+            {horizon < 300 && <div dangerouslySetInnerHTML={{ __html: t('analytics.crisis.starve_threat_desc', { horizon }) }} />}
+            {schismRisk && <div dangerouslySetInnerHTML={{ __html: t('analytics.crisis.schism_threat_desc', { score: unrestScore }) }} />}
           </div>
         </div>
       )}
@@ -68,27 +80,27 @@ export default function CrisisTab({ data }: Props) {
       {/* Early Warning Cards Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
         <MetricCard
-          title="Famine Horizon"
+          title={t('analytics.crisis.famine_horizon_title')}
           value={horizon >= 9999 ? '∞' : `${horizon} t`}
-          subvalue={`Larder: ${totalLarder.toFixed(0)} | Burn: -${burnRate.toFixed(1)}/t`}
+          subvalue={t('analytics.crisis.famine_horizon_sub', { larder: totalLarder.toFixed(0), burn: burnRate.toFixed(1) })}
           status={famineStatus}
           statusLabel={famineLabel}
           icon="⏳"
           hint={t('analytics.hints.famine_horizon')}
         />
         <MetricCard
-          title="Effective Pop (Ne)"
+          title={t('analytics.crisis.effective_pop_title')}
           value={ne}
-          subvalue={`Breeding: ${fertileFemales}♀ · ${males}♂`}
+          subvalue={t('analytics.crisis.effective_pop_sub', { females: fertileFemales, males })}
           status={neStatus}
           statusLabel={neLabel}
           icon="🧬"
           hint={t('analytics.hints.extinction_ne')}
         />
         <MetricCard
-          title="Internal Clan Unrest"
+          title={t('analytics.crisis.clan_unrest_title')}
           value={unrestScore.toFixed(1)}
-          subvalue={`Crowding: ${crowding} | Hungry: ${hungry}`}
+          subvalue={t('analytics.crisis.clan_unrest_sub', { crowding, hungry })}
           status={unrestStatus}
           statusLabel={unrestLabel}
           icon="⚡"
@@ -111,20 +123,20 @@ export default function CrisisTab({ data }: Props) {
           }}
         >
           <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9', textTransform: 'uppercase' }}>
-            🌾 Food Metabolism & Granaries
+            {t('analytics.crisis.food_metabolism_title')}
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#8b949e' }}>Total Clan Larder Reserves:</span>
-              <b style={{ color: '#e6edf3' }}>{totalLarder.toFixed(1)} energy</b>
+              <span style={{ color: '#8b949e' }}>{t('analytics.crisis.total_larder_reserves')}</span>
+              <b style={{ color: '#e6edf3' }}>{t('analytics.crisis.energy_unit', { val: totalLarder.toFixed(1) })}</b>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#8b949e' }}>Population Metabolic Drain:</span>
-              <b style={{ color: '#f85149' }}>-{burnRate.toFixed(2)} energy/t</b>
+              <span style={{ color: '#8b949e' }}>{t('analytics.crisis.pop_metabolic_drain')}</span>
+              <b style={{ color: '#f85149' }}>-{t('analytics.crisis.energy_per_tick', { val: burnRate.toFixed(2) })}</b>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#8b949e' }}>Wild & Cultivated Regrowth:</span>
-              <b style={{ color: '#3fb950' }}>+{regrowth.toFixed(2)} energy/t</b>
+              <span style={{ color: '#8b949e' }}>{t('analytics.crisis.wild_cultivated_regrowth')}</span>
+              <b style={{ color: '#3fb950' }}>+{t('analytics.crisis.energy_per_tick', { val: regrowth.toFixed(2) })}</b>
             </div>
           </div>
         </div>
@@ -142,20 +154,20 @@ export default function CrisisTab({ data }: Props) {
           }}
         >
           <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9', textTransform: 'uppercase' }}>
-            🔥 Societal Unrest Factors
+            {t('analytics.crisis.unrest_factors_title')}
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#8b949e' }}>Overcrowded House Beds:</span>
-              <b style={{ color: crowding > 0 ? '#d29922' : '#8b949e' }}>+{crowding} occupants</b>
+              <span style={{ color: '#8b949e' }}>{t('analytics.crisis.overcrowded_beds')}</span>
+              <b style={{ color: crowding > 0 ? '#d29922' : '#8b949e' }}>{t('analytics.crisis.occupants_unit', { count: crowding })}</b>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#8b949e' }}>Starving Clan Members:</span>
-              <b style={{ color: hungry > 0 ? '#f85149' : '#8b949e' }}>{hungry} creatures</b>
+              <span style={{ color: '#8b949e' }}>{t('analytics.crisis.starving_members')}</span>
+              <b style={{ color: hungry > 0 ? '#f85149' : '#8b949e' }}>{t('analytics.crisis.creatures_unit', { count: hungry })}</b>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#8b949e' }}>Clans with Personality Clashes:</span>
-              <b style={{ color: tenseClans > 0 ? '#f85149' : '#8b949e' }}>{tenseClans} clans</b>
+              <span style={{ color: '#8b949e' }}>{t('analytics.crisis.personality_clashes')}</span>
+              <b style={{ color: tenseClans > 0 ? '#f85149' : '#8b949e' }}>{t('analytics.crisis.clans_unit', { count: tenseClans })}</b>
             </div>
           </div>
         </div>

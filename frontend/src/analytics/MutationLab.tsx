@@ -7,17 +7,24 @@ interface Props {
   onSelectCreature?: (id: number) => void
 }
 
-const CASTE_NAMES: Record<number, string> = {
-  2: 'Woman (Line)',
-  3: 'Soldier / Artisan',
-  4: 'Gentleman',
-  5: 'Professional',
-  6: 'Hexagon',
-  7: 'Heptagon (Mutant)',
-  8: 'Noble',
-  9: 'Nonagon (Mutant)',
-  10: 'Decagon',
-  24: 'Priest (Sphere)',
+const getCasteName = (k: number, t: (key: string, vars?: any) => string): string => {
+  const map: Record<number, string> = {
+    2: 'analytics.mutation_lab.castes.line',
+    3: 'analytics.mutation_lab.castes.triangle',
+    4: 'analytics.mutation_lab.castes.square',
+    5: 'analytics.mutation_lab.castes.pentagon',
+    6: 'analytics.mutation_lab.castes.hexagon',
+    7: 'analytics.mutation_lab.castes.heptagon',
+    8: 'analytics.mutation_lab.castes.octagon',
+    9: 'analytics.mutation_lab.castes.nonagon',
+    10: 'analytics.mutation_lab.castes.decagon',
+    24: 'analytics.mutation_lab.castes.sphere',
+  }
+  const key = map[k]
+  if (key && t(key) !== key) return t(key)
+  return t('analytics.mutation_lab.castes.aberration', { k }) !== 'analytics.mutation_lab.castes.aberration'
+    ? t('analytics.mutation_lab.castes.aberration', { k })
+    : `${k}-gon (Aberration)`
 }
 
 
@@ -34,7 +41,7 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
   const recentMutations: any[] = gen.recent_mutations ?? []
 
   // Total Abbott creatures
-  const totalAbbott = Object.values(abbottLadder).reduce((a, b) => a + b, 0) || 1
+  const totalAbbott = Object.values(abbottLadder).reduce((a: number, b: any) => a + Number(b), 0) || 1
 
   // Compute lambda progress percentage (0..100%)
   const lambdaPercent = Math.round(lambdaVal * 100)
@@ -42,7 +49,11 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
 
   // Status for mutation frequency
   const mutStatus = mutationFreq > 0.3 ? 'warning' : mutationFreq > 0.1 ? 'healthy' : 'neutral'
-  const mutStatusLabel = mutationFreq > 0.3 ? 'High Variance' : mutationFreq > 0.1 ? 'Active Divergence' : 'Orthodox'
+  const mutStatusLabel = mutationFreq > 0.3
+    ? t('analytics.mutation_lab.variance_high')
+    : mutationFreq > 0.1
+    ? t('analytics.mutation_lab.variance_active')
+    : t('analytics.mutation_lab.variance_orthodox')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -75,11 +86,11 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
                 borderRadius: 4,
               }}
             >
-              λ = {lambdaVal.toFixed(2)} ({speciationPercent}% Diverged)
+              λ = {lambdaVal.toFixed(2)} {t('analytics.mutation_lab.diverged', { pct: speciationPercent })}
             </span>
           </div>
           <span style={{ fontSize: 11, color: '#8b949e' }}>
-            {t('analytics.mutation_lab.max_generation')}: <b style={{ color: '#58a6ff' }}>Gen {maxGen}</b>
+            {t('analytics.mutation_lab.max_generation')}: <b style={{ color: '#58a6ff' }}>{t('analytics.mutation_lab.gen')} {maxGen}</b>
           </span>
         </div>
 
@@ -118,7 +129,7 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
         <MetricCard
           title={t('analytics.mutation_lab.mutation_frequency')}
           value={`${(mutationFreq * 100).toFixed(1)}%`}
-          subvalue="of total population"
+          subvalue={t('analytics.mutation_lab.pop_sub')}
           status={mutStatus}
           statusLabel={mutStatusLabel}
           icon="🧬"
@@ -130,7 +141,7 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
         <MetricCard
           title={t('analytics.mutation_lab.mean_irregularity')}
           value={ring.avg_irregularity?.[ring.avg_irregularity.length - 1]?.toFixed(3) ?? '0.000'}
-          subvalue="asymmetry index"
+          subvalue={t('analytics.mutation_lab.asym_sub')}
           status="neutral"
           icon="📐"
           hint={t('analytics.mutation_lab.irregularity_hint')}
@@ -140,8 +151,8 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
         />
         <MetricCard
           title={t('analytics.mutation_lab.max_generation')}
-          value={`Gen ${maxGen}`}
-          subvalue={`${gen.mobility ? (gen.mobility * 100).toFixed(0) : 0}% at frontier`}
+          value={`${t('analytics.mutation_lab.gen')} ${maxGen}`}
+          subvalue={t('analytics.mutation_lab.frontier_sub', { pct: gen.mobility ? (gen.mobility * 100).toFixed(0) : 0 })}
           status="neutral"
           icon="👑"
           hint={t('analytics.mutation_lab.max_gen_hint')}
@@ -180,7 +191,7 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
             .sort(([a], [b]) => Number(a) - Number(b))
             .map(([sidesStr, count]) => {
               const k = Number(sidesStr)
-              const name = CASTE_NAMES[k] || `${k}-gon (Aberration)`
+              const name = getCasteName(k, t)
               const color = SIDES_COLORS[k] || '#bc8cff'
               const pct = ((count / totalAbbott) * 100).toFixed(1)
               const isMutantSide = ![2, 3, 4, 5, 8, 24].includes(k)
@@ -191,7 +202,7 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
                     <span style={{ color, fontWeight: 600 }}>{name}</span>
                     {isMutantSide && (
                       <span style={{ fontSize: 8, background: '#a371f733', color: '#d2a8ff', padding: '1px 3px', borderRadius: 3, border: '1px solid #a371f766' }}>
-                        MUTANT
+                        {t('analytics.mutation_lab.mutant_tag')}
                       </span>
                     )}
                   </div>
@@ -260,15 +271,15 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
                       {mutant.name}
                     </span>
                     <span style={{ fontSize: 9, color: '#f778ba', fontWeight: 700 }}>
-                      Irr: {mutant.irregularity}
+                      {t('analytics.mutation_lab.irr_label', { val: mutant.irregularity })}
                     </span>
                   </div>
                   <span style={{ fontSize: 10, color: '#8b949e' }}>
-                    Gen {mutant.generation} · {mutant.sides} {t('analytics.mutation_lab.sides')} ({mutant.caste})
+                    {t('analytics.mutation_lab.gen')} {mutant.generation} · {mutant.sides} {t('analytics.mutation_lab.sides')} ({getCasteName(mutant.sides, t)})
                   </span>
                   {mutant.clan_name && (
                     <span style={{ fontSize: 9, color: mutant.clan_color }}>
-                      Clan: {mutant.clan_name}
+                      {t('analytics.mutation_lab.clan_label', { name: mutant.clan_name })}
                     </span>
                   )}
                   {onSelectCreature && (
@@ -349,7 +360,7 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
                     <span style={{ color: '#8b949e', fontSize: 9 }}>[t={evt.tick}]</span>
                     <span style={{ fontWeight: 600, color: '#f0f6fc' }}>
-                      #{evt.creature_id} (Gen {evt.generation})
+                      #{evt.creature_id} ({t('analytics.mutation_lab.gen')} {evt.generation})
                     </span>
                     <span style={{ color: evt.clan_color || '#8b949e' }}>
                       {evt.desc}

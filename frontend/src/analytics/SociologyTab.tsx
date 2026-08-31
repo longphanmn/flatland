@@ -26,72 +26,84 @@ export default function SociologyTab({ data }: Props) {
   const tensions: any[] = casus.tensions ?? []
 
   const hhiStatus = hhi > 0.4 ? 'critical' : hhi > 0.25 ? 'warning' : 'healthy'
-  const hhiLabel = hhi > 0.4 ? 'Monopolized' : hhi > 0.25 ? 'Oligopoly' : 'Pluralistic'
+  const hhiLabel = hhi > 0.4
+    ? t('analytics.society.hhi_monopoly')
+    : hhi > 0.25
+    ? t('analytics.society.hhi_oligopoly')
+    : t('analytics.society.hhi_plural')
 
   const giniStatus = larderGini > 0.5 ? 'critical' : larderGini > 0.35 ? 'warning' : 'healthy'
-  const giniLabel = larderGini > 0.5 ? 'Extreme Hoarding' : larderGini > 0.35 ? 'Unequal' : 'Egalitarian'
+  const giniLabel = larderGini > 0.5
+    ? t('analytics.society.gini_hoarding')
+    : larderGini > 0.35
+    ? t('analytics.society.gini_unequal')
+    : t('analytics.society.gini_egalitarian')
 
   const warStatus = warRisk > 0.7 ? 'critical' : warRisk > 0.3 ? 'warning' : 'healthy'
-  const warLabel = warRisk > 0.7 ? 'Imminent Conflict' : warRisk > 0.3 ? 'Tense Feuds' : 'Peaceful'
+  const warLabel = warRisk > 0.7
+    ? t('analytics.society.war_imminent')
+    : warRisk > 0.3
+    ? t('analytics.society.war_tense')
+    : t('analytics.society.war_peaceful')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {/* Power Concentration & Wealth Inequality Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
         <MetricCard
-          title="Hegemony Index (HHI)"
+          title={t('analytics.society.hhi_title')}
           value={hhi.toFixed(3)}
-          subvalue={`${clanCount} active clans`}
+          subvalue={t('analytics.society.active_clans', { count: clanCount })}
           status={hhiStatus}
           statusLabel={hhiLabel}
           icon="👑"
           hint={t('analytics.hints.hhi')}
         />
         <MetricCard
-          title="Larder Inequality (Gini)"
+          title={t('analytics.society.larder_gini_title')}
           value={larderGini.toFixed(3)}
-          subvalue="clan granary disparity"
+          subvalue={t('analytics.society.granary_disparity')}
           status={giniStatus}
           statusLabel={giniLabel}
           icon="⚖️"
           hint={t('analytics.hints.larder_gini')}
         />
         <MetricCard
-          title="Personal Basket Gini"
+          title={t('analytics.society.basket_gini_title')}
           value={basketGini.toFixed(3)}
-          subvalue="foraging disparity"
+          subvalue={t('analytics.society.foraging_disparity')}
           status="neutral"
           icon="🧺"
           hint={t('analytics.hints.basket_gini')}
         />
         <MetricCard
-          title="Geopolitical War Risk"
+          title={t('analytics.society.war_risk_title')}
           value={`${(warRisk * 100).toFixed(0)}%`}
-          subvalue="feud escalation"
+          subvalue={t('analytics.society.feud_escalation')}
           status={warStatus}
           statusLabel={warLabel}
           icon="⚔️"
-          hint="Aggregate likelihood of border raids or inter-clan war breaking out."
+          hint={t('analytics.society.war_hint')}
         />
       </div>
 
       {/* Trade & Commerce */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <MetricCard
-          title="Border Trade Markets"
+          title={t('analytics.society.trade_markets_title')}
           value={marketCount}
-          subvalue="neutral commerce posts"
+          subvalue={t('analytics.society.trade_markets_sub')}
           status="neutral"
           icon="🎪"
-          hint="Neutral trading hubs established at mutual borders between allied or trade-partner clans."
+          hint={t('analytics.society.trade_markets_hint')}
         />
         <MetricCard
-          title="Active Caravan Routes"
+          title={t('analytics.society.caravan_routes_title')}
           value={caravanRoutes}
-          subvalue="cross-map grain routes"
+          subvalue={t('analytics.society.caravan_routes_sub')}
           status="neutral"
           icon="🐪"
-          hint="Active merchant supply lines transporting grain, goods, and cultural news between settlements."
+          hint={t('analytics.society.caravan_routes_hint')}
         />
       </div>
 
@@ -111,29 +123,29 @@ export default function SociologyTab({ data }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 13 }}>🏰</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Clan Demographics & Territorial Holdings
+              {t('analytics.society.demographics_title')}
             </span>
           </div>
         </div>
 
         {Object.keys(territories).length === 0 ? (
           <div style={{ padding: '8px', color: '#8b949e', fontSize: 10, textAlign: 'center' }}>
-            No structured clan settlements established.
+            {t('analytics.society.no_settlements')}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {Object.entries(territories).map(([cid, tInfo]) => {
               const domPct = ((tInfo.dominance ?? 0) * 100).toFixed(1)
               return (
-                <div key={cid} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 120px', alignItems: 'center', gap: 8, fontSize: 10 }}>
+                <div key={cid} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 140px', alignItems: 'center', gap: 8, fontSize: 10 }}>
                   <span style={{ fontWeight: 600, color: '#f0f6fc' }}>
-                    Clan #{cid}
+                    {t('analytics.society.clan_label', { id: cid })}
                   </span>
                   <div style={{ height: 6, background: '#0d1117', borderRadius: 3, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${domPct}%`, background: '#58a6ff', borderRadius: 3 }} />
                   </div>
                   <span style={{ textAlign: 'right', color: '#8b949e', fontSize: 10 }}>
-                    <b style={{ color: '#e6edf3' }}>{tInfo.population}</b> pop ({domPct}%) · 🏠 {tInfo.houses}
+                    {t('analytics.society.clan_pop_houses', { pop: tInfo.population, pct: domPct, houses: tInfo.houses })}
                   </span>
                 </div>
               )
@@ -158,7 +170,7 @@ export default function SociologyTab({ data }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 13 }}>🔥</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#f85149', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              High-Tension Rivalries & Casus Belli
+              {t('analytics.society.tensions_title')}
             </span>
           </div>
 
@@ -178,12 +190,12 @@ export default function SociologyTab({ data }: Props) {
                 }}
               >
                 <span style={{ color: '#e6edf3', fontWeight: 600 }}>
-                  Clan #{tItem.a} ⚔️ Clan #{tItem.b}
+                  {t('analytics.society.clan_label', { id: tItem.a })} ⚔️ {t('analytics.society.clan_label', { id: tItem.b })}
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ color: '#8b949e' }}>Score: {tItem.score}</span>
+                  <span style={{ color: '#8b949e' }}>{t('analytics.society.score_label', { score: tItem.score })}</span>
                   <span style={{ color: '#f85149', fontWeight: 700 }}>
-                    Tension: {(tItem.tension * 100).toFixed(0)}%
+                    {t('analytics.society.tension_label', { pct: (tItem.tension * 100).toFixed(0) })}
                   </span>
                 </div>
               </div>
