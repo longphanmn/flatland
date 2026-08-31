@@ -728,6 +728,8 @@ class Simulation:
         self.rng = random.Random(self.config.seed)
         self.tick = 0
         self.deaths = 0
+        self.births = 0
+        self._births = 0
         # Chronicle of the world; survives resets when handed back in.
         self.history: deque[HistoryEvent] = history or deque(maxlen=self.config.history_max)
         # Optional sink for durable storage (set by the app layer); must never
@@ -7344,6 +7346,14 @@ class Simulation:
             pop += 1
 
     def _birth(self, mother: Creature, father: Creature) -> None:
+        self.births += 1
+        self._births = self.births
+        tick = self.tick + 1  # the tick being completed
+        if getattr(self, "_analytics", None) is not None:
+            try:
+                self._analytics.on_birth(tick)
+            except Exception:
+                pass
         cfg = self.config
         # Phase 4 effective birth cost/cooldown via xi
         _xi_birth = float(getattr(self, "_density_xi", 0.0) or 0.0)

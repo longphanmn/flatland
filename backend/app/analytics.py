@@ -27,8 +27,9 @@ CAUSE_BUCKET = {
 def bucket_cause(cause: str) -> str:
     return CAUSE_BUCKET.get(cause, "other")
 class TelemetryRing:
-    def __init__(self, maxlen: int = 6000):
+    def __init__(self, maxlen: int = 6000, window_ticks: int = 600):
         self.maxlen = maxlen
+        self.window_ticks = window_ticks
         self.ticks: deque[int] = deque(maxlen=maxlen)
         self.population: deque[int] = deque(maxlen=maxlen)
         self.biomass: deque[float] = deque(maxlen=maxlen)
@@ -44,6 +45,9 @@ class TelemetryRing:
         self._prev_births = 0
         self._prev_deaths = 0
         self._prev_tick = 0
+        self._start_tick = 0
+        self._birth_ticks: deque[int] = deque()
+        self._death_ticks: deque[int] = deque()
 
     def push(self, tick: int, sim: Any) -> None:
         creatures = getattr(sim, "_cached_creatures", None) or list(sim.world.creatures()) if hasattr(sim, "world") else []
@@ -76,12 +80,43 @@ class TelemetryRing:
                 lam = lambda_for_generation(max_g, sim.config)
             except Exception:
                 lam = 1.0
-        dead = getattr(sim, "deaths", 0)
-        dt = max(1, tick - self._prev_tick)
-        bv = (getattr(sim, "_births", 0) - self._prev_births) / dt * 600 if hasattr(sim, "_births") else 0.0
-        dv = (dead - self._prev_deaths) / dt * 600 if dt else 0.0
-        if not hasattr(sim, "_births"):
-            bv = max(0, (n + dead - self._prev_deaths - (self.population[-1] if self.population else n)) / dt * 600) if self.population else 0
+
+        curr_births = int(getattr(sim, "births", getattr(sim, "_births", 0)) or 0)
+        dead = int(getattr(sim, "deaths", 0) or 0)
+
+        # Handle backward tick, world reset, or initial entry
+        if not self.ticks or tick < self._prev_tick or curr_births < self._prev_births or dead < self._prev_deaths:
+            self._prev_births = curr_births
+            self._prev_deaths = dead
+            self._prev_tick = tick
+            self._start_tick = tick
+            self._birth_ticks.clear()
+            self._death_ticks.clear()
+            delta_b = 0
+            delta_d = 0
+        else:
+            delta_b = curr_births - self._prev_births
+            delta_d = dead - self._prev_deaths
+            # Fallback estimation if sim object doesn't track births
+            if delta_b == 0 and not hasattr(sim, "births") and not hasattr(sim, "_births"):
+                prev_pop = self.population[-1] if self.population else n
+                delta_b = max(0, n - prev_pop + delta_d)
+
+        for _ in range(delta_b):
+            self._birth_ticks.append(tick)
+        for _ in range(delta_d):
+            self._death_ticks.append(tick)
+
+        cutoff = tick - self.window_ticks
+        while self._birth_ticks and self._birth_ticks[0] < cutoff:
+            self._birth_ticks.popleft()
+        while self._death_ticks and self._death_ticks[0] < cutoff:
+            self._death_ticks.popleft()
+
+        win_dt = max(1, min(self.window_ticks, max(1, tick - self._start_tick)))
+        bv = (len(self._birth_ticks) / win_dt) * 600.0
+        dv = (len(self._death_ticks) / win_dt) * 600.0
+
         self.ticks.append(tick)
         self.population.append(n)
         self.biomass.append(round(biomass, 1))
@@ -94,7 +129,7 @@ class TelemetryRing:
         self.avg_irregularity.append(round(avg_irr, 4))
         self.max_generation.append(max_g)
         self.morph_lambda.append(round(lam, 3))
-        self._prev_births = getattr(sim, "_births", 0)
+        self._prev_births = curr_births
         self._prev_deaths = dead
         self._prev_tick = tick
 
@@ -152,6 +187,8 @@ class AnalyticsEngine:
     def on_tick(self, sim: Any) -> None:
         try:
             self.ring.push(sim.tick, sim)
+            self._last_summary = None
+            self._cached.clear()
         except Exception:
             pass
     def on_death(self, tick: int, cause: str) -> None:

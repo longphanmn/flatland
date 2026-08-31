@@ -53,3 +53,97 @@ def test_on_mutation_record():
     assert muts[0]["irregularity"] == 0.35
     assert muts[0]["generation"] == 4
     assert muts[0]["clan_name"] == "Test Clan"
+
+
+def test_birth_velocity_and_death_velocity_rolling():
+    cfg = Config(seed=42, num_triangles=2, num_squares=2, num_pentagons=0, num_hexagons=0, food_count=0)
+    sim = Simulation(cfg)
+    ring = TelemetryRing(maxlen=1000, window_ticks=600)
+
+    # Initial tick
+    sim.tick = 0
+    sim.births = 0
+    sim.deaths = 0
+    ring.push(0, sim)
+    assert ring.birth_velocity[-1] == 0.0
+    assert ring.death_velocity[-1] == 0.0
+
+    # Advance 600 ticks, with 6 births and 3 deaths distributed
+    for t in range(1, 601):
+        sim.tick = t
+        if t % 100 == 0:
+            sim.births += 1
+        if t % 200 == 0:
+            sim.deaths += 1
+        ring.push(t, sim)
+
+    # At tick 600: exactly 6 births in 600 ticks -> 6.0 births/min; 3 deaths -> 3.0 deaths/min
+    assert ring.birth_velocity[-1] == pytest.approx(6.0, 0.01)
+    assert ring.death_velocity[-1] == pytest.approx(3.0, 0.01)
+
+
+def test_single_death_does_not_spike_to_600():
+    cfg = Config(seed=42, num_triangles=2, num_squares=2, num_pentagons=0, num_hexagons=0, food_count=0)
+    sim = Simulation(cfg)
+    ring = TelemetryRing(maxlen=1000, window_ticks=600)
+
+    # Run for 600 ticks with 0 events
+    for t in range(600):
+        sim.tick = t
+        ring.push(t, sim)
+
+    assert ring.death_velocity[-1] == 0.0
+
+    # 1 single death occurs at tick 600
+    sim.tick = 600
+    sim.deaths = 1
+    ring.push(600, sim)
+
+    # Over the 600-tick window, 1 death = 1.0 death/min (NOT 600.0!)
+    assert ring.death_velocity[-1] == pytest.approx(1.0, 0.01)
+
+
+def test_simulation_birth_counter_and_velocity():
+    cfg = Config(seed=42, num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0, food_count=0)
+    sim = Simulation(cfg)
+    assert hasattr(sim, "births")
+    assert sim.births == 0
+
+    mother = sim.world.add(Creature(x=10, y=10, shape="line", sides=2, energy=50, clan_id=0))
+    father = sim.world.add(Creature(x=10, y=10, shape="polygon", sides=3, energy=50, clan_id=0))
+
+    sim.step()
+    sim._birth(mother, father)
+    sim.step()
+
+    assert sim.births == 1
+    assert getattr(sim, "_births", 0) == 1
+
+    eng = attach_to_sim(sim)
+    summary = eng.summary(sim)
+    ring = summary["ring"]
+
+    assert len(ring["birth_velocity"]) > 0
+    # Velocity should be positive and non-zero after birth
+    assert ring["birth_velocity"][-1] > 0.0
+
+
+def test_telemetry_ring_resets_on_rewind():
+    cfg = Config(seed=42, num_triangles=2, num_squares=0, num_pentagons=0, num_hexagons=0, food_count=0)
+    sim = Simulation(cfg)
+    ring = TelemetryRing(maxlen=1000, window_ticks=600)
+
+    sim.tick = 500
+    sim.births = 10
+    sim.deaths = 5
+    ring.push(500, sim)
+
+    # Rewind tick and counters to simulate reset / snapshot load
+    sim.tick = 10
+    sim.births = 0
+    sim.deaths = 0
+    ring.push(10, sim)
+
+    assert ring.birth_velocity[-1] == 0.0
+    assert ring.death_velocity[-1] == 0.0
+
