@@ -163,3 +163,22 @@ def test_history_filtering(client):
         assert all(e["entity_id"] == eid for e in entity_events)
 
 
+def test_wiki_json_and_html(client):
+    """Verify /wiki HTML and /api/wiki JSON return valid structured data with laws, routes, and presets."""
+    r_html = client.get("/wiki")
+    assert r_html.status_code == 200
+    assert "Flatland" in r_html.text
+
+    r_json = client.get("/api/wiki")
+    assert r_json.status_code == 200
+    data = r_json.json()
+    assert "laws" in data and len(data["laws"]) > 50
+    assert "routes" in data and len(data["routes"]) > 10
+    assert "presets" in data and len(data["presets"]) >= 7
+    assert "law_details" in data and len(data["law_details"]) > 50
+    assert "balance" in data["presets"]
+    assert "safeguard_enabled" in data["laws"]
+    assert "soft_cap_enabled" in data["laws"]
+
+
+

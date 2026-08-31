@@ -7580,6 +7580,24 @@ class Simulation:
         self._events_this_tick.append(event.model_dump(mode="json"))
         if self.on_event is not None:
             self.on_event(event)
+        if getattr(self, "_analytics", None) is not None:
+            try:
+                irr_val = float(getattr(child, "irregularity", 0.0) or 0.0)
+                is_side_mut = child.sex == "male" and hasattr(father, "sides") and child.sides != (father.sides + 1)
+                if irr_val > 0.0 or is_side_mut or (child.trait and child.trait not in (mother.trait, father.trait)):
+                    clan_info = self.clans.get(child.clan_id, {}) if child.clan_id else {}
+                    self._analytics.on_mutation(
+                        tick,
+                        child,
+                        {
+                            "clan_name": clan_info.get("name"),
+                            "clan_color": clan_info.get("color", "#8b949e"),
+                            "type": "asymmetry" if irr_val > 0 else ("polygon_side" if is_side_mut else "trait"),
+                            "desc": f"Gen {child.generation} {child.caste} ({child.sides} sides)" + (f" Irreg {irr_val}" if irr_val > 0 else ""),
+                        }
+                    )
+            except Exception:
+                pass
         # §AR S-7: birth is literally good news — kin nearby share a joy
         # ripple and a small morale/health gift.
         if child.clan_id and len(self.signals) < SIGNALS_MAX:

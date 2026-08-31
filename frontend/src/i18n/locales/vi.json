@@ -1108,9 +1108,69 @@
     "edgeHint": "hiện tượng vật lý xảy ra tại rìa bản đồ"
   },
   "analytics": {
-    "title": "Đài quan sát — Phân tích",
-    "gathering": "Đang thu thập…",
-    "open": "Phân tích",
-    "hint": "Phân tích — Đài quan sát"
+    "title": "Đài Quan Sát — Phân Tích Vĩ Mô & Phòng Đột Biến",
+    "gathering": "Đài quan sát — Đang thu thập số liệu thế giới…",
+    "open": "Đài Quan Sát",
+    "hint": "Đài quan sát — Đo đạc vĩ mô & Phòng di truyền (BD)",
+    "tabs": {
+      "mutation": "🧬 Đột Biến & Tiến Hóa",
+      "overview": "🌟 Tổng Quan & Vĩ Mô",
+      "ecology": "🌿 Sinh Thái & Sinh Khối",
+      "society": "🏛️ Xã Hội & Địa Chính Trị",
+      "crisis": "⚠️ Dự Báo Khủng Hoảng"
+    },
+    "status": {
+      "healthy": "Khỏe mạnh",
+      "stable": "Ổn định",
+      "warning": "Cảnh báo",
+      "critical": "Nguy kịch",
+      "alert": "Báo động"
+    },
+    "mutation_lab": {
+      "title": "Ủ Hình Thái & Phòng Thí Nghiệm Đột Biến",
+      "annealing_stage": "Giai đoạn tiến hóa loài λ(g)",
+      "annealing_hint": "Mức độ sinh vật hòa trộn giữa khuôn mẫu đẳng cấp Abbott cố định (λ=1.0) và biến dị di truyền tự do (λ=0.0) qua từng thế hệ.",
+      "caste_orthodoxy": "Chính thống Abbott (λ=1.0)",
+      "hybrid": "Tiến hóa lai tạp (λ=0.5)",
+      "freeform": "Tiến hóa tự do (λ=0.0)",
+      "mutation_frequency": "Tỷ lệ đột biến",
+      "mutation_freq_hint": "Tỷ lệ phần trăm sinh vật còn sống mang hình dạng biến đổi hoặc bất đối xứng hình học.",
+      "mean_irregularity": "Chỉ số bất thường trung bình",
+      "irregularity_hint": "Điểm số bất đối xứng hình học (0.0 = đa giác đều hoàn hảo, >0.3 = thân hình dị tật rõ rệt).",
+      "max_generation": "Thế hệ cao nhất",
+      "max_gen_hint": "Thế hệ cao nhất đạt được qua quá trình sinh sản và duy trì nòi giống liên tục.",
+      "abbott_ladder": "Bậc thang đẳng cấp Abbott (Số cạnh đa giác K)",
+      "abbott_hint": "Phân bổ số cạnh đỉnh đa giác theo đẳng cấp. Đột biến đôi khi tạo ra hình học phi quy chuẩn mới lạ.",
+      "top_mutants": "Tiêu điểm sinh vật đột biến",
+      "top_mutants_hint": "Các sinh vật đang sống sở hữu mức độ bất thường hình thái cao nhất thế giới.",
+      "recent_feed": "Nhật ký đột biến trực tiếp",
+      "recent_feed_hint": "Nhật ký thời gian thực ghi nhận những sinh vật mới sinh mang dị tật hoặc đột biến số cạnh.",
+      "no_mutations_yet": "Chưa ghi nhận ca đột biến nào trong kỷ nguyên này.",
+      "inspect": "Xem chi tiết",
+      "sides": "cạnh",
+      "gen": "Thế hệ"
+    },
+    "hints": {
+      "pop": "Tổng số lượng sinh vật đang sống trên toàn thế giới.",
+      "biomass": "Tổng sinh lực của toàn bộ sinh vật (máu + năng lượng).",
+      "energy_sat": "Tỷ lệ no đủ trung bình của quần thể (Năng lượng / Năng lượng tối đa).",
+      "birth_vel": "Số ca sinh nở mỗi phút trên toàn bộ các bộ tộc.",
+      "death_vel": "Số ca tử vong mỗi phút do mọi nguyên nhân.",
+      "mortality_dist": "Phân tích nguyên nhân tử vong trong cửa sổ trượt 500 nhịp.",
+      "herbivore": "Số lượng sinh vật ăn thực vật ôn hòa.",
+      "predator": "Số lượng thú săn mồi ăn thịt.",
+      "plant_biomass": "Tổng số lượng cây cối hoang dã và canh tác trên bản đồ.",
+      "shannon": "Chỉ số đa dạng sinh học Shannon-Wiener (0..2.0). Đa dạng càng cao càng chống chịu tốt trước dịch bệnh mùa màng.",
+      "evenness": "Độ đồng đều giữa các loài thực vật (0..1.0). Giúp tránh nguy cơ độc canh sụp đổ.",
+      "richness": "Số lượng các loài thực vật khác nhau đang phát triển.",
+      "corpse_recycle": "Tỷ lệ xác chết được hấp thụ tái chế trở lại chuỗi thức ăn.",
+      "hhi": "Chỉ số độc quyền lãnh thổ HHI (0..1.0). Đo lường mức độ thâu tóm dân số và nhà cửa của các bộ tộc lớn.",
+      "larder_gini": "Hệ số bất bình đẳng kho lương Gini (0..1.0). 0 là hoàn toàn công bằng; >0.5 là tình trạng tích trữ của riêng tầng lớp thống trị.",
+      "basket_gini": "Độ chênh lệch giỏ thức ăn cá nhân giữa các sinh vật (0..1.0).",
+      "famine_horizon": "Dự báo thời gian xảy ra nạn đói dựa trên tốc độ tiêu thụ và lượng lương thực dự trữ.",
+      "extinction_ne": "Quy mô quần thể hữu hiệu (Ne). Cảnh báo nguy cơ suy thoái cận huyết nếu Ne < 10.",
+      "unrest": "Chỉ số bất ổn nội bộ do chật chội nhà cửa, đói kém và xung đột tính cách.",
+      "schism_risk": "Ngưỡng cảnh báo nguy cơ phân ly bộ tộc hoặc bạo loạn."
+    }
   }
 }

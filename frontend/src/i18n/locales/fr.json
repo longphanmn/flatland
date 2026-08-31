@@ -1108,9 +1108,69 @@
     "edgeHint": "comportement physique au bord de la carte"
   },
   "analytics": {
-    "title": "Observatoire — Analytique",
-    "gathering": "Analytique — collecte…",
-    "open": "Analytique",
-    "hint": "Analytique — Observatoire"
+    "title": "Observatoire — Macro-Analytique & Labo de Mutation",
+    "gathering": "Observatoire — Collecte de la télémétrie du monde…",
+    "open": "Observatoire",
+    "hint": "Observatoire — Télémétrie macro & Labo de génétique (BD)",
+    "tabs": {
+      "mutation": "🧬 Mutation & Évolution",
+      "overview": "🌟 Vue Générale & Macro",
+      "ecology": "🌿 Écologie & Biomasse",
+      "society": "🏛️ Société & Géopolitique",
+      "crisis": "⚠️ Prévisions de Crise"
+    },
+    "status": {
+      "healthy": "Sain",
+      "stable": "Stable",
+      "warning": "Avertissement",
+      "critical": "Critique",
+      "alert": "Alerte"
+    },
+    "mutation_lab": {
+      "title": "Recuit Morphologique & Laboratoire de Mutation",
+      "annealing_stage": "Stade de spéciation λ(g)",
+      "annealing_hint": "Mesure dans laquelle les créatures mélangent les modèles de castes rigides d'Abbott (λ=1.0) avec des gènes mutés (λ=0.0) au fil des générations.",
+      "caste_orthodoxy": "Orthodoxie de Caste (λ=1.0)",
+      "hybrid": "Spéciation Hybride (λ=0.5)",
+      "freeform": "Évolution Libre (λ=0.0)",
+      "mutation_frequency": "Fréquence de mutation",
+      "mutation_freq_hint": "Pourcentage de créatures vivantes présentant un nombre de côtés altéré ou une asymétrie corporelle.",
+      "mean_irregularity": "Indice moyen d'irrégularité",
+      "irregularity_hint": "Score d'asymétrie géométrique (0.0 = polygone régulier parfait, >0.3 = corps difforme).",
+      "max_generation": "Génération maximale",
+      "max_gen_hint": "Plus haute profondeur générationnelle atteinte par reproduction continue.",
+      "abbott_ladder": "Échelle des castes d'Abbott (Côtés de polygones K)",
+      "abbott_hint": "Répartition des sommets de polygones par caste. Les mutations produisent parfois des géométries inédites.",
+      "top_mutants": "Pleins feux sur les mutants",
+      "top_mutants_hint": "Créatures vivantes dans la simulation présentant la plus forte irrégularité physique.",
+      "recent_feed": "Chronique des mutations en direct",
+      "recent_feed_hint": "Journal en temps réel des créatures nées avec des aberrations morphologiques.",
+      "no_mutations_yet": "Aucune naissance mutante enregistrée pour l'instant dans cette ère.",
+      "inspect": "Inspecter",
+      "sides": "côtés",
+      "gen": "Gén"
+    },
+    "hints": {
+      "pop": "Population totale vivante actuellement simulée dans le monde.",
+      "biomass": "Vitalité globale de toutes les créatures (santé totale + énergie).",
+      "energy_sat": "Taux moyen de réserve métabolique de la population (Énergie / Énergie Max).",
+      "birth_vel": "Naissances par minute à travers tous les clans.",
+      "death_vel": "Événements de mortalité par minute toutes causes confondues.",
+      "mortality_dist": "Décomposition des causes récentes de décès sur une fenêtre glissante de 500 ticks.",
+      "herbivore": "Nombre d'herbivores pacifiques récolteurs.",
+      "predator": "Nombre de prédateurs carnivores chassant des proies.",
+      "plant_biomass": "Total des plantes sauvages et cultivées actives sur la carte.",
+      "shannon": "Indice de biodiversité de Shannon-Wiener (0..2.0). Une diversité élevée protège contre les maladies des cultures.",
+      "evenness": "Uniformité de la répartition des espèces végétales (0..1.0). Évite l'effondrement par monoculture.",
+      "richness": "Nombre d'espèces végétales distinctes en croissance.",
+      "corpse_recycle": "Proportion de matière organique recyclée dans l'écosystème.",
+      "hhi": "Indice d'hégémonie clanique HHI (0..1.0). Mesure le monopole territorial et démographique des clans dominants.",
+      "larder_gini": "Coefficient de Gini de l'inégalité des greniers (0..1.0). 0 est parfaitement égalitaire ; >0.5 indique une thésaurisation des élites.",
+      "basket_gini": "Inégalité de récolte individuelle mesurant la disparité des paniers de nourriture.",
+      "famine_horizon": "Estimation du nombre de ticks avant la famine selon la consommation nette et les réserves.",
+      "extinction_ne": "Taille efficace de la population (Ne). Avertit d'un goulot d'étranglement génétique si Ne < 10.",
+      "unrest": "Friction interne du clan basée sur le surpeuplement des abris, la faim et les tensions de personnalité.",
+      "schism_risk": "Seuil d'alerte indiquant un risque de scission clanique ou de mutinerie."
+    }
   }
 }

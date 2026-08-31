@@ -14,7 +14,7 @@ from .guide import _api_table, _god_laws_table, _md_to_html, CODEBASE_MAP_MD, CO
 # Reuse guide helpers but add wiki-specific sections
 
 
-SUSTAINABILITY_MD = """
+SUSTAINABILITY_MD = r"""
 # Sustainability — Multi-Generational Balance
 
 The world self-balances across hundreds of days and multi-generational dynastic flourishing under tuned ecological and social equilibrium.
@@ -48,7 +48,7 @@ When population drops below $K_{safe} = K_{cap} \times \text{safeguard\_relief\_
 - **Tier 3 ($N \le K_{crit}$)**: The Sphere intervenes with a Genesis Miracle, creating `safeguard_genesis_batch` pristine regular beings to ensure species survival.
 """
 
-PERFORMANCE_MD = """
+PERFORMANCE_MD = r"""
 # Performance & Scale — 1000+ head @ 60 FPS
 
 - **Zero-Allocation Spatial Hash**: Pre-allocated 1D bucket list in `world.py` eliminates tuple allocations and dictionary re-hashing per tick; `query_radius` uses squared-distance early-exit without `math.hypot`.
@@ -61,7 +61,7 @@ PERFORMANCE_MD = """
 See `world.py:38`, `simulation.py:2680`, `CanvasRenderer.tsx:370`, `App.tsx:230`.
 """
 
-WIKI_OVERVIEW_MD = """
+WIKI_OVERVIEW_MD = r"""
 # Flatland Wiki & Encyclopedia
 
 > **Developed by [Long Phan](mailto:long@minhnhan.in)** ([long@minhnhan.in](mailto:long@minhnhan.in) · [minhnhan.in](https://minhnhan.in) · [world.minhnhan.in](https://world.minhnhan.in))  
@@ -78,9 +78,9 @@ This project is **developed from the Flatland idea rather than mimicking the boo
 
 - **Cognitive Agency & Clan Social Intelligence**: Multi-objective utility AI replaces rigid if/else trees (evaluating survival, duty, traits, and kin needs); spatial waypoint mental maps; tactical soldier phalanxes, line kiting maneuvers, interpersonal trust-based buddy pairing, autonomous clan task boards (dynamic labor division), governance archetypes (Monarchy, Theocracy, Junta, Republic), adaptive bylaws (winter rationing, martial law), calculated Casus Belli, inter-clan trade caravans, and annual autumn harvest festivals.
 - **Autonomous Evolution & Culture**: 6 heritable personality archetypes (`brave`, `cautious`, `altruistic`, `greedy`, `explorer`, `builder`), craftable tools (spears, baskets, herb poultices, chieftain crowns), 4 mastery skills (Farming 🌾, Combat ⚔️, Foraging 🦴, Healing 🌿), earned dynamic titles, oral lore passed from elders to youth in houses, and live thought bubbles.
-- **Realistic Energy & Metabolism**: Infant low metabolism ($0.45\\times$ energy decay), combat stamina expenditure, and autonomous field food reserve management via baskets.
+- **Realistic Energy & Metabolism**: Infant low metabolism ($0.45\times$ energy decay), combat stamina expenditure, and autonomous field food reserve management via baskets.
 - **Settlements & Diplomacy**: Walled houses with creature-sized doors, multi-house clan territories, settlement food larders, mutual coalitions, tributary pacts, and schisms.
-- **Geometric Physics & Morphological Evolution (K∈[3,24])**: Polar genomes $(r_i,\\phi_i)$ $K\\in[3,24]$ (`KMAX 24`, `morphology_engine.py`) with SoA `physical_traits` trait baking ($A,P,I_{zz},\\theta_{\\min},asym,D_{mult}$) and SAT narrowphase (broadphase $r_{\\max}$ + circle fallback $K\\ge24$ & $asym<0.05$ + edge normals); annealing $\\lambda(g)$ blends Abbott templates → free evolution, energetic asymmetry, neural courtship, and extinction safeguards ($\\eta(N)$, Tier1/2/3 genesis, mercy).
+- **Geometric Physics & Morphological Evolution (K∈[3,24])**: Polar genomes $(r_i,\phi_i)$ $K\in[3,24]$ (`KMAX 24`, `morphology_engine.py`) with SoA `physical_traits` trait baking ($A,P,I_{zz},\theta_{\min},asym,D_{mult}$) and SAT narrowphase (broadphase $r_{\max}$ + circle fallback $K\ge24$ & $asym<0.05$ + edge normals); annealing $\lambda(g)$ blends Abbott templates → free evolution, energetic asymmetry, neural courtship, and extinction safeguards ($\eta(N)$, Tier1/2/3 genesis, mercy).
 - **Real-Time Synchronization**: Deterministic fixed-rate engine loop streaming state over WebSocket (`/ws`) at ~30–60 FPS with durable SQLite historical chronicle storage.
 """
 
@@ -89,7 +89,7 @@ This project is **developed from the Flatland idea rather than mimicking the boo
 
 
 
-FLATLAND_BOOK_COMPARISON_MD = """
+FLATLAND_BOOK_COMPARISON_MD = r"""
 # Flatland: The Novella vs. The Simulation
 
 A comparative study between **Edwin A. Abbott’s 1884 satirical classic *Flatland: A Romance of Many Dimensions*** and this autonomous artificial life simulation.

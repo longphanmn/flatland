@@ -1004,7 +1004,13 @@ export default function App() {
               <button className="god-close" onClick={() => setAnalyticsOpen(false)} aria-label={t('common.close')}>×</button>
             </header>
             <div style={{ maxHeight: '70vh', overflowY: 'auto', padding: '8px 0' }}>
-              <Observatory state={state} />
+              <Observatory
+                state={state}
+                onSelectCreature={(id) => {
+                  setSelectedId(id)
+                  setAnalyticsOpen(false)
+                }}
+              />
             </div>
           </div>
         </div>

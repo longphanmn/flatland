@@ -37,21 +37,45 @@ class TelemetryRing:
         self.dead: deque[int] = deque(maxlen=maxlen)
         self.birth_velocity: deque[float] = deque(maxlen=maxlen)
         self.death_velocity: deque[float] = deque(maxlen=maxlen)
+        self.mutation_freq: deque[float] = deque(maxlen=maxlen)
+        self.avg_irregularity: deque[float] = deque(maxlen=maxlen)
+        self.max_generation: deque[int] = deque(maxlen=maxlen)
+        self.morph_lambda: deque[float] = deque(maxlen=maxlen)
         self._prev_births = 0
         self._prev_deaths = 0
         self._prev_tick = 0
+
     def push(self, tick: int, sim: Any) -> None:
         creatures = getattr(sim, "_cached_creatures", None) or list(sim.world.creatures()) if hasattr(sim, "world") else []
         n = len(creatures)
         biomass = 0.0
         energy_sum = 0.0
         lifespan_sum = 0.0
+        mut_count = 0
+        irr_sum = 0.0
+        max_g = 0
         for c in creatures:
             biomass += getattr(c, "health", 0) + getattr(c, "energy", 0)
             energy_sum += getattr(c, "energy", 0) / max(1, getattr(sim.config, "energy_max", 100) or 100)
             lifespan_sum += getattr(c, "lifespan", 0)
+            irr = float(getattr(c, "irregularity", 0.0) or 0.0)
+            if irr > 0.0:
+                mut_count += 1
+                irr_sum += irr
+            gen = getattr(c, "generation", 0)
+            if gen > max_g:
+                max_g = gen
         avg_life = lifespan_sum / max(1, n)
         sat = energy_sum / max(1, n)
+        mut_freq = mut_count / max(1, n)
+        avg_irr = irr_sum / max(1, n)
+        lam = 1.0
+        if hasattr(sim, "config"):
+            try:
+                from .evolution_manager import lambda_for_generation
+                lam = lambda_for_generation(max_g, sim.config)
+            except Exception:
+                lam = 1.0
         dead = getattr(sim, "deaths", 0)
         dt = max(1, tick - self._prev_tick)
         bv = (getattr(sim, "_births", 0) - self._prev_births) / dt * 600 if hasattr(sim, "_births") else 0.0
@@ -66,15 +90,21 @@ class TelemetryRing:
         self.dead.append(dead)
         self.birth_velocity.append(round(bv, 2))
         self.death_velocity.append(round(dv, 2))
+        self.mutation_freq.append(round(mut_freq, 3))
+        self.avg_irregularity.append(round(avg_irr, 4))
+        self.max_generation.append(max_g)
+        self.morph_lambda.append(round(lam, 3))
         self._prev_births = getattr(sim, "_births", 0)
         self._prev_deaths = dead
         self._prev_tick = tick
+
     def sparkline(self, key: str, n: int = 60) -> list[float]:
         d = getattr(self, key, None)
         if d is None:
             return []
         lst = list(d)[-n:]
         return lst
+
     def snapshot(self) -> dict:
         return {
             "ticks": list(self.ticks),
@@ -85,6 +115,10 @@ class TelemetryRing:
             "dead": list(self.dead),
             "birth_velocity": list(self.birth_velocity),
             "death_velocity": list(self.death_velocity),
+            "mutation_freq": list(self.mutation_freq),
+            "avg_irregularity": list(self.avg_irregularity),
+            "max_generation": list(self.max_generation),
+            "morph_lambda": list(self.morph_lambda),
         }
 class MortalityDecomposer:
     def __init__(self):
@@ -110,6 +144,7 @@ class AnalyticsEngine:
     def __init__(self, maxlen: int = 6000):
         self.ring = TelemetryRing(maxlen=maxlen)
         self.mortality = MortalityDecomposer()
+        self.recent_mutations: deque[dict] = deque(maxlen=30)
         self._last_summary: dict | None = None
         self._last_summary_tick: int = -1
         self._last_summary_time: float = 0.0
@@ -126,10 +161,30 @@ class AnalyticsEngine:
             pass
     def on_birth(self, tick: int) -> None:
         pass
+    def on_mutation(self, tick: int, creature: Any, details: dict | None = None) -> None:
+        try:
+            info = details or {}
+            self.recent_mutations.append({
+                "tick": tick,
+                "creature_id": getattr(creature, "id", 0),
+                "generation": getattr(creature, "generation", 0),
+                "caste": getattr(creature, "caste", "Soldier"),
+                "sides": getattr(creature, "sides", 3),
+                "irregularity": round(float(getattr(creature, "irregularity", 0.0) or 0.0), 3),
+                "clan_id": getattr(creature, "clan_id", None),
+                "clan_name": info.get("clan_name"),
+                "clan_color": info.get("clan_color", "#8b949e"),
+                "type": info.get("type", "morphology"),
+                "desc": info.get("desc", "Mutation born"),
+            })
+            self._last_summary = None
+            self._cached.clear()
+        except Exception:
+            pass
     def generational_tracker(self, sim: Any) -> dict:
         creatures = getattr(sim, "_cached_creatures", None) or list(sim.world.creatures()) if hasattr(sim, "world") else []
         if not creatures:
-            return {"mobility": 0, "mutation_freq": 0, "asymmetry_dist": [], "abbott_ladder": {}}
+            return {"mobility": 0, "mutation_freq": 0, "asymmetry_dist": [], "abbott_ladder": {}, "top_mutants": [], "lambda_val": 1.0, "recent_mutations": []}
         gens = Counter(c.generation for c in creatures)
         max_gen = max(gens) if gens else 0
         mobility = round(sum(1 for c in creatures if c.generation == max_gen) / max(1, len(creatures)), 3)
@@ -137,24 +192,49 @@ class AnalyticsEngine:
         mutation_freq = round(mutated / max(1, len(creatures)), 3)
         asym = [round(getattr(c, "irregularity", 0), 3) for c in creatures if getattr(c, "irregularity", 0) > 0]
         abbott: dict[int, int] = {}
-        if hasattr(sim, "_soa") and getattr(sim, "_soa", None) is not None:
-            try:
-                soa = sim._soa
-                ks = getattr(soa, "morph_k", None)
-                if ks is not None:
-                    try:
-                        import numpy as _np
-                        uniq, cnts = _np.unique(ks[: getattr(soa, "N", len(ks))], return_counts=True)
-                        abbott = {int(k): int(v) for k, v in zip(uniq, cnts) if 3 <= int(k) <= 64}
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-        else:
-            for c in creatures:
+        for c in creatures:
+            if getattr(c, "shape", "") == "line" or getattr(c, "sides", 3) == 2:
+                k = 2
+            else:
                 k = getattr(c, "sides", 3)
-                abbott[k] = abbott.get(k, 0) + 1
-        return {"mobility": mobility, "mutation_freq": mutation_freq, "asymmetry_dist": asym[:20], "abbott_ladder": abbott, "generations": dict(gens)}
+            abbott[k] = abbott.get(k, 0) + 1
+        top_mutants = []
+        for c in sorted(creatures, key=lambda x: getattr(x, "irregularity", 0.0) or 0.0, reverse=True):
+            irr = float(getattr(c, "irregularity", 0.0) or 0.0)
+            if irr <= 0.0:
+                break
+            clan_info = sim.clans.get(c.clan_id, {}) if (hasattr(sim, "clans") and c.clan_id) else {}
+            top_mutants.append({
+                "id": c.id,
+                "name": getattr(c, "personal_name", None) or f"Creature #{c.id}",
+                "caste": c.caste,
+                "sides": c.sides,
+                "irregularity": round(irr, 3),
+                "generation": c.generation,
+                "clan_id": c.clan_id,
+                "clan_name": clan_info.get("name"),
+                "clan_color": clan_info.get("color", "#8b949e"),
+            })
+            if len(top_mutants) >= 6:
+                break
+        lam = 1.0
+        if hasattr(sim, "config"):
+            try:
+                from .evolution_manager import lambda_for_generation
+                lam = lambda_for_generation(max_gen, sim.config)
+            except Exception:
+                lam = 1.0
+        return {
+            "mobility": mobility,
+            "mutation_freq": mutation_freq,
+            "asymmetry_dist": asym[:20],
+            "abbott_ladder": abbott,
+            "generations": dict(gens),
+            "max_generation": max_gen,
+            "lambda_val": round(lam, 3),
+            "top_mutants": top_mutants,
+            "recent_mutations": list(self.recent_mutations),
+        }
     def lotka_volterra(self, sim: Any) -> dict:
         creatures = getattr(sim, "_cached_creatures", None) or list(sim.world.creatures()) if hasattr(sim, "world") else []
         herb = sum(1 for c in creatures if getattr(c, "is_herbivore", False))
@@ -330,13 +410,13 @@ class AnalyticsEngine:
     def sparkline(self, key: str) -> list[float]:
         return self.ring.sparkline(key)
 _ENGINE: AnalyticsEngine | None = None
-def get_engine() -> AnalyticsEngine:
+def get_engine(fresh: bool = False) -> AnalyticsEngine:
     global _ENGINE
-    if _ENGINE is None:
+    if _ENGINE is None or fresh:
         _ENGINE = AnalyticsEngine()
     return _ENGINE
-def attach_to_sim(sim: Any) -> AnalyticsEngine:
-    eng = get_engine()
+def attach_to_sim(sim: Any, fresh: bool = False) -> AnalyticsEngine:
+    eng = get_engine(fresh=fresh)
     try:
         sim._analytics = eng
     except Exception:

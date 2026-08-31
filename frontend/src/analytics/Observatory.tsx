@@ -1,15 +1,24 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '../i18n'
+import MutationLab from './MutationLab'
+import MacroOverview from './MacroOverview'
+import EcologyTab from './EcologyTab'
+import SociologyTab from './SociologyTab'
+import CrisisTab from './CrisisTab'
 
 interface Props {
   state?: any
+  onSelectCreature?: (id: number) => void
 }
 
-export default function Observatory({ state }: Props) {
+type TabType = 'mutation' | 'overview' | 'ecology' | 'society' | 'crisis'
+
+export default function Observatory({ state, onSelectCreature }: Props) {
   const { t } = useI18n()
   const [data, setData] = useState<any>(null)
+  const [activeTab, setActiveTab] = useState<TabType>('mutation')
 
-  // Prefer WS analytics if present, else fetch
+  // Prefer WS analytics if present, else fallback poll
   useEffect(() => {
     if (state?.analytics) {
       setData(state.analytics)
@@ -22,142 +31,168 @@ export default function Observatory({ state }: Props) {
         .then((d) => alive && setData(d))
         .catch(() => {})
     load()
-    // 30s fallback poll when no WS analytics (low frequency)
-    const iv = setInterval(() => { if (!document.hidden) load() }, 30000)
-    return () => { alive = false; clearInterval(iv) }
+    const iv = setInterval(() => {
+      if (!document.hidden) load()
+    }, 5000)
+    return () => {
+      alive = false
+      clearInterval(iv)
+    }
   }, [state])
 
   if (!data || data.error) {
-    return <p className="chip">{t('analytics.gathering')}</p>
-  }
-
-  const ring = data.ring ?? {}
-  const trophic = data.trophic ?? {}
-  const biodiv = data.biodiversity ?? {}
-  const famine = data.famine ?? {}
-  const extinction = data.extinction ?? {}
-  const unrest = data.unrest ?? {}
-  const hegemony = data.hegemony ?? {}
-  const gini = data.gini ?? {}
-
-  const Sparkline = ({ data, color = '#79c0ff', height = 48 }: { data: number[]; color?: string; height?: number }) => {
-    if (!data || data.length < 2) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b949e', fontSize: 10 }}>collecting…</div>
-    // Decimate for performance when holding 6000 ticks — cap rendered points at ~600
-    // to keep SVG polyline cheap while preserving shape; always keep last point.
-    let displayData = data
-    if (data.length > 600) {
-      const step = Math.ceil(data.length / 600)
-      displayData = data.filter((_, i) => i % step === 0)
-      if (displayData[displayData.length - 1] !== data[data.length - 1]) displayData.push(data[data.length - 1])
-    }
-    const w = 280, h = height, pad = 6
-    const min = Math.min(...displayData), max = Math.max(...displayData)
-    const range = max - min || 1
-    const stepPx = (w - pad * 2) / (displayData.length - 1)
-    const points = displayData.map((v, i) => `${pad + i * stepPx},${h - pad - ((v - min) / range) * (h - pad * 2)}`).join(' ')
-    const last = data[data.length - 1]
     return (
-      <div style={{ position: 'relative', overflowX: displayData.length > 300 ? 'auto' : undefined }}>
-        <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ display: 'block', background: '#0d1117', borderRadius: 6, border: '1px solid #21262d' }}>
-          <polyline fill="none" stroke={color} strokeWidth={1.6} points={points} />
-        </svg>
-        <span style={{ position: 'absolute', right: 6, top: 4, fontSize: 10, color, fontWeight: 700 }}>{last}</span>
+      <div style={{ padding: '24px', textAlign: 'center', color: '#8b949e', fontSize: 12 }}>
+        <span style={{ fontSize: 24, display: 'block', marginBottom: 8 }}>🔭</span>
+        {t('analytics.gathering')}
       </div>
     )
   }
 
+  const extinction = data.extinction ?? {}
+  const famine = data.famine ?? {}
+  const unrest = data.unrest ?? {}
+  const gen = data.generational ?? {}
+  const mutationFreq = gen.mutation_freq ?? 0
+  const hasCriticalCrisis = extinction.alarm || (famine.horizon_ticks ?? 9999) < 300 || unrest.schism_risk
+  const hasWarningCrisis = (extinction.Ne ?? 20) < 18 || (famine.horizon_ticks ?? 9999) < 1000 || (unrest.unrest_score ?? 0) > 5
+
+  const worldStatusLabel = hasCriticalCrisis ? '⚠️ CRISIS ALERT' : hasWarningCrisis ? '🟡 ELEVATED STRAIN' : '🟢 STABLE HOMEOSTASIS'
+  const worldStatusColor = hasCriticalCrisis ? '#f85149' : hasWarningCrisis ? '#d29922' : '#3fb950'
+
+  const tabs: { id: TabType; label: string; badge?: string; badgeColor?: string }[] = [
+    {
+      id: 'mutation',
+      label: t('analytics.tabs.mutation'),
+      badge: `${(mutationFreq * 100).toFixed(0)}%`,
+      badgeColor: '#bc8cff',
+    },
+    {
+      id: 'overview',
+      label: t('analytics.tabs.overview'),
+    },
+    {
+      id: 'ecology',
+      label: t('analytics.tabs.ecology'),
+    },
+    {
+      id: 'society',
+      label: t('analytics.tabs.society'),
+    },
+    {
+      id: 'crisis',
+      label: t('analytics.tabs.crisis'),
+      badge: hasCriticalCrisis ? '!' : undefined,
+      badgeColor: '#f85149',
+    },
+  ]
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 11 }}>
-      <h4 style={{ margin: '4px 0', fontSize: 12 }}>🔭 {t('analytics.title')} — tick {data.tick}</h4>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 11 }}>
+      {/* Top World Status Header */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 6,
+          background: '#0d1117',
+          border: '1px solid #30363d',
+          borderRadius: 8,
+          padding: '6px 10px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontWeight: 700, color: '#f0f6fc', fontSize: 12 }}>
+            🔭 World Tick: <b style={{ color: '#58a6ff' }}>{data.tick}</b>
+          </span>
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              color: worldStatusColor,
+              background: 'rgba(0,0,0,0.4)',
+              border: `1px solid ${worldStatusColor}44`,
+              padding: '2px 6px',
+              borderRadius: 4,
+            }}
+          >
+            {worldStatusLabel}
+          </span>
+        </div>
 
-      {/* Graphs — population & biomass history */}
-      <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}>
-        <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase' }}>Population History (6000 ticks)</div>
-        <div style={{ marginTop: 6 }}>
-          <Sparkline data={ring.population as number[]} color="#3fb950" height={56} />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 6 }}>
-          <div>
-            <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', marginBottom: 4 }}>Biomass</div>
-            <Sparkline data={ring.biomass as number[]} color="#e3b341" height={40} />
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', marginBottom: 4 }}>Energy Saturation</div>
-            <Sparkline data={ring.energy_saturation as number[]} color="#79c0ff" height={40} />
-          </div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 6 }}>
-          <div>
-            <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', marginBottom: 4 }}>Birth / min</div>
-            <Sparkline data={ring.birth_velocity as number[]} color="#a371f7" height={36} />
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', marginBottom: 4 }}>Death / min</div>
-            <Sparkline data={ring.death_velocity as number[]} color="#f85149" height={36} />
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#8b949e' }}>
+          <span>Max Gen: <b style={{ color: '#bc8cff' }}>{gen.max_generation ?? 0}</b></span>
+          <span>·</span>
+          <span>Speciation: <b style={{ color: '#79c0ff' }}>λ={(gen.lambda_val ?? 1.0).toFixed(2)}</b></span>
         </div>
       </div>
 
-      {/* Macro sparklines */}
-      <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}>
-        <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase' }}>Population · Biomass · Saturation</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginTop: 4 }}>
-          <span className="chip" style={{ justifyContent: 'space-between' }}>Pop <b>{ring.population?.[ring.population.length-1] ?? '—'}</b></span>
-          <span className="chip" style={{ justifyContent: 'space-between' }}>Bio <b>{ring.biomass?.[ring.biomass.length-1] ?? '—'}</b></span>
-          <span className="chip" style={{ justifyContent: 'space-between' }}>E sat <b>{ring.energy_saturation?.[ring.energy_saturation.length-1] ?? '—'}</b></span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 6 }}>
-          <span className="chip" style={{ justifyContent: 'space-between' }}>Birth/min <b>{ring.birth_velocity?.[ring.birth_velocity.length-1] ?? '—'}</b></span>
-          <span className="chip" style={{ justifyContent: 'space-between' }}>Death/min <b>{ring.death_velocity?.[ring.death_velocity.length-1] ?? '—'}</b></span>
-        </div>
+      {/* Navigation Tab Bar */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 4,
+          background: '#0d1117',
+          padding: '4px',
+          borderRadius: 8,
+          border: '1px solid #21262d',
+          overflowX: 'auto',
+        }}
+      >
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                background: isActive ? '#21262d' : 'transparent',
+                border: isActive ? '1px solid #388bfd' : '1px solid transparent',
+                borderRadius: 6,
+                color: isActive ? '#f0f6fc' : '#8b949e',
+                fontWeight: isActive ? 700 : 500,
+                fontSize: 11,
+                padding: '5px 10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                whiteSpace: 'nowrap',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {tab.label}
+              {tab.badge && (
+                <span
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    color: '#0d1117',
+                    background: tab.badgeColor || '#58a6ff',
+                    padding: '1px 5px',
+                    borderRadius: 8,
+                  }}
+                >
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Mortality */}
-      <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}>
-        <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase' }}>Mortality · 500-tick dist</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-          {Object.entries(data.mortality?.distribution ?? {}).map(([k, v]: any) => (
-            <span key={k} className="chip" style={{ fontSize: 10 }}>{k} {(v*100).toFixed(0)}%</span>
-          ))}
-        </div>
-      </div>
-
-      {/* Trophic */}
-      <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}>
-        <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase' }}>Lotka-Volterra · Biodiversity</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginTop: 4 }}>
-          <span className="chip">🌿 {trophic.plant_biomass ?? '—'}</span>
-          <span className="chip">🦌 {trophic.herbivores ?? '—'}</span>
-          <span className="chip">🐺 {trophic.predators ?? '—'}</span>
-        </div>
-        <div style={{ marginTop: 4, display: 'flex', gap: 6 }}>
-          <span className="chip">Shannon {biodiv.shannon ?? '—'}</span>
-          <span className="chip">Even {biodiv.evenness ?? '—'}</span>
-          <span className="chip">Rich {biodiv.richness ?? '—'}</span>
-        </div>
-      </div>
-
-      {/* Hegemony + Gini */}
-      <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}>
-        <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase' }}>Hegemony · Gini</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 4 }}>
-          <span className="chip">HHI {hegemony.hhi ?? '—'}</span>
-          <span className="chip">Lar Gini {gini.larder_gini ?? '—'}</span>
-        </div>
-      </div>
-
-      {/* Warnings */}
-      <div style={{ background: unrest.schism_risk ? '#2a1a1a' : '#161b22', border: `1px solid ${unrest.schism_risk ? '#f85149' : '#30363d'}`, borderRadius: 6, padding: '6px 8px' }}>
-        <div style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase' }}>Famine · Extinction · Unrest</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 4 }}>
-          <span className="chip" style={{ color: famine.horizon_ticks < 200 ? '#f85149' : '#8b949e' }}>Famine {famine.horizon_ticks ?? '∞'}t</span>
-          <span className="chip" style={{ color: extinction.alarm ? '#f85149' : '#3fb950' }}>Ne {extinction.Ne ?? '—'}</span>
-          <span className="chip" style={{ color: unrest.schism_risk ? '#f85149' : '#8b949e' }}>Unrest {unrest.unrest_score ?? 0}</span>
-          <span className="chip">Fertile {extinction.fertile_females ?? '—'}♀</span>
-        </div>
-        {(extinction.alarm || unrest.schism_risk) && (
-          <div style={{ marginTop: 4, color: '#f85149', fontWeight: 600 }}>⚠ {extinction.alarm ? 'Extinction cliff! ' : ''}{unrest.schism_risk ? 'Schism risk!' : ''}</div>
+      {/* Active Tab View */}
+      <div style={{ minHeight: 320 }}>
+        {activeTab === 'mutation' && (
+          <MutationLab data={data} onSelectCreature={onSelectCreature} />
         )}
+        {activeTab === 'overview' && <MacroOverview data={data} />}
+        {activeTab === 'ecology' && <EcologyTab data={data} />}
+        {activeTab === 'society' && <SociologyTab data={data} />}
+        {activeTab === 'crisis' && <CrisisTab data={data} />}
       </div>
     </div>
   )

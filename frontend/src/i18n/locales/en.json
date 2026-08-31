@@ -1108,9 +1108,69 @@
     "edgeHint": "what happens at the edge of the world"
   },
   "analytics": {
-    "title": "Observatory — Analytics",
-    "gathering": "Analytics — gathering…",
-    "open": "Analytics",
-    "hint": "Analytics — Observatory (BD)"
+    "title": "Observatory — Macro Analytics & Evolution Lab",
+    "gathering": "Observatory — Gathering world telemetry…",
+    "open": "Observatory",
+    "hint": "Observatory — Macro Telemetry & Genetics Lab (BD)",
+    "tabs": {
+      "mutation": "🧬 Mutation & Evolution",
+      "overview": "🌟 Overview & Macro",
+      "ecology": "🌿 Ecology & Biomass",
+      "society": "🏛️ Society & Geopolitics",
+      "crisis": "⚠️ Crisis Forecast"
+    },
+    "status": {
+      "healthy": "Healthy",
+      "stable": "Stable",
+      "warning": "Warning",
+      "critical": "Critical",
+      "alert": "Alert"
+    },
+    "mutation_lab": {
+      "title": "Morphological Annealing & Mutation Lab",
+      "annealing_stage": "Speciation Stage λ(g)",
+      "annealing_hint": "How much creatures blend rigid Abbott caste templates (λ=1.0) with noisy mutated genes (λ=0.0) as generations progress.",
+      "caste_orthodoxy": "Caste Orthodoxy (λ=1.0)",
+      "hybrid": "Hybrid Speciation (λ=0.5)",
+      "freeform": "Freeform Evolution (λ=0.0)",
+      "mutation_frequency": "Mutation Frequency",
+      "mutation_freq_hint": "Percentage of active living creatures bearing altered side counts or structural irregularity.",
+      "mean_irregularity": "Mean Irregularity Index",
+      "irregularity_hint": "Geometric asymmetry score (0.0 = regular polygon, >0.3 = visibly distorted mutant body).",
+      "max_generation": "Max Generation",
+      "max_gen_hint": "Highest generational depth reached through continuous breeding and lineage survival.",
+      "abbott_ladder": "Abbott Caste Ladder (Polygon Sides K)",
+      "abbott_hint": "Distribution of polygon vertices across castes. Mutations occasionally produce novel non-canonical geometries.",
+      "top_mutants": "Living Mutant Spotlight",
+      "top_mutants_hint": "Living creatures in the simulation exhibiting the highest physical irregularity.",
+      "recent_feed": "Live Mutation Chronicle",
+      "recent_feed_hint": "Real-time log of creatures born with morphological aberrations or genetic side jumps.",
+      "no_mutations_yet": "No mutant births recorded yet in this era.",
+      "inspect": "Inspect",
+      "sides": "sides",
+      "gen": "Gen"
+    },
+    "hints": {
+      "pop": "Total living population currently simulated in the world.",
+      "biomass": "Aggregate vitality of all creatures (total health + energy).",
+      "energy_sat": "Mean metabolic reserve ratio across the population (Energy / Max Energy).",
+      "birth_vel": "Births per minute across all clans.",
+      "death_vel": "Mortality events per minute across all causes.",
+      "mortality_dist": "Decomposition of recent death causes over a 500-tick rolling window.",
+      "herbivore": "Count of peaceful foraging herbivores.",
+      "predator": "Count of carnivorous predators hunting prey.",
+      "plant_biomass": "Total ripe and growing wild & cultivated plants on the map.",
+      "shannon": "Shannon-Wiener Biodiversity Index (0..2.0). Higher entropy indicates healthy flora variety against crop disease.",
+      "evenness": "Species distribution uniformity (0..1.0). High evenness prevents monoculture collapse.",
+      "richness": "Number of distinct plant species actively growing.",
+      "corpse_recycle": "Ratio of deceased organic matter returned to the living ecosystem.",
+      "hhi": "Herfindahl-Hirschman Clan Hegemony Index (0..1.0). Measures territorial and demographic monopoly by dominant clans.",
+      "larder_gini": "Larder Inequality Gini Coefficient (0..1.0). 0 is perfectly egalitarian; >0.5 indicates severe resource hoarding.",
+      "basket_gini": "Individual Foraging Inequality (0..1.0) measuring disparity in personal food baskets.",
+      "famine_horizon": "Estimated ticks until famine strikes based on net metabolic burn vs granary stores.",
+      "extinction_ne": "Effective Population Size (Ne). Harmonic breeding viability metric. Values < 10 warn of genetic bottleneck / extinction risk.",
+      "unrest": "Internal clan friction based on overcrowded shelters, hunger stress, and personality discord.",
+      "schism_risk": "Warning threshold indicating risk of clan rebellion, desertion, or civil fragmentation."
+    }
   }
 }
