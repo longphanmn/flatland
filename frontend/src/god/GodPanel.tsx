@@ -200,97 +200,129 @@ const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
 }
 
 const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
-  food_count: 'the world keeps this much food alive — bounty or famine (winter ×0.5, summer ×1.2)',
-  plant_growth_rate: 'how fast plants mature (0.05) — berry 0.65×, mushroom 0.85×, poison 0.6×, season multiplies',
-  plant_spread_rate: 'chance a mature plant seeds a nearby sprout each tick',
-  nutrient_cycle_rate: 'corpse decay boost to nearby plants (0.65) — death feeds life',
-  poison_rate: 'chance a new sprout is poisonous (0.01) — 1% sicken, berry heals +1, poison -30 health',
-  beast_ratio: 'wild herbivores as fraction of creature density — grazers that feed predators',
-  diet_strictness: '0 omnivore, 1 strict — herbivore ignores meat, predator ignores plants',
-  territory_radius: 'clan territory circle radius around house (14) — members steer home, trespass sours relations',
-  trespass_decay: 'relation points lost per tick a rival trespasses inside territory',
-  house_decay_ticks: 'abandoned house ticks before crumbling to ruin (2400 = 2 seasons)',
-  energy_decay_per_tick: 'how fast all life burns without eating (0.025) — winter/rain adds 0.03 exposure if roofless',
-  energy_from_food: 'base energy from a mature plant (32) — berry 48, mushroom 24, grass 32, poison 8',
-  perceive_radius: 'base sight (20) — each caste scales it (Woman 0.8×, Priest 1.35×), night 0.6×, fog 0.6×, Eye totem 1.25×',
-  food_giveup_ticks: 'a meal blocked by rock/wall is abandoned this many ticks — the hungry give up and seek food elsewhere (0 = never give up)',
-  lifespan_mult: 'scales every caste’s natural lifespan',
-  door_clearance: 'doorways scale with the largest creature × this (1.5)',
-  house_min_size: 'applies to houses built after the next reset (6)',
-  house_max_size: 'applies to houses built after the next reset (10)',
-  adult_age: 'creatures must be this many ticks old to mate (200)',
-  birth_rate: 'chance per eligible pair per tick, before fertility (0.35)',
-  sex_ratio: 'probability a child is a son (polygons ascend; daughters are lines)',
-  mutation_rate: 'chance a son’s side count deviates ±1 from inheritance (0.05)',
-  euthanasia_threshold: 'irregular children at/above this are consumed at adulthood, below it demoted (0.7)',
-  carrying_capacity: 'above this population, fertility fades gradually (-1 = scale with map area, 80 per 200×200)',
-  max_population: 'hard cap — no births beyond (-1 = scale with map area, 140 per 200×200)',
-  house_capacity: 'beds in an 8×8 hall (12) — scales with floor area, so a small hut cannot hold a whole clan; overflow spills to the nearest roof with space',
-  exposure_drain: 'energy lost per tick outdoors in rain/storm/night (0.03)',
-  rest_recovery_mult: 'health regen multiplier when sleeping indoors (2.0)',
-  totems_enabled: 'each clan bears a Sacred Avatar of the Sphere with a subtle blessing — ⭕ Radiant Circle ⚡ Celestial Strike 👁️ All-Seeing Vertex 🛡️ Indomitable Monolith 🌿 Sacred Spiral ⚖️ Cosmic Scales 🌀 Dimensional Rift 🕯️ Eternal Hearth',
-  succession_enabled: 'leader succession on death emits succession event',
-  max_clans: 'society granularity: -1 = one clan per house; N ≥ 1 clusters founders into N spatial clans (applies at reset)',
-  rain_growth_mult: 'rain/storm boost to plant growth (1.25) — soaked ground regrows faster',
-  fog_mushroom_mult: 'fog boost to mushroom growth (1.35) — the decomposer tier loves mist',
-  storm_plant_damage: 'chance a storm strips growth from exposed plants (0.02) — occasionally uproots',
-  chill_rate: 'chill built per tick unsheltered in rain/storm/winter night (0.04)',
-  chill_threshold: 'chill at which creature sickens (12) — shelter sheds 2.5× faster',
-  chill_drain: 'health drain per tick when chilled (0.18) — death cause chill',
-  wet_disease_mult: 'wet/cold catch disease faster and recover slower (1.5×)',
-  age_length: 'ticks per age (12000 = 5 seasons) — Golden×1.25 food, Ice×0.55 food + chill, Chaos×1.8 mutation, Plague×1.8 disease',
-  culture_spread_rate: 'allied clans within territory adopt same culture with this chance/tick (0.005)',
-  trait_mutation_rate: 'chance mutation adds heritable trait greedy/peaceful/paranoid/bold (0.02) — bold war, paranoid flee, greedy food',
-  fire_rate: 'chance a random mature plant ignites each tick (0.0005) — storm lightning raises to 0.002',
-  river_count: 'channel bands across the map at world creation (2) — fords, floods, bridges & dams (§AQ PH-3)',
-  signal_speed: 'news wavefront speed in units/tick (8) — distant ears hear the alarm later; wind carries sound faster downwind; 0 = instant',
-  earthquake_rate: 'chance/tick an earthquake begins (0.00008)',
-  lightning_strike_rate: 'chance/tick of a bolt during a storm (0.0015)',
-  anomaly_count: 'hidden zones of altered physics at world creation (3)',
-  nn_inference_hz: 'NN inference frequency per second (15) — 60Hz physics, 15Hz brain, rest latched',
-  mutation_sigma: 'Gaussian mutation σ for genome (0.08) — per-gene noise on crossover',
-  crossover_rate: 'crossover rate (0.5) — uniform 50/50 parent blend; higher = more mixing',
-  morphology_annealing_enabled: 'master switch for geometric physics — off keeps classic sides, on enables polar (r,φ) annealing BC',
-  annealing_start_generation: 'generation where λ starts decaying 1→0 (50) — before, children snap to Abbott templates',
-  annealing_decay_generations: 'generations to decay λ 1→0 (150) — short = instant morph freedom',
-  morph_lambda_override: 'force λ 0..1 (empty=auto); 1 freezes Abbott, 0 pure parental (BC)',
-  vertex_mutation_std: 'radial mutation σ for r_i (0.05) — per-vertex Gaussian [0.2,2.5]',
-  angle_mutation_std: 'angular mutation σ for φ (0.02) — sorted circularly to avoid bow-tie',
-  topological_mutation_rate: 'topological p·(1-λ) (0.01) — add longest edge / remove closest neighbor, K 3..64',
-  fire_spread_rate: 'spread to neighboring plants within 6 (0.08) — kills creatures/plants, ash fertilizes',
-  disaster_rate: 'meteor/flood stochastic gated by this per tick (0.0003) — crater/water reshapes terrain',
-  signal_radius: 'heard within this range (12) — clan-mates respond strongly, strangers weakly',
-  food_call_rate: 'well-fed finds food → calls with this chance/tick (0.08)',
-  alarm_call_rate: 'sees predator → alarm call chance/tick (0.12)',
-  knowledge_ttl: 'ticks a learned fact stays in memory before it fades (600)',
-  knowledge_share_rate: 'chance/tick a creature broadcasts its freshest fact to clan-mates (0.05) — rumors arrive at half confidence',
-  help_radius: 'clan-mates rally to a help call within this range (12); defenders near the fight soften its blows',
-  defense_weight: 'damage reduction per defender mobbing the attacker (0.5 → 2 defenders = 50% softer)',
-  winter_food_mult: 'winter bounty × winter_food_mult (0.7 gentle, 0.5 harsh, 0.3 extinction) — lean season target = food_count × winter_food_mult',
-  schism_threshold: 'fraction unhappy (starving/homeless) to split (0.4)',
-  schism_min_pop: 'minimum clan population to consider schism (4)',
-  coalition_threshold: 'relation score at which a leader may fold another clan into a coalition (40)',
-  coalition_min_size: 'smallest viable coalition; smaller blocs dissolve (2)',
-  larder_capacity: 'energy a clan store at the settlement can hold (300) — surplus deposited, famine withdraws',
-  aid_rate: 'chance/tick a full-bellied ally tops up a starving ally\'s larder (0.05)',
-  food_lifespan_ticks: 'ticks a mature plant lives before it withers (9000) — mushroom 0.4×, grass ×1, berry 1.5×, poisonous 3×; withered plants fertilise the soil',
-  theology_enabled: 'the Sacred Avatars of the Sphere: settled clans consecrate shrines, the devout tithe at dawn & dusk, faith works miracles, chimes ring when laws change, and high faith raises temples',
-  tithe_rate: 'fraction of max energy offered at the shrine each dawn & dusk (0.04); priests tithe double — fills the clan faith pool',
-  temple_faith_cost: 'clan faith spent to raise a shrine into a glowing Temple whose blessing aura covers all territory (400)',
-  cannibalism_hunger_ratio: 'only creatures below this energy fraction may eat the living (0.15)',
-  cannibalism_energy: 'energy gained per desperate kill (45) — the victim leaves a partial corpse',
-  kin_stigma: 'relation hit between a kin-eater\'s outcast band and their former clan (40) — they become rivals',
-  granary_capacity: 'units one clan granary holds (400) — sated harvesters lay grain & cured berries by; famine and feasts draw it down',
-  agriculture_enabled: 'farmers glean seed from wild harvests, sow cultivated plots near the settlement (2× growth, 2.5× yield), weed toxic sprouts, tend beds against withering, and dig irrigation furrows near fertile groves',
-  granaries_enabled: 'a dry roofed store at each settlement: sated grain/berry harvests are laid by (35%), starving members withdraw, raids & markets & caravans move it',
-  soil_depletion_enabled: 'monocropping exhausts the living soil grid; corpses, ash and farmer compost restore it',
-  banquets_enabled: 'a granary at ≥80% feeds a clan feast: morale, bonds and a fertility boost while the mead lasts',
-  vocalizations_enabled: 'every caste has a voice: priests chant away panic, women hum peace corridors, soldiers chirp rally signals at enemies, artisans chime gifts from baskets, touching vertices in peace builds trust',
-  scent_enabled: 'foragers drop scent trails home from rich finds; violent deaths and ruins leave danger scent the young learn to shun',
-  envoys_enabled: 'peaceful leaders commission banner-carrying emissaries to rival houses (+15 relations on delivery); clans raise boundary stones that ring warning chimes at trespassers',
-  markets_enabled: 'allied neighbours found neutral trading posts at shared borders and barter surplus every few minutes; peddler caravans carry goods and news between distant settlements',
-  omens_enabled: 'at each season turn a shrine priest proclaims what comes; worshippers who hear it drift home prepared',
-  dialect_drift_enabled: 'isolated clans drift apart in speech — strangers understand each other less the further their dialects split; allies converge on a shared tongue',
+  // 1. Food & Energy
+  food_count: 'The world keeps this much food alive — bounty or famine (winter ×0.5, summer ×1.2).',
+  energy_max: 'Maximum metabolic energy capacity an organism can store before full saturation (10–500).',
+  energy_decay_per_tick: 'Baseline metabolic burn rate per tick without food intake; shelter and infancy reduce decay.',
+  energy_from_food: 'Base energy yield from harvesting a mature plant (berry 48, grass 32, mushroom 24, poison 8).',
+
+  // 2. Ecosystem & Biodiversity
+  plant_growth_rate: 'How fast sprouted plants mature into harvestable food; seasons and rain accelerate growth.',
+  plant_spread_rate: 'Probability per tick that a mature plant drops seeds into adjacent fertile ground.',
+  nutrient_cycle_rate: 'Acceleration of plant growth near decomposing corpses (death nourishes new life).',
+  poison_rate: 'Chance a new wild sprout is poisonous (-30 HP damage on ingestion).',
+  food_lifespan_ticks: 'Ticks a mature plant lives before naturally withering into the living soil grid.',
+  granary_capacity: 'Units of food a settlement granary can store; sated harvesters deposit grain and berries.',
+
+  // 3. Organism Sensory & Physics
+  perceive_radius: 'Base perception sight radius; scaled by caste (Woman 0.8×, Priest 1.35×), night (0.6×), and fog.',
+  eat_radius: 'Physical contact distance required to consume a plant, corpse, or prey item.',
+  hungry_ratio: 'Energy fraction threshold (≤ 35%) where normalized energy enters NN sensor slot 0 to trigger foraging.',
+  starving_ratio: 'Severe energy threshold (≤ 15%) triggering desperation sprint and pulsing survival distress.',
+  steer_turn: 'Maximum heading angular turn rate per tick, dynamically scaled by creature moment of inertia (Izz).',
+
+  // 4. Life Cycle, Reproduction & Population
+  lifespan_mult: 'Multiplier scaling all caste lifespans (Woman: 4,800 ticks → Priest: 9,000 ticks).',
+  birth_rate: 'Base reproduction probability per eligible mating pair per tick when energy and adult age are met.',
+  carrying_capacity: 'Population density threshold above which fertility begins to gradually diminish.',
+  max_population: 'Hard global population cap preventing any new births until density declines.',
+  mutation_rate: 'Probability a newborn son deviates ±1 side from classical caste inheritance.',
+  sex_ratio: 'Probability a child is a son (ascending regular polygon) vs daughter (agile line).',
+  adult_age: 'Ticks required for an infant/juvenile to mature into a sexually fertile adult (220 ticks).',
+  max_sides: 'Upper limit on regular polygon vertex ascendance (up to Priest / Circle status).',
+  euthanasia_threshold: 'Irregularity threshold; deformed infants exceeding this are consumed at adulthood.',
+
+  // 5. Neural Network & Morphology
+  mutation_sigma: 'Gaussian mutation standard deviation (σ) applied to genome weights during crossover.',
+  crossover_rate: 'Probability of uniform 50/50 parental genome blending during sexual reproduction.',
+  annealing_decay_generations: 'Generations over which polar morphology annealing decays from Abbott templates to free evolution.',
+
+  // 6. Pathology & Health
+  disease_outbreak_rate: 'Spontaneous plague outbreak probability per tick during crowded or unsanitary conditions.',
+  disease_rate: 'Transmission rate of contagion when in close contact with an infected organism.',
+  disease_energy_drain: 'Metabolic energy drained per tick from infected creatures.',
+  disease_lethality: 'Direct health (HP) damage dealt per tick to actively diseased creatures.',
+
+  // 7. Meteorology, Sky & Housing
+  day_length: 'Total duration in ticks of a single diurnal day/night cycle (2400 ticks).',
+  season_length: 'Duration in ticks of each season (Spring, Summer, Autumn, Winter).',
+  winter_food_mult: 'Winter food abundance multiplier (0.7 gentle, 0.5 harsh, 0.3 extinction collapse).',
+  night_sight_mult: 'Perception radius multiplier during night ticks for non-nocturnal castes.',
+  weather_change_rate: 'Frequency of meteorological transitions between clear, rain, fog, and storm.',
+  exposure_drain: 'Health and energy drain per tick when outdoors during harsh storms, heavy rain, or freezing winter.',
+  house_capacity: 'Bed capacity inside a settlement hall; excess members sleep outdoors or search for other roofs.',
+  house_decay_ticks: 'Ticks before an abandoned, roofless house crumbles into ruins.',
+  rest_recovery_mult: 'Health regeneration multiplier when sleeping indoors under a roof.',
+  chill_drain: 'Direct health drain per tick when chilled outdoors without shelter.',
+
+  // 8. Clan Territory & Settlements
+  territory_radius: 'Radius of clan territorial influence around settlement houses; trespass sours diplomacy.',
+  trespass_decay: 'Diplomatic relation points lost per tick when a rival clan enters marked territory.',
+  max_clans: 'Maximum number of sovereign clans spawned during world initialization.',
+  larder_capacity: 'Energy capacity of settlement communal food stores where surplus is shared.',
+  coalition_threshold: 'Diplomatic trust score required for two friendly clans to form a defensive coalition.',
+  schism_threshold: 'Dissatisfaction fraction (hunger, homelessness) triggering a factional clan schism.',
+
+  // 9. Predation & Combat
+  predator_ratio: 'Fraction of population spawned as predatory carnivores hunting prey.',
+  hunt_radius: 'Aggro detection radius within which carnivores and war parties acquire targets.',
+  bite_damage: 'Combat damage dealt per carnivore attack or predatory strike.',
+  energy_from_prey: 'Caloric energy extracted from slaying and eating a prey creature.',
+  fear_radius: 'Distance at which herbivores and vulnerable castes detect threats and execute evasion.',
+  attack_damage: 'Base damage dealt by soldiers and warriors in inter-clan battles.',
+  cannibalism_energy: 'Energy gained by starving creatures resorting to eating fallen kin or rivals.',
+
+  // 10. Theology & Culture
+  tithe_rate: 'Fraction of energy devout worshippers offer at shrines each dawn & dusk to build clan faith.',
+  temple_faith_cost: 'Faith points required to consecrate a glowing Temple of the Sphere.',
+  age_length: 'Ticks per historical age (Golden Age, Ice Age, Age of Chaos, Age of Plague).',
+  culture_spread_rate: 'Rate at which allied clans sharing borders adopt common cultural traits and beliefs.',
+
+  // 11. World Physics & Disasters
+  fire_rate: 'Probability per tick that a mature plant ignites during dry spells or lightning strikes.',
+  disaster_rate: 'Stochastic probability of catastrophic environmental disasters (meteors, deluges).',
+  river_count: 'Number of procedural river channels carved across the terrain at world generation.',
+  earthquake_rate: 'Frequency of seismic quakes that crack buildings and shake terrain.',
+  lightning_strike_rate: 'Frequency of deadly electrical arc strikes during thunder storms.',
+  anomaly_count: 'Number of mysterious spatial anomaly zones altering local physics.',
+  door_clearance: 'Width multiplier for house doorways relative to the largest creature size.',
+}
+
+const BOOL_HINTS: Partial<Record<BoolLawKey, string>> = {
+  birth_enabled: 'Master switch enabling reproduction, mating, and generational ascendance.',
+  disease_enabled: 'Enables contagious pathogen transmission, quarantine behavior, and priestly healing.',
+  weather_enabled: 'Enables dynamic meteorological cycles (sun, rain, fog, storms).',
+  sleep_enabled: 'Enables diurnal sleep cycles, house resting, and oral lore transfer.',
+  shelter_enabled: 'Enables walled house mechanics, door navigation, and roof protection.',
+  weather_sickness_enabled: 'Enables exposure chill and hypothermia when caught unsheltered in rain or winter.',
+  territory_enabled: 'Enables clan boundary markings, territory defence, and trespass penalties.',
+  totems_enabled: 'Enables Sacred Avatar totem blessings for each clan settlement.',
+  succession_enabled: 'Enables dynamic governance leadership transfers on chieftain death.',
+  communication_enabled: 'Enables vocalizations, alarm chirps, peace hums, and emotional thought bubbles.',
+  knowledge_enabled: 'Enables spatial memory, waypoint mapping, and rumor broadcasting among kin.',
+  wildfire_enabled: 'Enables combustive flame propagation across dense vegetation and forests.',
+  disaster_enabled: 'Enables cataclysmic meteors, floods, and natural world disturbances.',
+  culture_enabled: 'Enables traditions, governance archetypes, and cultural diffusion.',
+  age_enabled: 'Enables historical epoch progression (Golden Age, Ice Age, Age of Chaos, Age of Plague).',
+  schism_enabled: 'Enables internal clan fractures when members starve or lack shelter.',
+  plant_variants_enabled: 'Enables botanical diversity across 6 distinct functional plant species.',
+  predation_enabled: 'Enables carnivorous predator-prey ecology and hunting dynamics.',
+  war_enabled: 'Enables inter-clan warfare, tactical raids, and territorial conquest.',
+  coalitions_enabled: 'Enables mutual defensive alliances and diplomatic treaties.',
+  leader_decisions_enabled: 'Enables chieftain governance bylaws (rationing, martial law, war declarations).',
+  resource_sharing_enabled: 'Enables communal larders and altruistic basket food sharing.',
+  cannibalism_enabled: 'Enables desperate consumption of the living during extreme starvation.',
+  eat_kin_enabled: 'Allows consumption of deceased or weak clanmates at the cost of tribal exile and feuds.',
+  food_decay_enabled: 'Enables mature plants to wither over time and fertilize the living soil.',
+  theology_enabled: 'Enables the 8 Sacred Avatars, shrines, temples, miracles, and divine tithes.',
+  agriculture_enabled: 'Enables seed gathering, farm plots, irrigation furrows, and agricultural tending.',
+  granaries_enabled: 'Enables communal settlement granaries to stockpile grains and berries against winter.',
+  rivers_enabled: 'Enables water channels, fords, water currents, bridges, and dams.',
+  relief_enabled: 'Enables topographical elevation, slope inertia, cliffs, and road packing.',
+  structural_enabled: 'Enables weather wear on buildings, builder repairs, and roof collapse into rubble.',
+  earthquake_enabled: 'Enables seismic tremors that shake terrain and damage weakened structures.',
+  lightning_enabled: 'Enables real lightning strikes during storms that ignite fires and damage creatures.',
+  morphology_annealing_enabled: 'Enables polar genome evolution transitioning from Abbott templates to free morphology.',
 }
 
 function Switch({ checked, onChange, title }: { checked: boolean; onChange: (v: boolean) => void; title?: string }) {
@@ -514,33 +546,57 @@ function GodPanelInner({ open, onClose }: Props) {
 
   const ToggleRow = ({ k, label, title, hideIfOff }: { k: BoolLawKey; label: string; title?: string; hideIfOff?: BoolLawKey | BoolLawKey[] }) => {
     if (hideIfOff && !gateOpen(hideIfOff)) return null
-    // Apply modified filter: hide if modifiedOnly and not modified
     if (showModifiedOnly && !modifiedKeys.has(k)) {
-      // also check search query for toggles
       if (q) {
         const trLabel2 = (t(`godToggles.${k}`) !== `godToggles.${k}` ? t(`godToggles.${k}`) : label).toLowerCase()
-        const trTitle2 = (t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint` ? t(`godToggles.${k}Hint`) : (title || '')).toLowerCase()
+        const trTitle2 = (t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint` ? t(`godToggles.${k}Hint`) : (title || BOOL_HINTS[k] || '')).toLowerCase()
         if (!trLabel2.includes(q) && !trTitle2.includes(q) && !k.includes(q)) return null
       } else return null
     }
     if (q) {
       const trLabel2 = (t(`godToggles.${k}`) !== `godToggles.${k}` ? t(`godToggles.${k}`) : label).toLowerCase()
-      const trTitle2 = (t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint` ? t(`godToggles.${k}Hint`) : (title || '')).toLowerCase()
+      const trTitle2 = (t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint` ? t(`godToggles.${k}Hint`) : (title || BOOL_HINTS[k] || '')).toLowerCase()
       if (!trLabel2.includes(q) && !trTitle2.includes(q) && !k.includes(q)) return null
     }
     const trLabel = t(`godToggles.${k}`) !== `godToggles.${k}` ? t(`godToggles.${k}`) : label
-    const trTitle = t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint` ? t(`godToggles.${k}Hint`) : title
+    const trTitle = t(`godToggles.${k}Hint`) !== `godToggles.${k}Hint` ? t(`godToggles.${k}Hint`) : (title || BOOL_HINTS[k] || '')
     const isMod = modifiedKeys.has(k)
+    const isOpen = openHint === k
     return (
-      <div className="god-row god-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, borderBottom: '1px solid #21262d', padding: '8px 10px', background: isMod ? 'rgba(227,179,65,0.06)' : undefined, borderLeft: isMod ? '2px solid #d29922' : '2px solid transparent' }}>
-        <span title={trTitle} style={{ color: isMod ? '#e3b341' : '#e6edf3', fontSize: 13, fontWeight: isMod ? 600 : 500, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          {trLabel}
-          {isMod && <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 4, background: '#d29922', color: '#0d1117', fontWeight: 800 }}>MOD</span>}
-        </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          {isMod && <button onClick={() => setBool(k, (baselineLaws as any)[k] ?? BOOL_DEFAULTS[k] ?? false)} title="Revert to preset" style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#21262d', border: '1px solid #484f58', color: '#c9d1d9', cursor: 'pointer' }}>↺ Revert</button>}
-          <Switch checked={boolVal(k)} onChange={(v) => setBool(k, v)} title={trTitle ?? trLabel} />
-        </span>
+      <div style={{ borderBottom: '1px solid #21262d', background: isMod ? 'rgba(227,179,65,0.06)' : undefined, borderLeft: isMod ? '2px solid #d29922' : '2px solid transparent' }}>
+        <div className="god-row god-toggle-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '9px 12px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span title={trTitle} style={{ color: isMod ? '#e3b341' : '#e6edf3', fontSize: 13, fontWeight: isMod ? 600 : 500, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {trLabel}
+            </span>
+            {isMod && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#d29922', color: '#0d1117', fontWeight: 800 }}>MOD</span>}
+            {trTitle && (
+              <button
+                type="button"
+                className={`god-hint-btn ${isOpen ? 'active' : ''}`}
+                onClick={() => setOpenHint(isOpen ? null : k)}
+                title={trTitle}
+                aria-label={`hint for ${trLabel}`}
+              >
+                ?
+              </button>
+            )}
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {isMod && <button onClick={() => setBool(k, (baselineLaws as any)[k] ?? BOOL_DEFAULTS[k] ?? false)} title="Revert to preset" className="god-revert-btn">↺ Revert</button>}
+            <Switch checked={boolVal(k)} onChange={(v) => setBool(k, v)} title={trTitle ?? trLabel} />
+          </span>
+        </div>
+        {isOpen && trTitle && (
+          <div className="god-hint-box" style={{ margin: '0 12px 8px' }}>
+            {trTitle}
+            <div style={{ marginTop: 6 }}>
+              <a href="/docs/god-laws.md" rel="noreferrer" style={{ fontSize: 11, color: '#58a6ff' }}>Open docs/god-laws.md ↗</a>
+              {' · '}
+              <a href="/wiki#god-laws" style={{ fontSize: 11, color: '#58a6ff' }}>Wiki → God laws</a>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -968,19 +1024,39 @@ function GodPanelInner({ open, onClose }: Props) {
                 )}
               </div>
 
-              <label className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderBottom: '1px solid #30363d', background: modifiedKeys.has('boundary' as any) ? 'rgba(227,179,65,0.06)' : undefined, borderLeft: (modifiedKeys.has('boundary' as any) ? '2px solid #d29922' : '2px solid transparent') }}>
-                <span title={t('godToggles.edgeHint' as any) || 'what happens at the edge of the world'} style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500 }}>{t('godToggles.edgeOfWorld' as any) || 'Edge of world'}</span>
-                <select
-                  value={laws.boundary ?? 'wrap'}
-                  onChange={(e) =>
-                    setLaws((l) => ({ ...l, boundary: e.target.value as 'wrap' | 'clamp' }))
-                  }
-                  style={{ minHeight: 32, padding: '4px 8px' }}
-                >
-                  <option value="wrap">{t('god.edge.wrap')}</option>
-                  <option value="clamp">{t('god.edge.walls')}</option>
-                </select>
-              </label>
+              <div style={{ borderBottom: '1px solid #30363d', background: modifiedKeys.has('boundary' as any) ? 'rgba(227,179,65,0.06)' : undefined, borderLeft: (modifiedKeys.has('boundary' as any) ? '2px solid #d29922' : '2px solid transparent') }}>
+                <label className="god-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: '#e6edf3', fontSize: 13, fontWeight: 500 }}>{t('godToggles.edgeOfWorld' as any) || 'Edge of world'}</span>
+                    <button
+                      type="button"
+                      className={`god-hint-btn ${openHint === 'boundary' ? 'active' : ''}`}
+                      onClick={() => setOpenHint(openHint === 'boundary' ? null : 'boundary')}
+                      title="Wrap (toroidal world) vs Walls (hard bounding borders)"
+                      aria-label="hint for edge of world"
+                    >
+                      ?
+                    </button>
+                  </span>
+                  <select
+                    value={laws.boundary ?? 'wrap'}
+                    onChange={(e) =>
+                      setLaws((l) => ({ ...l, boundary: e.target.value as 'wrap' | 'clamp' }))
+                    }
+                    style={{ minHeight: 32, padding: '4px 8px' }}
+                  >
+                    <option value="wrap">{t('god.edge.wrap')}</option>
+                    <option value="clamp">{t('god.edge.walls')}</option>
+                  </select>
+                </label>
+                {openHint === 'boundary' && (
+                  <div className="god-hint-box" style={{ margin: '0 12px 8px' }}>
+                    <strong>Edge of World Topology:</strong><br />
+                    • <code>wrap</code>: Toroidal topology — creatures walking off any border immediately emerge from the opposite side.<br />
+                    • <code>walls</code>: Rigid physical borders — creatures collide against boundary walls and cannot leave the simulation zone.
+                  </div>
+                )}
+              </div>
 
               {/* Domain selector grid */}
               {!q && !showModifiedOnly && (
@@ -1175,8 +1251,8 @@ function GodPanelInner({ open, onClose }: Props) {
                 const qLower = q
                 const labelMatch = qLower && translatedLabel.toLowerCase().includes(qLower)
                 return (
-                  <div key={key} className={`god-law-row zone-${zone} ${isModified ? 'modified' : ''}`} style={{ borderBottom: '1px solid #21262d', padding: isOpen ? '10px 10px 8px' : '8px 10px', background: isModified ? 'rgba(227,179,65,0.05)' : undefined }}>
-                    <div className="god-law-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <div key={key} className={`god-law-row zone-${zone} ${isModified ? 'modified' : ''}`} style={{ borderBottom: '1px solid #21262d', padding: '10px 12px', background: isModified ? 'rgba(227,179,65,0.05)' : undefined }}>
+                    <div className="god-law-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                       <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flex: 1, minWidth: 0 }}>
                         <span title={hint} style={{ color: isModified ? '#e3b341' : '#e6edf3', fontSize: 13, fontWeight: isModified ? 600 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: labelMatch ? 'rgba(227,179,65,0.2)' : undefined, padding: labelMatch ? '0 3px' : 0, borderRadius: 3 }}>
                           {translatedLabel}
@@ -1185,9 +1261,9 @@ function GodPanelInner({ open, onClose }: Props) {
                         {hint && (
                           <button
                             type="button"
+                            className={`god-hint-btn ${isOpen ? 'active' : ''}`}
                             onClick={() => setOpenHint(isOpen ? null : key)}
                             title={hint}
-                            style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid #484f58', background: isOpen ? '#30363d' : '#21262d', color: isOpen ? '#f0f6fc' : '#8b949e', fontSize: 11, lineHeight: 1, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
                             aria-label={`hint for ${translatedLabel}`}
                           >
                             ?
@@ -1247,7 +1323,7 @@ function GodPanelInner({ open, onClose }: Props) {
                       </div>
                     )}
                     {isOpen && hint && (
-                      <div style={{ fontSize: 12, color: '#c9d1d9', background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '8px 10px', margin: '6px 0 2px', lineHeight: 1.45 }}>
+                      <div className="god-hint-box">
                         {hint}
                         <div style={{ marginTop: 6 }}>
                           <a href="/docs/god-laws.md" rel="noreferrer" style={{ fontSize: 11, color: '#58a6ff' }}>Open docs/god-laws.md ↗</a>
