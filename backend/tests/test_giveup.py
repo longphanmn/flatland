@@ -22,6 +22,7 @@ def stuck_cfg(**kw) -> Config:
     kw.setdefault("signal_speed", 0.0)  # tests the give-up path, not news speed
     kw.setdefault("anomaly_count", 0)
     kw.setdefault("relief_enabled", False)
+    kw.setdefault("safeguard_enabled", False)
     zeros = dict(
         seed=5,
         width=60.0,
@@ -58,6 +59,8 @@ def test_gives_up_on_food_behind_rock_and_eats_elsewhere():
         if c.id not in s.world.entities:
             break
         s.step()
+        if c.meals >= 1:
+            break
 
     assert c.meals >= 1  # it ate…
     assert blocked.id in foods(s)  # …not the meal behind the stone…

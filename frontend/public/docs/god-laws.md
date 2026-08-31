@@ -69,11 +69,39 @@ Governs sensory perception, physical movement, life stages, reproduction, geneti
 | `crossover_rate` | 0–1.0 | **0.50** | Probability of uniform 50/50 parental genome blending during sexual reproduction. |
 | `morphology_annealing_enabled` | Boolean | **false** | Enables polar genome evolution transitioning from Abbott templates to free morphology. |
 | `annealing_decay_generations` | 10–1000 | **150** | Generations over which polar morphology annealing decays from Abbott templates to free evolution. |
+| `safeguard_enabled` | Boolean | **true** | Master switch for extinction safeguards: negative-feedback relief scaling ($\eta$) and Tier 3 Genesis miracles. |
+| `safeguard_critical_pop` | 2–50 | **12** | Emergency population floor ($K_{crit}$); dropping to or below this triggers Tier 3 Genesis miracles from The Sphere. |
+| `safeguard_relief_ratio` | 0.05–0.50 | **0.30** | Carrying capacity threshold ratio ($K_{safe} = K_{cap} \times \text{ratio}$) activating Tier 1/2 homeostatic relief. |
+| `safeguard_genesis_batch` | 1–20 | **6** | Number of pristine regular polygon beings created per Tier 3 Genesis miracle. |
+| `safeguard_morph_mercy` | Boolean | **true** | Suspends euthanasia of irregular infants during low-population relief states ($\eta > 0.30$). |
+| `soft_cap_enabled` | Boolean | **true** | Master switch for non-linear density-dependent damping ($\xi$) when population overshoots carrying capacity. |
+| `damping_steepness` | 1.0–20.0 | **6.0** | Non-linear birth suppression steepness ($1 / (1 + \text{steepness} \cdot \xi^2)$) under overpopulation. |
+| `crowding_stress_mult` | 0.0–1.0 | **0.35** | Multiplier scaling metabolic energy decay under crowding stress ($1 + \text{mult} \cdot \xi$). |
+| `resource_strain_mult` | 0.0–2.0 | **1.2** | Multiplier scaling plant growth & spread slowdown under overpopulation resource strain ($1 / (1 + \text{mult} \cdot \xi)$). |
 | `disease_enabled` | Boolean | **true** | Master switch for infectious pathogen outbreaks and transmission. |
 | `disease_outbreak_rate` | 0–0.05 | **0.00006** | Spontaneous plague outbreak probability per tick during crowded or unsanitary conditions. |
 | `disease_rate` | 0–1.0 | **0.035** | Transmission rate of contagion when in close contact with an infected organism. |
 | `disease_energy_drain` | 0–2.0 | **0.05** | Metabolic energy drained per tick from infected creatures. |
 | `disease_lethality` | 0–1.0 | **0.18** | Direct health (HP) damage dealt per tick to actively diseased creatures. |
+
+### 🧮 Mathematical Feedback Formulations
+
+#### 1. Density Soft-Cap Damping ($\xi$)
+When population $N$ exceeds carrying capacity $K_{cap}$, the overshoot ratio is defined as:
+$$\xi(N) = \max\left(0, \frac{N - K_{cap}}{K_{cap}}\right)$$
+
+Homeostatic damping modulates world dynamics continuously:
+- **Effective Birth Rate**: $R_{birth} = \frac{R_0}{1 + \text{damping\_steepness} \cdot \xi^2}$
+- **Metabolic Stress**: $M_{decay} = M_0 \cdot (1 + \text{crowding\_stress\_mult} \cdot \xi)$
+- **Plant Growth**: $G_{plant} = \frac{G_0}{1 + \text{resource\_strain\_mult} \cdot \xi}$
+
+#### 2. Extinction Safeguards ($\eta$)
+When population $N$ falls below $K_{safe} = K_{cap} \times \text{safeguard\_relief\_ratio}$, emergency relief severity is computed as:
+$$\eta(N) = \text{clamp}\left(\frac{K_{safe} - N}{K_{safe} - K_{crit}}, 0, 1\right)$$
+
+- **Tier 1 ($\eta \in (0, 0.5]$)**: Metabolic decay discounted up to 40%, plant growth accelerated up to 60%, maternal energy subsidy halved.
+- **Tier 2 ($\eta \in (0.5, 1.0)$)**: Severe famine relief, reproductive cooldown halved, infant euthanasia suspended (`safeguard_morph_mercy`).
+- **Tier 3 ($\eta \ge 1.0$ or $N \le K_{crit}$)**: The Sphere intervenes directly with a Genesis Miracle, spawning `safeguard_genesis_batch` regular beings.
 
 ---
 

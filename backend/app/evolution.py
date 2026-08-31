@@ -17,28 +17,66 @@ except Exception:  # pragma: no cover
     HAS_NUMPY = False
 
 
-def init_genomes(soa, rng=None, loc: float = 0.0, scale: float = 0.5, clip_min: float = -4.0, clip_max: float = 4.0) -> None:
-    """Initialize active genomes with N(0,0.5) clipped to [-4,4]."""
+def _build_base_genome(genome_size: int = 295):
+    """Construct inductive foraging template with active forward search and food-steering."""
+    if HAS_NUMPY:
+        base = np.zeros(genome_size, dtype=np.float32)
+    else:
+        base = [0.0] * genome_size
+
+    # W1 indices: i * 12 + j
+    # Unit 0 (Forward hunger drive): W1[0, 0] = -1.2, W1[5, 0] = +1.2, W1[6, 0] = +0.8
+    base[0] = -1.2
+    base[60] = 1.2
+    base[72] = 0.8
+    # Unit 1 (Left ray attraction): W1[3, 1] = +1.2, W1[4, 1] = +1.0
+    base[37] = 1.2
+    base[49] = 1.0
+    # Unit 2 (Right ray attraction): W1[7, 2] = +1.2, W1[8, 2] = +1.0
+    base[86] = 1.2
+    base[98] = 1.0
+    # Unit 3 (Obstacle avoidance): W1[5, 3] = +1.5, W1[6, 3] = -1.2
+    base[63] = 1.5
+    base[75] = -1.2
+
+    # b1 indices: 192 + j
+    base[192] = 0.8  # b1[0] forward drive bias
+
+    # W2 indices: 204 + i * 7 + j
+    base[204] = 1.5   # W2[0, 0] thrust
+    base[212] = -1.8  # W2[1, 1] left steer
+    base[219] = 1.8   # W2[2, 1] right steer
+    base[226] = 1.2   # W2[3, 1] dodge obstacle
+
+    # b2 indices: 288 + j
+    base[288] = 0.5   # b2[0] baseline thrust
+    return base
+
+
+def init_genomes(soa, rng=None, loc: float = 0.0, scale: float = 0.35, clip_min: float = -4.0, clip_max: float = 4.0) -> None:
+    """Initialize active genomes with foraging template + Gaussian noise N(0, scale)."""
     N = soa.N
     if N == 0:
         return
+    base = _build_base_genome(soa.genome_size)
     if HAS_NUMPY:
-        if rng is None:
-            rng = np.random.default_rng(42)
-        # rng may be np Generator or python random
-        if hasattr(rng, "normal"):
-            arr = rng.normal(loc=loc, scale=scale, size=(N, soa.genome_size)).astype(np.float32)
+        if isinstance(rng, int):
+            gen = np.random.default_rng(rng)
+        elif hasattr(rng, "normal"):
+            gen = rng
         else:
-            arr = np.random.normal(loc=loc, scale=scale, size=(N, soa.genome_size)).astype(np.float32)
-        arr = np.clip(arr, clip_min, clip_max)
+            gen = np.random.default_rng(42)
+        noise = gen.normal(loc=loc, scale=scale, size=(N, soa.genome_size)).astype(np.float32)
+        arr = np.clip(base + noise, clip_min, clip_max)
         soa.genomes[:N] = arr
     else:
         import random as _rnd
 
-        r = rng if rng is not None else _rnd
+        seed_val = rng if isinstance(rng, int) else 42
+        r = _rnd.Random(seed_val)
         for n in range(N):
             for i in range(soa.genome_size):
-                v = r.gauss(loc, scale) if hasattr(r, "gauss") else _rnd.gauss(loc, scale)
+                v = base[i] + r.gauss(loc, scale)
                 if v < clip_min:
                     v = clip_min
                 elif v > clip_max:

@@ -334,11 +334,6 @@ class GodLaws(BaseModel):
     door_clearance: Optional[float] = Field(None, ge=1, le=5)
     house_min_size: Optional[float] = Field(None, ge=3, le=60)
     house_max_size: Optional[float] = Field(None, ge=3, le=80)
-    # --- Soft-cap & misc (added for test roundtrip, mirrors Config) ---
-    soft_cap_enabled: Optional[bool] = None
-    damping_steepness: Optional[float] = Field(None, ge=1.0, le=20.0)
-    crowding_stress_mult: Optional[float] = Field(None, ge=0.0, le=1.0)
-    resource_strain_mult: Optional[float] = Field(None, ge=0.0, le=2.0)
     # --- Additional Config fields for roundtrip tests ---
     aid_rate: Optional[float] = Field(None, ge=0, le=1)
     alarm_call_rate: Optional[float] = Field(None, ge=0, le=1)

@@ -21,15 +21,31 @@ The world self-balances across hundreds of days and multi-generational dynastic 
 
 ## Curated Presets
 
-- **balance** ⚖️ (Default) — Goldilocks harmony tuned for **200–350 inhabitants** with 240 food, carrying capacity 350 (max 500), gentle wars, rare predation, agriculture, and flourishing multi-generational clans.
-- **sustainable** 🌿 — 1000-day prosperous peace: abundant food (360), carrying capacity 450 (max 600), rich granaries, harvest festivals, and banquets.
+- **balance** ⚖️ (Default) — Goldilocks harmony tuned for **200–350 inhabitants** with 300 food, carrying capacity 400 (max 500), gentle wars, rare predation, agriculture, density damping ($\xi$), extinction safeguards ($\eta$), and flourishing multi-generational clans.
+- **sustainable** 🌿 — 1000-day prosperous peace: abundant food (550), carrying capacity 550 (max 600), rich granaries, harvest festivals, banquets, and gentle damping.
 - **theocracy** 🔮 — Age of the Sphere: sacred avatars, glowing temples, avatar miracles, 3D epiphanies, holy synods, and divine tithes.
 - **warlords** ⚔️ — Clash of clans: imperial conquests, granary raids, house takeovers, territorial expansion, and defensive coalitions.
 - **chaos** 🔥 — High predator ratio, lethal wars, wildfires, earthquakes, frequent plagues, and fast seasonal turnover.
 - **extinction** 💀 — Severe famine (120 food), harsh winter (0.30×), high exposure decay, testing societal resilience under collapse.
-- **boom** 🚀 — High reproduction, 500 food, carrying capacity 800 (max 1000) for monumental metropolis testing.
+- **boom** 🚀 — High reproduction, 440 food, carrying capacity 800 (max 850) for monumental metropolis testing.
 
 Use: `curl -X POST localhost:8000/api/presets/balance?reset=true` or use The Sphere (God Panel) preset selector.
+
+## Dynamic Homeostasis & Extinction Prevention
+
+Flatland includes two complementary closed-loop homeostatic feedback engines:
+
+### 1. Density-Dependent Soft-Cap Damping ($\xi$)
+When population $N$ exceeds carrying capacity $K_{cap}$, the overshoot ratio $\xi = (N - K_{cap}) / K_{cap}$ acts as a non-linear brake:
+- **Birth Suppression**: $R_{birth} = R_0 / (1 + \text{damping\_steepness} \cdot \xi^2)$
+- **Crowding Metabolic Stress**: $M_{decay} = M_0 \cdot (1 + \text{crowding\_stress\_mult} \cdot \xi)$
+- **Resource Strain**: Plant growth and spread slow down proportionally to ecosystem saturation.
+
+### 2. Extinction Safeguards & Genesis Miracles ($\eta$)
+When population drops below $K_{safe} = K_{cap} \times \text{safeguard\_relief\_ratio}$, emergency relief kicks in:
+- **Tier 1 ($\eta \le 0.5$)**: Famine relief, metabolic energy discount up to 40%, plant growth acceleration up to 60%.
+- **Tier 2 ($\eta > 0.5$)**: Critical relief, reproduction cooldown halved, infant euthanasia suspended (`safeguard_morph_mercy`).
+- **Tier 3 ($N \le K_{crit}$)**: The Sphere intervenes with a Genesis Miracle, creating `safeguard_genesis_batch` pristine regular beings to ensure species survival.
 """
 
 PERFORMANCE_MD = """

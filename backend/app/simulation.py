@@ -4033,9 +4033,10 @@ class Simulation:
                         _ma = getattr(c, "_bc_morph_phi", None)
                         _mk = getattr(c, "_bc_morph_k", None)
                         self._soa.add_agent(int(c.id), float(c.x), float(c.y), angle=float(c.angle), energy=float(c.energy), health=float(c.health), morph_radii=_mr, morph_angles=_ma, morph_k=_mk)
+                    self._soa_id_map = {c.id: idx for idx, c in enumerate(self._cached_creatures)}
                     # init genomes
                     if _evolution is not None:
-                        _evolution.init_genomes(self._soa)
+                        _evolution.init_genomes(self._soa, rng=self.config.seed)
                 # 60Hz: sync positions from world to SoA and vice versa (pos += vel)
                 # For now keep SoA as shadow; update grid
                 if getattr(self, "_soa", None) is not None and self._soa is not None:
@@ -4051,11 +4052,13 @@ class Simulation:
                             new_soa = _AS(capacity=max(2000, len(self._cached_creatures) * 2 + 10))
                             for c in self._cached_creatures:
                                 new_soa.add_agent(int(c.id), float(c.x), float(c.y), angle=float(c.angle), energy=float(c.energy), health=float(c.health))
+                            self._soa_id_map = {c.id: idx for idx, c in enumerate(self._cached_creatures)}
                             if _evolution is not None:
-                                _evolution.init_genomes(new_soa)
+                                _evolution.init_genomes(new_soa, rng=self.config.seed)
                             self._soa = new_soa
                             self._nn_grid = _spatial_grid.SpatialHashGrid(width=self.config.width, height=self.config.height, cell_size=32.0, boundary=self.config.boundary)
                         else:
+                            self._soa_id_map = {c.id: idx for idx, c in enumerate(self._cached_creatures)}
                             for idx, c in enumerate(self._cached_creatures):
                                 if _agent_soa.HAS_NUMPY:
                                     self._soa.pos[idx, 0] = float(c.x)
@@ -4082,16 +4085,6 @@ class Simulation:
                             hidden = self._soa.hidden_state[: self._soa.N] if _agent_soa.HAS_NUMPY else None
                             outputs, _ = forward_batch(inputs, self._soa.genomes[: self._soa.N] if _agent_soa.HAS_NUMPY else [self._soa.genomes[i] for i in range(self._soa.N)], hidden_state=self._soa.hidden_state[: self._soa.N] if _agent_soa.HAS_NUMPY else None)
                             apply_outputs_batch(self._soa, outputs)
-                            # optional: write back thrust/steer to creatures as velocity hints (additive, not replacing)
-                            for idx, c in enumerate(self._cached_creatures):
-                                if idx < self._soa.N:
-                                    if _agent_soa.HAS_NUMPY:
-                                        c.angle = float(self._soa.angle[idx])
-                                        # energy already drained in apply_outputs
-                                        c.energy = float(self._soa.stats[idx, 0])
-                                    else:
-                                        c.angle = float(self._soa.angle[idx])
-                                        c.energy = float(self._soa.stats[idx][0])
                         except Exception as _e:
                             # BA must never break the tick
                             pass
@@ -8285,7 +8278,7 @@ class Simulation:
                         c.emote_ticks = 15
                         o.emote = "cheer"
                         o.emote_ticks = 15
-                        self._bump_relation(c.clan_id, o.clan_id, 3)
+                        self._bump_relation(c.clan_id, o.clan_id, 6)
                         o.trust[c.id] = min(100.0, o.trust.get(c.id, 0.0) + 20.0) if isinstance(o.trust, dict) else o.trust
                         c.trust[o.id] = min(100.0, c.trust.get(o.id, 0.0) + 10.0) if isinstance(c.trust, dict) else c.trust
                         if self.tick - self._last_hospitality_tick >= HOSPITALITY_GAP:
@@ -9790,7 +9783,7 @@ class Simulation:
         if _nn_out is not None:
             try:
                 thrust = max(0.0, min(1.0, float(_nn_out[0])))
-                step_len *= (0.98 + 0.02 * thrust)
+                step_len *= (0.98 + 0.02 * min(1.0, max(0.0, thrust)))
             except Exception:
                 pass
         px, py = c.x, c.y
@@ -9974,7 +9967,7 @@ class Simulation:
                 break
 
         # 5. Eat or Harvest into basket / reserve. Full creatures (>85% energy) do not consume food.
-        can_eat = target is not None and best_sq <= cfg.eat_radius * cfg.eat_radius and (
+        can_eat = target is not None and w.distance_sq(c.x, c.y, target.x, target.y) <= cfg.eat_radius * cfg.eat_radius and (
             c.is_predator or c.energy <= 0.85 * cfg.energy_max
             or (isinstance(target, Food) and target.variant == "medicinal_herb" and c.health < 60.0)
         )

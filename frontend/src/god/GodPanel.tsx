@@ -72,6 +72,16 @@ const NUMBER_LAWS: LawSpec[] = [
   { key: 'disease_energy_drain', label: 'Energy drain / tick', min: 0, max: 2, step: 0.05, group: 'Disease', gate: 'disease_enabled' },
   { key: 'disease_lethality', label: 'Lethality', min: 0, max: 1, step: 0.05, group: 'Disease', gate: 'disease_enabled' },
 
+  // Extinction Safeguards (Phase 5)
+  { key: 'safeguard_critical_pop', label: 'Emergency pop floor (Kcrit)', min: 2, max: 50, step: 1, group: 'Extinction Safeguards', gate: 'safeguard_enabled' },
+  { key: 'safeguard_relief_ratio', label: 'Relief threshold ratio (Ksafe)', min: 0.05, max: 0.50, step: 0.01, group: 'Extinction Safeguards', gate: 'safeguard_enabled' },
+  { key: 'safeguard_genesis_batch', label: 'Genesis miracle batch', min: 1, max: 20, step: 1, group: 'Extinction Safeguards', gate: 'safeguard_enabled' },
+
+  // Density-Dependent Soft-Cap Damping (Phase 4)
+  { key: 'damping_steepness', label: 'Damping steepness', min: 1.0, max: 20.0, step: 0.5, group: 'Density Soft-Cap Damping', gate: 'soft_cap_enabled' },
+  { key: 'crowding_stress_mult', label: 'Crowding stress mult', min: 0.0, max: 1.0, step: 0.05, group: 'Density Soft-Cap Damping', gate: 'soft_cap_enabled' },
+  { key: 'resource_strain_mult', label: 'Resource strain mult', min: 0.0, max: 2.0, step: 0.05, group: 'Density Soft-Cap Damping', gate: 'soft_cap_enabled' },
+
   // Climate & Sky
   { key: 'day_length', label: 'Day length (ticks)', min: 4, max: 20000, step: 4, group: 'Sky & Seasons' },
   { key: 'season_length', label: 'Season length (ticks)', min: 4, max: 100000, step: 10, group: 'Sky & Seasons' },
@@ -119,7 +129,7 @@ const NUMBER_LAWS: LawSpec[] = [
 interface DomainSpec { id: string; icon: string; label: string; shortLabel: string; groups: string[] }
 const DOMAINS: DomainSpec[] = [
   { id: 'ecology', icon: '🌿', label: 'Ecology & Survival', shortLabel: 'Ecology', groups: ['Food & Energy', 'Ecosystem', 'Hunger & Sight', 'Food Decay', 'Agriculture'] },
-  { id: 'biology', icon: '🧬', label: 'Biology & Evolution', shortLabel: 'Biology', groups: ['Movement', 'Life & Death', 'Reproduction', 'Disease', 'Neuroevolution', 'Morphology', 'Predation'] },
+  { id: 'biology', icon: '🧬', label: 'Biology & Evolution', shortLabel: 'Biology', groups: ['Movement', 'Life & Death', 'Reproduction', 'Extinction Safeguards', 'Density Soft-Cap Damping', 'Disease', 'Neuroevolution', 'Morphology', 'Predation'] },
   { id: 'climate', icon: '☀️', label: 'Climate & Sky', shortLabel: 'Climate', groups: ['Sky & Seasons', 'Weather Sickness', 'Shelter'] },
   { id: 'society', icon: '🏰', label: 'Society, Warfare & Trade', shortLabel: 'Society', groups: ['Territory', 'Clan', 'Communication', 'Rebellion', 'Clan War', 'Politics', 'Desperation'] },
   { id: 'theology', icon: '🔮', label: 'Theology & Sacred Avatars', shortLabel: 'Theology', groups: ['Theology', 'Culture', 'Ages'] },
@@ -133,6 +143,8 @@ const GROUP_KEY: Record<string, string> = {
   'Movement': 'movement',
   'Life & Death': 'lifeDeath',
   'Reproduction': 'reproduction',
+  'Extinction Safeguards': 'safeguards',
+  'Density Soft-Cap Damping': 'softCap',
   'Disease': 'disease',
   'Sky & Seasons': 'skySeasons',
   'Ages': 'ages',
@@ -197,6 +209,9 @@ const BOOL_DEFAULTS: Partial<Record<BoolLawKey, boolean>> = {
   earthquake_enabled: false,
   lightning_enabled: true,
   morphology_annealing_enabled: false,
+  safeguard_enabled: true,
+  safeguard_morph_mercy: true,
+  soft_cap_enabled: true,
 }
 
 const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
@@ -231,6 +246,14 @@ const LAW_HINTS: Partial<Record<NumberLawKey, string>> = {
   adult_age: 'Ticks required for an infant/juvenile to mature into a sexually fertile adult (220 ticks).',
   max_sides: 'Upper limit on regular polygon vertex ascendance (up to Priest / Circle status).',
   euthanasia_threshold: 'Irregularity threshold; deformed infants exceeding this are consumed at adulthood.',
+
+  // Extinction Safeguards & Soft-Cap Damping
+  safeguard_critical_pop: 'Population floor Kcrit (≤12) triggering emergency Tier 3 Genesis miracles from The Sphere.',
+  safeguard_relief_ratio: 'Carrying capacity ratio Ksafe = carrying × ratio (0.30) below which Tier 1/2 relief scales activate.',
+  safeguard_genesis_batch: 'Number of pristine regular polygon beings created per Tier 3 Genesis miracle.',
+  damping_steepness: 'Divisor coefficient damping birth rate as population overshoots carrying capacity (1/(1+d*xi^2)).',
+  crowding_stress_mult: 'Multiplier scaling metabolic energy drain under overpopulation density stress (1+c*xi).',
+  resource_strain_mult: 'Multiplier scaling plant growth & spread slowdown under overpopulation strain (1/(1+r*xi)).',
 
   // 5. Neural Network & Morphology
   mutation_sigma: 'Gaussian mutation standard deviation (σ) applied to genome weights during crossover.',

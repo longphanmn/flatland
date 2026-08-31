@@ -501,4 +501,17 @@ export interface GodLaws {
   vertex_mutation_std?: number
   angle_mutation_std?: number
   topological_mutation_rate?: number
+
+  // Extinction Safeguards (Phase 5)
+  safeguard_enabled?: boolean
+  safeguard_critical_pop?: number
+  safeguard_relief_ratio?: number
+  safeguard_genesis_batch?: number
+  safeguard_morph_mercy?: boolean
+
+  // Density-Dependent Soft-Cap Damping (Phase 4)
+  soft_cap_enabled?: boolean
+  damping_steepness?: number
+  crowding_stress_mult?: number
+  resource_strain_mult?: number
 }

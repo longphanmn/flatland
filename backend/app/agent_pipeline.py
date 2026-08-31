@@ -25,11 +25,38 @@ except Exception:  # pragma: no cover
     HAS_NUMPY = False
 
 
+def _raycast_world(world, origin: tuple[float, float], angle: float, max_dist: float = 32.0, ignore_id: int | None = None) -> tuple[float, str | None]:
+    """Fast raycast against world spatial buckets for agent sensory inputs."""
+    ox, oy = origin
+    cos_a = math.cos(angle)
+    sin_a = math.sin(angle)
+    mx = ox + cos_a * (max_dist * 0.5)
+    my = oy + sin_a * (max_dist * 0.5)
+    candidates = world.query_radius(mx, my, max_dist * 0.6) if hasattr(world, "query_radius") else list(world.entities.values()) if hasattr(world, "entities") else []
+    best_dist = max_dist
+    best_type = None
+    for e in candidates:
+        if ignore_id is not None and getattr(e, "id", None) == ignore_id:
+            continue
+        ex, ey = getattr(e, "x", 0.0), getattr(e, "y", 0.0)
+        dx, dy = world.delta(ex, ey, ox, oy) if hasattr(world, "delta") else (ex - ox, ey - oy)
+        proj = dx * cos_a + dy * sin_a
+        if proj <= 0.2 or proj >= best_dist:
+            continue
+        perp = abs(dx * sin_a - dy * cos_a)
+        kind = getattr(e, "kind", "")
+        hit_radius = 1.8 if kind == "food" else 2.2
+        if perp <= hit_radius:
+            best_dist = proj
+            best_type = kind
+    return best_dist, best_type
+
+
 def build_inputs_batch(soa, spatial_grid=None, world=None, max_chill: float = 12.0) -> object:
     """Build (N,16) inputs from SoA. Pure vectorized where numpy available.
 
     spatial_grid: optional SpatialHashGrid for raycasts (uses its query).
-    world: fallback for terrain slope if provided.
+    world: fallback for terrain slope and entity raycasting if provided.
     """
     N = soa.N
     if N == 0:
@@ -52,21 +79,22 @@ def build_inputs_batch(soa, spatial_grid=None, world=None, max_chill: float = 12
             x = float(soa.pos[n, 0])
             y = float(soa.pos[n, 1])
             ang = float(soa.angle[n])
+            aid = int(soa.ids[n])
             for ri, delta in enumerate((-0.610865, 0.0, 0.610865)):  # -35°,0,+35° in rad
                 a = ang + delta
-                if spatial_grid is not None:
-                    dist, typ = spatial_grid.raycast((x, y), a, 32.0, ignore_id=int(soa.ids[n]))
-                    norm = 1.0 - min(dist / 32.0, 1.0)
+                if spatial_grid is not None and getattr(spatial_grid, "_pos", None):
+                    dist, typ = spatial_grid.raycast((x, y), a, 32.0, ignore_id=aid)
+                elif world is not None:
+                    dist, typ = _raycast_world(world, (x, y), a, 32.0, ignore_id=aid)
                 else:
-                    # fallback: no grid -> no hits
                     dist, typ = 32.0, None
-                    norm = 0.0
+                norm = 1.0 - min(dist / 32.0, 1.0)
                 # encode type: food/ally +1, wall 0, enemy -1, none 0
                 if typ is None:
                     tval = 0.0
                 elif typ in ("food", "ally", "Food", "Ally"):
                     tval = 1.0
-                elif typ in ("wall", "obstacle", "rock"):
+                elif typ in ("wall", "obstacle", "rock", "house"):
                     tval = 0.0
                 else:
                     tval = -1.0
@@ -116,18 +144,20 @@ def build_inputs_batch(soa, spatial_grid=None, world=None, max_chill: float = 12
             # raycasts
             x, y = soa.pos[n]
             ang = soa.angle[n]
+            aid = int(soa.ids[n])
             for ri, delta in enumerate((-0.610865, 0.0, 0.610865)):
                 a = ang + delta
-                if spatial_grid is not None:
-                    dist, typ = spatial_grid.raycast((x, y), a, 32.0, ignore_id=soa.ids[n])
-                    norm = 1.0 - min(dist/32.0, 1.0)
+                if spatial_grid is not None and getattr(spatial_grid, "_pos", None):
+                    dist, typ = spatial_grid.raycast((x, y), a, 32.0, ignore_id=aid)
+                elif world is not None:
+                    dist, typ = _raycast_world(world, (x, y), a, 32.0, ignore_id=aid)
                 else:
                     dist, typ = 32.0, None
-                    norm = 0.0
+                norm = 1.0 - min(dist/32.0, 1.0)
                 tval = 0.0
                 if typ in ("food","ally","Food","Ally"):
                     tval = 1.0
-                elif typ in ("wall","obstacle","rock"):
+                elif typ in ("wall","obstacle","rock","house"):
                     tval = 0.0
                 elif typ is not None:
                     tval = -1.0
