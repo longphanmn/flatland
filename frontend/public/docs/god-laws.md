@@ -27,13 +27,13 @@ Governs botanical regeneration, nutrition, harvesting, agriculture, and granary 
 
 | Law Parameter | Type / Range | Default | Ecological Effect & Hint |
 |---|:---:|:---:|---|
-| `food_count` | 0–1000 | **240** | Target living food abundance across the world (winter reduces, summer boosts). |
+| `food_count` | 0–1000 | **380** | Target living food abundance across the world (winter reduces, summer boosts). |
 | `energy_max` | 10–500 | **100.0** | Maximum metabolic energy capacity an organism can store before full saturation. |
-| `energy_decay_per_tick` | 0–2.0 | **0.025** | Baseline metabolic burn rate per tick without food intake; shelter and infancy reduce decay. |
+| `energy_decay_per_tick` | 0–2.0 | **0.018** | Baseline metabolic burn rate per tick without food intake; shelter and infancy reduce decay. |
 | `energy_from_food` | 0–100 | **32.0** | Base energy yield from harvesting a mature plant (berry: 48, grass: 32, mushroom: 24, poison: 8). |
 | `plant_variants_enabled` | Boolean | **true** | Enables botanical diversity across 6 distinct functional plant species. |
-| `plant_growth_rate` | 0–1.0 | **0.045** | How fast sprouted plants mature into harvestable food; seasons and rain accelerate growth. |
-| `plant_spread_rate` | 0–1.0 | **0.006** | Probability per tick that a mature plant drops seeds into adjacent fertile ground. |
+| `plant_growth_rate` | 0–1.0 | **0.065** | How fast sprouted plants mature into harvestable food; seasons and rain accelerate growth. |
+| `plant_spread_rate` | 0–1.0 | **0.008** | Probability per tick that a mature plant drops seeds into adjacent fertile ground. |
 | `nutrient_cycle_rate` | 0–10.0 | **0.65** | Acceleration of plant growth near decomposing corpses (death nourishes new life). |
 | `poison_rate` | 0–1.0 | **0.008** | Chance a new wild sprout is poisonous (-30 HP damage on ingestion). |
 | `food_decay_enabled` | Boolean | **true** | Enables mature plants to naturally wither over time and fertilize the living soil. |
@@ -57,8 +57,8 @@ Governs sensory perception, physical movement, life stages, reproduction, geneti
 | `steer_turn` | 0.05–2.0 | **0.45** | Maximum heading angular turn rate per tick, dynamically scaled by creature moment of inertia (Izz). |
 | `birth_enabled` | Boolean | **true** | Master switch enabling reproduction, mating, and generational ascendance. |
 | `lifespan_mult` | 0.05–5.0 | **1.0** | Multiplier scaling all caste lifespans (Woman: 4,800 ticks → Priest: 9,000 ticks). |
-| `adult_age` | 0–5000 | **220** | Ticks required for an infant/juvenile to mature into a sexually fertile adult. |
-| `birth_rate` | 0–1.0 | **0.28** | Base reproduction probability per eligible mating pair per tick when energy and adult age are met. |
+| `adult_age` | 0–5000 | **250** | Ticks required for an infant/juvenile to mature into a sexually fertile adult. |
+| `birth_rate` | 0–1.0 | **0.075** | Base reproduction probability per eligible mating pair per tick when energy and adult age are met. |
 | `carrying_capacity` | -1–5000 | **350** | Population density threshold above which fertility begins to gradually diminish (-1 = auto). |
 | `max_population` | -1–8000 | **500** | Hard global population cap preventing any new births until density declines (-1 = auto). |
 | `mutation_rate` | 0–1.0 | **0.05** | Probability a newborn son deviates ±1 side from classical caste inheritance. |
@@ -83,7 +83,7 @@ Governs sensory perception, physical movement, life stages, reproduction, geneti
 | `disease_outbreak_rate` | 0–0.05 | **0.00006** | Spontaneous plague outbreak probability per tick during crowded or unsanitary conditions. |
 | `disease_rate` | 0–1.0 | **0.035** | Transmission rate of contagion when in close contact with an infected organism. |
 | `disease_energy_drain` | 0–2.0 | **0.05** | Metabolic energy drained per tick from infected creatures. |
-| `disease_lethality` | 0–1.0 | **0.18** | Direct health (HP) damage dealt per tick to actively diseased creatures. |
+| `disease_lethality` | 0–1.0 | **0.07** | Direct health (HP) damage dealt per tick to actively diseased creatures. |
 
 ### 🧮 Mathematical Feedback Formulations
 
@@ -147,11 +147,11 @@ Governs sovereign clans, territorial claims, diplomacy, coalitions, larders, pre
 | `schism_threshold` | 0–1.0 | **0.40** | Dissatisfaction fraction (hunger, homelessness) triggering a factional clan schism. |
 | `war_enabled` | Boolean | **true** | Enables inter-clan warfare, tactical raids, and territorial conquest. |
 | `attack_damage` | 0–200 | **32.0** | Base damage dealt by soldiers and warriors in inter-clan battles. |
-| `predation_enabled` | Boolean | **false** | Enables carnivorous predator-prey ecology and hunting dynamics. |
-| `predator_ratio` | 0–1.0 | **0.02** | Fraction of population spawned as predatory carnivores hunting prey. |
-| `hunt_radius` | 1–40 | **16.0** | Aggro detection radius within which carnivores and war parties acquire targets. |
-| `bite_damage` | 0–200 | **28.0** | Combat damage dealt per carnivore attack or predatory strike. |
-| `energy_from_prey` | 0–200 | **45.0** | Caloric energy extracted from slaying and eating a prey creature. |
+| `predation_enabled` | Boolean | **true** | Enables carnivorous predator-prey ecology and hunting dynamics. |
+| `predator_ratio` | 0–1.0 | **0.008** | Fraction of population spawned as predatory carnivores hunting prey. |
+| `hunt_radius` | 1–40 | **7.0** | Aggro detection radius within which carnivores and war parties acquire targets. |
+| `bite_damage` | 0–200 | **16.0** | Combat damage dealt per carnivore attack or predatory strike. |
+| `energy_from_prey` | 0–200 | **40.0** | Caloric energy extracted from slaying and eating a prey creature. |
 | `fear_radius` | 1–40 | **12.0** | Distance at which herbivores and vulnerable castes detect threats and execute evasion. |
 | `coalitions_enabled` | Boolean | **true** | Enables mutual defensive alliances and diplomatic treaties. |
 | `coalition_threshold` | -100–100 | **40** | Diplomatic trust score required for two friendly clans to form a defensive coalition. |
@@ -159,8 +159,8 @@ Governs sovereign clans, territorial claims, diplomacy, coalitions, larders, pre
 | `resource_sharing_enabled` | Boolean | **true** | Enables communal larders and altruistic basket food sharing. |
 | `larder_capacity` | 0–2000 | **300.0** | Energy storage capacity of each clan larder. |
 | `cannibalism_enabled` | Boolean | **true** | Enables desperate consumption of the living during extreme starvation. |
-| `eat_kin_enabled` | Boolean | **true** | Allows consumption of deceased or weak clanmates at the cost of tribal exile and feuds. |
-| `cannibalism_energy` | 0–200 | **45.0** | Energy gained by starving creatures resorting to eating fallen kin or rivals. |
+| `eat_kin_enabled` | Boolean | **false** | Forbids consuming clanmates to preserve lineages; only desperate outcasts eat enemies. |
+| `cannibalism_energy` | 0–200 | **35.0** | Energy gained by starving creatures resorting to desperate cannibalism. |
 
 ---
 

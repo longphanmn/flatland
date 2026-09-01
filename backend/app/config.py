@@ -258,7 +258,7 @@ class Config:
     # Clan war (§I) — rival clans fight on contact — enabled but rare
     war_enabled: bool = True  # enabled by default, but rare
     attack_radius: float = 1.8  # distance for clan war engagement
-    attack_damage: float = 45.0  # was 100 — wound (45) not lethal, so war rarely fatal
+    attack_damage: float = 30.0  # wound not lethal, so war rarely fatal
 
     # Politics (§AB) — coalitions, leader agency, resources, betrayal
     coalitions_enabled: bool = True  # allied clans form defensive blocs
@@ -274,10 +274,10 @@ class Config:
 
     # Desperation cannibalism (§AC) — eat the enemy & the weak
     cannibalism_enabled: bool = True  # the starving may hunt the living
-    cannibalism_hunger_ratio: float = 0.15  # only below this energy fraction
-    cannibalism_energy: float = 45.0  # gained per desperate kill
+    cannibalism_hunger_ratio: float = 0.08  # only at the absolute brink of starvation
+    cannibalism_energy: float = 35.0  # gained per desperate kill
     eat_enemy_enabled: bool = True  # enemy-clan members are legitimate prey
-    eat_kin_enabled: bool = True  # weak kin too — at a terrible price
+    eat_kin_enabled: bool = True  # weak kin too — at a terrible price (disabled in balance & sustainable presets)
     kin_stigma: int = 40  # relation hit between exiled band and former clan
     exile_on_kin_eat: bool = True  # kin-eater cast out, founding an outcast band
 
@@ -331,31 +331,31 @@ class Config:
             boundary=_env("FLATWORLD_BOUNDARY", str, "wrap"),
             seed=_env("FLATWORLD_SEED", int, 42),
             tick_rate=_env("FLATWORLD_TICK_RATE", float, 10.0),
-            food_count=_env("FLATWORLD_FOOD_COUNT", int, 240),
-            plant_growth_rate=_env("FLATWORLD_PLANT_GROWTH_RATE", float, 0.05),
-            plant_spread_rate=_env("FLATWORLD_PLANT_SPREAD_RATE", float, 0.006),
-            winter_food_mult=_env("FLATWORLD_WINTER_FOOD_MULT", float, 0.70),
+            food_count=_env("FLATWORLD_FOOD_COUNT", int, 380),
+            plant_growth_rate=_env("FLATWORLD_PLANT_GROWTH_RATE", float, 0.065),
+            plant_spread_rate=_env("FLATWORLD_PLANT_SPREAD_RATE", float, 0.008),
+            winter_food_mult=_env("FLATWORLD_WINTER_FOOD_MULT", float, 0.82),
             poison_rate=_env("FLATWORLD_POISON_RATE", float, 0.008),
             perceive_radius=_env("FLATWORLD_PERCEIVE_RADIUS", float, 16.0),
             energy_decay_per_tick=_env("FLATWORLD_ENERGY_DECAY", float, 0.025),
             carrying_capacity=_env("FLATWORLD_CARRYING_CAPACITY", int, 350),
             max_population=_env("FLATWORLD_MAX_POPULATION", int, 500),
             disease_enabled=_env("FLATWORLD_DISEASE_ENABLED", bool, True),
-            disease_outbreak_rate=_env("FLATWORLD_DISEASE_OUTBREAK_RATE", float, 0.00025),
+            disease_outbreak_rate=_env("FLATWORLD_DISEASE_OUTBREAK_RATE", float, 0.00006),
             disease_rate=_env("FLATWORLD_DISEASE_RATE", float, 0.035),
             disease_energy_drain=_env("FLATWORLD_DISEASE_ENERGY_DRAIN", float, 0.05),
-            recovery_rate=_env("FLATWORLD_RECOVERY_RATE", float, 0.035),
-            disease_lethality=_env("FLATWORLD_DISEASE_LETHALITY", float, 0.18),
+            recovery_rate=_env("FLATWORLD_RECOVERY_RATE", float, 0.060),
+            disease_lethality=_env("FLATWORLD_DISEASE_LETHALITY", float, 0.07),
             predation_enabled=_env("FLATWORLD_PREDATION_ENABLED", bool, True),
-            predator_ratio=_env("FLATWORLD_PREDATOR_RATIO", float, 0.025),
-            bite_damage=_env("FLATWORLD_BITE_DAMAGE", float, 28.0),
+            predator_ratio=_env("FLATWORLD_PREDATOR_RATIO", float, 0.008),
+            bite_damage=_env("FLATWORLD_BITE_DAMAGE", float, 16.0),
             bite_cooldown=_env("FLATWORLD_BITE_COOLDOWN", int, 15),
             war_enabled=_env("FLATWORLD_WAR_ENABLED", bool, True),
             attack_damage=_env("FLATWORLD_ATTACK_DAMAGE", float, 30.0),
             relation_drift_rate=_env("FLATWORLD_RELATION_DRIFT", float, 2.2),
             rivalry_threshold=_env("FLATWORLD_RIVALRY_THRESHOLD", int, -45),
             trespass_decay=_env("FLATWORLD_TRESPASS_DECAY", float, 0.45),
-            house_capacity=_env("FLATWORLD_HOUSE_CAPACITY", int, 10),
+            house_capacity=_env("FLATWORLD_HOUSE_CAPACITY", int, 14),
             schism_enabled=_env("FLATWORLD_SCHISM_ENABLED", bool, True),
             schism_threshold=_env("FLATWORLD_SCHISM_THRESHOLD", float, 0.6),
             schism_min_pop=_env("FLATWORLD_SCHISM_MIN_POP", int, 8),
@@ -366,6 +366,8 @@ class Config:
             soft_cap_enabled=_env("FLATWORLD_SOFT_CAP_ENABLED", bool, True),
             safeguard_enabled=_env("FLATWORLD_SAFEGUARD_ENABLED", bool, True),
             safeguard_max_miracles=_env("FLATWORLD_SAFEGUARD_MAX_MIRACLES", int, 1),
+            eat_kin_enabled=_env("FLATWORLD_EAT_KIN_ENABLED", bool, False),
+            cannibalism_hunger_ratio=_env("FLATWORLD_CANNIBALISM_HUNGER_RATIO", float, 0.08),
         )
 
     @property

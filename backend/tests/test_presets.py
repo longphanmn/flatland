@@ -83,7 +83,7 @@ def test_preset_transition_hygiene(client):
 
     # 5. Transition to Balance
     client.post("/api/presets/balance?persist=true&reset=true")
-    assert RT.config.food_count == 300
+    assert RT.config.food_count == 380
     assert RT.config.carrying_capacity == 400
     assert RT.config.war_enabled is True
     assert RT.config.attack_damage == 30.0
