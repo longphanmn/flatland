@@ -291,8 +291,8 @@ def test_multi_generation_mutation_frequency():
 
     eng = attach_to_sim(sim)
 
-    # Run for 200 ticks
-    for _ in range(200):
+    # Run for 250 ticks to ensure 2nd generation is reached reliably
+    for _ in range(250):
         sim.step()
         eng.on_tick(sim)
 

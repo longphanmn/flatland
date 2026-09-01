@@ -72,8 +72,9 @@ Governs sensory perception, physical movement, life stages, reproduction, geneti
 | `safeguard_enabled` | Boolean | **true** | Master switch for extinction safeguards: negative-feedback relief scaling ($\eta$) and Tier 3 Genesis miracles. |
 | `safeguard_critical_pop` | 2–50 | **12** | Emergency population floor ($K_{crit}$); dropping to or below this triggers Tier 3 Genesis miracles from The Sphere. |
 | `safeguard_relief_ratio` | 0.05–0.50 | **0.30** | Carrying capacity threshold ratio ($K_{safe} = K_{cap} \times \text{ratio}$) activating Tier 1/2 homeostatic relief. |
-| `safeguard_genesis_batch` | 1–20 | **6** | Number of pristine regular polygon beings created per Tier 3 Genesis miracle. |
+| `safeguard_genesis_batch` | 1–20 | **6** | Number of pristine regular beings created per Tier 3 Genesis miracle. |
 | `safeguard_morph_mercy` | Boolean | **true** | Suspends euthanasia of irregular infants during low-population relief states ($\eta > 0.30$). |
+| `safeguard_max_miracles` | Integer ($\ge 1$) | **1** | Maximum Genesis miracles per world (default 1). If the single safeguard attempt fails, the world is allowed to go extinct. |
 | `soft_cap_enabled` | Boolean | **true** | Master switch for non-linear density-dependent damping ($\xi$) when population overshoots carrying capacity. |
 | `damping_steepness` | 1.0–20.0 | **6.0** | Non-linear birth suppression steepness ($1 / (1 + 2 d \xi + (d \xi)^2)$) under overpopulation. |
 | `crowding_stress_mult` | 0.0–1.0 | **0.35** | Multiplier scaling metabolic energy decay under crowding stress ($1 + \text{mult} \cdot \xi$). |
@@ -101,7 +102,7 @@ $$\eta(N) = \text{clamp}\left(\frac{K_{safe} - N}{K_{safe} - K_{crit}}, 0, 1\rig
 
 - **Tier 1 ($\eta \in (0, 0.5]$)**: Metabolic decay discounted up to 40%, plant growth accelerated up to 60%, maternal energy subsidy halved.
 - **Tier 2 ($\eta \in (0.5, 1.0)$)**: Severe famine relief, reproductive cooldown halved, infant euthanasia suspended (`safeguard_morph_mercy`).
-- **Tier 3 ($\eta \ge 1.0$ or $N \le K_{crit}$)**: The Sphere intervenes directly with a Genesis Miracle, spawning `safeguard_genesis_batch` regular beings.
+- **Tier 3 ($\eta \ge 1.0$, $N \le K_{crit}$, or sex extinction)**: If $\le \text{safeguard\_max\_miracles}$ (default 1), The Sphere intervenes once with a Genesis Miracle, spawning both sexes with adult maturity and polar genomes, and re-founding fallen clans. If this intervention fails, the species is allowed to go naturally extinct.
 
 ---
 

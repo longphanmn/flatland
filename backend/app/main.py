@@ -515,7 +515,16 @@ def _try_restore_snapshot() -> bool:
         # Rebuild index for next step
         RT.sim.world.rebuild_index()
         RT.sim._refresh_cache()
-        print(f"[restore] loaded snapshot tick={RT.sim.tick} entities={len(RT.sim.world.entities)} clans={len(RT.sim.clans)} from {p}", flush=True)
+        # Restore safeguard miracle count from DB so max_miracles limit persists across restarts
+        if getattr(RT.sim, "_safeguard", None) is not None and RT.world_id:
+            try:
+                db = DB._require()
+                row = db.execute("SELECT COUNT(*) as cnt FROM events WHERE world_id=? AND type='miracle'", (RT.world_id,)).fetchone()
+                if row and row["cnt"] is not None:
+                    RT.sim._safeguard.miracles = int(row["cnt"])
+            except Exception:
+                pass
+        print(f"[restore] loaded snapshot tick={RT.sim.tick} entities={len(RT.sim.world.entities)} clans={len(RT.sim.clans)} miracles={getattr(getattr(RT.sim, '_safeguard', None), 'miracles', 0)} from {p}", flush=True)
         # Hotfix live world for N150: reduce query radii and heavy subsystems when pop >800
         c_count = len([e for e in RT.sim.world.entities.values() if e.kind == "creature"])
         if c_count > 800:
@@ -869,6 +878,7 @@ PRESETS: dict[str, dict] = {
         safeguard_relief_ratio=0.30,
         safeguard_genesis_batch=6,
         safeguard_morph_mercy=True,
+        safeguard_max_miracles=1,
     ),
     "sustainable": dict(
         # 1000-Day Peace & Flourishing: 360 food, carrying 450, max 600, calm society, rich agriculture, granaries, banquets, temples & sacred avatars.
@@ -1052,6 +1062,7 @@ PRESETS: dict[str, dict] = {
         safeguard_relief_ratio=0.35,
         safeguard_genesis_batch=8,
         safeguard_morph_mercy=True,
+        safeguard_max_miracles=1,
     ),
     "chaos": dict(
         # Total Turmoil: famine, predators, deadly wars, frequent plagues, wildfires, earthquakes, lightning strikes, landslides, collapses, betrayal, cannibalism, rapid seasons.
@@ -1235,6 +1246,7 @@ PRESETS: dict[str, dict] = {
         safeguard_relief_ratio=0.20,
         safeguard_genesis_batch=4,
         safeguard_morph_mercy=False,
+        safeguard_max_miracles=1,
     ),
     "extinction": dict(
         # Cataclysmic Collapse & Grim Survival: Extreme famine (120 food), harsh winter (0.3x), rampant disease, severe weather chill, extreme exposure drain, collapsing shelters, deadly predators & wars, desperate cannibalism.
@@ -1418,6 +1430,7 @@ PRESETS: dict[str, dict] = {
         safeguard_relief_ratio=0.15,
         safeguard_genesis_batch=2,
         safeguard_morph_mercy=False,
+        safeguard_max_miracles=1,
     ),
     "boom": dict(
         # High-Scale Population Boom: 500 food, carrying 800, max 1000, rapid reproduction, peaceful flourishing, rich granaries & banquets, temples & bridges.
@@ -1601,6 +1614,7 @@ PRESETS: dict[str, dict] = {
         safeguard_relief_ratio=0.40,
         safeguard_genesis_batch=10,
         safeguard_morph_mercy=True,
+        safeguard_max_miracles=1,
     ),
     "theocracy": dict(
         # Age of the Sphere & Sacred Faith: Devout spiritual civilization, high faith tithes, glowing temples, avatar miracles, 3D epiphanies, and holy synods.
@@ -1784,6 +1798,7 @@ PRESETS: dict[str, dict] = {
         safeguard_relief_ratio=0.35,
         safeguard_genesis_batch=8,
         safeguard_morph_mercy=True,
+        safeguard_max_miracles=1,
     ),
     "warlords": dict(
         # Clash of Clans & Imperial Conquest: Martial dominance, territorial conquests, defensive leagues, granary plunder, and high tactical engagement.
@@ -1967,6 +1982,7 @@ PRESETS: dict[str, dict] = {
         safeguard_relief_ratio=0.25,
         safeguard_genesis_batch=6,
         safeguard_morph_mercy=True,
+        safeguard_max_miracles=1,
     ),
 }
 

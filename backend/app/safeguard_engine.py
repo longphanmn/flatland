@@ -32,9 +32,9 @@ def compute_eta(N: int, carrying_capacity: int, relief_ratio: float, critical_po
         return 0.0
 
 
-def tier_for_eta(eta: float, N: int, critical_pop: int) -> int:
-    """Tier: 0 none, 1 relief (eta>0), 2 emergency (eta>0.3), 3 genesis (N<=Kcrit)."""
-    if N <= critical_pop:
+def tier_for_eta(eta: float, N: int, critical_pop: int, sex_extinct: bool = False, can_genesis: bool = True) -> int:
+    """Tier: 0 none, 1 relief (eta>0), 2 emergency (eta>0.3), 3 genesis (N<=Kcrit or sex_extinct, max 1 miracle)."""
+    if (N <= critical_pop or sex_extinct) and can_genesis:
         return 3
     if eta > 0.3:
         # Use 0.3 as Tier2 threshold per spec (morph mercy)
@@ -69,23 +69,26 @@ class SafeguardEngine:
         self.last_tier = 0
         self.last_N = 0
 
-    def update(self, N: int, tick: int) -> Tuple[float, int, Dict[str, float]]:
+    def update(self, N: int, tick: int, sex_extinct: bool = False) -> Tuple[float, int, Dict[str, float]]:
         cc = int(getattr(self.config, "carrying_capacity", 350))
         relief = float(getattr(self.config, "safeguard_relief_ratio", 0.30))
         kcrit = int(getattr(self.config, "safeguard_critical_pop", 12))
+        max_miracles = int(getattr(self.config, "safeguard_max_miracles", 1))
         enabled = bool(getattr(self.config, "safeguard_enabled", True))
         eta = compute_eta(N, cc, relief, kcrit, enabled)
-        tier = tier_for_eta(eta, N, kcrit)
+        can_genesis = (self.miracles < max_miracles)
+        tier = tier_for_eta(eta, N, kcrit, sex_extinct=sex_extinct, can_genesis=can_genesis)
         scales = scales_for_eta(eta)
         self.last_eta = eta
         self.last_tier = tier
         self.last_N = N
         return eta, tier, scales
 
-    def should_genesis(self, N: int) -> bool:
+    def should_genesis(self, N: int, sex_extinct: bool = False) -> bool:
         kcrit = int(getattr(self.config, "safeguard_critical_pop", 12))
+        max_miracles = int(getattr(self.config, "safeguard_max_miracles", 1))
         enabled = bool(getattr(self.config, "safeguard_enabled", True))
-        return enabled and N <= kcrit
+        return enabled and (self.miracles < max_miracles) and (N <= kcrit or sex_extinct)
 
     def mercy_active(self, eta: float) -> bool:
         mercy = bool(getattr(self.config, "safeguard_morph_mercy", True))

@@ -314,6 +314,7 @@ class Config:
     safeguard_relief_ratio: float = 0.30  # Ksafe = carrying * ratio
     safeguard_genesis_batch: int = 6  # Tier3 batch
     safeguard_morph_mercy: bool = True  # suspend euthanasia when η>0.3
+    safeguard_max_miracles: int = 1  # Tier3 genesis miracle limit (1 = trigger once then allow extinction)
 
     # Phase 4 Density-Dependent Soft-Cap Damping — overpopulation homeostatic
     soft_cap_enabled: bool = True
@@ -364,6 +365,7 @@ class Config:
             morphology_annealing_enabled=_env("FLATWORLD_MORPHOLOGY_ANNEALING_ENABLED", bool, True),
             soft_cap_enabled=_env("FLATWORLD_SOFT_CAP_ENABLED", bool, True),
             safeguard_enabled=_env("FLATWORLD_SAFEGUARD_ENABLED", bool, True),
+            safeguard_max_miracles=_env("FLATWORLD_SAFEGUARD_MAX_MIRACLES", int, 1),
         )
 
     @property

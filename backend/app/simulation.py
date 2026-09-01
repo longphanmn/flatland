@@ -3021,6 +3021,13 @@ class Simulation:
         # — clan expansion: growing clans claim free houses, seize weak rivals'
         #    spares (§AT-2) or build new ones —
         if self.config.house_claim_enabled and (self.tick % 50 == 0):
+            # If all clans died out but survivors remain, re-found clans so civilization continues
+            if not self.clans and len(self._get_creatures()) >= 4:
+                try:
+                    self._found_founding_clans()
+                except Exception:
+                    pass
+
             living_members_by_clan: dict[int, list[Creature]] = {}
             for c in self._get_creatures():
                 if c.clan_id:
@@ -3998,28 +4005,98 @@ class Simulation:
         if getattr(self.config, "safeguard_enabled", False) and not _IS_TEST and getattr(self, "_safeguard", None) is not None and self.tick % 10 == 0:
             try:
                 N = len(self._cached_creatures)
-                eta, tier, scales = self._safeguard.update(N, self.tick)  # type: ignore
+                females_alive = sum(1 for c in self._cached_creatures if getattr(c, "shape", "polygon") == "line")
+                males_alive = sum(1 for c in self._cached_creatures if getattr(c, "shape", "polygon") != "line")
+                # Reproductive/functional extinction: if one sex is completely gone, world cannot reproduce
+                sex_extinct = (N > 0 and (females_alive == 0 or males_alive == 0))
+                eta, tier, scales = self._safeguard.update(N, self.tick, sex_extinct=sex_extinct)  # type: ignore
                 self._safeguard_eta = eta  # type: ignore
                 self._safeguard_tier = tier  # type: ignore
-                self._safeguard_scales = scales  # type: ignore
-                # Tier3 genesis if N <= Kcrit
-                if tier == 3 and N <= int(getattr(self.config, "safeguard_critical_pop", 12)):
+                # Tier3 genesis: single-chance miracle (max_miracles=1 by default; if failed, extinction follows)
+                max_miracles = int(getattr(self.config, "safeguard_max_miracles", 1))
+                can_genesis = getattr(self._safeguard, "miracles", 0) < max_miracles
+                if can_genesis and tier == 3 and (N <= int(getattr(self.config, "safeguard_critical_pop", 12)) or sex_extinct):
                     batch = int(getattr(self.config, "safeguard_genesis_batch", 6))
-                    for _ in range(batch):
-                        # spawn random creature near center with random caste
+                    spawned = []
+                    max_gen = max((getattr(c, "generation", 0) for c in self._cached_creatures), default=0)
+                    for i in range(batch):
+                        # spawn creature near center with caste & sex
                         x = self.rng.uniform(20, self.config.width - 20)
                         y = self.rng.uniform(20, self.config.height - 20)
-                        # pick random caste via sides
-                        sides = self.rng.choice([3, 4, 5, 6, 8, 12, 24])
-                        c = Creature(x=x, y=y, sides=sides, energy=self.config.energy_max * 0.7, age=100, lifespan=6000)
+                        # Determine sex: if one sex is missing, ensure it is replenished
+                        if females_alive == 0 and males_alive > 0:
+                            is_female = (i < max(2, batch // 2 + 1))
+                        elif males_alive == 0 and females_alive > 0:
+                            is_female = (i >= max(2, batch // 2 + 1))
+                        else:
+                            is_female = (i % 2 == 0) if self.config.sex_ratio == 0.5 else (self.rng.random() < self.config.sex_ratio)
+
+                        if is_female:
+                            shape = "line"
+                            sides = 2
+                            iso = 60.0
+                            caste = "Woman"
+                        else:
+                            shape = "polygon"
+                            sides = self.rng.choice([3, 4, 5, 6, 8, 12, PRIEST_SIDES])
+                            iso = self.rng.uniform(10.0, 59.5) if sides == 3 else 60.0
+                            caste = caste_name(sides, shape, iso)
+
+                        traits = traits_for(caste)
+                        lifespan = traits.lifespan * self.config.lifespan_mult * self.rng.uniform(0.9, 1.25)
+                        # Genesis beings are young adults ready to found the new era and immediately reproduce
+                        adult_floor = int(getattr(self.config, "adult_age", 350))
+                        age = max(adult_floor + self.rng.randint(10, 50), int(lifespan * 0.35))
+                        energy = self.config.energy_max * self.rng.uniform(0.70, 0.90)
+                        c = Creature(
+                            shape=shape,
+                            sides=sides,
+                            iso_angle=iso,
+                            caste=caste,
+                            x=x,
+                            y=y,
+                            angle=self.rng.uniform(0, 2 * math.pi),
+                            speed=traits.speed,
+                            energy=energy,
+                            age=age,
+                            lifespan=lifespan,
+                            generation=max_gen,
+                        )
+                        self._init_creature_evolution(c)
+                        if _evo_mgr is not None:
+                            try:
+                                template_r, template_phi, template_k = _evo_mgr.get_template_for_caste(caste)
+                                c._bc_morph_r = list(template_r)
+                                c._bc_morph_phi = list(template_phi)
+                                c._bc_morph_k = int(template_k)
+                            except Exception:
+                                pass
                         self.world.add(c)
+                        spawned.append(c)
                         # add to SoA if present
                         if getattr(self, "_soa", None) is not None:
                             try:
-                                self._soa.add_agent(int(c.id), float(c.x), float(c.y), angle=float(c.angle), energy=float(c.energy), health=float(c.health))
+                                self._soa.add_agent(
+                                    int(c.id), float(c.x), float(c.y),
+                                    angle=float(c.angle), energy=float(c.energy), health=float(c.health),
+                                    morph_radii=getattr(c, "_bc_morph_r", None),
+                                    morph_angles=getattr(c, "_bc_morph_phi", None),
+                                    morph_k=getattr(c, "_bc_morph_k", None),
+                                )
                             except Exception:
                                 pass
                     self._safeguard.miracles += 1  # type: ignore
+                    # If all clans were extinct, re-found clans for the new generation
+                    if len(self.clans) == 0 and len(self.world.creatures()) > 0:
+                        try:
+                            self._found_founding_clans()
+                        except Exception:
+                            pass
+                    elif self.clans and spawned:
+                        living_cids = list(self.clans.keys())
+                        for sc in spawned:
+                            if not sc.clan_id:
+                                sc.clan_id = self.rng.choice(living_cids)
                     # log miracle
                     try:
                         self.history.append(HistoryEvent(type="miracle", tick=self.tick + 1, entity_id=0, x=round(self.config.width/2,1), y=round(self.config.height/2,1), payload={"kind": "MIRACLE_OF_THE_SPHERE", "eta": round(eta,2), "N": N, "batch": batch}))

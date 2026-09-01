@@ -255,6 +255,7 @@ class GodLaws(BaseModel):
     safeguard_relief_ratio: Optional[float] = Field(None, ge=0.05, le=0.5)
     safeguard_genesis_batch: Optional[int] = Field(None, ge=1, le=20)
     safeguard_morph_mercy: Optional[bool] = None
+    safeguard_max_miracles: Optional[int] = Field(None, ge=1)
     soft_cap_enabled: Optional[bool] = None
     damping_steepness: Optional[float] = Field(None, ge=1.0, le=20.0)
     crowding_stress_mult: Optional[float] = Field(None, ge=0.0, le=1.0)
