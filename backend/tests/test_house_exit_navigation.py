@@ -61,8 +61,14 @@ def test_sleeping_creature_exits_at_dawn_to_eat():
     assert c.sleeping is True or c.indoors is True
     
     # Run through dawn (tick 40 wraps to tick 0 / daytime)
+    # §BE-E3 earlier dusk (0.62) means final tick 61 is dusk again — check that they *did* exit during the day window
+    exited = False
     for _ in range(30):
         s.step()
+        if not s._is_inside_house(c, h):
+            exited = True
+            break
         
-    # At daytime, creature must exit house and not be stuck inside
-    assert not s._is_inside_house(c, h)
+    assert exited, "Creature never exited house after dawn (stuck inside) — BE-E3 dusk re-entry is expected, so we check mid-day exit"
+    assert c.id in s.world.entities
+    assert c.blocked_ticks < 5

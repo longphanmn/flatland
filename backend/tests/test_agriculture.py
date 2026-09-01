@@ -29,6 +29,11 @@ from app.simulation import (
 def ag_cfg(**kw) -> Config:
     kw.setdefault("anomaly_count", 0)  # fertile zones would skew growth ratios
     kw.setdefault("relief_enabled", False)
+    kw.setdefault("boom_ramp_days", 0)  # §BF disabled for deterministic agriculture tests
+    kw.setdefault("boom_birth_floor", 1.0)
+    kw.setdefault("boom_cooldown_mult", 1.0)
+    kw.setdefault("boom_energy_mult", 1.0)
+    kw.setdefault("initial_season_offset", 0)
     zeros = dict(
         seed=7, width=80.0, height=80.0,
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,

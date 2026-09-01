@@ -3,7 +3,7 @@
 The Sphere model: The Sphere (God) sets **laws** from Spaceland, never touches individual creatures. Everything else emerges.
 Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observability · `- [ ]` open · `- [x]` done · *parked* = decided, not pending
 
-> **Active backlog only.** Completed roadmaps §F–§BD (632 items: 573 §F–§BA + 14 §BC + 12 §AZ + 33 §BD) → [`docs/roadmap-archive.md`](docs/roadmap-archive.md) (all 14 BC + 12 AZ + 33 BD archived 2026-08-31, symbols kept, anchors stripped). This file tracks the **0 open (all 18 Morphological Physics Evolution & Density-Dependent Soft-Cap Damping done 2026-08-31) + 8 parked** items that remain.
+> **Active backlog only.** Completed roadmaps §F–§BD (632 items) + §BE (10) + §BF (5) = 647 items → [`docs/roadmap-archive.md`](docs/roadmap-archive.md). This file tracks the **0 open items — §BE ✅ Done (10/10) + §BF ✅ Done (5/5) — + 8 parked**.
 
 ---
 
@@ -151,6 +151,40 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
   - [x] `/api/metrics/safeguards`: Return current active population $N$, relief factor $\eta(N)$, active safeguard tier, and miracle event counts.
   - [x] `/api/metrics/damping`: Return $N$, $\xi(N)$, and effective `birth_rate/decay` rates (soft-cap observability) — `main.py:2310` `get_damping_metrics`.
 - [x] [P0] **7.3 Performance Verification** — `scripts/bench_morphology.py` (lazy bake 10 + 100 SAT + safeguard 1 Hz) `0.41ms` per tick avg (`<4ms` target) — `bake 2000` full is `57ms` but lazy is realistic (only new agents baked per tick).
+
+---
+
+---
+
+## §BE Creature Movement AI Overhaul — ✅ Done (10/10)
+
+> **Context**: Full audit of `_update_creature` (lines 8117–10200 in `simulation.py`) revealed 4 root-cause movement pathologies and 6 enhancements. See implementation plan for full details.
+
+### Bug Fixes [P0] — ✅ Done
+- [x] [P0] **BE-1 Correlated wander (OU-style heading bias)** — Replace memoryless `rng.uniform(-wander, wander)` with Ornstein–Uhlenbeck drift (`_heading_bias` that decays ×0.80/tick + ±half jitter). Eliminates 20-tile straight-line zombie walks. `simulation.py:9945` — done `entities.py:_heading_bias` + `simulation.py` OU drift
+- [x] [P0] **BE-2 Shelter orbit fix — direct-door shortcut** — In `_house_entry_target()`, when `dist <= h.size * 2.2` aim directly at the door position instead of navigating via wall stand-off lanes. Eliminates the corner-to-corner orbit that keeps creatures circling shelters all night. `simulation.py:3219` — done `_house_entry_target` door shortcut
+- [x] [P0] **BE-2b Shelter orbit-break jitter** — When `blocked_ticks >= 5` AND `top_action == "shelter"`, inject ±0.8 rad heading perturbation and reset `blocked_ticks`. Safety net for any orbit that slips past BE-2. `simulation.py:9866` — done shelter jitter ±0.8
+- [x] [P0] **BE-3 Flee panic burst on imminent danger** — When predator is within `eat_radius * 3`, override `steer_turn` cap with instant 180° heading flip and ×1.3 speed surge. Prevents the "death spiral" where a creature turns toward the wolf for 17 ticks. `simulation.py:9823` — done panic burst + speed_mult 1.3
+- [x] [P1] **BE-4 Predator obstacle-avoidance jitter** — When `blocked_ticks >= 3` while `hunt_target is not None`, inject ±1.0 rad random perturbation. Stops predators grinding against rocks/walls while locked on prey. `simulation.py:9862` — done hunt jitter ±1.0
+
+### Enhancements [P1–P2] — ✅ Done
+- [x] [P1] **BE-E1 Always-on danger memory avoidance** — Remove `c.status != ""` gate from `danger_avoid_target`; use lower utility `0.35` (vs `0.60` for hungry). Well-fed creatures will now avoid known predator zones too. `simulation.py:9518` — done always-on 0.35/0.60
+- [x] [P1] **BE-E2 Territory patrol bias** — Every 60 ticks, pick a random point on `territory_radius` circumference as `c._patrol_target`; soft-steer toward it at `steer_turn * 0.25` during wander. Replaces aimless clumping with purposeful patrol loops. `simulation.py:9935` — done `_patrol_target` 60-tick
+- [x] [P1] **BE-E3 Earlier dusk alarm** — Lower `DUSK_TOD` constant `0.70 → 0.62` and `DUSK_SHELTER_URGE` `1.6 → 2.0`. Gives creatures twice as many ticks to reach home before full dark. `simulation.py:202–203` — done 0.62/2.0
+- [x] [P2] **BE-E4 Anti-pursuit flanking flee** — Non-imminent flee blends 60% tangent-to-predator-heading with 40% direct-away. Prey cut across the predator's path instead of racing in a straight line. `simulation.py:9824` — done 60/40 tangent blend
+- [x] [P2] **BE-E6 Visited-cell revisit suppression** — Maintain `c._visited_cells: set[tuple[int,int]]` (10-unit cells, cleared every 200 ticks); bias heading 60° if destination cell already visited. Stops the short loopback that wastes foraging area. `simulation.py:9944` — done `_visited_cells` 10-unit + 60° bias
+
+---
+
+## §BF Early Population Boom Limiter — ✅ Done (5/5)
+
+> **Context**: New worlds explode in population in days 1–3 (founders mature in 0.21 days, breed every 0.23 days, spring×1.25 multiplier, no disease/predator pressure yet) → density damping triggers hard → boom-crash wipe. See implementation plan for math.
+
+- [x] [P0] **BF-1 Birth rate ramp (`boom_ramp_days` / `boom_birth_floor`)** — In `_reproduce()`, multiply final `rate` by `boom_birth_floor + (1 - boom_birth_floor) * (days_old / boom_ramp_days)` while `days_old < boom_ramp_days`. Add fields to `Config`, `GodLaws`, presets (balance: `boom_ramp_days=6.0, boom_birth_floor=0.12`). `simulation.py:7508` — done ramp 6.0/0.12
+- [x] [P0] **BF-2 Extend `adult_age` in presets** — Raise balance `adult_age 250 → 600` (0.5 days) and sustainable `400 → 900` (0.75 days). No code change — preset-only. Forces founders to survive at least one night/day cycle before reproducing. `main.py:756,940` — done 600/900 + boom 100 ramp 1.0
+- [x] [P1] **BF-3 Early-world cooldown multiplier (`boom_cooldown_mult`)** — In `_birth()`, extend `_cooldown_eff` by up to ×3 at day 0, linearly decaying to ×1 at `boom_ramp_days`. `simulation.py:7529` — done ×3 ramp
+- [x] [P1] **BF-4 `mate_energy_min` ramp (`boom_energy_mult`)** — Raise effective `_mate_thr_eff` by up to ×2.5 at day 0, decaying to ×1 at `boom_ramp_days`. Only the well-fed breed on day 0. `simulation.py:7433` — done ×2.5 ramp
+- [x] [P1] **BF-5 `initial_season_offset`: Start worlds in autumn** — Add `initial_season_offset: int = 0` to `Config`; patch `_season()` to add offset. Set to `2` (autumn) in balance/sustainable presets so founders face winter before earning the spring birth bonus. `simulation.py:888` — done offset 2
 
 ---
 

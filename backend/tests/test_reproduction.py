@@ -13,6 +13,11 @@ def repro_cfg(**kw) -> Config:
     kw.setdefault("relief_enabled", False)
     kw.setdefault("safeguard_enabled", False)
     kw.setdefault("soft_cap_enabled", False)
+    kw.setdefault("boom_ramp_days", 0)  # §BF disabled for deterministic breeding tests
+    kw.setdefault("boom_birth_floor", 1.0)
+    kw.setdefault("boom_cooldown_mult", 1.0)
+    kw.setdefault("boom_energy_mult", 1.0)
+    kw.setdefault("initial_season_offset", 0)
     """Deterministic breeding-world config: adults, adjacent pairs conceive."""
     base = dict(
         seed=99,
@@ -33,6 +38,11 @@ def repro_cfg(**kw) -> Config:
 
 def empty_cfg(**kw) -> Config:
     kw.setdefault("relief_enabled", False)
+    kw.setdefault("boom_ramp_days", 0)
+    kw.setdefault("boom_birth_floor", 1.0)
+    kw.setdefault("boom_cooldown_mult", 1.0)
+    kw.setdefault("boom_energy_mult", 1.0)
+    kw.setdefault("initial_season_offset", 0)
     zeros = dict(
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,
         num_priests=0, num_women=0, food_count=0, num_houses=0,

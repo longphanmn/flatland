@@ -260,6 +260,11 @@ class GodLaws(BaseModel):
     damping_steepness: Optional[float] = Field(None, ge=1.0, le=20.0)
     crowding_stress_mult: Optional[float] = Field(None, ge=0.0, le=1.0)
     resource_strain_mult: Optional[float] = Field(None, ge=0.0, le=2.0)
+    boom_ramp_days: Optional[float] = Field(None, ge=0, le=100)
+    boom_birth_floor: Optional[float] = Field(None, ge=0, le=1.0)
+    boom_cooldown_mult: Optional[float] = Field(None, ge=1.0, le=10.0)
+    boom_energy_mult: Optional[float] = Field(None, ge=1.0, le=10.0)
+    initial_season_offset: Optional[int] = Field(None, ge=0, le=3)
     disease_enabled: Optional[bool] = None
     disease_outbreak_rate: Optional[float] = Field(None, ge=0, le=1)
     disease_rate: Optional[float] = Field(None, ge=0, le=1)

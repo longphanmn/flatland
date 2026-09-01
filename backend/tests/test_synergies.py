@@ -68,6 +68,7 @@ def test_high_mutation_triggers_irregularity_purge():
         num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0,
         num_priests=0, num_women=1, num_houses=0,
         rivers_enabled=False, anomaly_count=0, signal_speed=0.0,
+        boom_ramp_days=0, boom_birth_floor=1.0, boom_cooldown_mult=1.0, boom_energy_mult=1.0, initial_season_offset=0,
     )
     s = Simulation(cfg)
     father = s.world.add(Creature(x=20.0, y=20.0, sides=4, energy=10000.0,

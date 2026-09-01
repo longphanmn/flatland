@@ -199,8 +199,8 @@ PREDATOR_NIGHT_SIGHT = 1.4     # +40% hunt radius in the dark
 PREDATOR_NIGHT_SPEED = 1.2     # +20% stealth chase vs unsheltered prey
 PACK_HOUR = 0.85               # past midnight beasts converge in packs
 PACK_RADIUS = 18.0             # pack-mates share a kill within this range
-DUSK_TOD = 0.70                # dusk rush: instinct screams "home" from here
-DUSK_SHELTER_URGE = 1.6        # overrides exploration before nightfall
+DUSK_TOD = 0.62                # dusk rush: instinct screams "home" from here (§BE-E3 earlier alarm)
+DUSK_SHELTER_URGE = 2.0        # overrides exploration before nightfall (§BE-E3 stronger urge)
 HEARTH_SANCTUARY_HEAL = 1.5    # HP/tick beside a lit hearth
 SPEAR_POKE_RADIUS = 3.0        # sentries poke outward from the doorway
 SPEAR_POKE_DAMAGE = 22.0       # damage per poke at circling night beasts
@@ -885,7 +885,9 @@ class Simulation:
         return tod < 0.22 or tod > 0.78
 
     def _season(self) -> str:
-        return SEASONS[(self.tick // max(1, self.config.season_length)) % 4]
+        # §BF-5 autumn start: offset season index so day 0 can be autumn (2) not spring (0)
+        offset = int(getattr(self.config, "initial_season_offset", 0) or 0)
+        return SEASONS[((self.tick // max(1, self.config.season_length)) + offset) % 4]
 
     def _age(self) -> str | None:
         if not self.config.age_enabled:
@@ -3232,6 +3234,9 @@ class Simulation:
         ax, ay = abs(dx), abs(dy)
         if ax < half - 0.3 and ay < half - 0.3:
             return h.x, h.y  # already under the roof: settle toward its heart
+        # §BE-2 direct-door shortcut — within 2.2× size aim straight at the doorway
+        if w.distance_sq(c.x, c.y, h.x, h.y) <= (h.size * 2.2) ** 2:
+            return self._door_pos(h)
         m = 0.9  # stand-off lane off the wall
         lim = max(0.5, half - 0.8)  # slide clamp inside the face ends
         dw = max(h.door_width * 0.45, 1.3)  # "I can see the door" alignment
@@ -7433,6 +7438,14 @@ class Simulation:
         _mate_thr_eff = cfg.mate_energy_min * (1.0 - 0.5 * _eta2) if _eta2 else cfg.mate_energy_min
         if _xi:
             _mate_thr_eff *= _scales.get("mate_thr_eff", 1.0)
+        # §BF-4 mate energy ramp — early world requires well-fed breeders (×2.5 at day 0 → ×1 at ramp) (skip for tests with adult_age 0)
+        _boom_days = float(getattr(cfg, "boom_ramp_days", 6.0) or 6.0)
+        _boom_e_mult = float(getattr(cfg, "boom_energy_mult", 2.5) or 2.5)
+        if _boom_days > 0 and cfg.adult_age > 0:
+            _days_old = self.tick / max(1, cfg.day_length)
+            if _days_old < _boom_days:
+                _boom_e = _boom_e_mult - (_boom_e_mult - 1.0) * (_days_old / _boom_days)
+                _mate_thr_eff *= _boom_e
         _mate_rad_eff = cfg.mate_radius * (1.0 + 1.0 * _eta2) if _eta2 else cfg.mate_radius
 
         def eligible(c: Creature) -> bool:
@@ -7505,6 +7518,14 @@ class Simulation:
             if mother_clan and self.tick < int(mother_clan.get("feast_until", 0)):
                 rate = min(1.0, rate * BANQUET_FERTILITY_MULT)
             rate *= 1.0 + self._totem_stat(mother, "birth")  # Stag/Rabbit fecundity
+            # §BF-1 birth rate ramp — days 0-6 throttled to 0.12× → 1.0× linearly (skip for tests with adult_age 0)
+            _ramp = float(getattr(cfg, "boom_ramp_days", 6.0) or 6.0)
+            _floor = float(getattr(cfg, "boom_birth_floor", 0.12) or 0.12)
+            if _ramp > 0 and cfg.adult_age > 0:
+                _d = self.tick / max(1, cfg.day_length)
+                if _d < _ramp:
+                    _boom_b = _floor + (1.0 - _floor) * (_d / _ramp)
+                    rate *= _boom_b
             if self.rng.random() >= min(rate * fert, 1.0):
                 continue
             self._birth(mother, father)
@@ -7530,6 +7551,14 @@ class Simulation:
         except Exception:
             _birth_cost_eff = cfg.birth_energy_cost * (1.0 + 1.5 * _xi_birth) if _xi_birth else cfg.birth_energy_cost
             _cooldown_eff = int(cfg.reproduction_cooldown * (1.0 + 2.0 * _xi_birth)) if _xi_birth else cfg.reproduction_cooldown
+        # §BF-3 early-world cooldown multiplier — ×3 at day 0 → ×1 at ramp (skip for tests with adult_age 0)
+        _cd_ramp = float(getattr(cfg, "boom_ramp_days", 6.0) or 6.0)
+        _cd_mult = float(getattr(cfg, "boom_cooldown_mult", 3.0) or 3.0)
+        if _cd_ramp > 0 and cfg.adult_age > 0:
+            _cd_days = self.tick / max(1, cfg.day_length)
+            if _cd_days < _cd_ramp:
+                _cd_boom = _cd_mult - (_cd_mult - 1.0) * (_cd_days / _cd_ramp)
+                _cooldown_eff = int(_cooldown_eff * _cd_boom)
         gen = max(mother.generation, father.generation) + 1
         tick = self.tick + 1  # the tick being completed
         x = (mother.x + self.rng.uniform(-1.5, 1.5)) % cfg.width
@@ -9513,9 +9542,9 @@ class Simulation:
                         best_alarm_sq = d2
                         signal_alarm_target = sg
                         alarm_heard_conf = max(0.0, 1.0 - math.sqrt(d2) / (sig_r * WARCRY_RADIUS_MULT))
-        # §X Danger zones: remembered predator sightings are avoided on sight of memory
+        # §X Danger zones: remembered predator sightings are avoided (§BE-E1 always-on, even when well-fed)
         danger_avoid_target = None
-        if cfg.knowledge_enabled and flee_target is None and c.status != "":
+        if cfg.knowledge_enabled and flee_target is None:
             danger_fact = self._fact_fresh(c, "danger")
             if danger_fact is not None and "x" in danger_fact:
                 dd2 = w.distance_sq(c.x, c.y, danger_fact["x"], danger_fact["y"])
@@ -9664,7 +9693,11 @@ class Simulation:
         if signal_food_target is not None and target is None and c.status in ("hungry", "starving"):
             u_signal_food = 0.75
 
-        u_danger_avoid = 0.6 if (danger_avoid_target is not None and flee_target is None) else 0.0
+        # §BE-E1 lower utility when well-fed so it doesn't hijack foraging
+        if danger_avoid_target is not None and flee_target is None:
+            u_danger_avoid = 0.60 if c.status in ("hungry", "starving") else 0.35
+        else:
+            u_danger_avoid = 0.0
 
         # §AR S-6: the thermal gradient is a sense — freezing bodies drift
         # toward known heat, cooking bodies toward water; the very young and
@@ -9821,18 +9854,34 @@ class Simulation:
         else:
             if top_util > 0.3:
                 if top_action == "flee" and flee_target is not None:
-                    # Kiting & Flanking Maneuver (§AL): Women / lines kite at 90 deg tangent
-                    if c.shape == "line" or c.caste == "Woman":
-                        dx, dy = w.delta(c.x, c.y, flee_target.x, flee_target.y)
-                        base_angle = math.atan2(dy, dx)
-                        desired = base_angle + (math.pi / 2 if (c.id % 2 == 0) else -math.pi / 2)
-                        diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
-                        c.angle += max(-cfg.steer_turn * 1.3, min(cfg.steer_turn * 1.3, diff))
+                    # §BE-3 panic burst: imminent danger → instant flip + speed surge
+                    # §BE-E4 flanking: non-imminent blends 60% tangent-to-predator-heading + 40% direct-away
+                    dx, dy = w.delta(c.x, c.y, flee_target.x, flee_target.y)
+                    away = math.atan2(dy, dx)
+                    dist2 = w.distance_sq(c.x, c.y, flee_target.x, flee_target.y)
+                    if dist2 <= (cfg.eat_radius * 3) ** 2:
+                        # imminent: override steer cap, instant 180° flip (§BE-3)
+                        c.angle = away
+                        speed_mult *= 1.3
                     else:
-                        dx, dy = w.delta(c.x, c.y, flee_target.x, flee_target.y)
-                        desired = math.atan2(dy, dx)
+                        # non-imminent: flank across predator's path (§BE-E4) — also preserves Woman kite flavor
+                        if c.shape == "line" or c.caste == "Woman":
+                            # Woman/line still kite perpendicular to away (canonical Flatland evasion)
+                            desired = away + (math.pi / 2 if (c.id % 2 == 0) else -math.pi / 2)
+                        else:
+                            pred_ang = flee_target.angle
+                            tang1 = pred_ang + math.pi / 2
+                            tang2 = pred_ang - math.pi / 2
+                            # pick tangent side closest to away direction
+                            d1 = abs((tang1 - away + math.pi) % (2 * math.pi) - math.pi)
+                            d2 = abs((tang2 - away + math.pi) % (2 * math.pi) - math.pi)
+                            tangent = tang1 if d1 < d2 else tang2
+                            bx = 0.6 * math.cos(tangent) + 0.4 * math.cos(away)
+                            by = 0.6 * math.sin(tangent) + 0.4 * math.sin(away)
+                            desired = math.atan2(by, bx)
                         diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
-                        c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
+                        cap = cfg.steer_turn * (1.3 if (c.shape == "line" or c.caste == "Woman") else 1.2)
+                        c.angle += max(-cap, min(cap, diff))
                 elif top_action == "alarm" and signal_alarm_target is not None:
                     # §AR S-1: the alarm encodes the danger's bearing.
                     # world.delta(a, b) = a − b, so delta(c, sg) is the vector
@@ -9863,6 +9912,9 @@ class Simulation:
                     desired = math.atan2(dy, dx)
                     diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
                     c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
+                    # §BE-4 predator obstacle-avoidance jitter
+                    if c.blocked_ticks >= 3:
+                        c.angle += self.rng.uniform(-1.0, 1.0)
                 elif top_action == "shelter" and houses:
                     if not roof_resolved:
                         assigned_roof = self._house_for(c, houses)
@@ -9879,6 +9931,10 @@ class Simulation:
                         desired = math.atan2(dy, dx)
                         diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
                         c.angle += max(-cfg.steer_turn, min(cfg.steer_turn, diff))
+                        # §BE-2b shelter orbit-break jitter
+                        if c.blocked_ticks >= 5:
+                            c.angle += self.rng.uniform(-0.8, 0.8)
+                            c.blocked_ticks = 0
                 elif top_action == "eat" and target is not None:
                     if isinstance(target, Food) and target.variant in ("berry", "mushroom") and getattr(c, "waypoints", None) is not None:
                         c.waypoints["rich_food"] = (round(target.x, 2), round(target.y, 2))
@@ -9942,10 +9998,38 @@ class Simulation:
                         diff = (escape_ang - c.angle + math.pi) % (2 * math.pi) - math.pi
                         c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
                     else:
+                        # §BE-E6 visited-cell bookkeeping (10-unit cells, cleared every 200 ticks)
+                        if hasattr(c, "_visited_cells"):
+                            if self.tick % 200 == 0:
+                                c._visited_cells.clear()
+                            c._visited_cells.add((int(c.x // 10), int(c.y // 10)))
+                        # §BE-E2 territory patrol bias — refresh every 60 ticks
+                        if cfg.territory_enabled and c.clan_id and clan_house_map.get(c.clan_id) is not None:
+                            if c._patrol_target is None or self.tick % 60 == 0:
+                                ang = self.rng.uniform(0, 2 * math.pi)
+                                rad = cfg.territory_radius
+                                hh = clan_house_map[c.clan_id]
+                                c._patrol_target = (hh.x + math.cos(ang) * rad, hh.y + math.sin(ang) * rad)
+                            px, py = c._patrol_target
+                            dx, dy = w.delta(px, py, c.x, c.y)
+                            desired = math.atan2(dy, dx)
+                            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                            c.angle += max(-cfg.steer_turn * 0.25, min(cfg.steer_turn * 0.25, diff))
+                        # §BE-1 OU-style correlated wander (decays ×0.80 + half jitter)
                         wander = cfg.wander_turn
                         if self.weather == "storm":
                             wander += cfg.storm_wander_bonus
-                        c.angle += self.rng.uniform(-wander, wander)
+                        bias = getattr(c, "_heading_bias", 0.0) * 0.80 + self.rng.uniform(-wander * 0.5, wander * 0.5)
+                        c._heading_bias = bias
+                        c.angle += bias
+                        # §BE-E6 revisit suppression: bias 60° if destination cell already visited
+                        if hasattr(c, "_visited_cells") and c._visited_cells:
+                            nx_est = c.x + math.cos(c.angle) * c.speed * 2.0
+                            ny_est = c.y + math.sin(c.angle) * c.speed * 2.0
+                            nx_est, ny_est = w.normalize(nx_est, ny_est)
+                            dest = (int(nx_est // 10), int(ny_est // 10))
+                            if dest in c._visited_cells:
+                                c.angle += math.pi / 3
 
             # 2b. Social yielding: the lowly give way to their betters.
             my_rank = YIELD_RANK.get(c.caste, 0)

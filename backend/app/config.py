@@ -322,6 +322,13 @@ class Config:
     crowding_stress_mult: float = 0.35  # metabolic drain multiplier
     resource_strain_mult: float = 1.2  # plant growth/spread divisor
 
+    # BF Early Population Boom Limiter — days 0-6 birth is throttled
+    boom_ramp_days: float = 6.0  # days of suppressed birth at world start
+    boom_birth_floor: float = 0.12  # birth rate floor at day 0 (0.12×)
+    boom_cooldown_mult: float = 3.0  # cooldown ×3 at day 0, decays to ×1 at ramp
+    boom_energy_mult: float = 2.5  # mate_energy_min ×2.5 at day 0, decays to ×1
+    initial_season_offset: int = 0  # 0=spring, 1=summer, 2=autumn, 3=winter
+
     @classmethod
     def from_env(cls) -> "Config":
         """Live runtime config: defaults to the Balance Goldilocks preset."""
