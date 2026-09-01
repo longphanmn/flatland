@@ -146,3 +146,24 @@ def test_post_all_laws_roundtrip_accepts_auto_negative_sentinels(client):
     assert res["morphology_annealing_enabled"] is True
 
 
+def test_post_laws_with_seed_greater_than_one_billion(client):
+    """Regression: /api/laws crashed with 422 'Input should be less than or equal to 1000000000'
+    when random seed rolled between 1,000,000,000 and 2**31-1 and frontend submitted laws."""
+    laws = client.get("/api/laws").json()
+    laws["seed"] = 1_543_210_987
+    laws["morphology_annealing_enabled"] = True
+    r = client.post("/api/laws", json=laws)
+    assert r.status_code == 200
+    res = r.json()
+    assert res["seed"] == 1_543_210_987
+    assert res["morphology_annealing_enabled"] is True
+
+
+def test_presets_have_morphology_annealing_enabled_by_default():
+    """Verify Polar morphology is enabled by default in presets."""
+    from app.main import PRESETS
+    assert PRESETS["balance"]["morphology_annealing_enabled"] is True
+    assert PRESETS["sustainable"]["morphology_annealing_enabled"] is True
+
+
+

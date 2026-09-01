@@ -410,7 +410,7 @@ class GodLaws(BaseModel):
     rubble_blocking_enabled: Optional[bool] = None
     scent_enabled: Optional[bool] = None
     schism_min_pop: Optional[int] = Field(None, ge=1, le=1000)
-    seed: Optional[int] = Field(None, ge=0, le=1000000000)
+    seed: Optional[int] = Field(None, ge=0)
     separation_weight: Optional[float] = Field(None, ge=0, le=10)
     signal_radius: Optional[float] = Field(None, ge=0, le=100)
     signal_speed: Optional[float] = Field(None, ge=0, le=100)

@@ -2235,7 +2235,7 @@ class Simulation:
     def _init_morph_for_child(self, child: Creature, mother: Creature, father: Creature) -> None:
         """BC morphological inheritance — no-op when annealing disabled (keeps AZ hash)."""
         cfg = self.config
-        if not getattr(cfg, "morphology_annealing_enabled", False):
+        if not getattr(cfg, "morphology_annealing_enabled", True):
             return
         if _evo_mgr is None or _morphology is None:
             return
@@ -4030,7 +4030,7 @@ class Simulation:
                 pass
         self._reproduce()
         # BC bake traits for any new SoA morph entries (lazy)
-        if getattr(self.config, "morphology_annealing_enabled", False) and getattr(self, "_soa", None) is not None and _morphology is not None:
+        if getattr(self.config, "morphology_annealing_enabled", True) and getattr(self, "_soa", None) is not None and _morphology is not None:
             try:
                 for idx in range(self._soa.N):
                     if self._soa.morph_k[idx] and float(self._soa.morph_traits[idx, 0]) == 0.0:
@@ -4074,7 +4074,7 @@ class Simulation:
             self._update_agriculture()
             self._update_faith()
         # BC.6.1 SAT narrowphase — only when morphology enabled and SoA present
-        if getattr(self.config, "morphology_annealing_enabled", False) and getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map"):
+        if getattr(self.config, "morphology_annealing_enabled", True) and getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map"):
             try:
                 self._update_morph_collisions()
             except Exception:
@@ -6013,7 +6013,7 @@ class Simulation:
         self._maybe_epiphany()
     def _update_morph_collisions(self) -> None:
         """BC.6.1 SAT narrowphase — broadphase via spatial hash, narrowphase SAT, impulse & Dmult damage."""
-        if not getattr(self.config, "morphology_annealing_enabled", False):
+        if not getattr(self.config, "morphology_annealing_enabled", True):
             return
         if getattr(self, "_soa", None) is None or _morphology is None:
             return
@@ -7368,7 +7368,7 @@ class Simulation:
             if not base:
                 return False
             # BC.4.2 courtship — gated behind morphology annealing (and BA 8.1 hard switch deferred)
-            if getattr(cfg, "morphology_annealing_enabled", False) and getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map"):
+            if getattr(cfg, "morphology_annealing_enabled", True) and getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map"):
                 try:
                     idx = self._soa_id_map.get(c.id)
                     if idx is not None and 0 <= idx < getattr(self._soa, "N", 0):
@@ -7684,7 +7684,7 @@ class Simulation:
         }
 
         # BC.4.1 energetic asymmetry — when enabled, cost scales with morph area median
-        if getattr(cfg, "morphology_annealing_enabled", False) and getattr(self, "_soa", None) is not None and _morphology is not None:
+        if getattr(cfg, "morphology_annealing_enabled", True) and getattr(self, "_soa", None) is not None and _morphology is not None:
             try:
                 # median area from SoA morph_traits if available
                 if hasattr(self._soa, "morph_traits"):
@@ -10315,7 +10315,7 @@ class Simulation:
             elif leaderless:
                 decay_mult *= LEADERLESS_DECAY_MULT
         # BC.2 trait baking — perimeter scales burn, inertia scales steer
-        if getattr(cfg, "morphology_annealing_enabled", False) and getattr(self, "_soa", None) is not None and _morphology is not None and hasattr(self, "_soa_id_map"):
+        if getattr(cfg, "morphology_annealing_enabled", True) and getattr(self, "_soa", None) is not None and _morphology is not None and hasattr(self, "_soa_id_map"):
             try:
                 idx = self._soa_id_map.get(c.id)
                 if idx is not None and 0 <= idx < getattr(self._soa, "N", 0):

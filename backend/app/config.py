@@ -6,7 +6,11 @@ from dataclasses import dataclass
 
 def _env(name: str, cast, default):
     raw = os.environ.get(name)
-    return cast(raw) if raw not in (None, "") else default
+    if raw in (None, ""):
+        return default
+    if cast is bool:
+        return raw.lower() in ("true", "1", "yes", "on")
+    return cast(raw)
 
 
 @dataclass(frozen=True)
@@ -357,6 +361,9 @@ class Config:
             communication_enabled=_env("FLATWORLD_COMMUNICATION_ENABLED", bool, True),
             omp_enabled=_env("FLATWORLD_OMP_ENABLED", bool, True),
             omp_threshold=_env("FLATWORLD_OMP_THRESHOLD", int, 100),
+            morphology_annealing_enabled=_env("FLATWORLD_MORPHOLOGY_ANNEALING_ENABLED", bool, True),
+            soft_cap_enabled=_env("FLATWORLD_SOFT_CAP_ENABLED", bool, True),
+            safeguard_enabled=_env("FLATWORLD_SAFEGUARD_ENABLED", bool, True),
         )
 
     @property

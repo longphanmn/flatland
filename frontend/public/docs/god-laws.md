@@ -67,7 +67,7 @@ Governs sensory perception, physical movement, life stages, reproduction, geneti
 | `euthanasia_threshold` | 0.3–1.0 | **0.70** | Irregularity threshold; deformed infants exceeding this are consumed at adulthood. |
 | `mutation_sigma` | 0–0.5 | **0.08** | Gaussian mutation standard deviation (σ) applied to genome weights during crossover. |
 | `crossover_rate` | 0–1.0 | **0.50** | Probability of uniform 50/50 parental genome blending during sexual reproduction. |
-| `morphology_annealing_enabled` | Boolean | **false** | Enables polar genome evolution transitioning from Abbott templates to free morphology. |
+| `morphology_annealing_enabled` | Boolean | **true** | Enables polar genome evolution transitioning from Abbott templates to free morphology. |
 | `annealing_decay_generations` | 10–1000 | **150** | Generations over which polar morphology annealing decays from Abbott templates to free evolution. |
 | `safeguard_enabled` | Boolean | **true** | Master switch for extinction safeguards: negative-feedback relief scaling ($\eta$) and Tier 3 Genesis miracles. |
 | `safeguard_critical_pop` | 2–50 | **12** | Emergency population floor ($K_{crit}$); dropping to or below this triggers Tier 3 Genesis miracles from The Sphere. |
