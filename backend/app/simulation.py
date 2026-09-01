@@ -3234,12 +3234,9 @@ class Simulation:
         ax, ay = abs(dx), abs(dy)
         if ax < half - 0.3 and ay < half - 0.3:
             return h.x, h.y  # already under the roof: settle toward its heart
-        # §BE-2 direct-door shortcut — within 2.2× size aim straight at the doorway
-        if w.distance_sq(c.x, c.y, h.x, h.y) <= (h.size * 2.2) ** 2:
-            return self._door_pos(h)
         m = 0.9  # stand-off lane off the wall
         lim = max(0.5, half - 0.8)  # slide clamp inside the face ends
-        dw = max(h.door_width * 0.45, 1.3)  # "I can see the door" alignment
+        dw = max(h.door_width * 0.7, 2.0)  # door alignment tolerance (§BE-2 wider entrance funnel)
         sx = 1.0 if dx >= 0 else -1.0
         sy = 1.0 if dy >= 0 else -1.0
         if ax >= ay:  # nearest face: east / west
@@ -9998,23 +9995,23 @@ class Simulation:
                         diff = (escape_ang - c.angle + math.pi) % (2 * math.pi) - math.pi
                         c.angle += max(-cfg.steer_turn * 1.2, min(cfg.steer_turn * 1.2, diff))
                     else:
-                        # §BE-E6 visited-cell bookkeeping (10-unit cells, cleared every 200 ticks)
-                        if hasattr(c, "_visited_cells"):
-                            if self.tick % 200 == 0:
-                                c._visited_cells.clear()
-                            c._visited_cells.add((int(c.x // 10), int(c.y // 10)))
-                        # §BE-E2 territory patrol bias — refresh every 60 ticks
+                        # §BE-E2 territory patrol bias — refresh every 80 ticks or when reached
                         if cfg.territory_enabled and c.clan_id and clan_house_map.get(c.clan_id) is not None:
-                            if c._patrol_target is None or self.tick % 60 == 0:
+                            hh = clan_house_map[c.clan_id]
+                            if c._patrol_target is not None:
+                                px, py = c._patrol_target
+                                if w.distance_sq(c.x, c.y, px, py) <= 9.0:
+                                    c._patrol_target = None  # arrived; clear so creature doesn't orbit target point
+                            if c._patrol_target is None and (self.tick + c.id) % 80 == 0:
                                 ang = self.rng.uniform(0, 2 * math.pi)
-                                rad = cfg.territory_radius
-                                hh = clan_house_map[c.clan_id]
+                                rad = cfg.territory_radius * self.rng.uniform(0.3, 0.75)
                                 c._patrol_target = (hh.x + math.cos(ang) * rad, hh.y + math.sin(ang) * rad)
-                            px, py = c._patrol_target
-                            dx, dy = w.delta(px, py, c.x, c.y)
-                            desired = math.atan2(dy, dx)
-                            diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
-                            c.angle += max(-cfg.steer_turn * 0.25, min(cfg.steer_turn * 0.25, diff))
+                            if c._patrol_target is not None:
+                                px, py = c._patrol_target
+                                dx, dy = w.delta(px, py, c.x, c.y)
+                                desired = math.atan2(dy, dx)
+                                diff = (desired - c.angle + math.pi) % (2 * math.pi) - math.pi
+                                c.angle += max(-cfg.steer_turn * 0.25, min(cfg.steer_turn * 0.25, diff))
                         # §BE-1 OU-style correlated wander (decays ×0.80 + half jitter)
                         wander = cfg.wander_turn
                         if self.weather == "storm":
@@ -10022,14 +10019,6 @@ class Simulation:
                         bias = getattr(c, "_heading_bias", 0.0) * 0.80 + self.rng.uniform(-wander * 0.5, wander * 0.5)
                         c._heading_bias = bias
                         c.angle += bias
-                        # §BE-E6 revisit suppression: bias 60° if destination cell already visited
-                        if hasattr(c, "_visited_cells") and c._visited_cells:
-                            nx_est = c.x + math.cos(c.angle) * c.speed * 2.0
-                            ny_est = c.y + math.sin(c.angle) * c.speed * 2.0
-                            nx_est, ny_est = w.normalize(nx_est, ny_est)
-                            dest = (int(nx_est // 10), int(ny_est // 10))
-                            if dest in c._visited_cells:
-                                c.angle += math.pi / 3
 
             # 2b. Social yielding: the lowly give way to their betters.
             my_rank = YIELD_RANK.get(c.caste, 0)

@@ -205,10 +205,9 @@ class Creature(Entity):
     prepared_ticks: int = 0
     greet_cooldown: int = 0
     mission: dict | None = None
-    # §BE Creature Movement AI Overhaul: correlated wander, patrol, visited-cell
+    # §BE Creature Movement AI Overhaul: correlated wander, territory patrol
     _heading_bias: float = 0.0  # OU drift for wander (decays ×0.80/tick)
-    _patrol_target: tuple[float, float] | None = None  # territory patrol point (refreshed every 60 ticks)
-    _visited_cells: set[tuple[int, int]] = field(default_factory=set)  # 10-unit cells, cleared every 200 ticks
+    _patrol_target: tuple[float, float] | None = None  # territory patrol point (refreshed when reached or 80 ticks)
 
     @property
     def max_health(self) -> float:
