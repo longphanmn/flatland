@@ -546,7 +546,8 @@ function GodPanelInner({ open, onClose }: Props) {
   }
 
   const stepVal = (key: NumberLawKey, min: number, max: number, step: number, dir: 1 | -1) => {
-    const curr = (laws[key] as number | undefined) ?? min
+    const raw = laws[key]
+    const curr = (typeof raw === 'number' && !isNaN(raw)) ? raw : min
     const next = Math.max(min, Math.min(max, Number((curr + dir * step).toFixed(4))))
     set(key, next)
   }
@@ -1284,13 +1285,18 @@ function GodPanelInner({ open, onClose }: Props) {
                 const translatedLabel = t(`godLaws.${key}`) !== `godLaws.${key}` ? t(`godLaws.${key}`) : label
                 const hint = (t(`godHints.${key}`) !== `godHints.${key}` ? t(`godHints.${key}`) : LAW_HINTS[key])
                 const isOpen = openHint === key
-                const curVal = (laws[key] as number | undefined) ?? min
-                const baseVal = (baselineLaws[key] as number | undefined)
+                const rawCur = laws[key]
+                const curVal = (typeof rawCur === 'number' && !isNaN(rawCur)) ? rawCur : min
+                const rawBase = baselineLaws[key]
+                const baseVal = (typeof rawBase === 'number' && !isNaN(rawBase)) ? rawBase : undefined
                 const isModified = modifiedKeys.has(key)
                 const zone = getZone(curVal, baseVal, min, max)
                 const pct = max === min ? 0 : ((curVal - min) / (max - min)) * 100
                 const basePct = baseVal !== undefined && max !== min ? ((baseVal - min) / (max - min)) * 100 : null
-                const fmt = (v: number) => step < 1 ? v.toFixed(step < 0.01 ? 3 : 2) : String(Math.round(v))
+                const fmt = (v: number | null | undefined) => {
+                  if (v === null || v === undefined || isNaN(v)) return '—'
+                  return step < 1 ? v.toFixed(step < 0.01 ? 3 : 2) : String(Math.round(v))
+                }
                 // highlight match
                 const qLower = q
                 const labelMatch = qLower && translatedLabel.toLowerCase().includes(qLower)
@@ -1333,7 +1339,7 @@ function GodPanelInner({ open, onClose }: Props) {
                             <span className="z-extreme-right" />
                           </div>
                           <div className="god-slider-fill" style={{ width: `${pct}%` }} />
-                          {basePct !== null && <span className="god-baseline-marker" style={{ left: `${basePct}%` }} title={`${t('god.ui.default_label', { val: fmt(baseVal as number) })}`} />}
+                          {basePct !== null && baseVal !== undefined && <span className="god-baseline-marker" style={{ left: `${basePct}%` }} title={`${t('god.ui.default_label', { val: fmt(baseVal) })}`} />}
                         </div>
                         <input
                           type="range"
