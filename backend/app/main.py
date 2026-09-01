@@ -2518,7 +2518,8 @@ async def apply_preset(name: str, persist: bool = True, reset: bool = False) -> 
 MAJOR_EVENT_TYPES = (
     "war", "conquest", "takeover", "schism", "betrayal", "alliance",
     "coalition_formed", "peace", "regicide", "succession", "outbreak",
-    "disaster", "miracle", "synod", "temple", "epiphany", "extinction"
+    "disaster", "miracle", "synod", "temple", "epiphany", "extinction",
+    "clan_extinction"
 )
 
 
@@ -2583,6 +2584,9 @@ async def get_history(
             db_events = merged
         except Exception:
             pass
+    if major:
+        # Filter out minor non-lethal combat ticks so major historical milestones aren't crowded out
+        db_events = [ev for ev in db_events if ev.get("type") != "war" or ev.get("payload", {}).get("lethal") is True]
     total = DB.death_count(RT.world_id) if RT.world_id else 0
     # include pending deaths not yet flushed
     if RT.world_id and DB.pending:

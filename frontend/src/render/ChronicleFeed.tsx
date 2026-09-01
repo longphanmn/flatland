@@ -49,6 +49,8 @@ function matchesCategory(ev: any, category: EventCategory): boolean {
       'exile',
       'predation',
       'rivalry',
+      'clan_extinction',
+      'extinction',
     ].includes(ev.type)
   }
   if (category === 'clan') {
@@ -74,23 +76,24 @@ function matchesCategory(ev: any, category: EventCategory): boolean {
       'omen',
       'regicide',
       'herald',
+      'clan_extinction',
     ].includes(ev.type)
   }
   if (category === 'deaths') {
-    return ev.type === 'death' || ev.type === 'war' || ev.type === 'predation' || ev.type === 'cannibalism'
+    return ev.type === 'death' || ev.type === 'war' || ev.type === 'predation' || ev.type === 'cannibalism' || ev.type === 'clan_extinction' || ev.type === 'extinction'
   }
   if (category === 'plague') {
     return ev.type === 'outbreak' || ev.type === 'recovery' || (ev.type === 'death' && ev.cause === 'disease')
   }
   if (category === 'nature') {
-    return ['bloom', 'wither', 'ruin', 'fire', 'disaster', 'compost', 'anomaly'].includes(ev.type)
+    return ['bloom', 'wither', 'ruin', 'fire', 'disaster', 'compost', 'anomaly', 'extinction'].includes(ev.type)
   }
   return true
 }
 
 function accentFor(ev: any): string {
   if (ev.type === 'outbreak' || ev.type === 'recovery' || (ev.type === 'death' && ev.cause === 'disease')) return 'cat-plague'
-  if (['war','betrayal','schism','conquest','takeover','raid','coalition_formed','coalition_joined','coalition_dissolved','peace','peace_envoy','defection','cannibalism','exile','predation','rivalry'].includes(ev.type)) return 'cat-conflict'
+  if (['war','betrayal','schism','conquest','takeover','raid','coalition_formed','coalition_joined','coalition_dissolved','peace','peace_envoy','defection','cannibalism','exile','predation','rivalry','clan_extinction','extinction'].includes(ev.type)) return 'cat-conflict'
   if (['birth','settlement','succession','culture','alliance','tribute','promotion','demotion','miracle','sermon','synod','temple','epiphany','resonance','hospitality','banquet','market','caravan','omen','regicide','herald'].includes(ev.type)) return 'cat-clan'
   if (ev.type === 'death' || ev.type === 'war' || ev.type === 'predation' || ev.type === 'cannibalism') return 'cat-deaths'
   if (['bloom','wither','ruin','fire','disaster','compost','anomaly'].includes(ev.type)) return 'cat-nature'
@@ -601,6 +604,52 @@ export default function ChronicleFeed({
               return (
                 <li key={key} className={accentCls} style={{ color: '#e3b341' }}>
                   {t('chronicleEvents.omenBehold', { name: nm, clan: p.clan_name ?? clanLabel(p.clan_id), season: String(p.season), tick: ev.tick })}
+                </li>
+              )
+            }
+
+            if (ev.type === 'disaster') {
+              const kind = p.kind === 'river_flood' ? 'river flood' : p.kind === 'flash_flood' ? 'flash flood' : (p.kind ?? 'disaster')
+              return (
+                <li key={key} className={"ev-war " + accentCls} style={{ color: '#f85149' }}>
+                  {t('chronicleEvents.disasterEvent', { kind, x: Math.round(ev.x), y: Math.round(ev.y), tick: ev.tick })}
+                </li>
+              )
+            }
+            if (ev.type === 'clan_extinction') {
+              const cName = p.clan_name ?? clanLabel(p.clan_id)
+              const days = p.lifespan_days ?? (p.lifespan_ticks ? Math.round(p.lifespan_ticks / 1200) : 0)
+              return (
+                <li key={key} className={"ev-demote " + accentCls} style={{ color: '#f85149', fontWeight: 600 }}>
+                  {t('chronicleEvents.clanExtinction', { clan: cName, days, tick: ev.tick })}
+                </li>
+              )
+            }
+            if (ev.type === 'extinction') {
+              return (
+                <li key={key} className={"ev-war " + accentCls} style={{ color: '#f85149', fontWeight: 700 }}>
+                  {t('chronicleEvents.extinctionWorld', { tick: ev.tick })}
+                </li>
+              )
+            }
+            if (ev.type === 'fire') {
+              return (
+                <li key={key} className={"ev-war " + accentCls} style={{ color: '#f0883e' }}>
+                  {t('chronicleEvents.fireEvent', { kind: String(p.kind ?? 'wildfire'), x: Math.round(ev.x), y: Math.round(ev.y), tick: ev.tick })}
+                </li>
+              )
+            }
+            if (ev.type === 'ruin') {
+              return (
+                <li key={key} className={"ev-wither " + accentCls} style={{ color: '#8b949e' }}>
+                  {t('chronicleEvents.ruinEvent', { id: ev.entity_id, x: Math.round(ev.x), y: Math.round(ev.y), tick: ev.tick })}
+                </li>
+              )
+            }
+            if (ev.type === 'anomaly') {
+              return (
+                <li key={key} className={"ev-miracle " + accentCls} style={{ color: '#bc8cff' }}>
+                  {t('chronicleEvents.anomalyEvent', { x: Math.round(ev.x), y: Math.round(ev.y), tick: ev.tick })}
                 </li>
               )
             }

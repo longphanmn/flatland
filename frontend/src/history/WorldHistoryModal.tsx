@@ -44,7 +44,7 @@ interface OutbreakDetail {
 }
 
 interface DynastyDetail {
-  kind: 'succession' | 'regicide' | 'schism' | 'treaty' | 'coalition' | 'betrayal'
+  kind: 'succession' | 'regicide' | 'schism' | 'treaty' | 'coalition' | 'betrayal' | 'extinction'
   title: string
   detail: string
 }
@@ -57,6 +57,7 @@ interface FaithDetail {
 
 interface DisasterDetail {
   kind: string
+  count: number
 }
 
 export interface DayRecord {
@@ -287,11 +288,22 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         })
       } else if (ev.type === 'schism') {
         dRec.categories.add('politics')
-        const fromName = clanName(p.from_clan, p.from_name)
+        const parentClan = clanName(p.parent ?? p.from_clan ?? p.clan_id, p.parent_name ?? p.from_name)
+        const newClan = clanName(p.new_clan ?? p.to_clan, p.new_name ?? p.to_name)
+        const count = (p.members?.length ?? p.member_count) || 1
         dRec.dynasties.push({
           kind: 'schism',
-          title: t('history.details.schismTitle', { clan: fromName }),
-          detail: t('history.details.schismDetail', { clan: fromName }),
+          title: t('history.details.schismTitle', { clan: parentClan }),
+          detail: t('history.details.schismBreakdown', { parent: parentClan, child: newClan, count }),
+        })
+      } else if (ev.type === 'clan_extinction') {
+        dRec.categories.add('politics')
+        const cName = clanName(p.clan_id, p.clan_name)
+        const days = p.lifespan_days ?? (p.lifespan_ticks ? Math.round(p.lifespan_ticks / 1200) : 0)
+        dRec.dynasties.push({
+          kind: 'extinction',
+          title: t('history.details.clanExtinctionTitle', { clan: cName }),
+          detail: t('history.details.clanExtinctionDetail', { clan: cName, days }),
         })
       } else if (ev.type === 'succession') {
         dRec.categories.add('politics')
@@ -349,13 +361,26 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         })
       } else if (ev.type === 'disaster') {
         dRec.categories.add('disaster')
-        dRec.disasters.push({
-          kind: p.kind ?? 'Cataclysm',
-        })
+        const rawKind = String(p.kind ?? 'Cataclysm')
+        const kindLabel = rawKind === 'river_flood' ? t('history.details.riverFlood')
+          : rawKind === 'flash_flood' ? t('history.details.flashFlood')
+          : rawKind === 'meteor' ? t('history.details.meteor')
+          : rawKind === 'earthquake' ? t('history.details.earthquake')
+          : rawKind
+        const existing = dRec.disasters.find((dis) => dis.kind === kindLabel)
+        if (existing) {
+          existing.count++
+        } else {
+          dRec.disasters.push({
+            kind: kindLabel,
+            count: 1,
+          })
+        }
       } else if (ev.type === 'extinction') {
         dRec.categories.add('disaster')
         dRec.disasters.push({
           kind: 'World Extinction',
+          count: 1,
         })
       }
     }
@@ -374,43 +399,74 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
     for (const d of sortedDays) {
       const highlights: string[] = []
 
-      // Genesis
+      // 1. Genesis
       if (d.day === 0) {
-        const clanNames = Object.values(clans).slice(0, 3).map((c) => c.name).join(', ')
+        const clanNames = Object.values(clans).slice(0, 3).map((c) => c.name).filter(Boolean).join(', ')
         highlights.push(t('history.details.genesis', { clans: clanNames || 'founding clans' }))
         d.primaryIcon = '🌱'
         d.badgeColor = '#3fb950'
       }
 
-      // Detailed Major Wars
-      if (d.wars.length > 0) {
-        d.primaryIcon = '⚔️'
-        d.badgeColor = '#f85149'
-        const warSnippets = d.wars.map((w) => {
-          const casText = w.casualties > 0 ? t('history.details.fallenDigest', { count: w.casualties }) : ''
-          return `${w.aName} vs ${w.bName}${casText}`
-        })
-        highlights.push(t('history.details.warDigest', { wars: warSnippets.join(', ') }))
+      // 2. High-Impact Dynasties (Clan Schisms / Fracturing / Regicides / Clan Extinctions)
+      const schisms = d.dynasties.filter((dyn) => dyn.kind === 'schism')
+      const clanExtinctions = d.dynasties.filter((dyn) => dyn.kind === 'extinction')
+      const regicides = d.dynasties.filter((dyn) => dyn.kind === 'regicide')
+
+      if (schisms.length > 0 || clanExtinctions.length > 0 || regicides.length > 0) {
+        d.primaryIcon = schisms.length > 0 ? '👑' : regicides.length > 0 ? '🗡️' : '💀'
+        d.badgeColor = schisms.length > 0 ? '#e3b341' : '#f85149'
+
+        if (schisms.length >= 2) {
+          highlights.push(t('history.details.greatFracturingMultiple', { count: schisms.length }))
+        } else if (schisms.length === 1) {
+          highlights.push(schisms[0].detail)
+        }
+
+        if (clanExtinctions.length > 0) {
+          const extSnippets = clanExtinctions.map((e) => e.title).join(', ')
+          highlights.push(extSnippets)
+        }
+
+        if (regicides.length > 0) {
+          const regSnippets = regicides.map((r) => r.title).join(', ')
+          highlights.push(regSnippets)
+        }
       }
 
-      // Detailed Conquests
-      if (d.conquests.length > 0) {
-        const conqSnippets = d.conquests.slice(0, 2).map((c) => {
-          return t('history.details.conquestDigestItem', { invader: c.invaderName, house: c.houseId, victim: c.victimName })
-        })
-        highlights.push(t('history.details.conquestDigest', { conquests: conqSnippets.join(', ') }))
+      // 3. Detailed Major Wars (lethal casualties) & Territorial Conquests
+      const lethalWars = d.wars.filter((w) => w.casualties > 0)
+      if (lethalWars.length > 0 || d.conquests.length > 0) {
+        if (!d.dynasties.some(dyn => dyn.kind === 'schism')) {
+          d.primaryIcon = '⚔️'
+          d.badgeColor = '#f85149'
+        }
+        if (lethalWars.length > 0) {
+          const warSnippets = lethalWars.map((w) => {
+            const casText = t('history.details.fallenDigest', { count: w.casualties })
+            return `${w.aName} vs ${w.bName}${casText}`
+          })
+          highlights.push(t('history.details.warDigest', { wars: warSnippets.join(', ') }))
+        }
+        if (d.conquests.length > 0) {
+          const conqSnippets = d.conquests.slice(0, 2).map((c) => {
+            return t('history.details.conquestDigestItem', { invader: c.invaderName, house: c.houseId, victim: c.victimName })
+          })
+          highlights.push(t('history.details.conquestDigest', { conquests: conqSnippets.join(', ') }))
+        }
       }
 
-      // Detailed Plagues
+      // 4. Detailed Plagues
       if (d.outbreaks.length > 0) {
-        d.primaryIcon = '☣️'
-        d.badgeColor = '#3fb950'
+        if (highlights.length === 0) {
+          d.primaryIcon = '☣️'
+          d.badgeColor = '#3fb950'
+        }
         highlights.push(t('history.details.plagueDigest', { id: d.outbreaks[0].diseaseId }))
       }
 
-      // Detailed Faith
+      // 5. Detailed Faith
       if (d.faiths.length > 0) {
-        if (!d.wars.length) {
+        if (highlights.length === 0) {
           d.primaryIcon = '🏛️'
           d.badgeColor = '#bc8cff'
         }
@@ -418,25 +474,28 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
         highlights.push(t('history.details.faithDigest', { faiths: fSnippets.join(' & ') }))
       }
 
-      // Detailed Politics & Dynasties
-      if (d.dynasties.length > 0) {
-        if (!d.wars.length && !d.outbreaks.length) {
-          d.primaryIcon = '👑'
-          d.badgeColor = '#e3b341'
-        }
-        const dSnippets = d.dynasties.slice(0, 2).map((dyn) => dyn.title)
-        highlights.push(t('history.details.politicsDigest', { politics: dSnippets.join(' · ') }))
-      }
-
-      // Detailed Disasters
+      // 6. Detailed Disasters (Deduplicated with count)
       if (d.disasters.length > 0) {
-        d.primaryIcon = '🌋'
-        d.badgeColor = '#f85149'
-        const disSnippets = d.disasters.map((dis) => dis.kind)
+        if (highlights.length === 0) {
+          d.primaryIcon = '🌋'
+          d.badgeColor = '#f85149'
+        }
+        const disSnippets = d.disasters.map((dis) => dis.count > 1 ? `${dis.kind} (×${dis.count})` : dis.kind)
         highlights.push(t('history.details.cataclysmDigest', { kinds: disSnippets.join(', ') }))
       }
 
-      // Peaceful / Flourishing Day variety based on seasonal cycles and clan activity
+      // 7. Other Political Treaties & Successions
+      const otherDynasties = d.dynasties.filter((dyn) => dyn.kind !== 'schism' && dyn.kind !== 'extinction' && dyn.kind !== 'regicide')
+      if (otherDynasties.length > 0 && highlights.length < 2) {
+        if (highlights.length === 0) {
+          d.primaryIcon = '👑'
+          d.badgeColor = '#e3b341'
+        }
+        const dSnippets = otherDynasties.slice(0, 2).map((dyn) => dyn.title)
+        highlights.push(t('history.details.politicsDigest', { politics: dSnippets.join(' · ') }))
+      }
+
+      // 8. Peaceful / Flourishing Day variety based on seasonal cycles, clan leaders, and active demographics
       if (highlights.length === 0) {
         const seasonIndex = Math.floor((d.day % 12) / 3)
         const seasonDesc = [
@@ -446,13 +505,20 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
           t('history.details.deepWinter'),
         ][seasonIndex]
 
+        const clanList = Object.values(clans).filter((c: any) => c.name)
+        const leadClan = clanList.length > 0 ? clanList[(d.day * 3 + 7) % clanList.length]?.name : null
+
         const flavorIndex = d.day % 4
-        const flavorDesc = [
+        let flavorDesc = [
           t('history.details.flavor0'),
           t('history.details.flavor1'),
           t('history.details.flavor2'),
           t('history.details.flavor3'),
         ][flavorIndex]
+
+        if (leadClan) {
+          flavorDesc = `${leadClan} ${flavorDesc}`
+        }
 
         highlights.push(`${seasonDesc} · ${flavorDesc}`)
         d.primaryIcon = ['🌱', '☀️', '🍂', '❄️'][seasonIndex]
@@ -485,6 +551,7 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
     let lethalWars = 0
     let outbreaks = 0
     let schisms = 0
+    let clanExtinctions = 0
     let disasters = 0
     let temples = 0
     let miracles = 0
@@ -495,13 +562,14 @@ export default function WorldHistoryModal({ open, onClose, state, selectedRunId 
       lethalWars += d.totalCasualties
       outbreaks += d.outbreaks.length
       schisms += d.dynasties.filter((dyn) => dyn.kind === 'schism').length
+      clanExtinctions += d.dynasties.filter((dyn) => dyn.kind === 'extinction').length
       successions += d.dynasties.filter((dyn) => dyn.kind === 'succession').length
       temples += d.faiths.filter((f) => f.kind === 'temple').length
       miracles += d.faiths.filter((f) => f.kind === 'miracle').length
-      disasters += d.disasters.length
+      disasters += d.disasters.reduce((acc, dis) => acc + dis.count, 0)
     }
 
-    return { wars, lethalWars, outbreaks, schisms, disasters, temples, miracles, successions }
+    return { wars, lethalWars, outbreaks, schisms, clanExtinctions, disasters, temples, miracles, successions }
   }, [dayRecords])
 
   const totalDays = state ? (state.tick / 1200).toFixed(1) : '0'
@@ -978,7 +1046,7 @@ ${stylePrompt}
                                 <span style={{ color: '#f85149', fontWeight: 600 }}>{t('history.sections.cataclysms')}</span>
                                 {d.disasters.map((dis, idx) => (
                                   <div key={idx} style={{ paddingLeft: 12, color: '#c9d1d9' }}>
-                                    {t('history.details.disasterEntry', { kind: dis.kind })}
+                                    {t('history.details.disasterEntry', { kind: dis.count > 1 ? `${dis.kind} (×${dis.count})` : dis.kind })}
                                   </div>
                                 ))}
                               </div>

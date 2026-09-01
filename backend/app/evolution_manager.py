@@ -55,10 +55,12 @@ def lambda_for_generation(g: int, config) -> float:
                 return max(0.0, min(1.0, ov))
         except Exception:
             pass
-    if not getattr(config, "morphology_annealing_enabled", False):
-        return 1.0  # frozen classical when disabled
-    g_start = int(getattr(config, "annealing_start_generation", 50))
-    g_decay = int(getattr(config, "annealing_decay_generations", 150))
+    if not getattr(config, "morphology_annealing_enabled", True):
+        return 1.0  # frozen classical when explicitly disabled
+    g_start = int(getattr(config, "annealing_start_generation", 5))
+    g_decay = int(getattr(config, "annealing_decay_generations", 45))
+    if g < g_start:
+        return 1.0
     if g_decay <= 0:
         return 0.0
     v = 1.0 - (g - g_start) / float(g_decay)

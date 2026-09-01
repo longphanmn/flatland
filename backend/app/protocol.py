@@ -180,7 +180,7 @@ class HistoryEvent(BaseModel):
         "miracle", "sermon", "synod", "temple", "epiphany", "resonance",
         "compost", "banquet", "raid", "hospitality",
         "peace_envoy", "market", "caravan", "omen", "regicide", "herald",
-        "anomaly",
+        "anomaly", "clan_extinction", "extinction",
     ] = ("death")
     tick: int
     entity_id: int

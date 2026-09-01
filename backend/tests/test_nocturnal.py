@@ -255,7 +255,7 @@ def test_blind_collision_impalement():
 
 def test_marauder_loots_lone_forager():
     """§AO D.3: a starving clanless triangle robs a lone carrier in the dark."""
-    s = Simulation(zeros(seed=100))
+    s = Simulation(zeros(seed=100, birth_enabled=False, food_count=0, safeguard_enabled=False))
     bandit = Creature(x=20.0, y=20.0, sides=3, energy=40.0, age=3000, lifespan=6000)
     bid = s.world.add(bandit)
     victim = Creature(x=23.0, y=20.0, shape="line", sides=2, energy=90.0,

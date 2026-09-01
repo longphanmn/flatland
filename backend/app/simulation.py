@@ -1491,11 +1491,14 @@ class Simulation:
             if r["flood_ticks"] <= 0 and r["water"] >= 1.0:
                 r["flood_ticks"] = RIVER_FLOOD_TICKS
                 r["water"] = 0.0
-                self._emit(HistoryEvent(
-                    type="disaster", tick=self.tick + 1, entity_id=0,
-                    x=round(self.config.width / 2, 2), y=round(r["cy"], 2),
-                    payload={"kind": "river_flood", "river_cy": r["cy"]},
-                ))
+                last_flood = r.get("last_flood_event_tick", -1000)
+                if self.tick - last_flood >= 600:
+                    r["last_flood_event_tick"] = self.tick
+                    self._emit(HistoryEvent(
+                        type="disaster", tick=self.tick + 1, entity_id=0,
+                        x=round(self.config.width / 2, 2), y=round(r["cy"], 2),
+                        payload={"kind": "river_flood", "river_cy": r["cy"]},
+                    ))
             if r["flood_ticks"] > 0:
                 r["flood_ticks"] -= 1
                 target_hw = RIVER_BASE_HW * RIVER_FLOOD_HW_MULT
@@ -2769,6 +2772,23 @@ class Simulation:
             return
         extinct_set = set(extinct)
         for cid in extinct:
+            info = self.clans.get(cid, {})
+            born_tick = info.get("born_tick", 0)
+            lifespan_ticks = max(0, self.tick - born_tick)
+            self._emit(HistoryEvent(
+                type="clan_extinction",
+                tick=self.tick + 1,
+                entity_id=0,
+                x=0.0,
+                y=0.0,
+                payload={
+                    "clan_id": cid,
+                    "clan_name": info.get("name") or f"Clan #{cid}",
+                    "born_tick": born_tick,
+                    "lifespan_ticks": lifespan_ticks,
+                    "lifespan_days": round(lifespan_ticks / 1200, 1),
+                },
+            ))
             del self.clans[cid]
             self._clan_members.pop(cid, None)
             self.farm_plots.pop(cid, None) if hasattr(self, 'farm_plots') else None
@@ -4921,7 +4941,15 @@ class Simulation:
                     caste=founder.caste,
                     x=round(founder.x, 2),
                     y=round(founder.y, 2),
-                    payload={"parent": cid, "new_clan": new_cid, "parent_name": info.get("name"), "new_name": name, "members": [c.id for c in movers]},
+                    payload={
+                        "parent": cid,
+                        "new_clan": new_cid,
+                        "parent_name": info.get("name"),
+                        "new_name": name,
+                        "members": [c.id for c in movers],
+                        "member_count": len(movers),
+                        "reason": "unrest",
+                    },
                 )
             )
             self._emit(
@@ -7876,14 +7904,23 @@ class Simulation:
                                 for cc in faction:
                                     cc.clan_id = new_cid
                                 self._bump_relation(c.clan_id, new_cid, -40)
+                                parent_info = self.clans.get(c.clan_id, {})
+                                new_info = self.clans.get(new_cid, {})
                                 self._emit(
                                     HistoryEvent(
                                         type="schism",
                                         tick=self.tick + 1,
                                         entity_id=faction[0].id,
                                         caste=faction[0].caste,
-                                        payload={"parent": c.clan_id, "new_clan": new_cid,
-                                                 "reason": "contested_succession"},
+                                        payload={
+                                            "parent": c.clan_id,
+                                            "new_clan": new_cid,
+                                            "parent_name": parent_info.get("name"),
+                                            "new_name": new_info.get("name"),
+                                            "members": [cc.id for cc in faction],
+                                            "member_count": len(faction),
+                                            "reason": "contested_succession",
+                                        },
                                     )
                                 )
                     if self.config.succession_enabled:

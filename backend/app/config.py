@@ -296,13 +296,13 @@ class Config:
     crossover_rate: float = 0.5
 
     # BC Geometric Physics & Morphological Evolution — annealing governs shape
-    morphology_annealing_enabled: bool = False  # BC: master flag, false keeps AZ hash
-    annealing_start_generation: int = 50  # g_start for λ(g)
-    annealing_decay_generations: int = 150  # g_decay for λ(g)
+    morphology_annealing_enabled: bool = True  # BC: master flag
+    annealing_start_generation: int = 5  # g_start for λ(g)
+    annealing_decay_generations: int = 45  # g_decay for λ(g)
     morph_lambda_override: float | None = None  # BC: Optional -1.0 auto, 0..1 override
     vertex_mutation_std: float = 0.05  # σr for radii
     angle_mutation_std: float = 0.02  # σφ for angles
-    topological_mutation_rate: float = 0.01  # p_topo * (1-λ)
+    topological_mutation_rate: float = 0.03  # p_topo * (1-λ)
 
     # Phase 5 Extinction Safeguards — homeostatic negative feedback
     safeguard_enabled: bool = True

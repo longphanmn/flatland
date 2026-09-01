@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 CLAN_PAYLOAD_KEYS = (
     "a", "b", "clan_id", "parent", "new_clan",
     "invader_clan", "victim_clan", "winner_clan", "loser_clan",
+    "target_clan", "founder", "from", "to",
 )
 from typing import Any
 

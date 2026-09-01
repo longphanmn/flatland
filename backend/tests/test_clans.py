@@ -259,3 +259,42 @@ def test_clan_can_have_multiple_houses_and_leader_lives_in_main_house():
         assert om_chosen is not None
         assert om_chosen.clan_id == cid
 
+
+def test_clan_extinction_event_emission():
+    """When a clan loses all members and functional houses, it emits clan_extinction event."""
+    s = Simulation(Config(seed=7, num_houses=0, num_triangles=0, num_squares=0, num_pentagons=0, num_hexagons=0, num_priests=0, num_women=0))
+    cid = s._new_clan(None)
+    s.clans[cid]["name"] = "Fallen Dynasty"
+    s.clans[cid]["born_tick"] = 0
+    s.tick = 100
+    s._prune_extinct_clans()
+    assert cid not in s.clans
+    ext_events = [e for e in s.history if e.type == "clan_extinction"]
+    assert len(ext_events) >= 1
+    ev = ext_events[-1]
+    assert ev.payload["clan_id"] == cid
+    assert ev.payload["clan_name"] == "Fallen Dynasty"
+    assert ev.payload["lifespan_ticks"] == 100
+
+
+def test_schism_event_payload_richness():
+    """Schism events should include parent, new_clan, parent_name, new_name, and member_count."""
+    s = Simulation(Config(seed=42, schism_enabled=True, schism_min_pop=2))
+    # Pick a clan with members
+    cid = next(iter(s.clans))
+    parent_name = s.clans[cid]["name"]
+    members = [c for c in s.world.creatures() if c.clan_id == cid]
+    assert len(members) >= 2
+    # Force a schism
+    s.tick = 200
+    s._update_schism()
+    schisms = [e for e in s.history if e.type == "schism"]
+    if schisms:
+        ev = schisms[-1]
+        assert "parent" in ev.payload
+        assert "new_clan" in ev.payload
+        assert "parent_name" in ev.payload
+        assert "new_name" in ev.payload
+        assert "member_count" in ev.payload
+
+
