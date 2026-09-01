@@ -2253,6 +2253,13 @@ class Simulation:
                             break
             # Fallback parent as template-derived if not in SoA
             if parent_r is None:
+                for p in (father, mother):
+                    if getattr(p, "_bc_morph_r", None) is not None:
+                        parent_r = p._bc_morph_r
+                        parent_phi = p._bc_morph_phi
+                        parent_k = int(getattr(p, "_bc_morph_k", 4))
+                        break
+            if parent_r is None:
                 # use father's sides as K, KMAX 24 per new spec
                 parent_k = max(3, min(24, father.sides if father.sides else 4))
                 parent_r = [1.0] * parent_k + [1.0] * (24 - parent_k)
@@ -2299,7 +2306,8 @@ class Simulation:
                 asym = (var_r / mean_r) if mean_r else 0.0
                 # bake irregularity for euthanasia gate
                 irr = max(0.0, min(1.0, asym * 1.5))
-                child.irregularity = round(irr, 3)
+                cur_irr = float(getattr(child, "irregularity", 0.0) or 0.0)
+                child.irregularity = round(max(cur_irr, irr), 3)
         except Exception:
             pass
 
@@ -4083,12 +4091,64 @@ class Simulation:
                             # rebuild SoA to match world (handles births/deaths)
                             from .agent_soa import AgentSoA as _AS
 
+                            old_soa = self._soa
+                            old_id_map = getattr(self, "_soa_id_map", {})
                             new_soa = _AS(capacity=max(2000, len(self._cached_creatures) * 2 + 10))
                             for c in self._cached_creatures:
-                                new_soa.add_agent(int(c.id), float(c.x), float(c.y), angle=float(c.angle), energy=float(c.energy), health=float(c.health))
+                                _mr = getattr(c, "_bc_morph_r", None)
+                                _ma = getattr(c, "_bc_morph_phi", None)
+                                _mk = getattr(c, "_bc_morph_k", None)
+                                old_idx = old_id_map.get(c.id)
+                                existing_genome = None
+                                if old_idx is not None and old_idx < old_soa.N:
+                                    if _mr is None and hasattr(old_soa, "morph_radii"):
+                                        _mr = old_soa.morph_radii[old_idx]
+                                        _ma = old_soa.morph_angles[old_idx]
+                                        _mk = int(old_soa.morph_k[old_idx])
+                                    if hasattr(old_soa, "genomes"):
+                                        existing_genome = old_soa.genomes[old_idx]
+                                new_soa.add_agent(
+                                    int(c.id),
+                                    float(c.x),
+                                    float(c.y),
+                                    angle=float(c.angle),
+                                    energy=float(c.energy),
+                                    health=float(c.health),
+                                    genome=existing_genome,
+                                    morph_radii=_mr,
+                                    morph_angles=_ma,
+                                    morph_k=_mk,
+                                )
                             self._soa_id_map = {c.id: idx for idx, c in enumerate(self._cached_creatures)}
-                            if _evolution is not None:
-                                _evolution.init_genomes(new_soa, rng=self.config.seed)
+                            # Crossover & mutation for newborns without inherited genome
+                            if hasattr(new_soa, "genomes"):
+                                for new_idx, c in enumerate(self._cached_creatures):
+                                    old_idx = old_id_map.get(c.id)
+                                    if old_idx is None or old_idx >= old_soa.N:
+                                        pa_id = getattr(c, "mother_id", None)
+                                        pb_id = getattr(c, "father_id", None)
+                                        pa_idx = self._soa_id_map.get(pa_id)
+                                        pb_idx = self._soa_id_map.get(pb_id)
+                                        child_g = None
+                                        if pa_idx is not None and pb_idx is not None and _evolution is not None:
+                                            try:
+                                                g_a = new_soa.genomes[pa_idx]
+                                                g_b = new_soa.genomes[pb_idx]
+                                                child_g = _evolution.crossover_mutate(
+                                                    g_a,
+                                                    g_b,
+                                                    p_mut=float(getattr(self.config, "mutation_rate", 0.05)),
+                                                    sigma=float(getattr(self.config, "mutation_sigma", 0.08)),
+                                                )
+                                            except Exception:
+                                                child_g = None
+                                        if child_g is not None:
+                                            new_soa.genomes[new_idx] = child_g
+                                        elif _evolution is not None:
+                                            try:
+                                                new_soa.genomes[new_idx] = _evolution._build_base_genome(new_soa.genome_size)
+                                            except Exception:
+                                                pass
                             self._soa = new_soa
                             self._nn_grid = _spatial_grid.SpatialHashGrid(width=self.config.width, height=self.config.height, cell_size=32.0, boundary=self.config.boundary)
                         else:
@@ -7486,7 +7546,13 @@ class Simulation:
                 # Law of Nature: a son has one more side than his father.
                 sides = min(father.sides + 1, cfg.max_sides)
                 iso = 60.0
-            irregularity = 0.0
+            parent_irr = max(float(getattr(mother, "irregularity", 0.0) or 0.0), float(getattr(father, "irregularity", 0.0) or 0.0))
+            herit = float(getattr(cfg, "mutation_heritability", 0.70))
+            inherited_irr = parent_irr * herit
+            if inherited_irr > 0.05:
+                inherited_irr = min(1.0, max(0.0, inherited_irr + self.rng.gauss(0, 0.05)))
+            irregularity = round(inherited_irr, 3) if inherited_irr >= 0.05 else 0.0
+
             mut_rate = cfg.mutation_rate
             # §AP: Rift clans breed adaptable children — mutation odds multiply.
             mut_rate = min(1.0, mut_rate * (1.0 + self._totem_stat(mother, "mutate")))
@@ -7505,7 +7571,8 @@ class Simulation:
                 sides = min(cfg.max_sides, max(3, sides + self.rng.choice((-1, 1))))
                 if sides != 3:
                     promoted = False
-                irregularity = round(self.rng.uniform(0.3, 1.0), 3)
+                spontaneous_irr = round(self.rng.uniform(0.3, 1.0), 3)
+                irregularity = max(irregularity, spontaneous_irr)
             caste = caste_name(sides, "polygon", iso)
             # trait inheritance (§S)
             ntrait = None
@@ -7525,6 +7592,28 @@ class Simulation:
             )
             self._init_morph_for_child(child, mother, father)
         else:
+            parent_irr = max(float(getattr(mother, "irregularity", 0.0) or 0.0), float(getattr(father, "irregularity", 0.0) or 0.0))
+            herit = float(getattr(cfg, "mutation_heritability", 0.70))
+            inherited_irr = parent_irr * herit
+            if inherited_irr > 0.05:
+                inherited_irr = min(1.0, max(0.0, inherited_irr + self.rng.gauss(0, 0.05)))
+            irregularity = round(inherited_irr, 3) if inherited_irr >= 0.05 else 0.0
+
+            mut_rate = cfg.mutation_rate
+            mut_rate = min(1.0, mut_rate * (1.0 + self._totem_stat(mother, "mutate")))
+            mother_clan_gov = self.clans.get(mother.clan_id, {}).get("governance")
+            if (
+                mother_clan_gov == "monarchy"
+                and len(self._clan_members.get(mother.clan_id, ())) < 8
+            ):
+                mut_rate = min(1.0, mut_rate * MONARCHY_INBREEDING)
+            age = self._age()
+            if age is not None:
+                mut_rate = min(1.0, mut_rate * AGE_MUTATION_MULT.get(age, 1.0))
+            if self.rng.random() < mut_rate:
+                spontaneous_irr = round(self.rng.uniform(0.2, 0.8), 3)
+                irregularity = max(irregularity, spontaneous_irr)
+
             dtrait = None
             if self.rng.random() < cfg.trait_mutation_rate:
                 dtrait = self.rng.choice(TRAITS)
@@ -7537,6 +7626,7 @@ class Simulation:
                 energy=cfg.energy_start, generation=gen, born_tick=tick,
                 mother_id=mother.id, father_id=father.id,
                 lifespan=traits_for("Woman").lifespan * cfg.lifespan_mult,
+                irregularity=irregularity,
                 trait=dtrait,
             )
             self._init_morph_for_child(child, mother, father)

@@ -63,8 +63,10 @@ class TelemetryRing:
             energy_sum += getattr(c, "energy", 0) / max(1, getattr(sim.config, "energy_max", 100) or 100)
             lifespan_sum += getattr(c, "lifespan", 0)
             irr = float(getattr(c, "irregularity", 0.0) or 0.0)
-            if irr > 0.0:
+            has_trait = bool(getattr(c, "trait", None))
+            if irr > 0.0 or has_trait:
                 mut_count += 1
+            if irr > 0.0:
                 irr_sum += irr
             gen = getattr(c, "generation", 0)
             if gen > max_g:
@@ -225,9 +227,9 @@ class AnalyticsEngine:
         gens = Counter(c.generation for c in creatures)
         max_gen = max(gens) if gens else 0
         mobility = round(sum(1 for c in creatures if c.generation == max_gen) / max(1, len(creatures)), 3)
-        mutated = sum(1 for c in creatures if getattr(c, "irregularity", 0) > 0)
+        mutated = sum(1 for c in creatures if (float(getattr(c, "irregularity", 0.0) or 0.0) > 0.0 or bool(getattr(c, "trait", None))))
         mutation_freq = round(mutated / max(1, len(creatures)), 3)
-        asym = [round(getattr(c, "irregularity", 0), 3) for c in creatures if getattr(c, "irregularity", 0) > 0]
+        asym = [round(float(getattr(c, "irregularity", 0.0) or 0.0), 3) for c in creatures if float(getattr(c, "irregularity", 0.0) or 0.0) > 0.0]
         abbott: dict[int, int] = {}
         for c in creatures:
             if getattr(c, "shape", "") == "line" or getattr(c, "sides", 3) == 2:

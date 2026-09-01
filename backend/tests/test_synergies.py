@@ -509,7 +509,7 @@ def test_social_order_meets_food_chain():
         seed=53, width=80, height=40,
         food_count=0, plant_growth_rate=0, energy_decay_per_tick=0.0,
         predation_enabled=True, predator_ratio=0.0, hunt_radius=12, fear_radius=10,
-        war_enabled=False,
+        war_enabled=False, birth_enabled=False,
     )
     s = Simulation(cfg)
     # place predator east, prey west in a line so sight distance matters

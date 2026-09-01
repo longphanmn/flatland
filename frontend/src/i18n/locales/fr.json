@@ -443,7 +443,8 @@
     "developedBy": "Développé par",
     "inspiration": "Créé avec OpenCode & Antigravity · Inspiré du roman Flatland d'Edwin A. Abbott",
     "readOnly": "lecture seule · utilisez ⚖",
-    "presetsReadOnlyNote": "Aperçu des presets — appliquez via la Sphère."
+    "presetsReadOnlyNote": "Aperçu des presets — appliquez via la Sphère.",
+    "open": "Wiki"
   },
   "chronicle": {
     "title": "Chronique",
@@ -512,7 +513,7 @@
     "war": "Guerre {{wins}}V / {{losses}}D",
     "mainHouse": "Maison principale #{{id}} ({{x}}, {{y}})",
     "homeless": "Sans abri",
-    "leaderResidence": "Résidence du chef",
+    "leaderResidence": "HQ",
     "houses": "Maisons {{count}} au total",
     "radius": "Rayon r{{r}}",
     "history": "📜 Histoire du clan & Jalons",

@@ -186,3 +186,121 @@ def test_creature_carries_and_consumes_food_reserve():
     assert c.energy > 30.0
     assert c.emote == "craft"
 
+
+def test_heritable_irregularity_and_drift():
+    cfg = Config(seed=42, birth_rate=1.0, mutation_rate=0.0, mutation_heritability=0.75, sex_ratio=1.0, adult_age=0.0)
+    sim = Simulation(cfg)
+    sim.world.entities.clear()
+    father = sim.world.add(Creature(shape="polygon", sides=4, x=25.0, y=25.0, energy=80.0, irregularity=0.60, age=100, lifespan=1000))
+    mother = sim.world.add(Creature(shape="line", sides=2, x=25.5, y=25.0, energy=80.0, irregularity=0.0, age=100, lifespan=1000))
+    sim.step()
+
+    children = [c for c in sim.world.creatures() if c.generation == 1]
+    assert len(children) == 1
+    child = children[0]
+    # Heritable: parent 0.60 * 0.75 = 0.45 (+- drift)
+    assert 0.30 <= child.irregularity <= 0.60
+
+
+def test_daughter_inherits_irregularity():
+    cfg = Config(seed=42, birth_rate=1.0, mutation_rate=0.0, mutation_heritability=0.80, sex_ratio=0.0, adult_age=0.0)
+    sim = Simulation(cfg)
+    sim.world.entities.clear()
+    father = sim.world.add(Creature(shape="polygon", sides=4, x=25.0, y=25.0, energy=80.0, irregularity=0.0, age=100, lifespan=1000))
+    mother = sim.world.add(Creature(shape="line", sides=2, x=25.5, y=25.0, energy=80.0, irregularity=0.50, age=100, lifespan=1000))
+    sim.step()
+
+    children = [c for c in sim.world.creatures() if c.generation == 1]
+    assert len(children) == 1
+    daughter = children[0]
+    assert daughter.shape == "line"
+    assert 0.25 <= daughter.irregularity <= 0.55
+
+
+def test_soa_preserves_genomes_and_morph_on_population_change():
+    from app.agent_soa import AgentSoA, HAS_NUMPY
+    cfg = Config(seed=42, width=100.0, height=100.0)
+    sim = Simulation(cfg)
+    sim.world.entities.clear()
+
+    c1 = Creature(shape="polygon", sides=4, x=10.0, y=10.0, energy=80.0)
+    c2 = Creature(shape="line", sides=2, x=12.0, y=10.0, energy=80.0)
+    sim.world.add(c1)
+    sim.world.add(c2)
+    sim._cached_creatures = [c1, c2]
+
+    # Force SoA initialization
+    sim._soa = AgentSoA(capacity=20)
+    sim._soa.add_agent(c1.id, c1.x, c1.y, morph_radii=[1.5, 0.8, 1.2, 0.9] + [1.0]*20)
+    sim._soa.add_agent(c2.id, c2.x, c2.y)
+    sim._soa_id_map = {c1.id: 0, c2.id: 1}
+
+    # Set distinct genome values
+    if HAS_NUMPY:
+        sim._soa.genomes[0, :5] = [1.1, 2.2, 3.3, 4.4, 5.5]
+        sim._soa.genomes[1, :5] = [-1.1, -2.2, -3.3, -4.4, -5.5]
+    else:
+        for i, v in enumerate([1.1, 2.2, 3.3, 4.4, 5.5]):
+            sim._soa.genomes[0][i] = v
+            sim._soa.genomes[1][i] = -v
+
+    # Add child born to world
+    c3 = Creature(shape="polygon", sides=5, x=11.0, y=10.0, mother_id=c2.id, father_id=c1.id, generation=1)
+    sim.world.add(c3)
+
+    # Step simulation to trigger SoA sync
+    sim.step()
+
+    assert sim._soa.N == 3
+    idx1 = sim._soa_id_map[c1.id]
+    if HAS_NUMPY:
+        assert list(sim._soa.genomes[idx1, :5]) == pytest.approx([1.1, 2.2, 3.3, 4.4, 5.5])
+        assert sim._soa.morph_radii[idx1, 0] == pytest.approx(1.5)
+    else:
+        assert sim._soa.genomes[idx1][:5] == pytest.approx([1.1, 2.2, 3.3, 4.4, 5.5])
+        assert sim._soa.morph_radii[idx1][0] == pytest.approx(1.5)
+
+
+def test_multi_generation_mutation_frequency():
+    from app.analytics import attach_to_sim
+    cfg = Config(
+        seed=123,
+        width=100.0,
+        height=100.0,
+        birth_rate=0.2,
+        mutation_rate=0.15,
+        mutation_heritability=0.75,
+        trait_mutation_rate=0.08,
+        sex_ratio=0.5,
+        adult_age=5.0,
+        reproduction_cooldown=5,
+        carrying_capacity=50,
+        max_population=80,
+    )
+    sim = Simulation(cfg)
+    sim.world.entities.clear()
+
+    # Seed initial population of 10 creatures
+    for i in range(5):
+        sim.world.add(Creature(shape="polygon", sides=4, x=20.0 + i * 2, y=20.0, energy=90.0, age=10, lifespan=5000))
+        sim.world.add(Creature(shape="line", sides=2, x=20.0 + i * 2, y=21.0, energy=90.0, age=10, lifespan=5000))
+
+    # Add food
+    for i in range(20):
+        sim.world.add(Food(x=20.0 + (i % 5) * 4, y=20.0 + (i // 5) * 4, growth=1.0))
+
+    eng = attach_to_sim(sim)
+
+    # Run for 200 ticks
+    for _ in range(200):
+        sim.step()
+        eng.on_tick(sim)
+
+    summary = eng.summary(sim)
+    gen_data = summary["generational"]
+    # With heritable mutations and active breeding, mutation frequency should be well above 1%
+    assert gen_data["max_generation"] >= 2
+    assert gen_data["mutation_freq"] > 0.05
+
+
+

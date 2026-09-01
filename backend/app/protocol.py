@@ -237,6 +237,7 @@ class GodLaws(BaseModel):
     carrying_capacity: Optional[int] = Field(None, ge=-1, le=10000)
     max_population: Optional[int] = Field(None, ge=-1, le=15000)
     mutation_rate: Optional[float] = Field(None, ge=0, le=1)
+    mutation_heritability: Optional[float] = Field(None, ge=0, le=1)
     sex_ratio: Optional[float] = Field(None, ge=0, le=1)
     max_sides: Optional[int] = Field(None, ge=3, le=64)
     euthanasia_threshold: Optional[float] = Field(None, ge=0, le=1)

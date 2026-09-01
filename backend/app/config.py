@@ -151,6 +151,7 @@ class Config:
     birth_rate: float = 0.05  # chance per eligible pair per tick (× fertility)
     sex_ratio: float = 0.5  # probability a child is a son
     mutation_rate: float = 0.05  # chance a son's side count deviates ±1
+    mutation_heritability: float = 0.70  # fraction of parental irregularity inherited by child
     max_sides: int = 24  # sons stop gaining sides here (= Circle)
     birth_energy_cost: float = 20.0  # each parent pays
     reproduction_cooldown: int = 600  # ticks both parents wait after a birth

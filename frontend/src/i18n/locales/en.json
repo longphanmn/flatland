@@ -443,7 +443,8 @@
     "developedBy": "Developed by",
     "inspiration": "Built with OpenCode & Antigravity · Inspired by Edwin A. Abbott's Flatland",
     "readOnly": "read-only · use ⚖ God Panel to apply",
-    "presetsReadOnlyNote": "Presets are displayed for reference — apply via The Sphere (⚖ God Panel)."
+    "presetsReadOnlyNote": "Presets are displayed for reference — apply via The Sphere (⚖ God Panel).",
+    "open": "Wiki"
   },
   "chronicle": {
     "title": "Chronicle",
@@ -512,7 +513,7 @@
     "war": "War {{wins}}W / {{losses}}L",
     "mainHouse": "Main House #{{id}} ({{x}}, {{y}})",
     "homeless": "Homeless",
-    "leaderResidence": "Leader Residence",
+    "leaderResidence": "HQ",
     "houses": "Houses {{count}} total",
     "radius": "Radius r{{r}}",
     "history": "📜 Clan History & Milestones",

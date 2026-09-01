@@ -443,7 +443,8 @@
     "developedBy": "Phát triển bởi",
     "inspiration": "Xây dựng với OpenCode & Antigravity · Lấy cảm hứng từ tiểu thuyết Flatland của Edwin A. Abbott",
     "readOnly": "chỉ đọc · dùng ⚖",
-    "presetsReadOnlyNote": "Xem trước preset — áp dụng qua Sphere."
+    "presetsReadOnlyNote": "Xem trước preset — áp dụng qua Sphere.",
+    "open": "Wiki"
   },
   "chronicle": {
     "title": "Biên niên",
@@ -512,7 +513,7 @@
     "war": "Chiến tranh {{wins}}T / {{losses}}B",
     "mainHouse": "Nhà chính #{{id}} ({{x}}, {{y}})",
     "homeless": "Vô gia cư",
-    "leaderResidence": "Dinh thủ lĩnh",
+    "leaderResidence": "HQ",
     "houses": "Tổng cộng {{count}} nhà",
     "radius": "Bán kính r{{r}}",
     "history": "📜 Lịch sử & Cột mốc tộc",
@@ -1055,7 +1056,7 @@
     "soft_cap_enabledHint": "giảm chấn phi tuyến tự động (xi) hãm tốc độ sinh sản và tiêu hao năng lượng khi vượt quá sức chứa môi trường",
     "disease_enabled": "Cho phép dịch bệnh",
     "disease_enabledHint": "dịch bệnh có thể hoành hành thế giới; tắt đi sẽ đóng băng mọi mầm bệnh",
-    "weather_enabled": "Thời tiết biến đổi",
+    "weather_enabled": "Thời tiết",
     "weather_enabledHint": "thời tiết có xoay chuyển hay không — tắt đi sẽ ẩn các tùy chỉnh mưa, sương, bão khắp nơi",
     "sleep_enabled": "Nghỉ ngơi ban đêm",
     "sleep_enabledHint": "sinh vật tìm vào nhà trú ẩn và ngủ khi màn đêm buông xuống",
