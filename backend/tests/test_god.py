@@ -130,3 +130,19 @@ def test_balance_preset_application_and_listing(client):
     assert laws["disease_enabled"] is True
     assert client.get("/api/presets").json()["current"] == "balance"
 
+
+def test_post_all_laws_roundtrip_accepts_auto_negative_sentinels(client):
+    """Regression: /api/laws crashed with 422 'Input should be greater than or equal to 0'
+    when frontend submitted get_laws() containing auto-scaling -1 sentinels."""
+    laws = client.get("/api/laws").json()
+    assert laws["num_triangles"] == -1
+    assert laws["fertile_patches"] == -1
+    assert laws["rock_count"] == -1
+    # Toggling morphology_annealing_enabled and posting entire laws dictionary should succeed
+    laws["morphology_annealing_enabled"] = True
+    r = client.post("/api/laws", json=laws)
+    assert r.status_code == 200
+    res = r.json()
+    assert res["morphology_annealing_enabled"] is True
+
+

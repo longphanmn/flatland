@@ -332,6 +332,7 @@ export interface GodLaws {
   birth_rate?: number
   sex_ratio?: number
   mutation_rate?: number
+  mutation_heritability?: number
   max_sides?: number
   birth_energy_cost?: number
   reproduction_cooldown?: number

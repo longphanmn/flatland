@@ -57,8 +57,8 @@ def lambda_for_generation(g: int, config) -> float:
             pass
     if not getattr(config, "morphology_annealing_enabled", True):
         return 1.0  # frozen classical when explicitly disabled
-    g_start = int(getattr(config, "annealing_start_generation", 5))
-    g_decay = int(getattr(config, "annealing_decay_generations", 45))
+    g_start = int(getattr(config, "annealing_start_generation", 15))
+    g_decay = int(getattr(config, "annealing_decay_generations", 250))
     if g < g_start:
         return 1.0
     if g_decay <= 0:

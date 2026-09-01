@@ -367,7 +367,7 @@ class GodLaws(BaseModel):
     envoys_enabled: Optional[bool] = None
     exile_on_kin_eat: Optional[bool] = None
     fertile_food_bias: Optional[float] = Field(None, ge=0, le=10)
-    fertile_patches: Optional[int] = Field(None, ge=0, le=1000)
+    fertile_patches: Optional[int] = Field(None, ge=-1, le=1000)
     fire_spread_rate: Optional[float] = Field(None, ge=0, le=10)
     flock_radius: Optional[float] = Field(None, ge=0, le=100)
     fog_mushroom_mult: Optional[float] = Field(None, ge=0, le=10)
@@ -390,13 +390,13 @@ class GodLaws(BaseModel):
     mate_energy_min: Optional[float] = Field(None, ge=0, le=1000)
     mate_radius: Optional[float] = Field(None, ge=0, le=100)
     nn_inference_hz: Optional[int] = Field(None, ge=1, le=1000)
-    num_hexagons: Optional[int] = Field(None, ge=0, le=100)
-    num_houses: Optional[int] = Field(None, ge=0, le=100)
-    num_pentagons: Optional[int] = Field(None, ge=0, le=100)
-    num_priests: Optional[int] = Field(None, ge=0, le=100)
-    num_squares: Optional[int] = Field(None, ge=0, le=100)
-    num_triangles: Optional[int] = Field(None, ge=0, le=100)
-    num_women: Optional[int] = Field(None, ge=0, le=100)
+    num_hexagons: Optional[int] = Field(None, ge=-1, le=100)
+    num_houses: Optional[int] = Field(None, ge=-1, le=100)
+    num_pentagons: Optional[int] = Field(None, ge=-1, le=100)
+    num_priests: Optional[int] = Field(None, ge=-1, le=100)
+    num_squares: Optional[int] = Field(None, ge=-1, le=100)
+    num_triangles: Optional[int] = Field(None, ge=-1, le=100)
+    num_women: Optional[int] = Field(None, ge=-1, le=100)
     omens_enabled: Optional[bool] = None
     omp_enabled: Optional[bool] = None
     omp_threshold: Optional[int] = Field(None, ge=0, le=10000)
@@ -406,7 +406,7 @@ class GodLaws(BaseModel):
     relation_drift_rate: Optional[float] = Field(None, ge=0, le=10)
     reproduction_cooldown: Optional[int] = Field(None, ge=0, le=100000)
     rivalry_threshold: Optional[int] = Field(None, ge=-100, le=100)
-    rock_count: Optional[int] = Field(None, ge=0, le=1000)
+    rock_count: Optional[int] = Field(None, ge=-1, le=1000)
     rubble_blocking_enabled: Optional[bool] = None
     scent_enabled: Optional[bool] = None
     schism_min_pop: Optional[int] = Field(None, ge=1, le=1000)
