@@ -3157,12 +3157,60 @@ def _creature_dossier(creature_id: int) -> dict:
                         entity["morph_k"] = k
                 except Exception:
                     pass
+            elif hasattr(RT.sim, "_morph_cache") and creature_id in getattr(RT.sim, "_morph_cache", {}):  # type: ignore
+                try:
+                    r, a, k = RT.sim._morph_cache[creature_id]  # type: ignore
+                    entity["morph_radii"] = [round(float(v), 4) for v in r[:k]]  # type: ignore
+                    entity["morph_angles"] = [round(float(v), 4) for v in a[:k]]  # type: ignore
+                    entity["morph_k"] = int(k)
+                except Exception:
+                    pass
             elif hasattr(ent, "_bc_morph_r"):
                 try:
                     k = int(getattr(ent, "_bc_morph_k", 4))  # type: ignore
                     entity["morph_radii"] = [round(float(v), 4) for v in getattr(ent, "_bc_morph_r", [])[:k]]  # type: ignore
                     entity["morph_angles"] = [round(float(v), 4) for v in getattr(ent, "_bc_morph_phi", [])[:k]]  # type: ignore
                     entity["morph_k"] = k
+                except Exception:
+                    pass
+            # BH-10: full 295-weight genome for Inspector heatmap (detail only)
+            if midx >= 0 and hasattr(soa, "genomes"):
+                try:
+                    g = soa.genomes[midx]  # type: ignore
+                    if hasattr(g, "tolist"):
+                        entity["nn_genome"] = [round(float(v), 4) for v in g.tolist()]  # type: ignore
+                    else:
+                        entity["nn_genome"] = [round(float(v), 4) for v in g]  # type: ignore
+                    # also include archetype if not already in entity
+                    if "archetype" not in entity and hasattr(ent, "_archetype"):
+                        entity["archetype"] = getattr(ent, "_archetype", None)  # type: ignore
+                except Exception:
+                    pass
+            elif hasattr(RT.sim, "_nn_cache") and creature_id in getattr(RT.sim, "_nn_cache", {}):  # type: ignore
+                try:
+                    g = RT.sim._nn_cache[creature_id]  # type: ignore
+                    if hasattr(g, "tolist"):
+                        entity["nn_genome"] = [round(float(v), 4) for v in g.tolist()]  # type: ignore
+                    else:
+                        entity["nn_genome"] = [round(float(v), 4) for v in g]  # type: ignore
+                except Exception:
+                    pass
+            elif hasattr(ent, "_nn_genome"):
+                try:
+                    g = getattr(ent, "_nn_genome", None)  # type: ignore
+                    if g is not None:
+                        if hasattr(g, "tolist"):
+                            entity["nn_genome"] = [round(float(v), 4) for v in g.tolist()]  # type: ignore
+                        else:
+                            entity["nn_genome"] = [round(float(v), 4) for v in g]  # type: ignore
+                except Exception:
+                    pass
+            # BH-9 archetype from cache (slots fix)
+            if entity is not None and entity.get("archetype") is None and hasattr(RT.sim, "_archetype_cache"):
+                try:
+                    arch = RT.sim._archetype_cache.get(creature_id)  # type: ignore
+                    if arch:
+                        entity["archetype"] = arch
                 except Exception:
                     pass
         except Exception:

@@ -222,6 +222,86 @@ function BiomechHUD({ e }: { e: EntityState }) {
     </div>
   )
 }
+// BH-10 NN Connectivity Heatmap 16→12→7
+function NNHeatmap({ e }: { e: EntityState }) {
+  const genome: number[] | undefined = (e as any).nn_genome as number[] | undefined
+  const preview: number[] | undefined = (e as any).nn_genome_preview as number[] | undefined
+  const g = genome && genome.length >= 295 ? genome : null
+  if (!g) {
+    return (
+      <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 8, padding: '8px 10px', marginTop: 8 }}>
+        <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>🧠 NN Connectivity 16→12→7 (BH-10)</div>
+        <div style={{ fontSize: 11, color: '#6e7681' }}>
+          Full 295-weight genome not yet cached — preview {preview ? `(${preview.length} weights)` : '(pending)'}.
+          {preview && <span style={{ marginLeft: 6, color: '#8b949e' }}>W1[0]={preview[0]?.toFixed(2)}</span>}
+        </div>
+        <div style={{ height: 3, background: '#21262d', borderRadius: 2, marginTop: 6 }}><div style={{ width: '18%', height: '100%', background: '#388bfd' }} /></div>
+      </div>
+    )
+  }
+  // unpack
+  const W1 = g.slice(0, 192) // 16*12 row-major i*12+j
+  const b1 = g.slice(192, 204)
+  const W2 = g.slice(204, 288) // 12*7
+  const b2 = g.slice(288, 295)
+  const wColor = (v: number) => {
+    const c = Math.max(-2, Math.min(2, v))
+    if (c > 0) {
+      const intensity = Math.min(1, c / 2)
+      const r = Math.round(255 * intensity + 60 * (1 - intensity))
+      const gb = Math.round(60 + 120 * (1 - intensity))
+      return `rgb(${r},${gb},${gb})`
+    } else {
+      const intensity = Math.min(1, -c / 2)
+      const b = Math.round(255 * intensity + 60 * (1 - intensity))
+      const rg = Math.round(60 + 120 * (1 - intensity))
+      return `rgb(${rg},${rg},${b})`
+    }
+  }
+  const cellW1 = 10, cellH1 = 10, gap = 1
+  const W1w = 16 * (cellW1 + gap) + 8, W1h = 12 * (cellH1 + gap) + 18
+  const W2w = 12 * (cellW1 + gap) + 8, W2h = 7 * (cellH1 + gap) + 18
+  return (
+    <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 8, padding: '8px 10px', marginTop: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <span style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>🧠 NN Connectivity 16→12→7</span>
+        <span style={{ fontSize: 9, color: '#6e7681' }}>295w · red + / blue − · BH-5 blocks Sensory/Motor/Rec</span>
+      </div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+        {/* W1 16→12 */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 9, color: '#8b949e' }}>W1 16×12 Sensory (p0.03 σ0.06)</span>
+          <svg width={W1w} height={W1h} style={{ background: '#161b22', borderRadius: 4, border: '1px solid #30363d' }}>
+            {Array.from({ length: 12 }, (_, j) => Array.from({ length: 16 }, (_, i) => {
+              const v = W1[i * 12 + j]
+              return <rect key={`${i}-${j}`} x={4 + i * (cellW1 + gap)} y={10 + j * (cellH1 + gap)} width={cellW1} height={cellH1} fill={wColor(v)} rx={1} />
+            }))}
+            {/* b1 bottom row */}
+            {b1.map((v, j) => <rect key={`b1-${j}`} x={4 + j * (cellW1 + gap)} y={10 + 12 * (cellH1 + gap) + 2} width={cellW1} height={4} fill={wColor(v)} rx={1} />)}
+          </svg>
+          <span style={{ fontSize: 8, color: '#6e7681' }}>rows hidden 0-11 · cols input 0-15 (ray, vitals, hidden)</span>
+        </div>
+        {/* W2 12→7 */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 9, color: '#8b949e' }}>W2 12×7 Motor (p0.05 σ0.10) + Rec (p0.02)</span>
+          <svg width={W2w} height={W2h} style={{ background: '#161b22', borderRadius: 4, border: '1px solid #30363d' }}>
+            {Array.from({ length: 7 }, (_, k) => Array.from({ length: 12 }, (_, j) => {
+              const v = W2[j * 7 + k]
+              return <rect key={`${j}-${k}`} x={4 + j * (cellW1 + gap)} y={10 + k * (cellH1 + gap)} width={cellW1} height={cellH1} fill={wColor(v)} rx={1} />
+            }))}
+            {b2.map((v, k) => <rect key={`b2-${k}`} x={4 + k * (cellW1 + gap)} y={10 + 7 * (cellH1 + gap) + 2} width={cellW1} height={4} fill={wColor(v)} rx={1} />)}
+          </svg>
+          <span style={{ fontSize: 8, color: '#6e7681' }}>rows out 0-6 (thrust/steer/social…) · cols hidden 0-11</span>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 6, fontSize: 9, color: '#8b949e', justifyContent: 'center' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 6, background: 'linear-gradient(90deg,#3060a0,#ff6060)', display: 'inline-block', borderRadius: 2 }} /> −2 → +2</span>
+        <span>·</span>
+        <span>Hidden { (e as any).nn_hidden?.toFixed(2) ?? '—'} · outputs {(e as any).nn_outputs?.map((v:number)=>v.toFixed(1)).join(', ') ?? '—'}</span>
+      </div>
+    </div>
+  )
+}
 
 interface Props {
   id: number
@@ -409,6 +489,7 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
               </button>
             )}
             {e.trait && <span className="chip"> {e.trait === 'greedy' ? '⬔' : e.trait === 'peaceful' ? '◯' : e.trait === 'paranoid' ? '⬥' : e.trait === 'bold' ? '▲' : '•'} {e.trait}</span>}
+            {(e as any).archetype && <span className="chip" style={{ background: (e as any).archetype==='Apex Hunter' ? 'rgba(255,123,114,0.18)' : (e as any).archetype==='Nocturnal Forager' ? 'rgba(121,192,255,0.18)' : (e as any).archetype==='Granary Courier' ? 'rgba(63,185,80,0.16)' : 'rgba(210,168,255,0.16)', border: `1px solid ${(e as any).archetype==='Apex Hunter' ? '#ff7b72' : (e as any).archetype==='Nocturnal Forager' ? '#79c0ff' : (e as any).archetype==='Granary Courier' ? '#3fb950' : '#d2a8ff'}`, color: '#e6edf3', fontWeight: 700 }} >{(e as any).archetype==='Apex Hunter'?'⚔':(e as any).archetype==='Nocturnal Forager'?'🌙':(e as any).archetype==='Granary Courier'?'🧺':'🛡️'} {(e as any).archetype}</span>}
           </div>
           {/* §BG-9 Polar Radar & §BG-10 Biomech HUD */}
           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -482,6 +563,8 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
               </div>
             )}
           </div>
+          {/* BH-10 heatmap */}
+          <NNHeatmap e={e} />
         </>
       )}
 

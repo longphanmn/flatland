@@ -74,21 +74,47 @@ def build_inputs_batch(soa, spatial_grid=None, world=None, max_chill: float = 12
         inp[:, 1] = np.clip(soa.stats[:N, 2] / 100.0, 0, 1)  # health /100
         inp[:, 2] = np.clip(soa.stats[:N, 3] / max_chill, 0, 1)
 
-        # 3-8: raycasts
+        # 3-8: raycasts — BH-7 neuro-morphological coupling
+        # Precompute morph-coupled span & sensitivity per agent if traits baked
+        has_morph = hasattr(soa, "morph_traits") and getattr(soa.morph_traits, "shape", None) is not None and soa.morph_traits.shape[0] >= N  # type: ignore
         for n in range(N):
             x = float(soa.pos[n, 0])
             y = float(soa.pos[n, 1])
             ang = float(soa.angle[n])
             aid = int(soa.ids[n])
-            for ri, delta in enumerate((-0.610865, 0.0, 0.610865)):  # -35°,0,+35° in rad
+            # BH-7: cone span by perimeter/area, forward sensitivity by tip sharpness
+            span_factor = 1.0
+            forward_gain = 1.0
+            if has_morph:
+                try:
+                    # morph_traits: [A,P,Izz,theta,asym,Dmult]
+                    perim = float(soa.morph_traits[n, 1])  # type: ignore
+                    theta = float(soa.morph_traits[n, 3])  # type: ignore
+                    dmult = float(soa.morph_traits[n, 5])  # type: ignore
+                    # span widened for bulky / high-perimeter bodies
+                    if perim > 1e-3:
+                        span_factor = max(0.75, min(1.55, perim / 5.657))
+                    # forward ray sensitivity scaled by razor sharpness (smaller theta → larger gain)
+                    # dmult already encodes sharpness (0 at 60°, 1 at 0°)
+                    forward_gain = 1.0 + dmult * 0.45
+                except Exception:
+                    pass
+            # side ray deltas scaled by span_factor
+            deltas = (-0.610865 * span_factor, 0.0, 0.610865 * span_factor)
+            for ri, delta in enumerate(deltas):  # -35°*span,0,+35°*span
                 a = ang + delta
+                # forward ray (ri==1) gets sensitivity boost via extended max_dist scaling in norm
+                max_d = 32.0 * (forward_gain if ri == 1 else 1.0)
                 if spatial_grid is not None and getattr(spatial_grid, "_pos", None):
-                    dist, typ = spatial_grid.raycast((x, y), a, 32.0, ignore_id=aid)
+                    dist, typ = spatial_grid.raycast((x, y), a, max_d, ignore_id=aid)
                 elif world is not None:
-                    dist, typ = _raycast_world(world, (x, y), a, 32.0, ignore_id=aid)
+                    dist, typ = _raycast_world(world, (x, y), a, max_d, ignore_id=aid)
                 else:
-                    dist, typ = 32.0, None
-                norm = 1.0 - min(dist / 32.0, 1.0)
+                    dist, typ = max_d, None
+                norm = 1.0 - min(dist / max_d, 1.0)
+                # forward ray boosted already via max_d scaling; also amplify norm slightly for sharp hunters
+                if ri == 1 and forward_gain != 1.0:
+                    norm = min(1.0, norm * forward_gain)
                 # encode type: food/ally +1, wall 0, enemy -1, none 0
                 if typ is None:
                     tval = 0.0
@@ -141,19 +167,35 @@ def build_inputs_batch(soa, spatial_grid=None, world=None, max_chill: float = 12
             row[0] = max(0,min(1, soa.stats[n][0]/max_e))
             row[1] = max(0,min(1, soa.stats[n][2]/100.0))
             row[2] = max(0,min(1, soa.stats[n][3]/max_chill))
-            # raycasts
+            # raycasts — BH-7 coupling (pure python)
+            span_factor = 1.0
+            forward_gain = 1.0
+            if hasattr(soa, "morph_traits") and len(soa.morph_traits) > n:
+                try:
+                    mt = soa.morph_traits[n]
+                    perim = float(mt[1]) if len(mt) > 1 else 0.0
+                    dmult = float(mt[5]) if len(mt) > 5 else 0.0
+                    if perim > 1e-3:
+                        span_factor = max(0.75, min(1.55, perim / 5.657))
+                    forward_gain = 1.0 + dmult * 0.45
+                except Exception:
+                    pass
+            deltas = (-0.610865 * span_factor, 0.0, 0.610865 * span_factor)
             x, y = soa.pos[n]
             ang = soa.angle[n]
             aid = int(soa.ids[n])
-            for ri, delta in enumerate((-0.610865, 0.0, 0.610865)):
+            for ri, delta in enumerate(deltas):
                 a = ang + delta
+                max_d = 32.0 * (forward_gain if ri == 1 else 1.0)
                 if spatial_grid is not None and getattr(spatial_grid, "_pos", None):
-                    dist, typ = spatial_grid.raycast((x, y), a, 32.0, ignore_id=aid)
+                    dist, typ = spatial_grid.raycast((x, y), a, max_d, ignore_id=aid)
                 elif world is not None:
-                    dist, typ = _raycast_world(world, (x, y), a, 32.0, ignore_id=aid)
+                    dist, typ = _raycast_world(world, (x, y), a, max_d, ignore_id=aid)
                 else:
-                    dist, typ = 32.0, None
-                norm = 1.0 - min(dist/32.0, 1.0)
+                    dist, typ = max_d, None
+                norm = 1.0 - min(dist / max_d, 1.0)
+                if ri == 1 and forward_gain != 1.0:
+                    norm = min(1.0, norm * forward_gain)
                 tval = 0.0
                 if typ in ("food","ally","Food","Ally"):
                     tval = 1.0

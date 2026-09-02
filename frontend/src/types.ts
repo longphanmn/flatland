@@ -75,9 +75,11 @@ export interface EntityState {
   morph_traits?: number[] | null  // §BG [A,P,Izz,theta_min,asym,Dmult]
   morph_radii?: number[] | null
   morph_angles?: number[] | null
+  archetype?: string | null  // §BH-9
   nn_hidden?: number | null
   nn_outputs?: number[] | null
   nn_genome_preview?: number[] | null
+  nn_genome?: number[] | null  // §BH-10 full 295 (detail only)
 }
 
 export interface ClanHistoryEvent {

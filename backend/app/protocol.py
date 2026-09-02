@@ -76,6 +76,8 @@ class EntityState(BaseModel):
     morph_traits: Optional[list[float]] = None  # §BG: [A,P,Izz,theta_min,asym,Dmult]
     morph_radii: Optional[list[float]] = None  # §BG: polar radii (detailed, inspector only)
     morph_angles: Optional[list[float]] = None  # §BG: polar angles (detailed, inspector only)
+    archetype: Optional[str] = None  # §BH-9 behavioral archetype tag
+    nn_genome: Optional[list[float]] = None  # §BH-10 full 295 weights (inspector heatmap, detail only)
     door_width: Optional[float] = None
     door_offset: Optional[float] = None
     door_side: Optional[Literal["north", "east", "south", "west"]] = None

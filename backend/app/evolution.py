@@ -125,6 +125,110 @@ def crossover_mutate(parent_a, parent_b, rng=None, p_mut: float = 0.03, sigma: f
     return child
 
 
+# BH-5 block-specific and BH-6 inversion
+_SENSORY_IDX = set(range(0, 192))          # W1 16*12
+_MOTOR_IDX = set(range(204, 288))          # W2 12*7
+_REC_IDX = set(list(range(192, 204)) + list(range(288, 295)))  # b1+b2
+
+def crossover_mutate_blockwise(parent_a, parent_b, rng=None, clip_min: float = -4.0, clip_max: float = 4.0):
+    """BH-5 uniform crossover + block-specific Gaussian mutation + BH-6 0.5% sign-flip inversion."""
+    # block rates
+    block_p = {"sensory": 0.03, "motor": 0.05, "rec": 0.02}
+    block_sigma = {"sensory": 0.06, "motor": 0.10, "rec": 0.04}
+    if HAS_NUMPY and isinstance(parent_a, np.ndarray):
+        N_genes = parent_a.shape[0]
+        # crossover mask (numpy path)
+        try:
+            import numpy as _np  # type: ignore
+            if rng is not None and hasattr(rng, "random") and hasattr(rng, "integers"):
+                # numpy Generator
+                mask = rng.random(N_genes) < 0.5
+            elif rng is not None and hasattr(rng, "random"):
+                # python Random — generate via list comp then array
+                mask = _np.array([rng.random() < 0.5 for _ in range(N_genes)], dtype=bool)
+            else:
+                mask = _np.random.random(N_genes) < 0.5
+        except Exception:
+            import numpy as _np  # type: ignore
+            mask = _np.random.random(N_genes) < 0.5
+        child = np.where(mask, parent_a, parent_b).astype(np.float32)
+        # blockwise mutation
+        for idx_set, key in [(_SENSORY_IDX, "sensory"), (_MOTOR_IDX, "motor"), (_REC_IDX, "rec")]:
+            p = block_p[key]; s = block_sigma[key]
+            try:
+                if rng is not None and hasattr(rng, "random") and hasattr(rng, "normal"):
+                    # attempt numpy Generator path per block
+                    mut_mask = rng.random(N_genes) < p
+                    noise = rng.normal(0.0, s, size=N_genes).astype(np.float32)
+                elif rng is not None and hasattr(rng, "random"):
+                    mut_mask = np.array([rng.random() < p for _ in range(N_genes)], dtype=bool)
+                    noise = np.array([rng.gauss(0, s) for _ in range(N_genes)], dtype=np.float32)
+                else:
+                    mut_mask = _np.random.random(N_genes) < p
+                    noise = _np.random.normal(0.0, s, size=N_genes).astype(np.float32)
+            except Exception:
+                mut_mask = _np.random.random(N_genes) < p
+                noise = _np.random.normal(0.0, s, size=N_genes).astype(np.float32)
+            # only apply to indices in block
+            idx_arr = np.array(list(idx_set), dtype=int)
+            # filter idx within N_genes
+            idx_arr = idx_arr[idx_arr < N_genes]
+            child[idx_arr] = child[idx_arr] + mut_mask[idx_arr].astype(np.float32) * noise[idx_arr]
+        child = np.clip(child, clip_min, clip_max)
+        # BH-6 behavioral inversion 0.5% sign-flip
+        try:
+            do_inv = False
+            if rng is not None and hasattr(rng, "random"):
+                do_inv = rng.random() < 0.005
+            else:
+                import numpy as _np
+                do_inv = _np.random.random() < 0.005
+            if do_inv:
+                import numpy as _np
+                k = _np.random.randint(5, 11)  # 5-10 genes
+                sensory_list = list(_SENSORY_IDX)
+                chosen = _np.random.choice(sensory_list, size=min(k, len(sensory_list)), replace=False)
+                child[chosen] = -child[chosen]
+        except Exception:
+            pass
+        return child
+    # pure python
+    import random as _rnd
+    r = rng if rng is not None else _rnd
+    child = []
+    for i, (a, b) in enumerate(zip(parent_a, parent_b)):
+        v = a if (r.random() < 0.5 if hasattr(r, "random") else _rnd.random() < 0.5) else b
+        # determine block
+        if i in _SENSORY_IDX:
+            p, s = 0.03, 0.06
+        elif i in _MOTOR_IDX:
+            p, s = 0.05, 0.10
+        elif i in _REC_IDX:
+            p, s = 0.02, 0.04
+        else:
+            p, s = 0.03, 0.06
+        if (r.random() < p if hasattr(r, "random") else _rnd.random() < p):
+            v += (r.gauss(0, s) if hasattr(r, "gauss") else _rnd.gauss(0, s))
+            if v < clip_min:
+                v = clip_min
+            elif v > clip_max:
+                v = clip_max
+        child.append(float(v))
+    # BH-6 inversion pure python
+    try:
+        if (r.random() < 0.005 if hasattr(r, "random") else _rnd.random() < 0.005):
+            import random as __rnd
+            k = __rnd.randint(5, 10)
+            sensory_list = list(_SENSORY_IDX)
+            for _ in range(k):
+                idx = r.choice(sensory_list) if hasattr(r, "choice") else __rnd.choice(sensory_list)
+                if 0 <= idx < len(child):
+                    child[idx] = -child[idx]
+    except Exception:
+        pass
+    return child
+
+
 def find_mating_pairs(soa, spatial_grid, mate_energy_min: float = 30.0, social_thresh: float = 0.5, max_pairs: int = 32):
     """Eligible pairs: energy > min and social output > 0.5 and within radius."""
     pairs = []

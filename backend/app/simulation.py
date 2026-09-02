@@ -853,6 +853,12 @@ class Simulation:
             self._density_engine = None  # type: ignore[attr-defined]
             self._density_xi = 0.0  # type: ignore[attr-defined]
             self._density_scales = {}  # type: ignore[attr-defined]
+        # BH-1/4/9 caches: pending morph, NN genomes, archetypes for newborns (Creature slots forbids ad-hoc attrs)
+        self._morph_cache: dict[int, tuple[list, list, int]] = {}  # id -> (r,phi,k)
+        self._nn_cache: dict[int, object] = {}  # id -> genome (np array or list)
+        self._archetype_cache: dict[int, str] = {}  # id -> archetype tag BH-9
+        self._morph_pending: dict[int, tuple[list, list, int]] = {}  # object id -> (r,phi,k) before world id assigned
+        self._nn_pending: dict[int, object] = {}  # object id -> genome pending
         self._generate_elevation()  # §AQ PH-4: the shape of the land comes first
         self._generate_rivers()  # §AQ PH-3: channels follow the slope
         self._generate_anomalies()  # §AQ PH-10: hidden zones of strange physics
@@ -2235,64 +2241,109 @@ class Simulation:
             c.trust[parent_b.id] = 30.0
 
     def _init_morph_for_child(self, child: Creature, mother: Creature, father: Creature) -> None:
-        """BC morphological inheritance — no-op when annealing disabled (keeps AZ hash)."""
+        """BC morphological inheritance — BH-1 two-parent meiotic + BH-3 stress + BH-2 macro."""
         cfg = self.config
         if not getattr(cfg, "morphology_annealing_enabled", True):
             return
         if _evo_mgr is None or _morphology is None:
             return
         try:
-            # SoA may not yet exist (early ticks) — fall back to Creature sides for template
-            # Parent morph from SoA if available
-            parent_r = parent_phi = None
-            parent_k = 4
-            if getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map"):
-                pm = getattr(self, "_soa_id_map", {})
-                for p in (mother, father):
-                    if p.id in pm:
-                        idx = pm[p.id]
-                        if hasattr(self._soa, "morph_radii"):
-                            parent_r = self._soa.morph_radii[idx] if hasattr(self._soa.morph_radii, "__getitem__") else None
-                            parent_phi = self._soa.morph_angles[idx] if hasattr(self._soa.morph_angles, "__getitem__") else None
-                            parent_k = int(self._soa.morph_k[idx])
-                            break
-            # Fallback parent as template-derived if not in SoA
-            if parent_r is None:
-                for p in (father, mother):
-                    if getattr(p, "_bc_morph_r", None) is not None:
-                        parent_r = p._bc_morph_r
-                        parent_phi = p._bc_morph_phi
-                        parent_k = int(getattr(p, "_bc_morph_k", 4))
-                        break
-            if parent_r is None:
-                # use father's sides as K, KMAX 24 per new spec
-                parent_k = max(3, min(24, father.sides if father.sides else 4))
-                parent_r = [1.0] * parent_k + [1.0] * (24 - parent_k)
-                parent_phi = [2 * math.pi * i / parent_k if i < parent_k else 2 * math.pi * i / 24 for i in range(24)]
+            # BH-1: fetch BOTH parents' polar genomes (SoA primary, cache, then _bc_ fallback)
+            def _fetch_morph(p: Creature):
+                # check pending morph cache first (newborn not yet in SoA)
+                if hasattr(self, "_morph_cache") and p.id in self._morph_cache:
+                    try:
+                        r, a, k = self._morph_cache[p.id]  # type: ignore
+                        return list(r), list(a), int(k)
+                    except Exception:
+                        pass
+                if getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map"):
+                    idx = getattr(self, "_soa_id_map", {}).get(p.id)
+                    if idx is not None and hasattr(self._soa, "morph_radii"):
+                        try:
+                            r = self._soa.morph_radii[idx]  # type: ignore
+                            a = self._soa.morph_angles[idx]  # type: ignore
+                            k = int(self._soa.morph_k[idx])  # type: ignore
+                            if hasattr(r, "tolist"):
+                                r = r.tolist()  # type: ignore
+                                a = a.tolist()  # type: ignore
+                            else:
+                                r = list(r); a = list(a)
+                            return r, a, k
+                        except Exception:
+                            pass
+                if hasattr(self, "_morph_cache") and p.id in getattr(self, "_morph_cache", {}):
+                    try:
+                        r, a, k = self._morph_cache[p.id]  # type: ignore
+                        return list(r), list(a), int(k)
+                    except Exception:
+                        pass
+                if getattr(p, "_bc_morph_r", None) is not None:
+                    return p._bc_morph_r, p._bc_morph_phi, int(getattr(p, "_bc_morph_k", 4))  # type: ignore
+                k = max(3, min(24, p.sides if getattr(p, "sides", None) else 4))
+                r = [1.0] * k + [1.0] * (24 - k)
+                a = [2 * math.pi * i / k if i < k else 2 * math.pi * i / 24 for i in range(24)]
+                return r, a, k
+            mr, ma, mk = _fetch_morph(mother)
+            fr, fa, fk = _fetch_morph(father)
             template_r, template_phi, template_k = _evo_mgr.get_template_for_caste(child.caste)
             lam = _evo_mgr.lambda_for_generation(child.generation, cfg)
-            # Phase 5 Tier2 sigma boost when eta>0
+            # BH-3 Stress-Induced Mutagenesis: η + famine (larder<50) + epidemic (infected ratio)
             _eta_sigma = float(getattr(self, "_safeguard_eta", 0.0) or 0.0)
-            if _eta_sigma:
-                # scale vertex/angle sigma for exploration
+            # famine stress via total larder
+            try:
+                total_larder = sum(float(v.get("larder", 0) or 0) for v in getattr(self, "clans", {}).values())
+            except Exception:
+                total_larder = 999.0
+            famine_stress = max(0.0, 1.0 - total_larder / 50.0) if total_larder < 50 else 0.0
+            # epidemic stress via infected ratio
+            try:
+                Ntot = len(getattr(self, "_cached_creatures", []) or [])
+                inf = int(getattr(self, "infected_count", 0) or sum(1 for c in getattr(self, "_cached_creatures", []) if getattr(c, "infected", False)))
+                ratio = inf / max(1, Ntot)
+                epidemic_stress = max(0.0, (ratio - 0.15) / 0.35) if ratio > 0.15 else 0.0
+            except Exception:
+                epidemic_stress = 0.0
+            stress = max(_eta_sigma, famine_stress, epidemic_stress)
+            if stress > 0.01:
                 class _EffCfg:  # type: ignore
                     def __getattr__(self, name):
                         if name == "vertex_mutation_std":
-                            return cfg.vertex_mutation_std * (1.0 + 1.5 * _eta_sigma)
+                            return cfg.vertex_mutation_std * (1.0 + 1.5 * stress)
                         if name == "angle_mutation_std":
-                            return cfg.angle_mutation_std * (1.0 + 1.5 * _eta_sigma)
+                            return cfg.angle_mutation_std * (1.0 + 1.5 * stress)
                         return getattr(cfg, name)
                 eff_cfg = _EffCfg()  # type: ignore
             else:
                 eff_cfg = cfg
-            cr, cphi, ck = _evo_mgr.child_morphology(
-                parent_r, parent_phi, parent_k, template_r, template_phi, template_k, lam, eff_cfg, self.rng
-            )
+            # BH-1: use two-parent meiotic crossover when both parents have valid morph
+            if hasattr(_evo_mgr, "child_morphology_two_parent"):
+                cr, cphi, ck = _evo_mgr.child_morphology_two_parent(  # type: ignore
+                    mr, ma, mk, fr, fa, fk, template_r, template_phi, template_k, lam, eff_cfg, self.rng
+                )
+            else:
+                # fallback single-parent (legacy)
+                cr, cphi, ck = _evo_mgr.child_morphology(
+                    fr, fa, fk, template_r, template_phi, template_k, lam, eff_cfg, self.rng
+                )
             # Store into child's SoA entry will be created lazily when SoA syncs;
-            # cache on Creature for later SoA insertion (store as attrs)
-            child._bc_morph_r = cr  # type: ignore
-            child._bc_morph_phi = cphi  # type: ignore
-            child._bc_morph_k = ck  # type: ignore
+            # cache in dict (Creature slots forbids ad-hoc attrs) — also pending by object id (id==0 before world.add)
+            if hasattr(self, "_morph_cache"):
+                try:
+                    self._morph_cache[child.id] = (list(cr), list(cphi), int(ck))
+                except Exception:
+                    pass
+                try:
+                    self._morph_pending[id(child)] = (list(cr), list(cphi), int(ck))  # type: ignore
+                except Exception:
+                    pass
+            # also attempt legacy attrs for compat (ignore failure due to slots)
+            try:
+                child._bc_morph_r = cr  # type: ignore
+                child._bc_morph_phi = cphi  # type: ignore
+                child._bc_morph_k = ck  # type: ignore
+            except Exception:
+                pass
             # Bake traits immediately to derive irregularity -> euthanasia mapping
             # Use child's morph to compute asymmetry
             import math as _m
@@ -2309,12 +2360,171 @@ class Simulation:
                 mean_r = sum(cr[i] for i in range(ck)) / ck if ck else 1.0
                 var_r = sum((cr[i] - mean_r) ** 2 for i in range(ck)) / ck if ck else 0.0
                 asym = (var_r / mean_r) if mean_r else 0.0
-                # bake irregularity for euthanasia gate
+                # bake irregularity for euthanasia gate — BH: skip line (Woman) degenerate template high variance
                 irr = max(0.0, min(1.0, asym * 1.5))
                 cur_irr = float(getattr(child, "irregularity", 0.0) or 0.0)
-                child.irregularity = round(max(cur_irr, irr), 3)
+                if getattr(child, "shape", "polygon") != "line":
+                    child.irregularity = round(max(cur_irr, irr), 3)
+                else:
+                    # for line daughters keep heritable only (avoid Woman template 1.0)
+                    child.irregularity = round(cur_irr, 3) if cur_irr else 0.0
         except Exception:
             pass
+        # BH-4 NN genome cache for immediate SoA insertion (also used by rebuild)
+        try:
+            self._maybe_cache_nn_genome(child, mother, father)
+        except Exception:
+            pass
+
+    def _maybe_cache_nn_genome(self, child: Creature, mother: Creature, father: Creature) -> None:
+        """BH-4 real-time NN crossover — cache hybrid genome for SoA insertion (dict, slots fix)."""
+        if _evolution is None:
+            return
+        def _get_genome(p: Creature):
+            # check pending NN cache first (newborn parent not yet in SoA)
+            if hasattr(self, "_nn_cache") and p.id in self._nn_cache:
+                try:
+                    g = self._nn_cache[p.id]  # type: ignore
+                    if hasattr(g, "copy"):
+                        return g.copy()  # type: ignore
+                    return list(g)
+                except Exception:
+                    pass
+            if getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map"):
+                idx = getattr(self, "_soa_id_map", {}).get(p.id)
+                if idx is not None and hasattr(self._soa, "genomes"):
+                    try:
+                        g = self._soa.genomes[idx]  # type: ignore
+                        if hasattr(g, "copy"):
+                            return g.copy()  # type: ignore
+                        return list(g)  # type: ignore
+                    except Exception:
+                        pass
+            return getattr(p, "_nn_genome", None)  # type: ignore
+        g_m = _get_genome(mother)
+        g_f = _get_genome(father)
+        if g_m is None or g_f is None:
+            return
+        try:
+            if hasattr(_evolution, "crossover_mutate_blockwise"):
+                cg = _evolution.crossover_mutate_blockwise(g_m, g_f, rng=self.rng)  # type: ignore
+            else:
+                cg = _evolution.crossover_mutate(g_m, g_f)  # type: ignore
+            if hasattr(self, "_nn_cache"):
+                try:
+                    self._nn_cache[child.id] = cg  # type: ignore
+                except Exception:
+                    pass
+                try:
+                    self._nn_pending[id(child)] = cg  # type: ignore
+                except Exception:
+                    pass
+            try:
+                child._nn_genome = cg  # type: ignore  # legacy compat, may fail due to slots
+            except Exception:
+                pass
+            # if SoA entry already exists for child (unlikely at birth time), update directly
+            if getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map"):
+                idx_c = getattr(self, "_soa_id_map", {}).get(child.id)
+                if idx_c is not None and hasattr(self._soa, "genomes"):
+                    try:
+                        self._soa.genomes[idx_c] = cg  # type: ignore
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    def _promote_pending_caches(self, child: Creature) -> None:
+        """Move pending morph/NN caches from object-id key to real entity id after world.add."""
+        try:
+            oid = id(child)
+            if hasattr(self, "_morph_pending") and oid in self._morph_pending:
+                self._morph_cache[child.id] = self._morph_pending.pop(oid)  # type: ignore
+            if hasattr(self, "_nn_pending") and oid in self._nn_pending:
+                self._nn_cache[child.id] = self._nn_pending.pop(oid)  # type: ignore
+        except Exception:
+            pass
+
+    # BH-9 Behavioral Archetype Auto-Classifier
+    def _classify_archetype(self, c: Creature) -> str | None:
+        """Return tag for creature policy niche. Called per-tick for UI, also for nocturnal gate."""
+        try:
+            # fetch morph traits if baked
+            dmult = 0.0
+            area = 0.0
+            perim = 0.0
+            idx = getattr(self, "_soa_id_map", {}).get(c.id) if getattr(self, "_soa", None) is not None else None
+            if idx is not None and hasattr(self._soa, "morph_traits"):
+                try:
+                    mt = self._soa.morph_traits[idx]  # type: ignore
+                    if len(mt) >= 6:
+                        area = float(mt[0]); perim = float(mt[1]); dmult = float(mt[5])
+                except Exception:
+                    pass
+            # fallback via irregularity
+            if dmult == 0.0:
+                irr = float(getattr(c, "irregularity", 0.0) or 0.0)
+                # approximate dmult from irr (sharper when irr high for triangles)
+                dmult = min(1.0, irr * 1.2) if c.caste == "Soldier" else 0.0
+            skills = getattr(c, "skills", {}) or {}
+            combat = float(skills.get("combat", 0.0) or 0.0)
+            forag = float(skills.get("foraging", 0.0) or 0.0)
+            farm = float(skills.get("farming", 0.0) or 0.0)
+            # Apex Hunter: razor + combat
+            if dmult > 0.45 and (combat > 4 or c.is_predator):
+                return "Apex Hunter"
+            # Nocturnal Forager: chill tolerant + explorer + foraging skill + irregular (mutant)
+            # BH-8: allow night-active if chill tolerance and night-forage mutation
+            chill = float(getattr(c, "chill", 0.0) or 0.0)
+            if forag > 2.5 and chill < 4.0 and getattr(c, "personality", "") in ("explorer", "brave", "cautious") and float(getattr(c, "irregularity", 0.0) or 0.0) > 0.15:
+                # also check if NN has night preference inversion (genome sign flip) via hidden heuristic: generation >15 and lam low
+                # simple proxy: high generation mutant
+                if getattr(c, "generation", 0) > 15:
+                    return "Nocturnal Forager"
+            # Granary Courier: carries food + farming
+            if getattr(c, "food_basket", 0) > 0 and (farm > 2 or forag > 2):
+                return "Granary Courier"
+            # Sentry Guard: high combat / paranoid near house
+            if combat > 3 and getattr(c, "trait", None) in ("paranoid", "bold") or (combat > 2 and c.clan_id):
+                # check proximity to house via cached bodies (approx)
+                try:
+                    if getattr(self, "_house_bodies", None) and getattr(c, "clan_id", 0):
+                        return "Sentry Guard"
+                except Exception:
+                    pass
+                if combat > 5:
+                    return "Sentry Guard"
+            return None
+        except Exception:
+            return None
+
+    def _is_nocturnal_forager(self, c: Creature) -> bool:
+        """BH-8 gate: nocturnal mutants skip sleep to forage under darkness."""
+        try:
+            arch = getattr(c, "_archetype", None)
+            if not arch and hasattr(self, "_archetype_cache"):
+                arch = self._archetype_cache.get(c.id)  # type: ignore
+            if arch == "Nocturnal Forager":
+                return True
+            # fallback: chill tolerant + forager archetype traits without full classification yet
+            if getattr(c, "chill", 0.0) < 3.0 and float(getattr(c, "skills", {}).get("foraging", 0.0) or 0.0) > 2.0 and float(getattr(c, "irregularity", 0.0) or 0.0) > 0.2:
+                return True
+            # NN inversion proxy: check genome sensory sign flip
+            idx = getattr(self, "_soa_id_map", {}).get(c.id) if getattr(self, "_soa", None) is not None else None
+            if idx is not None and hasattr(self._soa, "genomes"):
+                try:
+                    g = self._soa.genomes[idx]  # type: ignore
+                    # inversion heuristic: sum of W1 first row negativity indicates repulsion flip
+                    if hasattr(g, "__getitem__") and len(g) > 12:
+                        # check if early sensory weights negative large (inversion)
+                        s = float(g[0]) if hasattr(g[0], "__float__") else 0.0
+                        if s < -0.8:
+                            return True
+                except Exception:
+                    pass
+            return False
+        except Exception:
+            return False
 
 
     def _spawn_creature(self, shape: str, sides: int) -> None:
@@ -3986,6 +4196,37 @@ class Simulation:
         for creature in list(self._cached_creatures):
             if creature.id in self.world.entities:
                 self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
+        # BH-9: refresh archetype tags every 20 ticks (cheap) for UI + nocturnal gate
+        if self.tick % 20 == 0:
+            for c in self._cached_creatures:
+                try:
+                    arch = self._classify_archetype(c)
+                    if arch:
+                        self._archetype_cache[c.id] = arch  # type: ignore
+                    elif c.id in self._archetype_cache:
+                        del self._archetype_cache[c.id]
+                    # legacy compat (slots may ignore)
+                    try:
+                        c._archetype = arch  # type: ignore
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+            # prune dead archetypes / morph / nn
+            try:
+                alive_ids = {c.id for c in self._cached_creatures}
+                for k in list(self._archetype_cache.keys()):
+                    if k not in alive_ids:
+                        del self._archetype_cache[k]
+                if self.tick % 100 == 0:
+                    for k in list(getattr(self, "_morph_cache", {}).keys()):
+                        if k not in alive_ids:
+                            del self._morph_cache[k]  # type: ignore
+                    for k in list(getattr(self, "_nn_cache", {}).keys()):
+                        if k not in alive_ids:
+                            del self._nn_cache[k]  # type: ignore
+            except Exception:
+                pass
         # §AX P0: single consolidated cache — positions moved but clan membership
         # unchanged; defer full rebuild until after war/prune to avoid triplicate.
         # _update_disease and _update_war handle stale cache via w.entities checks
@@ -4169,15 +4410,29 @@ class Simulation:
                     self._soa = _agent_soa.AgentSoA(capacity=max(2000, len(self._cached_creatures) * 2 + 10))
                     self._nn_grid = _spatial_grid.SpatialHashGrid(width=self.config.width, height=self.config.height, cell_size=32.0, boundary=self.config.boundary)
                     for c in self._cached_creatures:
-                        # BC morph — pass polar genome if present on creature
-                        _mr = getattr(c, "_bc_morph_r", None)
-                        _ma = getattr(c, "_bc_morph_phi", None)
-                        _mk = getattr(c, "_bc_morph_k", None)
+                        # BH-1 morph — check pending cache first (slots fix), then legacy attrs
+                        _mr = _ma = _mk = None
+                        if hasattr(self, "_morph_cache") and c.id in self._morph_cache:
+                            _mr, _ma, _mk = self._morph_cache[c.id]  # type: ignore
+                        else:
+                            _mr = getattr(c, "_bc_morph_r", None)
+                            _ma = getattr(c, "_bc_morph_phi", None)
+                            _mk = getattr(c, "_bc_morph_k", None)
                         self._soa.add_agent(int(c.id), float(c.x), float(c.y), angle=float(c.angle), energy=float(c.energy), health=float(c.health), morph_radii=_mr, morph_angles=_ma, morph_k=_mk)
                     self._soa_id_map = {c.id: idx for idx, c in enumerate(self._cached_creatures)}
-                    # init genomes
+                    # init genomes — carry over any cached NN genomes
                     if _evolution is not None:
                         _evolution.init_genomes(self._soa, rng=self.config.seed)
+                        # apply any pending NN cache for founders
+                        if hasattr(self, "_nn_cache") and self._nn_cache:
+                            try:
+                                for c in self._cached_creatures:
+                                    if c.id in self._nn_cache:
+                                        idx = self._soa_id_map.get(c.id)
+                                        if idx is not None:
+                                            self._soa.genomes[idx] = self._nn_cache[c.id]  # type: ignore
+                            except Exception:
+                                pass
                 # 60Hz: sync positions from world to SoA and vice versa (pos += vel)
                 # For now keep SoA as shadow; update grid
                 if getattr(self, "_soa", None) is not None and self._soa is not None:
@@ -4194,17 +4449,27 @@ class Simulation:
                             old_id_map = getattr(self, "_soa_id_map", {})
                             new_soa = _AS(capacity=max(2000, len(self._cached_creatures) * 2 + 10))
                             for c in self._cached_creatures:
-                                _mr = getattr(c, "_bc_morph_r", None)
-                                _ma = getattr(c, "_bc_morph_phi", None)
-                                _mk = getattr(c, "_bc_morph_k", None)
+                                _mr = _ma = _mk = None
+                                if hasattr(self, "_morph_cache") and c.id in self._morph_cache:
+                                    _mr, _ma, _mk = self._morph_cache[c.id]  # type: ignore
+                                else:
+                                    _mr = getattr(c, "_bc_morph_r", None)
+                                    _ma = getattr(c, "_bc_morph_phi", None)
+                                    _mk = getattr(c, "_bc_morph_k", None)
                                 old_idx = old_id_map.get(c.id)
                                 existing_genome = None
+                                # BH-4 NN cache first
+                                if hasattr(self, "_nn_cache") and c.id in self._nn_cache:
+                                    try:
+                                        existing_genome = self._nn_cache[c.id]  # type: ignore
+                                    except Exception:
+                                        pass
                                 if old_idx is not None and old_idx < old_soa.N:
                                     if _mr is None and hasattr(old_soa, "morph_radii"):
                                         _mr = old_soa.morph_radii[old_idx]
                                         _ma = old_soa.morph_angles[old_idx]
                                         _mk = int(old_soa.morph_k[old_idx])
-                                    if hasattr(old_soa, "genomes"):
+                                    if existing_genome is None and hasattr(old_soa, "genomes"):
                                         existing_genome = old_soa.genomes[old_idx]
                                 new_soa.add_agent(
                                     int(c.id),
@@ -4233,16 +4498,29 @@ class Simulation:
                                             try:
                                                 g_a = new_soa.genomes[pa_idx]
                                                 g_b = new_soa.genomes[pb_idx]
-                                                child_g = _evolution.crossover_mutate(
-                                                    g_a,
-                                                    g_b,
-                                                    p_mut=float(getattr(self.config, "mutation_rate", 0.05)),
-                                                    sigma=float(getattr(self.config, "mutation_sigma", 0.08)),
-                                                )
+                                                # BH-4/5/6: blockwise crossover with inversion, pass rng for determinism
+                                                if hasattr(_evolution, "crossover_mutate_blockwise"):
+                                                    child_g = _evolution.crossover_mutate_blockwise(
+                                                        g_a,
+                                                        g_b,
+                                                        rng=self.rng,
+                                                    )
+                                                else:
+                                                    child_g = _evolution.crossover_mutate(
+                                                        g_a,
+                                                        g_b,
+                                                        p_mut=float(getattr(self.config, "mutation_rate", 0.05)),
+                                                        sigma=float(getattr(self.config, "mutation_sigma", 0.08)),
+                                                    )
                                             except Exception:
                                                 child_g = None
                                         if child_g is not None:
                                             new_soa.genomes[new_idx] = child_g
+                                        elif getattr(c, "_nn_genome", None) is not None:  # type: ignore
+                                            try:
+                                                new_soa.genomes[new_idx] = c._nn_genome  # type: ignore
+                                            except Exception:
+                                                pass
                                         elif _evolution is not None:
                                             try:
                                                 new_soa.genomes[new_idx] = _evolution._build_base_genome(new_soa.genome_size)
@@ -7592,6 +7870,7 @@ class Simulation:
             self._init_creature_evolution(child, mother, father)
             self._init_morph_for_child(child, mother, father)
             self.world.add(child)
+            self._promote_pending_caches(child)
             event_payload = {
                 "mother": mother.id, "father": father.id,
                 "sides": child.sides, "generation": gen, "sex": child.sex,
@@ -7642,6 +7921,7 @@ class Simulation:
             self._init_creature_evolution(child, mother, father)
             self._init_morph_for_child(child, mother, father)
             self.world.add(child)
+            self._promote_pending_caches(child)
             event_payload = {
                 "mother": mother.id, "father": father.id,
                 "sides": child.sides, "generation": gen, "sex": child.sex,
@@ -7764,6 +8044,7 @@ class Simulation:
 
         self._init_creature_evolution(child, mother, father)
         self.world.add(child)
+        self._promote_pending_caches(child)
         gift = self._totem_stat(child, "health")  # totem vitality: Bear/Shield cubs
         if gift:
             child.health = min(child.max_health, child.health + gift)
@@ -8305,6 +8586,7 @@ class Simulation:
             and not is_starving
             and is_night
             and c.alarm_wake_ticks <= 0  # §AR S-1: a war cry wakes sleepers
+            and not self._is_nocturnal_forager(c)  # BH-8: nocturnal mutants forage through the night
             and houses
         ):
             # Assigned roof (room-aware, §L); if we're not under it but stand
@@ -10592,6 +10874,9 @@ class Simulation:
             # §AO Phase A: night chill bites 3× deeper than daytime rain.
             if not c.indoors and is_night:
                 chill_mult *= NIGHT_CHILL_MULT
+                # BH-8: nocturnal foragers tolerate night chill (65% reduction)
+                if self._is_nocturnal_forager(c):
+                    chill_mult *= 0.35
             if not c.indoors and (is_wet or is_winter_night):
                 # §AP: the Indomitable Monolith resists the cold's bite
                 chill_mult *= 1.0 - self._totem_stat(c, "cold")
@@ -11166,6 +11451,7 @@ class Simulation:
                 "torpid": self._is_torpid(e) or None,
                 "trait": e.trait,
                 "iso_angle": round(float(getattr(e, "iso_angle", 60.0) or 60.0), 2) if e.sides == 3 else None,
+                "archetype": getattr(e, "_archetype", None) or getattr(self, "_archetype_cache", {}).get(e.id),  # BH-9
                 "equipped_item": getattr(e, "equipped_item", None),
                 "food_basket": getattr(e, "food_basket", 0) or None,
                 "personality": getattr(e, "personality", "brave"),

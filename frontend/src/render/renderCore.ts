@@ -648,6 +648,24 @@ export function drawBatchedEntities(
       }
       ctx.globalAlpha = 1
     }
+    // BH-9 archetype mini-icon above creature when zoomed (nocturnal etc)
+    const arch = (c as any).archetype as string | undefined
+    if (arch && camScale >= 3.0) {
+      const icon = arch==='Apex Hunter'?'⚔' : arch==='Nocturnal Forager'?'🌙' : arch==='Granary Courier'?'🧺' : arch==='Sentry Guard'?'🛡️' : ''
+      if (icon) {
+        const ax = c.x, ay = c.y - r - 1.8
+        ctx.globalAlpha = 0.92
+        ctx.fillStyle = '#0d1117'
+        ctx.beginPath()
+        ctx.roundRect(ax - 1.0, ay - 1.0, 2.0, 1.8, 0.3)
+        ctx.fill()
+        ctx.globalAlpha = 1
+        ctx.font = '1.2px ui-monospace, monospace'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(icon, ax, ay)
+      }
+    }
   }
 
   // Draw Crests

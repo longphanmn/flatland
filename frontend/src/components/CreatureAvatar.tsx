@@ -75,6 +75,7 @@ export function CreatureAvatar({
   const status = e?.status ?? propStatus
   const chill = (e as any)?.chill ?? propChill ?? 0
 
+  const archetype: string | undefined = (e as any)?.archetype
   const irregularity: number = (e as any)?.irregularity ?? 0
   const isoAngle: number | undefined = (e as any)?.iso_angle
   const morphTraits: number[] | undefined = (e as any)?.morph_traits
@@ -303,9 +304,19 @@ export function CreatureAvatar({
         {status === 'starving' && <circle cx={cx + 22} cy={cy - 22} r={4} fill="#f85149" stroke="#0d1117" strokeWidth={1} />}
         {status === 'hungry' && <circle cx={cx + 22} cy={cy - 22} r={4} fill="#d29922" stroke="#0d1117" strokeWidth={1} />}
         {chill >= 12 && <circle cx={cx - 22} cy={cy - 22} r={4} fill="#79c0ff" stroke="#0d1117" strokeWidth={1} />}
-        {trait && size >= 60 && (
+        {archetype && size >= 60 && (
+          <text x={cx} y={archetype ? 68 : 72} textAnchor="middle" fontSize={6.5} fill={archetype==='Apex Hunter'?'#ff7b72':archetype==='Nocturnal Forager'?'#79c0ff':archetype==='Granary Courier'?'#3fb950':archetype==='Sentry Guard'?'#d2a8ff':'#8b949e'} style={{ fontWeight: 700 }}>
+            {archetype==='Apex Hunter'?'⚔ Apex Hunter':archetype==='Nocturnal Forager'?'🌙 Nocturnal':archetype==='Granary Courier'?'🧺 Courier':archetype==='Sentry Guard'?'🛡️ Sentry':archetype}
+          </text>
+        )}
+        {trait && size >= 60 && !archetype && (
           <text x={cx} y={72} textAnchor="middle" fontSize={7} fill="#8b949e">
             {trait === 'greedy' ? '⬔ greedy' : trait === 'peaceful' ? '◯ peaceful' : trait === 'paranoid' ? '⬥ paranoid' : trait === 'bold' ? '▲ bold' : trait}
+          </text>
+        )}
+        {trait && archetype && size >= 60 && (
+          <text x={cx} y={74} textAnchor="middle" fontSize={5.5} fill="#6e7681">
+            {trait}
           </text>
         )}
       </svg>
