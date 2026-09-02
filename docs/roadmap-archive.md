@@ -1944,3 +1944,46 @@ Audited, quantified, and **deliberately excluded**. Do not start these without r
 - [x] [P1] 9.1-9.4 Mobile UI 2.0 — `App.tsx`, `CanvasRenderer.tsx`, `Inspector` pull.
 - [x] [P1] 10.1-10.4 TUI 2.0 — `backend/tui/` Braille, sparkline, dossiers, vim.
 - [x] [P1] Preset recalculation 7 presets 500/1000 tick verified (balance 228@1000, sustainable 299@1000, theocracy 258@1000, warlords war 37@500, chaos 148@500, extinction 109@500, boom 366@500 976@1000) + `house_density` removal, `boundary`/`door_clearance` added.
+
+## BC. Geometric Physics & Morphological Evolution + Density-Dependent Soft-Cap Damping [P0–P1] — 18/18 (archived 2026-08-31)
+
+- [x] [P0] 1.1 Expand Structure of Arrays (SoA) Buffers for Geometry `agent_soa.py` KMAX 24 (`morph_radii`, `morph_angles`, `morph_k`, `physical_traits`, `reproduction_role`).
+- [x] [P0] 2.1 Implement Polar Geometric Formulations `morphology_engine.py` (shoelace area, perimeter, moment of inertia, min vertex angle, asymmetry index).
+- [x] [P1] 2.2 Implement Trait Baking on Birth `bake_physical_traits` (energy cap, metabolic burn, kinetic piercing damage, steering resistance, euthanasia).
+- [x] [P1] 3.1 Define Canonical Abbott Caste Templates (Woman line, Soldier isosceles, Tradesman equilateral, Noble polygon, Priest circle 24).
+- [x] [P0] 3.2 Implement Annealing Schedule $\lambda(g)$ `lambda_for_generation`.
+- [x] [P1] 3.3 Morphological Inheritance & Crossover Engine `child_morphology` (topological drift vertex insertion/merge).
+- [x] [P0] 4.1 Real-time Overpopulation Stress Index $\xi(N)$ `density_damping.py`.
+- [x] [P0] 4.2 Multi-Channel Damping Equations (Reproductive suppression, crowding stress, ecological strain, social friction).
+- [x] [P0] 4.3 Eliminate Hard-Cap Code Blocks `simulation.py` / `reproduction.py`.
+- [x] [P1] 5.1 Energetic Reproduction Roles (Brood carrier vs. mobile fertilizer anisogamy).
+- [x] [P1] 5.2 Neural Courtship & Mating Execution.
+- [x] [P0] 6.1 Add Morphology & Safeguard Parameters to God Laws API.
+- [x] [P0] 6.1b Add Soft-Cap Parameters to God Laws API (`soft_cap_enabled`, `damping_steepness`, `crowding_stress_mult`, `resource_strain_mult`).
+- [x] [P1] 6.2 Update Simulation Presets for Dynamic Equilibrium.
+- [x] [P1] 6.3 Real-time Law Mutation Observer.
+- [x] [P1] 7.1 SAT Narrowphase Collision with Circle Approximation Fallback.
+- [x] [P1] 7.2 Telemetry API Endpoints `/api/metrics/morphology`, `/api/metrics/safeguards`, `/api/metrics/damping`.
+- [x] [P0] 7.3 Performance Verification `bench_morphology.py` 0.41ms/tick.
+
+## BE. Creature Movement AI Overhaul [P0–P2] — 10/10 (archived 2026-09-01)
+
+- [x] [P0] BE-1 Correlated wander (Ornstein–Uhlenbeck drift `_heading_bias` decaying $\times 0.80$ + jitter). Eliminates straight-line zombie walks.
+- [x] [P0] BE-2 Shelter orbit fix — entrance funnel with widened doorway alignment tolerance `dw` (`max(door_width * 0.7, 2.0)`).
+- [x] [P0] BE-2b Shelter orbit-break jitter (±0.8 rad perturbation after 5 blocked ticks).
+- [x] [P0] BE-3 Flee panic burst on imminent danger (instant 180° flip + $\times 1.3$ speed surge).
+- [x] [P1] BE-4 Predator obstacle-avoidance jitter (±1.0 rad perturbation after 3 blocked ticks).
+- [x] [P1] BE-E1 Always-on danger memory avoidance (lower utility 0.35 when well-fed).
+- [x] [P1] BE-E2 Territory patrol bias with arrival clearing (`dist <= 3.0`) and inward bounds.
+- [x] [P1] BE-E3 Earlier dusk alarm (`DUSK_TOD 0.62`, `DUSK_SHELTER_URGE 2.0`).
+- [x] [P2] BE-E4 Anti-pursuit flanking flee (60% tangent + 40% direct away blend).
+- [x] [P2] BE-E6 Visited-cell revisit suppression replaced by clean OU drift and territory patrol.
+
+## BF. Early Population Boom Limiter [P0–P1] — 5/5 (archived 2026-09-01)
+
+- [x] [P0] BF-1 Birth rate ramp (`boom_ramp_days=6.0`, `boom_birth_floor=0.12`).
+- [x] [P0] BF-2 Extend `adult_age` in presets (balance 600, sustainable 900).
+- [x] [P1] BF-3 Early-world cooldown multiplier `boom_cooldown_mult` ($\times 3$ decaying to $\times 1$).
+- [x] [P1] BF-4 Early-world mate energy threshold ramp `boom_energy_mult` ($\times 2.5$ decaying to $\times 1$).
+- [x] [P1] BF-5 Initial world season offset (`initial_season_offset=2` autumn start).
+
