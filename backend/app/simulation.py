@@ -6467,6 +6467,9 @@ class Simulation:
                             else:
                                 overlap = _morphology.sat_overlap(xa, ya, xb, yb)
                         if overlap:
+                            # §BF-FriendlyFire: do not inflict accidental lethal collision damage between clan members, sleeping creatures, or women
+                            if (ent.clan_id and ent.clan_id == other.clan_id) or getattr(ent, "sleeping", False) or getattr(other, "sleeping", False) or ent.shape == "line" or other.shape == "line":
+                                continue
                             # impulse & Dmult damage: use sharper Dmult
                             try:
                                 da = float(soa.morph_traits[idx, 5]) if hasattr(soa.morph_traits, "shape") else float(soa.morph_traits[idx][5])
@@ -7717,22 +7720,6 @@ class Simulation:
             if not base:
                 return False
             # BC.4.2 courtship — gated behind morphology annealing (and BA 8.1 hard switch deferred)
-            if getattr(cfg, "morphology_annealing_enabled", True) and getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map"):
-                try:
-                    idx = self._soa_id_map.get(c.id)
-                    if idx is not None and 0 <= idx < getattr(self._soa, "N", 0):
-                        if hasattr(self._soa, "outputs_buf"):
-                            import numpy as _np  # type: ignore
-                            try:
-                                social = float(self._soa.outputs_buf[idx, 3]) if hasattr(self._soa.outputs_buf, "shape") else float(self._soa.outputs_buf[idx][3])
-                            except Exception:
-                                social = 0.0
-                            # only gate when social is defined (non-zero latch) — keep disabled path identical
-                            # require social >0.5 when annealing is early (lam>0.5) is strict, else loose
-                            if social != 0.0 and social <= 0.5:
-                                return False
-                except Exception:
-                    pass
             return True
 
         females = [c for c in creatures if c.shape == "line" and eligible(c)]
@@ -10985,14 +10972,15 @@ class Simulation:
         if age is not None:
             target = round(target * AGE_FOOD_MULT.get(age, 1.0))
         foods = [e for e in self.world.entities.values() if e.kind == "food" and not getattr(e, "cultivated", False)]
-        # Ensure no wild plants exist inside any shelter structure
-        inside_shelter_ids = [
-            f.id for f in foods if self._is_point_inside_any_house(f.x, f.y, pad=0.2)
-        ]
-        for f_id in inside_shelter_ids:
-            self.world.remove(f_id)
-        if inside_shelter_ids:
-            foods = [f for f in foods if f.id not in inside_shelter_ids]
+        # Ensure no wild plants exist inside any shelter structure (periodic clean-up to save 50ms/tick)
+        if self.tick % 60 == 0:
+            inside_shelter_ids = [
+                f.id for f in foods if self._is_point_inside_any_house(f.x, f.y, pad=0.2)
+            ]
+            for f_id in inside_shelter_ids:
+                self.world.remove(f_id)
+            if inside_shelter_ids:
+                foods = [f for f in foods if f.id not in inside_shelter_ids]
         deficit = target - len(foods)
         if deficit > 0:
             growth_init = 1.0
