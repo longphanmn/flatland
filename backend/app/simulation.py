@@ -2504,24 +2504,8 @@ class Simulation:
             arch = getattr(c, "_archetype", None)
             if not arch and hasattr(self, "_archetype_cache"):
                 arch = self._archetype_cache.get(c.id)  # type: ignore
-            if arch == "Nocturnal Forager":
+            if arch == "Nocturnal Forager" or getattr(c, "trait", None) == "nocturnal":
                 return True
-            # fallback: chill tolerant + forager archetype traits without full classification yet
-            if getattr(c, "chill", 0.0) < 3.0 and float(getattr(c, "skills", {}).get("foraging", 0.0) or 0.0) > 2.0 and float(getattr(c, "irregularity", 0.0) or 0.0) > 0.2:
-                return True
-            # NN inversion proxy: check genome sensory sign flip
-            idx = getattr(self, "_soa_id_map", {}).get(c.id) if getattr(self, "_soa", None) is not None else None
-            if idx is not None and hasattr(self._soa, "genomes"):
-                try:
-                    g = self._soa.genomes[idx]  # type: ignore
-                    # inversion heuristic: sum of W1 first row negativity indicates repulsion flip
-                    if hasattr(g, "__getitem__") and len(g) > 12:
-                        # check if early sensory weights negative large (inversion)
-                        s = float(g[0]) if hasattr(g[0], "__float__") else 0.0
-                        if s < -0.8:
-                            return True
-                except Exception:
-                    pass
             return False
         except Exception:
             return False
@@ -7879,7 +7863,7 @@ class Simulation:
                 "glyph": glyph_for(child.id, self.config.seed, gen),
             }
             for p in (mother, father):
-                p.energy = max(1.0, p.energy - _birth_cost_eff)
+                p.energy = max(10.0, p.energy - _birth_cost_eff)
                 p.repro_cooldown = _cooldown_eff
                 p.emote = "love"
                 p.emote_ticks = 25
@@ -7930,7 +7914,7 @@ class Simulation:
                 "glyph": glyph_for(child.id, self.config.seed, gen),
             }
             for p in (mother, father):
-                p.energy = max(1.0, p.energy - _birth_cost_eff)
+                p.energy = max(10.0, p.energy - _birth_cost_eff)
                 p.repro_cooldown = _cooldown_eff
                 p.emote = "love"
                 p.emote_ticks = 25
@@ -8104,19 +8088,19 @@ class Simulation:
                         # Phase 4: scale anisogamy cost via xi
                         _cost_scale = _scales_b.get("birth_cost_eff", 1.0) if _xi_birth else 1.0 if '_scales_b' in locals() else (1.0 + 1.5 * _xi_birth if _xi_birth else 1.0)
                         cost = max(5.0, cfg.energy_max * emax_scale * ratio * _cost_scale)
-                        p.energy = max(1.0, p.energy - cost)
+                        p.energy = max(10.0, p.energy - cost)
                         p.repro_cooldown = _cooldown_eff
                 else:
                     for p in (mother, father):
-                        p.energy = max(1.0, p.energy - _birth_cost_eff)
+                        p.energy = max(10.0, p.energy - _birth_cost_eff)
                         p.repro_cooldown = _cooldown_eff
             except Exception:
                 for p in (mother, father):
-                    p.energy = max(1.0, p.energy - _birth_cost_eff)
+                    p.energy = max(10.0, p.energy - _birth_cost_eff)
                     p.repro_cooldown = _cooldown_eff
         else:
             for p in (mother, father):
-                p.energy = max(1.0, p.energy - _birth_cost_eff)
+                p.energy = max(10.0, p.energy - _birth_cost_eff)
                 p.repro_cooldown = _cooldown_eff
 
         event = HistoryEvent(

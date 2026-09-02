@@ -322,11 +322,11 @@ class Config:
     crowding_stress_mult: float = 0.35  # metabolic drain multiplier
     resource_strain_mult: float = 1.2  # plant growth/spread divisor
 
-    # BF Early Population Boom Limiter — days 0-6 birth is throttled
-    boom_ramp_days: float = 6.0  # days of suppressed birth at world start
-    boom_birth_floor: float = 0.12  # birth rate floor at day 0 (0.12×)
-    boom_cooldown_mult: float = 3.0  # cooldown ×3 at day 0, decays to ×1 at ramp
-    boom_energy_mult: float = 2.5  # mate_energy_min ×2.5 at day 0, decays to ×1
+    # BF Early Population Boom Limiter — days 0-1.2 birth is gently throttled
+    boom_ramp_days: float = 1.2  # days of soft birth ramp at world start (1440 ticks)
+    boom_birth_floor: float = 0.40  # birth rate floor at day 0 (0.40× ramped to 1.0× by day 1.2)
+    boom_cooldown_mult: float = 1.0  # standard reproduction cooldown
+    boom_energy_mult: float = 1.0  # standard mate energy threshold
     initial_season_offset: int = 0  # 0=spring, 1=summer, 2=autumn, 3=winter
 
     @classmethod
