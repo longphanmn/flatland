@@ -32,8 +32,7 @@
       "god": "Laws of the Sphere (God)",
       "chronicle": "Log",
       "world": "World",
-      "clans": "Clans",
-      "plots": "Plots"
+      "clans": "Clans"
     },
     "hud": {
       "alive": "Alive",
@@ -58,8 +57,7 @@
     "mobileSheet": {
       "world": "World",
       "clans": "Clans",
-      "chronicle": "Log",
-      "plots": "Plots"
+      "chronicle": "Log"
     },
     "hints": {
       "connection": "Connection: {{status}}",
@@ -647,14 +645,6 @@
     "shapeLabel": "Shape",
     "polarPending": "Polar trait bake pending — annealing may be off or creature from legacy gen.",
     "gatheringNeural": "Gathering live neural state — 16→12→7 (295) at 15 Hz."
-  },
-  "plots": {
-    "noPlots": "no plots — the world is calm",
-    "title": "Plots — foreshadowing",
-    "closest": "closest {{distance}}u",
-    "unhappy": "{{unhappy}}/{{pop}} unhappy",
-    "war": "war",
-    "schism": "schism"
   },
   "charts": {
     "collectingHistory": "collecting history…",

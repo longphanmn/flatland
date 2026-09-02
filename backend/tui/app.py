@@ -11,14 +11,13 @@ from textual.widgets import Footer, Tab, Tabs
 from . import theme
 from .client import RESTClient, WSClient, http_base_for
 from .state import HelloMessage, StateMessage
-from .widgets import Chronicle, ClanPanel, Hud, Overview, PlotsPanel, WorldView
+from .widgets import Chronicle, ClanPanel, Hud, Overview, WorldView
 from .screens import ClanDetailsScreen, GodLawsScreen, HelpScreen, InspectorScreen
 
 SPEED_PRESETS = [0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 60.0, 120.0]
 
 
 POLL_CLANS = 3.0
-POLL_PLOTS = 3.0
 POLL_WORLDS = 30.0
 
 
@@ -83,7 +82,6 @@ class FlatlandApp(App):
         ("tab-overview", "overview"),
         ("tab-chronicle", "chronicle"),
         ("tab-clans", "clans-table"),
-        ("tab-plots", "plots-panel"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -96,12 +94,10 @@ class FlatlandApp(App):
                     Tab("Overview", id="tab-overview"),
                     Tab("Chronicle", id="tab-chronicle"),
                     Tab("Clans", id="tab-clans"),
-                    Tab("Plots", id="tab-plots"),
                 )
                 yield Overview(id="overview")
                 yield Chronicle(id="chronicle")
                 yield ClanPanel(id="clans-table")
-                yield PlotsPanel(id="plots-panel")
         yield Footer()
 
     async def on_mount(self) -> None:
@@ -115,7 +111,6 @@ class FlatlandApp(App):
         )
         self._ws.start()
         self.set_interval(POLL_CLANS, self.poll_clans)
-        self.set_interval(POLL_PLOTS, self.poll_plots)
         self.set_interval(POLL_WORLDS, self.poll_worlds)
         self.call_later(self.poll_worlds)
 
@@ -212,31 +207,6 @@ class FlatlandApp(App):
                 }
                 for c in clans
             }
-
-    async def poll_plots(self) -> None:
-        try:
-            data = await self.rest.plots()
-        except Exception:
-            return
-        plots = data.get("plots") or []
-        panel = self.query_one("#plots-panel", PlotsPanel)
-        panel.update_plots(self._name_plots(plots))
-
-    def _name_plots(self, plots: list[dict]) -> list[dict]:
-        """Attach human clan names to plot rows."""
-        clans = self.world_state.clans if self.world_state else {}
-
-        def nm(cid: Any) -> Any:
-            info = clans.get(str(cid)) or {}
-            return info.get("name") or cid
-
-        out = []
-        for pl in plots:
-            pl = dict(pl)
-            pl["a_name"] = nm(pl.get("a"))
-            pl["b_name"] = nm(pl.get("b")) if pl.get("b") is not None else None
-            out.append(pl)
-        return out
 
     async def poll_worlds(self) -> None:
         try:

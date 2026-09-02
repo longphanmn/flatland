@@ -32,8 +32,7 @@
       "god": "Định luật Quả Cầu (Chúa)",
       "chronicle": "Biên niên",
       "world": "Thế giới",
-      "clans": "Tộc",
-      "plots": "Âm mưu"
+      "clans": "Tộc"
     },
     "hud": {
       "alive": "Đang sống",
@@ -58,8 +57,7 @@
     "mobileSheet": {
       "world": "Thế giới",
       "clans": "Tộc",
-      "chronicle": "Biên niên",
-      "plots": "Âm mưu"
+      "chronicle": "Biên niên"
     },
     "hints": {
       "connection": "Kết nối: {{status}}",
@@ -647,14 +645,6 @@
     "shapeLabel": "Hình dạng",
     "polarPending": "Đang tính toán đặc tính cực — tôi luyện có thể đang tắt hoặc sinh vật thuộc thế hệ cũ.",
     "gatheringNeural": "Đang thu thập trạng thái mạng nơ-ron trực tiếp — 16→12→7 (295) ở tần số 15 Hz."
-  },
-  "plots": {
-    "noPlots": "không có âm mưu — thế giới đang yên bình",
-    "title": "Âm mưu — điềm báo xung đột",
-    "closest": "gần nhất {{distance}}u",
-    "unhappy": "{{unhappy}}/{{pop}} người bất mãn",
-    "war": "chiến tranh",
-    "schism": "ly khai"
   },
   "charts": {
     "collectingHistory": "đang thu thập lịch sử…",

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import CanvasRenderer from './render/CanvasRenderer'
 import OverviewPanel from './render/OverviewPanel'
 import ClanPanel from './render/ClanPanel'
-import PlotsPanel from './render/PlotsPanel'
 import ChronicleFeed from './render/ChronicleFeed'
 import GodPanel from './god/GodPanel'
 import { AuthModal, ensureGodKey, forgetKey, getCachedKey } from './god/auth'
@@ -56,7 +55,7 @@ export default function App() {
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768)
   const [statusExpanded, setStatusExpanded] = useState(false)
   const [sheetState, setSheetState] = useState<'hidden' | 'peek' | 'half' | 'full'>('hidden')
-  const [sheetTab, setSheetTab] = useState<'world' | 'clans' | 'chronicle' | 'plots'>('world')
+  const [sheetTab, setSheetTab] = useState<'world' | 'clans' | 'chronicle'>('world')
   const [rightTab, setRightTab] = useState<'overview' | 'clans' | 'chronicle'>(() => {
     if (typeof window !== 'undefined') {
       const v = sessionStorage.getItem('right-stack-tab')
@@ -753,7 +752,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Mobile tabbed sheet — World / Clans / Chronicle / Plots */}
+      {/* Mobile tabbed sheet — World / Clans / Chronicle */}
       {isMobile && sheetState !== 'hidden' && (
         <div className="mobile-sheet" data-state={sheetState}>
           <div
@@ -783,7 +782,6 @@ export default function App() {
               <button className={sheetTab === 'world' ? 'active' : ''} onClick={() => setSheetTab('world')} style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.controls.world')}</button>
               <button className={sheetTab === 'clans' ? 'active' : ''} onClick={() => setSheetTab('clans')} style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.controls.clans')}</button>
               <button className={sheetTab === 'chronicle' ? 'active' : ''} onClick={() => setSheetTab('chronicle')} style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.controls.chronicle')}</button>
-              <button className={sheetTab === 'plots' ? 'active' : ''} onClick={() => setSheetTab('plots')} style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.controls.plots')}</button>
             </div>
             <button
               className="mobile-sheet-close"
@@ -808,7 +806,6 @@ export default function App() {
               />
             )}
             {sheetTab === 'clans' && <ClanPanel state={state} onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />}
-            {sheetTab === 'plots' && <PlotsPanel onSelectClan={setSelectedClanId} />}
             {sheetTab === 'chronicle' && (
               <div className="chronicle" style={{ background: 'transparent', border: 'none', padding: 0, maxHeight: 'none', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', flex: '1 1 0' }}>
                 <ChronicleFeed

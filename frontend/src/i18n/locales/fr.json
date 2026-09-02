@@ -32,8 +32,7 @@
       "god": "Lois de la Sphère (Dieu)",
       "chronicle": "Journal",
       "world": "Monde",
-      "clans": "Clans",
-      "plots": "Complots"
+      "clans": "Clans"
     },
     "hud": {
       "alive": "Vivants",
@@ -58,8 +57,7 @@
     "mobileSheet": {
       "world": "Monde",
       "clans": "Clans",
-      "chronicle": "Journal",
-      "plots": "Complots"
+      "chronicle": "Journal"
     },
     "hints": {
       "connection": "Connexion : {{status}}",
@@ -647,14 +645,6 @@
     "shapeLabel": "Forme",
     "polarPending": "Calcul des traits polaires en attente — recuit désactivé ou créature d'ancienne génération.",
     "gatheringNeural": "Collecte de l'état neuronal en direct — 16→12→7 (295) à 15 Hz."
-  },
-  "plots": {
-    "noPlots": "aucun complot — le monde est paisible",
-    "title": "Complots — présages et tensions",
-    "closest": "plus proche {{distance}}u",
-    "unhappy": "{{unhappy}}/{{pop}} mécontents",
-    "war": "guerre",
-    "schism": "schisme"
   },
   "charts": {
     "collectingHistory": "collecte de l'historique…",

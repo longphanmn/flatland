@@ -205,26 +205,6 @@ def test_leader_is_founder_nearest_the_settlement_centre():
             taken.add(expected)
 
 
-def test_get_plots_handles_mixed_settlement_clans():
-    """Regression: /api/plots crashed with AttributeError ('Creature' object has
-    no attribute 'is_ruin') because the schism-plot house check matched every
-    creature's clan_id via hasattr instead of filtering to House."""
-    from dataclasses import replace
-
-    s = Simulation(Config(seed=3))
-    big = max(s.clans, key=lambda cid: sum(1 for c in s.world.creatures() if c.clan_id == cid))
-    for c in s.world.creatures():  # pack everyone into one settlement clan
-        c.clan_id = big
-    s.config = replace(s.config, schism_enabled=True, schism_min_pop=2)
-
-    plots = s.get_plots()
-    assert isinstance(plots, list)  # did not raise
-
-    client = TestClient(app)
-    r = client.get("/api/plots")
-    assert r.status_code == 200
-
-
 def test_clan_can_have_multiple_houses_and_leader_lives_in_main_house():
     """A clan can possess multiple houses across its territory, and the leader resides in the main house."""
     s = Simulation(Config(seed=42, max_clans=1, shelter_enabled=True, house_claim_enabled=True))

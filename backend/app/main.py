@@ -180,7 +180,6 @@ class RuntimeState:
         # §AX P0: lockless snapshot caches — tick-engine thread publishes
         # immutable payloads; REST handlers read without acquiring RT.lock.
         self._cached_clans_payload: dict | None = None
-        self._cached_plots_payload: dict | None = None
         self._cached_state_text: str | None = None
         # Tick timing ring buffer for /healthz diagnostics (true rate vs target)
         self._tick_times: list[float] = []  # monotonic timestamps of last 300 ticks
@@ -360,24 +359,20 @@ class SimEngine:
                 except Exception:
                     text = None
                     self.rt._cached_state_text = None  # type: ignore[attr-defined]
-                # AZ Phase 1 P1: take lock for clan/plots cache build; reset to None on exception
+                # AZ Phase 1 P1: take lock for clan cache build; reset to None on exception
                 if getattr(self.rt, "sim", None) and (self.rt.sim.tick % 10 == 0 or getattr(self.rt, "_cached_clans_payload", None) is None):
                     try:
                         with self.rt.lock:
                             self.rt._cached_clans_payload = _clans_payload(self.rt.sim)  # type: ignore[attr-defined]
-                            self.rt._cached_plots_payload = {"plots": self.rt.sim.get_plots(), "tick": self.rt.sim.tick}  # type: ignore[attr-defined]
                     except Exception:
                         self.rt._cached_clans_payload = None  # type: ignore[attr-defined]
-                        self.rt._cached_plots_payload = None  # type: ignore[attr-defined]
             # AZ Phase 1 P0: still refresh caches even when no WS clients, so HTTP doesn't freeze
             elif getattr(self.rt, "sim", None) and getattr(self.rt, "_cached_clans_payload", None) is None:
                 try:
                     with self.rt.lock:
                         self.rt._cached_clans_payload = _clans_payload(self.rt.sim)  # type: ignore[attr-defined]
-                        self.rt._cached_plots_payload = {"plots": self.rt.sim.get_plots(), "tick": self.rt.sim.tick}  # type: ignore[attr-defined]
                 except Exception:
                     self.rt._cached_clans_payload = None  # type: ignore[attr-defined]
-                    self.rt._cached_plots_payload = None  # type: ignore[attr-defined]
             if text is not None:
                 self.hub.enqueue_text(text, self._loop)
             elif payload is not None:
@@ -655,7 +650,6 @@ async def apply_control(msg: ControlMessage) -> dict:
             RT.config = new_cfg
             RT.sim = Simulation(new_cfg)
             RT._cached_clans_payload = None
-            RT._cached_plots_payload = None
             RT._cached_state_text = None
             RT.paused = False
             start_world()
@@ -2103,10 +2097,8 @@ async def ws_endpoint(ws: WebSocket) -> None:
         with RT.lock:
             if getattr(RT, "_cached_clans_payload", None) is None:
                 RT._cached_clans_payload = _clans_payload()  # type: ignore
-                RT._cached_plots_payload = {"plots": RT.sim.get_plots(), "tick": RT.sim.tick}  # type: ignore
     except Exception:
         RT._cached_clans_payload = None  # type: ignore
-        RT._cached_plots_payload = None  # type: ignore
     try:
         # AZ Phase 1 P0: use orjson + shared keyframe (stdlib json stalls event loop)
         hello_text = _dumps(hello_payload())
@@ -2520,7 +2512,6 @@ async def write_laws(laws: GodLaws, persist: bool = True, reset: bool = False) -
             RT.config = new_cfg
             RT.sim = Simulation(new_cfg)
             RT._cached_clans_payload = None
-            RT._cached_plots_payload = None
             RT._cached_state_text = None
             RT.paused = False
             start_world()
@@ -2556,7 +2547,6 @@ async def apply_preset(name: str, persist: bool = True, reset: bool = False) -> 
             RT.config = new_cfg
             RT.sim = Simulation(new_cfg)
             RT._cached_clans_payload = None
-            RT._cached_plots_payload = None
             RT._cached_state_text = None
             RT.paused = False
             start_world()
@@ -2808,11 +2798,9 @@ async def get_clans() -> dict:
         try:
             payload = _clans_payload()
             RT._cached_clans_payload = payload  # type: ignore
-            RT._cached_plots_payload = {"plots": RT.sim.get_plots(), "tick": RT.sim.tick}  # type: ignore
             return payload
         except Exception:
             RT._cached_clans_payload = None  # type: ignore
-            RT._cached_plots_payload = None  # type: ignore
             raise
 
 
@@ -2895,27 +2883,6 @@ def _clans_payload(sim: Simulation | None = None) -> dict:
     clans = clans[:100]
     names = {str(cid): info.get("name") for cid, info in sim.clans.items() if info.get("name")}
     return {"clans": clans, "names": names, "tick": sim.tick}
-
-@app.get("/api/plots")
-async def get_plots() -> dict:
-    """Upcoming war/schism as progress — god's foreshadowing."""
-    cached = getattr(RT, "_cached_plots_payload", None)
-    if cached is not None:
-        try:
-            if isinstance(cached, dict) and cached.get("tick", -1) < RT.sim.tick - 10:
-                raise ValueError("stale")
-            return cached
-        except Exception:
-            pass
-    with RT.lock:
-        try:
-            payload = {"plots": RT.sim.get_plots(), "tick": RT.sim.tick}
-            RT._cached_plots_payload = payload  # type: ignore
-            return payload
-        except Exception:
-            RT._cached_plots_payload = None  # type: ignore
-            raise
-
 
 # BD.1.3 High-Performance Analytics REST API — 1s memoization, rate-limited
 def _analytics_payload(sim) -> dict:

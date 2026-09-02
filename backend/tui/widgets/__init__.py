@@ -5,7 +5,6 @@ from .hud import Hud
 from .chronicle import Chronicle
 from .overview import Overview
 from .clan_panel import ClanPanel
-from .plots_panel import PlotsPanel
 
 __all__ = [
     "WorldView",
@@ -13,6 +12,5 @@ __all__ = [
     "Chronicle",
     "Overview",
     "ClanPanel",
-    "PlotsPanel",
 ]
 

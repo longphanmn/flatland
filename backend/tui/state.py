@@ -44,6 +44,9 @@ class EntityState:
     energy: Optional[float] = None
     growth: Optional[float] = None
     variant: Optional[str] = None
+    withering: Optional[bool] = None
+    cultivated: Optional[bool] = None
+    irrigated: Optional[bool] = None
     size: Optional[float] = None
     status: Optional[str] = None
     radius: Optional[float] = None
@@ -60,6 +63,7 @@ class EntityState:
     clan_id: Optional[int] = None
     clan_color: Optional[str] = None
     clan_name: Optional[str] = None
+    clan_totem: Optional[str] = None
     is_predator: bool = False
     is_herbivore: bool = False
     sleeping: bool = False
@@ -68,20 +72,41 @@ class EntityState:
     born_tick: Optional[int] = None
     personal_name: Optional[str] = None
     glyph: Optional[str] = None
+    hue_shift: Optional[float] = None
+    scale_jitter: Optional[float] = None
+    angle_jitter: Optional[float] = None
     chill: Optional[float] = None
+    body_temp: Optional[float] = None
+    torpid: Optional[bool] = None
     trait: Optional[str] = None
+    iso_angle: Optional[float] = None
+    morph_k: Optional[int] = None
+    morph_traits: Optional[list[float]] = None
+    morph_radii: Optional[list[float]] = None
+    morph_angles: Optional[list[float]] = None
+    archetype: Optional[str] = None
     equipped_item: Optional[str] = None
     food_basket: int = 0
     personality: Optional[str] = None
     skills: dict[str, float] = field(default_factory=dict)
     title: Optional[str] = None
     emote: Optional[str] = None
+    nn_hidden: Optional[float] = None
+    nn_outputs: Optional[list[float]] = None
+    nn_genome_preview: Optional[list[float]] = None
+    nn_genome: Optional[list[float]] = None
     door_width: Optional[float] = None
     door_offset: Optional[float] = None
     door_side: Optional[str] = None
     is_ruin: bool = False
     is_main: bool = False
     abandoned_ticks: Optional[int] = None
+    takeover_age: Optional[int] = None
+    material: Optional[str] = None
+    hearth_lit: Optional[bool] = None
+    hp_frac: Optional[float] = None
+    rubble: Optional[bool] = None
+    murals: Optional[int] = None
 
     @classmethod
     def from_dict(cls, d: dict) -> "EntityState":
@@ -97,6 +122,9 @@ class EntityState:
             energy=_o(d, "energy"),
             growth=_o(d, "growth"),
             variant=_o(d, "variant"),
+            withering=_o(d, "withering"),
+            cultivated=_o(d, "cultivated"),
+            irrigated=_o(d, "irrigated"),
             size=_o(d, "size"),
             status=_o(d, "status"),
             radius=_o(d, "radius"),
@@ -113,6 +141,7 @@ class EntityState:
             clan_id=_o(d, "clan_id"),
             clan_color=_o(d, "clan_color"),
             clan_name=_o(d, "clan_name"),
+            clan_totem=_o(d, "clan_totem"),
             is_predator=bool(_o(d, "is_predator")),
             is_herbivore=bool(_o(d, "is_herbivore")),
             sleeping=bool(_o(d, "sleeping")),
@@ -121,20 +150,41 @@ class EntityState:
             born_tick=_o(d, "born_tick"),
             personal_name=_o(d, "personal_name"),
             glyph=_o(d, "glyph"),
+            hue_shift=_o(d, "hue_shift"),
+            scale_jitter=_o(d, "scale_jitter"),
+            angle_jitter=_o(d, "angle_jitter"),
             chill=_o(d, "chill"),
+            body_temp=_o(d, "body_temp"),
+            torpid=_o(d, "torpid"),
             trait=_o(d, "trait"),
+            iso_angle=_o(d, "iso_angle"),
+            morph_k=_o(d, "morph_k"),
+            morph_traits=_o(d, "morph_traits"),
+            morph_radii=_o(d, "morph_radii"),
+            morph_angles=_o(d, "morph_angles"),
+            archetype=_o(d, "archetype"),
             equipped_item=_o(d, "equipped_item"),
             food_basket=_i(d, "food_basket", 0),
             personality=_o(d, "personality"),
             skills=dict(_o(d, "skills") or {}),
             title=_o(d, "title"),
             emote=_o(d, "emote"),
+            nn_hidden=_o(d, "nn_hidden"),
+            nn_outputs=_o(d, "nn_outputs"),
+            nn_genome_preview=_o(d, "nn_genome_preview"),
+            nn_genome=_o(d, "nn_genome"),
             door_width=_o(d, "door_width"),
             door_offset=_o(d, "door_offset"),
             door_side=_o(d, "door_side"),
             is_ruin=bool(_o(d, "is_ruin")),
             is_main=bool(_o(d, "is_main")),
             abandoned_ticks=_o(d, "abandoned_ticks"),
+            takeover_age=_o(d, "takeover_age"),
+            material=_o(d, "material"),
+            hearth_lit=_o(d, "hearth_lit"),
+            hp_frac=_o(d, "hp_frac"),
+            rubble=_o(d, "rubble"),
+            murals=_o(d, "murals"),
         )
 
     @property

@@ -162,9 +162,6 @@ class RESTClient:
     async def creature(self, creature_id: int) -> dict[str, Any]:
         return await self._get(f"/api/creature/{creature_id}")
 
-    async def plots(self) -> dict[str, Any]:
-        return await self._get("/api/plots")
-
     async def presets(self) -> dict[str, Any]:
         return await self._get("/api/presets")
 

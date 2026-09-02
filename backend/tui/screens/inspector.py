@@ -1,8 +1,9 @@
-"""CreatureInspector — live dossier modal for one creature."""
+"""CreatureInspector — live dossier modal for one creature (mirrors web Inspector)."""
 
 from __future__ import annotations
 
 import asyncio
+import math
 from typing import Any
 
 from rich.text import Text
@@ -94,6 +95,11 @@ class InspectorScreen(ModalScreen):
         caste = ent.get("caste")
         if caste:
             line.append(f" · {caste}", style=theme.caste_color(caste))
+        arch = ent.get("archetype")
+        if arch:
+            arch_icon = {"Apex Hunter": "⚔", "Nocturnal Forager": "🌙", "Granary Courier": "🧺", "Sentry Guard": "🛡️"}.get(arch, "◆")
+            arch_color = {"Apex Hunter": "#ff7b72", "Nocturnal Forager": "#79c0ff", "Granary Courier": "#3fb950", "Sentry Guard": "#d2a8ff"}.get(arch, "#8b949e")
+            line.append(f" · {arch_icon} {arch}", style=f"bold {arch_color}")
         sex = ent.get("sex")
         if sex:
             line.append(f" · {'female' if sex == 'female' else 'male'}")
@@ -102,6 +108,13 @@ class InspectorScreen(ModalScreen):
         gen = ent.get("generation")
         if gen is not None:
             line.append(f" · gen {gen}", style="dim")
+        # BG: morph K and iso_angle
+        mk = ent.get("morph_k") or ent.get("sides")
+        if mk and mk != ent.get("sides"):
+            line.append(f" · K{mk}", style="dim")
+        iso = ent.get("iso_angle")
+        if iso is not None and ent.get("sides") == 3:
+            line.append(f" · θiso {iso:.1f}°", style="dim")
         if not data.get("entity"):
             line.append("  † deceased", style="bold #f85149")
         head.update(line)
@@ -136,9 +149,15 @@ class InspectorScreen(ModalScreen):
             chips.append(("sick", "#3fb950"))
         if ent.get("sleeping"):
             chips.append(("asleep", "#79c0ff"))
+        if ent.get("torpid"):
+            chips.append(("torpid", "#a5d8ff"))
         emote = ent.get("emote")
         if emote:
             chips.append((theme.EMOTE_ICONS.get(emote, emote), "#ffd166"))
+        arch = ent.get("archetype")
+        if arch:
+            arch_col = {"Apex Hunter": "#ff7b72", "Nocturnal Forager": "#79c0ff", "Granary Courier": "#3fb950", "Sentry Guard": "#d2a8ff"}.get(arch, "#d2a8ff")
+            chips.append((arch, arch_col))
         for word, col in chips:
             stxt.append(f"{word} ", style=col)
         bits = []
@@ -164,6 +183,12 @@ class InspectorScreen(ModalScreen):
         irr = ent.get("irregularity")
         if isinstance(irr, (int, float)) and irr > 0:
             bits.append(f"irr {irr:.2f}")
+        iso = ent.get("iso_angle")
+        if iso is not None and ent.get("sides") == 3:
+            bits.append(f"θiso {iso:.1f}°")
+        mk = ent.get("morph_k")
+        if mk:
+            bits.append(f"K{mk}")
         if ent.get("is_predator"):
             bits.append("carnivore")
         if ent.get("is_herbivore"):
@@ -171,7 +196,32 @@ class InspectorScreen(ModalScreen):
         born = ent.get("born_tick")
         if born is not None:
             bits.append(f"born tick {born}")
+        chill = ent.get("chill")
+        if isinstance(chill, (int, float)) and chill > 0:
+            bits.append(f"chill {chill:.1f}")
+        bt = ent.get("body_temp")
+        if isinstance(bt, (int, float)):
+            bits.append(f"body {bt:.1f}°")
         stxt.append(" · ".join(bits), style="dim")
+
+        # BG: Biomechanical HUD (A,P,Izz,θmin,asym,Dmult)
+        morph_traits = ent.get("morph_traits")
+        if morph_traits and len(morph_traits) >= 6:
+            try:
+                area, perim, izz, theta, asym, dmult = morph_traits[:6]
+                sharp_deg = theta * 180 / math.pi if isinstance(theta, (int,float)) else 0
+                stxt.append("\n🧬 Morph: ", style="bold #d2a8ff")
+                stxt.append(f"A{area:.2f} P{perim:.2f} Izz{izz:.3f} θ{sharp_deg:.1f}° asym{asym:.3f} D×{dmult:.2f}", style="dim")
+                # Polar radar text (mutated vs ghost)
+                k = int(ent.get("morph_k") or ent.get("sides") or 4)
+                stxt.append(f" · K{k}", style="dim")
+                radii = ent.get("morph_radii")
+                if radii and len(radii) >= k:
+                    stxt.append(f" · r[{','.join(f'{v:.2f}' for v in radii[:min(k,5)])}{'...' if k>5 else ''}]", style="dim")
+            except Exception:
+                pass
+        elif ent.get("sides"):
+            stxt.append(f"\nK{ent.get('sides')} · shape {ent.get('shape') or '?'}", style="dim")
 
         # Skills Mastery Matrix
         skills = ent.get("skills") or {}
@@ -183,6 +233,54 @@ class InspectorScreen(ModalScreen):
                 rank = "Master" if xp >= 30 else ("Adept" if xp >= 10 else "Nov")
                 skill_bits.append(f"{sk_name}: {rank} ({xp:.1f}xp)")
             stxt.append("  ".join(skill_bits), style="#bc8cff")
+
+        # BH-10: Neural hidden/outputs + heatmap text
+        nn_hidden = ent.get("nn_hidden")
+        nn_out = ent.get("nn_outputs")
+        if isinstance(nn_hidden, (int,float)) or nn_out:
+            stxt.append("\n🧠 Neural 16→12→7: ", style="bold #58a6ff")
+            if isinstance(nn_hidden, (int,float)):
+                stxt.append(f"h{nn_hidden:.2f} ", style="dim")
+            if isinstance(nn_out, list) and len(nn_out) >= 7:
+                labels = ["Thrust","Steer","Interact","Social","VocalA","VocalF","Recur"]
+                out_bits = []
+                for i, lab in enumerate(labels):
+                    try:
+                        out_bits.append(f"{lab}:{nn_out[i]:.2f}")
+                    except Exception:
+                        pass
+                stxt.append(" ".join(out_bits), style="dim")
+        nn_genome = ent.get("nn_genome")
+        if isinstance(nn_genome, list) and len(nn_genome) >= 295:
+            # W1 16x12, W2 12x7 heatmap as text blocks
+            try:
+                def _heat(v: float) -> str:
+                    c = max(-2, min(2, v))
+                    if c > 0.8:
+                        return "█"
+                    elif c > 0.3:
+                        return "▓"
+                    elif c > -0.3:
+                        return "░"
+                    elif c > -0.8:
+                        return "▒"
+                    else:
+                        return "▓"
+                stxt.append("\nW1 Sensory 16×12 (p0.03): ", style="bold #8b949e")
+                # show first 2 hidden rows as example (16 cols each)
+                for j in range(min(2, 12)):
+                    row = "".join(_heat(nn_genome[i*12+j]) for i in range(16))
+                    stxt.append(f"\n h{j}: {row}", style="dim")
+                stxt.append(" …", style="dim")
+                stxt.append("\nW2 Motor 12×7 (p0.05) Rec p0.02: ", style="bold #8b949e")
+                for k in range(min(2, 7)):
+                    row = "".join(_heat(nn_genome[204 + j*7 + k]) for j in range(12))
+                    stxt.append(f"\n o{k}: {row}", style="dim")
+                stxt.append(" …", style="dim")
+            except Exception:
+                pass
+        elif ent.get("nn_genome_preview"):
+            stxt.append(f"\nGenome preview: {', '.join(f'{v:.2f}' for v in ent['nn_genome_preview'][:8])}…", style="dim")
 
         stats.update(stxt)
 

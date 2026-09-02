@@ -7059,60 +7059,6 @@ class Simulation:
             }
         return out
 
-    def get_plots(self) -> list[dict]:
-        """§S Plots — upcoming war/schism as progress 0..10 for god observability."""
-        plots = []
-        # AA: shared lookups computed once per call (clan_knowledge was
-        # re-computed PER RIVAL PAIR; membership scanned per clan).
-        knowledge = self.clan_knowledge() if self.config.knowledge_enabled else {}
-        members_by_clan: dict[int, list[Creature]] = {}
-        for c in self._get_creatures():
-            if c.clan_id:
-                members_by_clan.setdefault(c.clan_id, []).append(c)
-        # war plots: rival pairs with members near each other
-        for (a,b), score in self.relations.items():
-            if self._zone_of(score) != -1:
-                continue
-            # need members of both clans
-            a_members = members_by_clan.get(a, [])
-            b_members = members_by_clan.get(b, [])
-            if not a_members or not b_members:
-                continue
-            # closest pair distance
-            min_d = min(self.world.distance(ac.x, ac.y, bc.x, bc.y) for ac in a_members for bc in b_members)
-            # progress: base from how rival they are + proximity; clans that
-            # remember each other as enemies plot faster (§X clan memory)
-            memory_bonus = 0
-            if self.config.knowledge_enabled:
-                ka = knowledge.get(a, {}).get("enemy_clans", [])
-                kb = knowledge.get(b, {}).get("enemy_clans", [])
-                if b in ka or a in kb:
-                    memory_bonus = 2
-            base = max(0, (-score - self.config.rivalry_threshold) // 8) + memory_bonus  # 0..8
-            prox = 0
-            if min_d < self.config.attack_radius * 3:
-                prox = 4
-            elif min_d < self.config.flock_radius * 2:
-                prox = 2
-            prog = min(10, int(base + prox + (self.tick % 10)/10))
-            if prog > 0:
-                plots.append({"type": "war", "a": a, "b": b, "a_name": self.clans.get(a, {}).get("name"), "b_name": self.clans.get(b, {}).get("name"), "progress": prog, "max": 10, "distance": round(min_d,1)})
-        # schism plots: clans approaching schism threshold
-        if self.config.schism_enabled:
-            claimed_houses = {h.clan_id for h in (self._cached_houses if self._cached_houses else self._functional_houses()) if h.clan_id}
-            for cid, info in self.clans.items():
-                members = members_by_clan.get(cid, [])
-                pop = len(members)
-                if pop < self.config.schism_min_pop:
-                    continue
-                has_house = cid in claimed_houses
-                unhappy = sum(1 for c in members if c.energy / self.config.energy_max <= self.config.starving_ratio or not has_house)
-                frac = unhappy / pop if pop else 0
-                if frac >= self.config.schism_threshold * 0.5:  # show even half-way
-                    prog = min(10, int(frac / self.config.schism_threshold * 6 + 2))
-                    plots.append({"type": "schism", "a": cid, "a_name": info.get("name"), "progress": prog, "max": 10, "unhappy": unhappy, "pop": pop})
-        return plots
-
     def _update_culture(self) -> None:
         """§S Culture drift — spreads to neighbours, can split into rival traditions."""
         cfg = self.config
