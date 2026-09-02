@@ -325,7 +325,7 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 13 }}>🗺️</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Morphospace — Area vs Sharpness (BG-12)</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('mutationLab.morphospaceTitle')}</span>
             </div>
             <span style={{ fontSize: 10, color: '#8b949e' }}>{scatter.length} points · elders ★ highlight</span>
           </div>
@@ -340,8 +340,8 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
             {/* axes */}
             <line x1={pad} y1={H-pad} x2={W-pad} y2={H-pad} stroke="#30363d" strokeWidth={0.8}/>
             <line x1={pad} y1={14} x2={pad} y2={H-pad} stroke="#30363d" strokeWidth={0.8}/>
-            <text x={W/2} y={H-6} textAnchor="middle" fontSize={7} fill="#8b949e">Shoelace Area A (size) →</text>
-            <text x={8} y={H/2} textAnchor="middle" fontSize={7} fill="#8b949e" transform={`rotate(-90 8 ${H/2})`}>Sharpness θₘᵢₙ (acuteness) →</text>
+            <text x={W/2} y={H-6} textAnchor="middle" fontSize={7} fill="#8b949e">{t('mutationLab.areaAxis')}</text>
+            <text x={8} y={H/2} textAnchor="middle" fontSize={7} fill="#8b949e" transform={`rotate(-90 8 ${H/2})`}>{t('mutationLab.sharpnessAxis')}</text>
             {scatter.map((p:any)=>{
               const x=sx(p.area), y=sy(p.theta_min*180/Math.PI)
               const col = SIDES_COLORS[p.sides] || (p.irregularity>0.3?'#d2a8ff':'#79c0ff')
@@ -356,7 +356,7 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
           </svg>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 9, color: '#8b949e' }}>
             <span>◉ area = Shoelace A, y = θₘᵢₙ (°) lower = sharper razor</span>
-            <span style={{ marginLeft:'auto' }}>Clusters: low-A sharp apex vs high-A bulky armor</span>
+            <span style={{ marginLeft:'auto' }}>{t('mutationLab.clustersHint')}</span>
           </div>
         </div>
         )})()}
@@ -385,7 +385,7 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 13 }}>🌳</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Phylogeny — Abbott → Aberrant (BG-11)</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('mutationLab.phylogenyTitle')}</span>
             </div>
             <span style={{ fontSize: 10, color: '#8b949e' }}>gen 0→{maxG} · dashed = ancestral ghost</span>
           </div>
@@ -430,7 +430,7 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
               )
             })}
           </svg>
-          <div style={{ fontSize: 9, color: '#8b949e' }}>Lines = documented parentage when available; size encodes irregularity. Faint icons = Abbott orthodoxy (regular 3/4/5/8/24).</div>
+          <div style={{ fontSize: 9, color: '#8b949e' }}>{t('mutationLab.phylogenyHint')}</div>
         </div>
         )})()}
 

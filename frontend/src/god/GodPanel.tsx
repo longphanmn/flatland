@@ -838,7 +838,7 @@ function GodPanelInner({ open, onClose }: Props) {
           onClick={() => setActiveSection('presets')}
         >
           <span style={{ fontSize: 14 }}>🎯</span>
-          <span>Curated Presets</span>
+          <span>{t('god.curatedPresetsTitle')}</span>
           <span className="god-segment-pill">{presetKeys.length}</span>
         </button>
         <button
@@ -849,7 +849,7 @@ function GodPanelInner({ open, onClose }: Props) {
           onClick={() => setActiveSection('laws')}
         >
           <span style={{ fontSize: 14 }}>⚖️</span>
-          <span>Laws of Nature</span>
+          <span>{t('god.lawsOfNatureTitle')}</span>
           <span className="god-segment-pill">{NUMBER_LAWS.length}</span>
         </button>
       </div>
@@ -858,7 +858,7 @@ function GodPanelInner({ open, onClose }: Props) {
         <div className="god-group" style={{ display: 'flex', flexDirection: 'column', gap: 10, border: 'none', padding: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 2 }}>
             <span style={{ fontSize: 12, color: '#8b949e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Curated World Presets
+              {t('god.presets.title')}
             </span>
             <span
               style={{
@@ -1033,7 +1033,7 @@ function GodPanelInner({ open, onClose }: Props) {
               {/* Active Preset Status Ribbon */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#161b22', border: '1px solid #30363d', borderRadius: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, color: '#8b949e' }}>Baseline:</span>
+                  <span style={{ fontSize: 11, color: '#8b949e' }}>{t('god.baselinePrefix')}</span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: activePresetMeta ? activePresetMeta.color : '#e6edf3' }}>
                     {activePresetMeta && currentPreset ? t(`god.presets.${currentPreset}`) : (t('god.presets.custom') || 'Custom')}
                   </span>

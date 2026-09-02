@@ -3,7 +3,7 @@
 > **Developed by [Long Phan](mailto:long@minhnhan.in)** ([long@minhnhan.in](mailto:long@minhnhan.in) · [minhnhan.in](https://minhnhan.in) · [world.minhnhan.in](https://world.minhnhan.in))  
 > Built and refined using **OpenCode** and **Antigravity** · Developed from the core concepts of **Edwin A. Abbott's *Flatland***.
 
-In Flatland, God (The Sphere) sets **universal laws of nature**, never intervening in individual lives. Every law has a specified range, default value, and ecological effect. Laws can be adjusted live via the in-app **⚖ God** drawer or programmatically via `POST /api/laws`.
+In Flatland, God (The Sphere) sets **universal laws of nature**, never intervening in individual lives. Every law has a specified range, default value, and ecological effect. Laws can be adjusted live via the in-app **⚖ The Sphere (God Panel)** or programmatically via `POST /api/laws` and `POST /api/presets/{name}`.
 
 ---
 
@@ -11,255 +11,349 @@ In Flatland, God (The Sphere) sets **universal laws of nature**, never interveni
 
 The God Panel is organized into two primary top-level sections:
 1. **`🎯 Presets` (Curated Worlds)**: Instant one-click simulation profiles (`⚖️ Balance`, `🌿 Sustainable`, `🔮 Theocracy`, `⚔️ Warlords`, `🔥 Chaos`, `💀 Extinction`, `🚀 Boom`) with Live Apply and World Reset options.
-2. **`⚖️ Laws of Nature` (Macro Domains)**: Direct fine-tuning across 6 high-level ecological domains with real-time baseline comparison, search, modified-only filtering, interactive `?` hints, and dual slider controls:
-   - 🌿 **1. Ecology & Survival**: Food capacity, plant life cycles, foraging dynamics, agriculture & granaries.
-   - 🧬 **2. Biology & Evolution**: Reproduction, mutation rates, life stages, disease virulence, Micro-RNN steering & morphology.
-   - ☀️ **3. Climate & Sky**: Day/night cadence, seasons, temperature sickness, house shelter & rest recovery.
-   - 🏰 **4. Society, Warfare & Trade**: Clan territories, diplomacy, coalitions, larders, predation & warfare.
-   - 🔮 **5. Theology & Sacred Avatars**: Faith pools, shrines, temples, age cycles & cultural transmission.
-   - ⚙️ **6. World Physics & Disasters**: Wildfires, disasters, rivers, relief, structural integrity, lightning & cosmology.
+2. **`⚖️ Laws of Nature` (Macro Domains)**: Direct fine-tuning across 6 high-level ecological domains with real-time baseline comparison, instant search, modified-only filtering, interactive `?` hints, and dual slider controls.
 
 ---
 
-## 🌿 1. Ecology & Survival
+## 1. Ecology & Survival 🌿
 
-Governs botanical regeneration, nutrition, harvesting, agriculture, and granary storage.
-
-| Law Parameter | Type / Range | Default | Ecological Effect & Hint |
+### Food & Energy
+| Law Parameter | Type | Default | Ecological Effect & Hint |
 |---|:---:|:---:|---|
-| `food_count` | 0–1000 | **380** | Target living food abundance across the world (winter reduces, summer boosts). |
-| `energy_max` | 10–500 | **100.0** | Maximum metabolic energy capacity an organism can store before full saturation. |
-| `energy_decay_per_tick` | 0–2.0 | **0.018** | Baseline metabolic burn rate per tick without food intake; shelter and infancy reduce decay. |
-| `energy_from_food` | 0–100 | **32.0** | Base energy yield from harvesting a mature plant (berry: 48, grass: 32, mushroom: 24, poison: 8). |
-| `plant_variants_enabled` | Boolean | **true** | Enables botanical diversity across 6 distinct functional plant species. |
-| `plant_growth_rate` | 0–1.0 | **0.065** | How fast sprouted plants mature into harvestable food; seasons and rain accelerate growth. |
-| `plant_spread_rate` | 0–1.0 | **0.008** | Probability per tick that a mature plant drops seeds into adjacent fertile ground. |
-| `nutrient_cycle_rate` | 0–10.0 | **0.65** | Acceleration of plant growth near decomposing corpses (death nourishes new life). |
-| `poison_rate` | 0–1.0 | **0.008** | Chance a new wild sprout is poisonous (-30 HP damage on ingestion). |
-| `food_decay_enabled` | Boolean | **true** | Enables mature plants to naturally wither over time and fertilize the living soil. |
-| `food_lifespan_ticks` | 100–100k | **8000** | Ticks a mature plant lives before naturally withering into the living soil grid. |
-| `agriculture_enabled` | Boolean | **true** | Enables seed gathering, cultivated farm plots, irrigation furrows, and tending. |
-| `granaries_enabled` | Boolean | **true** | Enables communal settlement granaries to stockpile grains and berries against winter. |
-| `granary_capacity` | 0–2000 | **400.0** | Units of food a settlement granary can store; sated harvesters deposit grain and berries. |
+| `food_count` | Integer | `380` | Target living food abundance across the world (winter reduces, summer boosts). |
+| `energy_max` | Float | `100.0` | Maximum metabolic energy capacity an organism can store before full saturation. |
+| `energy_start` | Float | `85.0` | Initial metabolic energy endowed to newly created founding creatures. |
+| `energy_decay_per_tick` | Float | `0.025` | Baseline metabolic burn rate per tick without food intake; shelter and infancy reduce decay. |
+| `energy_from_food` | Float | `32.0` | Base energy yield from harvesting a mature plant (berry: 48, grass: 32, mushroom: 24, poison: 8). |
+| `food_decay_enabled` | Boolean | `true` | Enables mature plants to naturally wither over time and fertilize the living soil. |
+| `food_lifespan_ticks` | Integer | `9000` | Ticks a mature plant lives before naturally withering into the living soil grid. |
+| `soil_depletion_enabled` | Boolean | `true` | Repeated harvesting from the same soil cell temporarily reduces subsequent crop yield. |
+| `fertile_patches` | Integer | `-1` | Number of high-yield fertile biome regions generated across the terrain. |
+| `fertile_food_bias` | Float | `0.7` | Growth rate multiplier for plants sprouting within fertile agricultural patches. |
+| `winter_food_mult` | Float | `0.82` | Food growth and abundance multiplier during the winter season. |
 
----
-
-## 🧬 2. Biology & Evolution
-
-Governs sensory perception, physical movement, life stages, reproduction, genetics, pathology, and polar morphological evolution.
-
-| Law Parameter | Type / Range | Default | Ecological Effect & Hint |
+### Ecosystem & Biodiversity
+| Law Parameter | Type | Default | Ecological Effect & Hint |
 |---|:---:|:---:|---|
-| `perceive_radius` | 1–40 | **16.0** | Base perception sight radius; scaled by caste (Woman 0.8×, Priest 1.35×), night (0.6×), and fog (0.6×). |
-| `eat_radius` | 0.2–5.0 | **1.4** | Physical contact distance required to consume a plant, corpse, or prey item. |
-| `hungry_ratio` | 0.05–1.0 | **0.35** | Energy threshold (≤ 35%) feeding normalized energy into neural network input slot 0 to trigger foraging. |
-| `starving_ratio` | 0.01–1.0 | **0.15** | Severe energy threshold (≤ 15%) triggering desperation sprint and pulsing survival distress. |
-| `steer_turn` | 0.05–2.0 | **0.45** | Maximum heading angular turn rate per tick, dynamically scaled by creature moment of inertia (Izz). |
-| `birth_enabled` | Boolean | **true** | Master switch enabling reproduction, mating, and generational ascendance. |
-| `lifespan_mult` | 0.05–5.0 | **1.0** | Multiplier scaling all caste lifespans (Woman: 4,800 ticks → Priest: 9,000 ticks). |
-| `adult_age` | 0–5000 | **250** | Ticks required for an infant/juvenile to mature into a sexually fertile adult. |
-| `birth_rate` | 0–1.0 | **0.075** | Base reproduction probability per eligible mating pair per tick when energy and adult age are met. |
-| `carrying_capacity` | -1–5000 | **350** | Population density threshold above which fertility begins to gradually diminish (-1 = auto). |
-| `max_population` | -1–8000 | **500** | Hard global population cap preventing any new births until density declines (-1 = auto). |
-| `mutation_rate` | 0–1.0 | **0.05** | Probability a newborn son deviates ±1 side from classical caste inheritance. |
-| `sex_ratio` | 0–1.0 | **0.50** | Probability a child is a son (ascending regular polygon) vs daughter (agile line). |
-| `max_sides` | 3–64 | **24** | Upper limit on regular polygon vertex ascendance (up to Priest / Circle status). |
-| `euthanasia_threshold` | 0.3–1.0 | **0.70** | Irregularity threshold; deformed infants exceeding this are consumed at adulthood. |
-| `mutation_sigma` | 0–0.5 | **0.08** | Gaussian mutation standard deviation (σ) applied to genome weights during crossover. |
-| `crossover_rate` | 0–1.0 | **0.50** | Probability of uniform 50/50 parental genome blending during sexual reproduction. |
-| `morphology_annealing_enabled` | Boolean | **true** | Enables polar genome evolution transitioning from Abbott templates to free morphology. |
-| `annealing_decay_generations` | 10–1000 | **150** | Generations over which polar morphology annealing decays from Abbott templates to free evolution. |
-| `safeguard_enabled` | Boolean | **true** | Master switch for extinction safeguards: negative-feedback relief scaling ($\eta$) and Tier 3 Genesis miracles. |
-| `safeguard_critical_pop` | 2–50 | **12** | Emergency population floor ($K_{crit}$); dropping to or below this triggers Tier 3 Genesis miracles from The Sphere. |
-| `safeguard_relief_ratio` | 0.05–0.50 | **0.30** | Carrying capacity threshold ratio ($K_{safe} = K_{cap} \times \text{ratio}$) activating Tier 1/2 homeostatic relief. |
-| `safeguard_genesis_batch` | 1–20 | **6** | Number of pristine regular beings created per Tier 3 Genesis miracle. |
-| `safeguard_morph_mercy` | Boolean | **true** | Suspends euthanasia of irregular infants during low-population relief states ($\eta > 0.30$). |
-| `safeguard_max_miracles` | Integer ($\ge 1$) | **1** | Maximum Genesis miracles per world (default 1). If the single safeguard attempt fails, the world is allowed to go extinct. |
-| `soft_cap_enabled` | Boolean | **true** | Master switch for non-linear density-dependent damping ($\xi$) when population overshoots carrying capacity. |
-| `damping_steepness` | 1.0–20.0 | **6.0** | Non-linear birth suppression steepness ($1 / (1 + 2 d \xi + (d \xi)^2)$) under overpopulation. |
-| `crowding_stress_mult` | 0.0–1.0 | **0.35** | Multiplier scaling metabolic energy decay under crowding stress ($1 + \text{mult} \cdot \xi$). |
-| `resource_strain_mult` | 0.0–2.0 | **1.2** | Multiplier scaling plant growth & spread slowdown under overpopulation resource strain ($1 / (1 + \text{mult} \cdot \xi)$). |
-| `disease_enabled` | Boolean | **true** | Master switch for infectious pathogen outbreaks and transmission. |
-| `disease_outbreak_rate` | 0–0.05 | **0.00006** | Spontaneous plague outbreak probability per tick during crowded or unsanitary conditions. |
-| `disease_rate` | 0–1.0 | **0.035** | Transmission rate of contagion when in close contact with an infected organism. |
-| `disease_energy_drain` | 0–2.0 | **0.05** | Metabolic energy drained per tick from infected creatures. |
-| `disease_lethality` | 0–1.0 | **0.07** | Direct health (HP) damage dealt per tick to actively diseased creatures. |
+| `plant_variants_enabled` | Boolean | `true` | Enables botanical diversity across 6 distinct functional plant species. |
+| `plant_growth_rate` | Float | `0.065` | How fast sprouted plants mature into harvestable food; seasons and rain accelerate growth. |
+| `plant_spread_rate` | Float | `0.008` | Probability per tick that a mature plant drops seeds into adjacent fertile ground. |
+| `nutrient_cycle_rate` | Float | `0.65` | Acceleration of plant growth near decomposing corpses (death nourishes new life). |
+| `poison_rate` | Float | `0.008` | Chance a new wild sprout is poisonous (-30 HP damage on ingestion). |
+| `corpses_enabled` | Boolean | `true` | Fallen creatures leave decomposing organic remains that enrich surrounding soil. |
+| `corpse_energy` | Float | `25.0` | Caloric reserve contained in a freshly fallen creature corpse. |
+| `corpse_ttl` | Integer | `600` | Ticks before a deceased body fully decomposes into the ground. |
 
-### 🧮 Mathematical Feedback Formulations
-
-#### 1. Density Soft-Cap Damping ($\xi$)
-When population $N$ exceeds carrying capacity $K_{cap}$, the overshoot ratio is defined as:
-$$\xi(N) = \max\left(0, \frac{N - K_{cap}}{K_{cap}}\right)$$
-
-Homeostatic damping modulates world dynamics continuously:
-- **Effective Birth Rate**: $R_{birth} = \frac{R_0}{1 + 2 \cdot \text{damping\_steepness} \cdot \xi + (\text{damping\_steepness} \cdot \xi)^2}$
-- **Metabolic Stress**: $M_{decay} = M_0 \cdot (1 + \text{crowding\_stress\_mult} \cdot \xi + 0.5 \cdot \text{crowding\_stress\_mult} \cdot \xi^2)$
-- **Plant Growth**: $G_{plant} = \frac{G_0}{1 + \text{resource\_strain\_mult} \cdot \xi}$
-
-#### 2. Extinction Safeguards ($\eta$)
-When population $N$ falls below $K_{safe} = K_{cap} \times \text{safeguard\_relief\_ratio}$, emergency relief severity is computed as:
-$$\eta(N) = \text{clamp}\left(\frac{K_{safe} - N}{K_{safe} - K_{crit}}, 0, 1\right)$$
-
-- **Tier 1 ($\eta \in (0, 0.5]$)**: Metabolic decay discounted up to 40%, plant growth accelerated up to 60%, maternal energy subsidy halved.
-- **Tier 2 ($\eta \in (0.5, 1.0)$)**: Severe famine relief, reproductive cooldown halved, infant euthanasia suspended (`safeguard_morph_mercy`).
-- **Tier 3 ($\eta \ge 1.0$, $N \le K_{crit}$, or sex extinction)**: If $\le \text{safeguard\_max\_miracles}$ (default 1), The Sphere intervenes once with a Genesis Miracle, spawning both sexes with adult maturity and polar genomes, and re-founding fallen clans. If this intervention fails, the species is allowed to go naturally extinct.
-
----
-
-## ☀️ 3. Climate & Sky
-
-Governs day/night cycles, seasons, weather dynamics, exposure penalties, and house shelter benefits.
-
-| Law Parameter | Type / Range | Default | Ecological Effect & Hint |
+### Hunger & Foraging Sight
+| Law Parameter | Type | Default | Ecological Effect & Hint |
 |---|:---:|:---:|---|
-| `weather_enabled` | Boolean | **true** | Master switch for dynamic meteorological cycles (sun, rain, fog, storms). |
-| `sleep_enabled` | Boolean | **true** | Enables diurnal sleep cycles, house resting, and oral lore transfer. |
-| `day_length` | 4–20000 | **1200** | Total duration in ticks of a single diurnal day/night cycle. |
-| `season_length` | 4–100000 | **12000** | Duration in ticks of each season (Spring, Summer, Autumn, Winter). |
-| `winter_food_mult` | 0.1–1.5 | **0.70** | Winter food abundance multiplier (0.70 gentle, 0.50 harsh, 0.30 extinction collapse). |
-| `night_sight_mult` | 0.05–2.0 | **0.60** | Perception radius multiplier during night ticks for non-nocturnal castes. |
-| `weather_change_rate` | 0–1.0 | **0.002** | Frequency of meteorological transitions between clear, rain, fog, and storm. |
-| `weather_sickness_enabled` | Boolean | **false** | Enables exposure chill and hypothermia when caught unsheltered in rain or winter. |
-| `chill_drain` | 0–5.0 | **0.18** | Direct health drain per tick when chilled outdoors without shelter. |
-| `shelter_enabled` | Boolean | **true** | Master switch for house claiming, door navigation, and roof protection. |
-| `exposure_drain` | 0–2.0 | **0.025** | Health and energy drain per tick when outdoors during harsh storms, heavy rain, or freezing winter. |
-| `house_capacity` | 1–20 | **12** | Bed capacity inside a settlement hall; excess members sleep outdoors or search for other roofs. |
-| `house_decay_ticks` | 100–100k | **10000** | Ticks before an abandoned, roofless house crumbles into ruins. |
-| `rest_recovery_mult` | 0.5–5.0 | **2.0** | Health regeneration multiplier when sleeping indoors under a roof. |
+| `hungry_ratio` | Float | `0.35` | Energy threshold (<= 35%) where normalized hunger activates enhanced foraging sight. |
+| `hungry_perceive_mult` | Float | `1.3` | Perception range multiplier when an organism is hungry. |
+| `starving_ratio` | Float | `0.15` | Critical starvation threshold (<= 15%) triggering desperate speed boost and pulsing red distress. |
+| `desperate_speed_mult` | Float | `1.35` | Speed multiplier applied when an organism is in critical starvation. |
+| `desperate_perceive_mult` | Float | `1.6` | Extreme sensory perception boost granted to starving organisms hunting for sustenance. |
+| `food_giveup_ticks` | Integer | `240` | Ticks an organism will pursue an unreachable plant before recalculating paths. |
+| `diet_strictness` | Float | `0.0` | Preference weight for caste-aligned diet vs general foraging opportunism. |
 
----
-
-## 🏰 4. Society, Warfare & Trade
-
-Governs sovereign clans, territorial claims, diplomacy, coalitions, larders, predation, and combat warfare.
-
-| Law Parameter | Type / Range | Default | Ecological Effect & Hint |
+### Agriculture & Granaries
+| Law Parameter | Type | Default | Ecological Effect & Hint |
 |---|:---:|:---:|---|
-| `territory_enabled` | Boolean | **true** | Enables clan boundary markings, territory defence, and trespass penalties. |
-| `territory_radius` | 1–50 | **16.0** | Radius of clan territorial influence around settlement houses; trespass sours diplomacy. |
-| `trespass_decay` | 0–5.0 | **0.15** | Diplomatic relation points lost per tick when a rival clan enters marked territory. |
-| `max_clans` | -1–24 | **-1** | Maximum number of sovereign clans spawned during world initialization (-1 = auto). |
-| `totems_enabled` | Boolean | **true** | Enables Sacred Avatar totem blessings for each clan settlement. |
-| `succession_enabled` | Boolean | **true** | Enables dynamic governance leadership transfers on chieftain death. |
-| `communication_enabled` | Boolean | **true** | Enables vocalizations, alarm chirps, peace hums, and emotional thought bubbles. |
-| `knowledge_enabled` | Boolean | **true** | Enables spatial memory, waypoint mapping, and rumor broadcasting among kin. |
-| `schism_enabled` | Boolean | **true** | Enables internal clan fractures when members starve or lack shelter. |
-| `schism_threshold` | 0–1.0 | **0.40** | Dissatisfaction fraction (hunger, homelessness) triggering a factional clan schism. |
-| `war_enabled` | Boolean | **true** | Enables inter-clan warfare, tactical raids, and territorial conquest. |
-| `attack_damage` | 0–200 | **32.0** | Base damage dealt by soldiers and warriors in inter-clan battles. |
-| `predation_enabled` | Boolean | **true** | Enables carnivorous predator-prey ecology and hunting dynamics. |
-| `predator_ratio` | 0–1.0 | **0.008** | Fraction of population spawned as predatory carnivores hunting prey. |
-| `hunt_radius` | 1–40 | **7.0** | Aggro detection radius within which carnivores and war parties acquire targets. |
-| `bite_damage` | 0–200 | **16.0** | Combat damage dealt per carnivore attack or predatory strike. |
-| `energy_from_prey` | 0–200 | **40.0** | Caloric energy extracted from slaying and eating a prey creature. |
-| `fear_radius` | 1–40 | **12.0** | Distance at which herbivores and vulnerable castes detect threats and execute evasion. |
-| `coalitions_enabled` | Boolean | **true** | Enables mutual defensive alliances and diplomatic treaties. |
-| `coalition_threshold` | -100–100 | **40** | Diplomatic trust score required for two friendly clans to form a defensive coalition. |
-| `leader_decisions_enabled` | Boolean | **true** | Enables chieftain governance bylaws (rationing, martial law, war declarations). |
-| `resource_sharing_enabled` | Boolean | **true** | Enables communal larders and altruistic basket food sharing. |
-| `larder_capacity` | 0–2000 | **300.0** | Energy storage capacity of each clan larder. |
-| `cannibalism_enabled` | Boolean | **true** | Enables desperate consumption of the living during extreme starvation. |
-| `eat_kin_enabled` | Boolean | **false** | Forbids consuming clanmates to preserve lineages; only desperate outcasts eat enemies. |
-| `cannibalism_energy` | 0–200 | **35.0** | Energy gained by starving creatures resorting to desperate cannibalism. |
+| `agriculture_enabled` | Boolean | `true` | Enables seed gathering, cultivated farm plots, irrigation furrows, and tending. |
+| `granaries_enabled` | Boolean | `true` | Enables communal settlement granaries to stockpile grains and berries against winter. |
+| `granary_capacity` | Float | `400.0` | Maximum units of food a settlement granary can store. |
+| `larder_capacity` | Float | `300.0` | Maximum units of food a domestic house larder can store. |
 
 ---
 
-## 🔮 5. Theology & Sacred Avatars
+## 2. Biology & Evolution 🧬
 
-Governs spiritual faith, shrines, temples, divine miracles, historical epochs, and cultural transmission.
-
-| Law Parameter | Type / Range | Default | Ecological Effect & Hint |
+### Life Cycle & Mortality
+| Law Parameter | Type | Default | Ecological Effect & Hint |
 |---|:---:|:---:|---|
-| `theology_enabled` | Boolean | **true** | Enables the 8 Sacred Avatars, shrines, temples, miracles, and divine tithes. |
-| `tithe_rate` | 0–1.0 | **0.04** | Fraction of energy devout worshippers offer at shrines each dawn & dusk to build clan faith. |
-| `temple_faith_cost` | 0–100k | **400.0** | Faith points required to consecrate a glowing Temple of the Sphere. |
-| `age_enabled` | Boolean | **true** | Enables historical epoch progression (Golden Age, Ice Age, Age of Chaos, Age of Plague). |
-| `age_length` | 100–1M | **50000** | Duration in ticks per world historical epoch. |
-| `culture_enabled` | Boolean | **false** | Enables traditions, governance archetypes, and cultural diffusion. |
-| `culture_spread_rate` | 0–1.0 | **0.0005** | Rate at which allied clans sharing borders adopt common cultural traits and beliefs. |
+| `lifespan_mult` | Float | `1.0` | Multiplier scaling all caste natural lifespans (Woman: 4,800t -> Priest: 9,000t). |
+| `adult_age` | Float | `600.0` | Ticks required for a juvenile to reach physical maturity and reproductive eligibility. |
+| `health_max` | String | `—` | Maximum physiological hit points of regular creatures. |
+| `euthanasia_threshold` | Float | `0.7` | Irregularity threshold at adulthood that triggers Spartan-style societal elimination. |
+| `sex_ratio` | Float | `0.5` | Probability a newborn offspring is female (Line caste). |
+| `creature_density` | Float | `0.0013` | Scaling factor for founding population density. |
+| `spawn_variance` | Float | `0.25` | Spatial variance when scattering founding creatures across the map. |
 
-### The 8 Sacred Avatars
-| Avatar | Aspect | Blessing Aura |
-|---|---|---|
-| ⭕ Radiant Circle | Abundance | +30% harvest yield, +20% reproductive fertility |
-| ⚡ Celestial Strike | Wrath & Justice | +25% warrior attack damage |
-| 👁️ All-Seeing Vertex | Omniscience | +40% perception sight radius, nocturnal clarity |
-| 🛡️ Indomitable Monolith | Permanence | −30% incoming damage, cold exposure resistance |
-| 🌿 Sacred Spiral | Renewal | Medicinal herbs heal 2×, faster plague recovery, corpse composting |
-| ⚖️ Cosmic Scales | Equilibrium | Reliable peace treaties, maintains bylaws even under famine |
-| 🌀 Dimensional Rift | Ascent | Accelerated Isosceles ascendance, adaptive mutations, oral lore retention |
-| 🕯️ Eternal Hearth | Sanctuary | Nighttime tranquility, reduced sleep energy decay |
-
----
-
-## ⚙️ 6. World Physics & Disasters
-
-Governs environmental terrain, hydrological rivers, structural wear, seismic activity, lightning, and wildfires.
-
-| Law Parameter | Type / Range | Default | Ecological Effect & Hint |
+### Reproduction & Genetics
+| Law Parameter | Type | Default | Ecological Effect & Hint |
 |---|:---:|:---:|---|
-| `boundary` | `wrap` / `clamp` | **`wrap`** | World topology: `wrap` (toroidal loop) vs `clamp` (solid boundary walls). |
-| `rivers_enabled` | Boolean | **true** | Enables water channels, fords, water currents, bridges, and dams. |
-| `river_count` | 0–8 | **2** | Number of procedural river channels carved across the terrain at world generation. |
-| `relief_enabled` | Boolean | **true** | Enables topographical elevation, slope inertia, cliffs, and road packing. |
-| `structural_enabled` | Boolean | **true** | Enables weather wear on buildings, builder repairs, and roof collapse into rubble. |
-| `earthquake_enabled` | Boolean | **false** | Enables seismic tremors that shake terrain and damage weakened structures. |
-| `earthquake_rate` | 0–0.001 | **0.00008** | Frequency of seismic quakes that crack buildings and shake terrain. |
-| `lightning_enabled` | Boolean | **true** | Enables real lightning strikes during storms that ignite fires and damage creatures. |
-| `lightning_strike_rate` | 0–0.02 | **0.0015** | Frequency of deadly electrical arc strikes during thunder storms. |
-| `wildfire_enabled` | Boolean | **false** | Enables combustive flame propagation across dense vegetation and forests. |
-| `fire_rate` | 0–0.05 | **0.00008** | Probability per tick that a mature plant ignites during dry spells or lightning strikes. |
-| `disaster_enabled` | Boolean | **false** | Enables cataclysmic meteors, floods, and natural world disturbances. |
-| `disaster_rate` | 0–0.05 | **0.0003** | Stochastic probability of catastrophic environmental disasters (meteors, deluges). |
-| `anomaly_count` | 0–8 | **3** | Number of mysterious spatial anomaly zones altering local physics. |
-| `door_clearance` | 1.0–4.0 | **1.5** | Width multiplier for house doorways relative to the largest creature size. |
+| `birth_enabled` | Boolean | `true` | Master switch permitting mating and generational births. |
+| `birth_rate` | Float | `0.05` | Base mating probability per tick for mature, fertile couples within contact radius. |
+| `birth_energy_cost` | Float | `20.0` | Maternal energy investment expended upon delivering offspring. |
+| `reproduction_cooldown` | Integer | `600` | Ticks a female must rest after giving birth before becoming fertile again. |
+| `mate_radius` | Float | `10.0` | Spatial proximity required between two eligible partners to initiate courtship. |
+| `mate_energy_min` | Float | `30.0` | Minimum metabolic energy required for an adult to engage in mating. |
+| `mutation_rate` | Float | `0.05` | Probability a child deviates from classical Abbott caste inheritance (n+1). |
+| `mutation_sigma` | Float | `0.08` | Gaussian spread standard deviation for caste side mutations. |
+| `mutation_heritability` | Float | `0.35` | Heritability coefficient for personality archetypes and behavioral genes. |
+| `trait_mutation_rate` | Float | `0.02` | Frequency of spontaneous novel personality mutation in newborns. |
+| `crossover_rate` | Float | `0.5` | Probability of chromosomal crossover during neural weight inheritance. |
+
+### Density Soft-Cap Damping & Boom
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `carrying_capacity` | Integer | `350` | Equilibrium population threshold K_cap where non-linear damping begins. |
+| `max_population` | Integer | `500` | Absolute hard population ceiling; halts all births when reached. |
+| `soft_cap_enabled` | Boolean | `true` | Enables non-linear quadratic birth suppression and metabolic crowding penalty. |
+| `damping_steepness` | Float | `6.0` | Exponent scaling birth suppression strength under population overshoot. |
+| `crowding_stress_mult` | Float | `0.35` | Metabolic decay multiplier under high population crowding. |
+| `resource_strain_mult` | Float | `1.2` | Resource renewal throttling multiplier under ecological strain. |
+| `boom_ramp_days` | Float | `1.2` | Founding day grace period where reproduction ramps smoothly to prevent day-1 explosion. |
+| `boom_birth_floor` | Float | `0.4` | Initial reproductive throttle during world founding ramp. |
+| `boom_cooldown_mult` | Float | `1.0` | Multiplier on mating cooldowns during population boom phases. |
+| `boom_energy_mult` | Float | `1.0` | Multiplier on mating energy requirements during boom phases. |
+
+### Extinction Safeguards & Genesis
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `safeguard_enabled` | Boolean | `true` | Multi-tier automatic relief system preventing complete colony collapse. |
+| `safeguard_relief_ratio` | Float | `0.3` | Population fraction threshold activating emergency relief. |
+| `safeguard_crit_pop` | String | `—` | Critical population floor K_crit triggering a divine Genesis Miracle. |
+| `safeguard_critical_pop` | Integer | `12` | Alias for critical population threshold for miracle intervention. |
+| `safeguard_genesis_batch` | Integer | `6` | Number of pristine regular beings created during an emergency Genesis Miracle. |
+| `safeguard_cooldown_ticks` | String | `—` | Cooldown period between consecutive Genesis Miracles. |
+| `safeguard_max_miracles` | Integer | `1` | Maximum number of Genesis Miracles permitted per world run. |
+| `safeguard_morph_mercy` | Boolean | `true` | Suspends adult irregularity euthanasia during demographic crises. |
+
+### Pathology & Disease
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `disease_enabled` | Boolean | `true` | Enables contagion transmission, infection drain, and epidemic modeling. |
+| `disease_rate` | Float | `0.035` | Spontaneous infection emergence probability per tick. |
+| `disease_outbreak_rate` | Float | `6e-05` | Frequency of regional epidemic outbreaks during plague cycles. |
+| `disease_radius` | Float | `3.0` | Proximity radius within which infected organisms can transmit pathogens. |
+| `disease_energy_drain` | Float | `0.05` | Continuous metabolic energy drain inflicted by active infection. |
+| `disease_lethality` | Float | `0.07` | Damage inflicted per tick when fighting advanced infection. |
+| `recovery_rate` | Float | `0.06` | Probability per tick that an infected creature naturally clears the illness. |
+| `wet_disease_mult` | Float | `1.5` | Multiplier increasing disease contagion and spread during rain and winter. |
+
+### Micro-RNN Neuroevolution & Locomotion
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `perceive_radius` | Float | `16.0` | Base perception sight radius for sensory raycasting. |
+| `eat_radius` | Float | `1.4` | Interaction distance required to ingest food or harvest plants. |
+| `speed_mult` | String | `—` | Universal locomotion velocity multiplier across all castes. |
+| `steer_turn` | Float | `0.45` | Maximum angular steering rate per tick, modulated by moment of inertia I_zz. |
+| `wander_turn` | Float | `0.35` | Heading jitter applied when an organism has no active objective. |
+| `flock_radius` | Float | `6.0` | Neighbor detection radius for local boids flocking behavior. |
+| `separation_weight` | Float | `0.0` | Repulsion force keeping adjacent creatures from crowding too tightly. |
+| `alignment_weight` | Float | `0.0` | Heading alignment force with neighboring clan members. |
+| `cohesion_weight` | Float | `0.0` | Center-of-mass attraction force toward kin clusters. |
+| `defense_weight` | Float | `0.5` | Tactical positioning weight for soldiers protecting vulnerable lines. |
+| `fear_radius` | Float | `12.0` | Distance at which peaceful organisms detect predators and flee. |
+| `nn_inference_hz` | Integer | `15` | Frequency of full neural network feedforward evaluation. |
+
+### Polar Morphology & Annealing
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `morphology_annealing_enabled` | Boolean | `true` | Blends Abbott geometric templates into freely evolving polar polygon genomes. |
+| `annealing_start_generation` | Integer | `15` | Generation where morphological annealing decay begins. |
+| `annealing_decay_generations` | Integer | `250` | Generations over which annealing factor lambda transitions from 1.0 to 0.0. |
+| `morph_lambda_override` | String | `None` | Manual override fixing lambda in [0, 1] (None follows natural generational curve). |
+| `vertex_mutation_std` | Float | `0.025` | Standard deviation of radial vertex perturbations per generation. |
+| `angle_mutation_std` | Float | `0.012` | Standard deviation of angular vertex shifts per generation. |
+| `topological_mutation_rate` | Float | `0.008` | Frequency of vertex insertion/deletion mutations altering K in [3, 24]. |
+| `max_sides` | Integer | `24` | Maximum allowable polygon vertex count K for evolving organisms. |
+
+### Predation, Carnivory & Cannibalism
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `predation_enabled` | Boolean | `true` | Enables carnivorous predators that hunt peaceful herbivores and flatland castes. |
+| `predator_ratio` | Float | `0.008` | Proportion of founding predator beasts in the ecosystem. |
+| `beast_ratio` | Float | `0.0` | Proportion of wild carnivore spawns relative to standard castes. |
+| `bite_damage` | Float | `16.0` | Combat damage inflicted per predator strike. |
+| `bite_cooldown` | Integer | `15` | Ticks between consecutive predator attacks. |
+| `hunt_radius` | Float | `8.0` | Sensory tracking radius of hunting predators seeking prey. |
+| `energy_from_prey` | Float | `40.0` | Metabolic energy yield gained by predators from consuming caught prey. |
+| `cannibalism_enabled` | Boolean | `true` | Allows desperate starving organisms to consume fallen corpses of their own species. |
+| `cannibalism_energy` | Float | `35.0` | Energy harvested from consuming a fallen kin corpse. |
+| `cannibalism_hunger_ratio` | Float | `0.08` | Extreme starvation threshold required before a creature resorts to cannibalism. |
+| `eat_kin_enabled` | Boolean | `false` | Whether consuming a clan member's corpse is physically possible under starvation. |
+| `eat_enemy_enabled` | Boolean | `true` | Whether consuming a defeated rival clan soldier is permitted. |
+| `kin_stigma` | Integer | `40` | Social penalty and trust loss incurred when caught consuming kin. |
+| `exile_on_kin_eat` | Boolean | `true` | Automatic exile from clan upon committing kin cannibalism. |
 
 ---
 
-## 🎯 7. Curated World Simulation Presets
+## 3. Climate & Sky ☀️
 
-Flatland ships with 7 hand-tuned ecological presets designed for diverse research and gameplay scenarios:
+### Sky, Seasons & Weather
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `weather_enabled` | Boolean | `true` | Enables dynamic weather cycles (Clear, Fog, Rain, Storm). |
+| `weather_change_rate` | Float | `0.002` | Frequency of spontaneous atmospheric weather state transitions. |
+| `day_length` | Integer | `1200` | Duration of one full day/night cycle in simulation ticks (120s at 10 tps). |
+| `season_length` | Integer | `14400` | Duration of each astronomical season in ticks (Spring, Summer, Autumn, Winter). |
+| `initial_season_offset` | Integer | `0` | Starting season offset when launching a new world seed. |
+| `night_sight_mult` | Float | `0.6` | Sensory sight attenuation factor during the dark of night (0.6x). |
+| `rain_growth_mult` | Float | `1.25` | Accelerated botanical growth multiplier during rainfall. |
+| `rain_speed_mult` | Float | `0.85` | Locomotion friction penalty while moving through wet rain. |
+| `storm_wander_bonus` | Float | `0.35` | Additional path deviation caused by violent storm winds. |
+| `storm_plant_damage` | Float | `0.02` | Chance severe storms damage exposed wild vegetation. |
+| `fog_sight_mult` | Float | `0.6` | Sensory sight reduction factor inside thick fog banks. |
+| `fog_mushroom_mult` | Float | `1.35` | Increased sprout frequency of fungal mushrooms during fog. |
 
-| Preset | Target Pop | Focus & Dynamics | Key Law Tuning |
-|---|:---:|---|---|
-| ⚖️ **Balance** *(Default)* | 200–350 | **Goldilocks Harmony**: Balanced ecosystem with agriculture, moderate border disputes, non-fatal skirmishes, survivable plagues, predators, bridges, and glowing shrines. | `food_count=240`, `carrying_capacity=350`, `max_pop=500`, `birth_rate=0.28`, `adult_age=220`, `predator_ratio=0.02`, `attack_damage=32.0` |
-| 🌿 **Sustainable** | 300–500 | **1000-Day Prosperous Civilization**: High agricultural yields, full granaries, autumn banquets, non-lethal sparring, and stable multi-generational civilization. | `food_count=360`, `carrying_capacity=450`, `max_pop=600`, `birth_rate=0.30`, `adult_age=220`, `predator_ratio=0.01`, `banquets_enabled=true` |
-| 🔮 **Theocracy** | 250–450 | **Age of the Sphere & Sacred Avatars**: High devotion, frequent tithes, glowing temples, avatar miracles, 3D epiphanies, and holy synods. | `food_count=300`, `carrying_capacity=400`, `max_pop=550`, `temple_faith_cost=200`, `tithe_rate=0.06` |
-| ⚔️ **Warlords** | 150–350 | **Clash of Clans & Imperial Conquest**: Wide clan domains, frequent border skirmishes, granary raids, house takeovers, defensive coalitions, and martial succession. | `food_count=240`, `carrying_capacity=300`, `max_pop=450`, `attack_damage=48`, `trespass_decay=0.35` |
-| 🔥 **Chaos** | 100–350 | **Total Turmoil**: High predator density, deadly wars, rapid 4-season shifts, wildfires, earthquakes, lightning strikes, and cannibalism under crisis. | `food_count=220`, `carrying_capacity=300`, `max_pop=450`, `predator_ratio=0.06`, `attack_damage=40`, `disease_outbreak_rate=0.0002`, `winter_food_mult=0.55` |
-| 💀 **Extinction** | 30–180 | **Cataclysmic Collapse**: Severe food scarcity, freezing winters (0.3×), harsh exposure drain, rampant sickness, and desperate cannibalism survival. | `food_count=120`, `carrying_capacity=180`, `max_pop=300`, `winter_food_mult=0.30`, `exposure_drain=0.05`, `cannibalism_enabled=true` |
-| 🚀 **Boom** | 600–1,000 | **Monumental Metropolis**: High food abundance, rapid maturation, dense granaries, extensive bridge networks, zero disease/war. | `food_count=500`, `carrying_capacity=800`, `max_pop=1000`, `birth_rate=0.45`, `adult_age=160` |
+### Weather Sickness & Chill
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `weather_sickness_enabled` | Boolean | `false` | Enables exposure penalties and chill accumulation. |
+| `chill_rate` | Float | `0.04` | Rate of chill accumulation per tick when caught unsheltered in storms or winter nights. |
+| `chill_threshold` | Float | `12.0` | Chill level above which continuous hypothermia damage begins (0.18 HP/tick). |
+| `chill_drain` | Float | `0.18` | Continuous health damage per tick suffered from severe hypothermia. |
+| `exposure_drain` | Float | `0.03` | Metabolic energy penalty incurred from staying exposed outdoors in harsh weather. |
+
+### Shelter & Recovery
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `sleep_enabled` | Boolean | `true` | Organisms require periodic circadian rest to restore stamina. |
+| `shelter_enabled` | Boolean | `true` | Walled houses provide thermal protection, safe rest, and predator immunity. |
+| `sleep_energy_mult` | Float | `0.5` | Metabolic burn discount enjoyed while sleeping indoors. |
+| `rest_recovery_mult` | Float | `2.0` | Health regeneration rate multiplier while resting comfortably in shelter. |
+| `hearths_enabled` | Boolean | `true` | Indoor hearths provide warmth and accelerate chill dissipation (2.5x). |
 
 ---
 
-## 🔭 8. World History, Analytics & Observatory
+## 4. Society, Warfare & Trade 🏰
 
-The chronicle and telemetry systems record world dynamics in real time:
+### Settlements & Clans
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `territory_enabled` | Boolean | `true` | Settlements project territorial influence zones on the map. |
+| `territory_radius` | Float | `14.0` | Spatial radius of clan territorial influence projected from houses. |
+| `totems_enabled` | Boolean | `true` | Clans adopt symbolic ancestral totems (Wolf, Bear, Tree, Shield, Eye, Stag). |
+| `succession_enabled` | Boolean | `true` | Clans execute succession rituals upon the demise of their chieftain. |
+| `leader_decisions_enabled` | Boolean | `true` | Clan chieftains adjust macro task priorities (food security, defense, expansion). |
+| `resource_sharing_enabled` | Boolean | `true` | Sated foragers deposit surplus into settlement larders for hungry kin. |
+| `house_claim_enabled` | Boolean | `true` | Homeless citizens can autonomously claim abandoned settlement ruins. |
+| `max_clans` | Integer | `-1` | Maximum number of simultaneous active clan factions permitted in the world. |
+| `num_houses` | Integer | `-1` | Target number of walled residential houses spawned in the world. |
+| `house_density` | Float | `0.00065` | Clustering density of settlement dwellings. |
+| `house_min_size` | Float | `5.5` | Minimum interior dimension of generated house structures. |
+| `house_max_size` | Float | `8.0` | Maximum interior dimension of clan halls and main houses. |
+| `house_gap` | Float | `6.0` | Minimum clearance distance between neighboring houses. |
+| `house_capacity` | Integer | `14` | Maximum number of creature occupants permitted inside a single house. |
+| `door_clearance` | Float | `1.5` | Width of creature-sized entrance doorways in house perimeter walls. |
+| `house_decay_ticks` | Integer | `2400` | Lifespan ticks of uninhabited houses before crumbling into ruins. |
 
-- **Genealogy Tracking**: Every birth and death is logged in SQLite (`flatworld.db`), recording parental lineage, caste ascension, cause of death, and generational depth.
-- **Daily Narrative Digest**: Generated every 1,200 ticks (one Flatland day), summarizing births, deaths, battles, epidemics, miracles, and weather events.
-- **Clan Dossiers**: Detailed sociological profiles tracking clan leadership, active bylaws, territory footprint, granary reserves, military strength, and diplomatic relations.
-- **Observatory Telemetry**: Zero-allocation streaming telemetry monitoring biomass, Lotka-Volterra trophic cycles, Gini inequality, casualty breakdown, and morphological drift.
+### Communication & Knowledge
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `communication_enabled` | Boolean | `true` | Enables auditory signals, distress chirps, and warning broadcasts. |
+| `knowledge_enabled` | Boolean | `true` | Elders transmit skill mastery, oral lore, and mental maps to youth in houses. |
+| `vocalizations_enabled` | Boolean | `true` | Neural network outputs control vocal amplitude and frequency outputs. |
+| `signal_radius` | Float | `12.0` | Auditory transmission radius of creature vocalizations. |
+| `signal_speed` | Float | `8.0` | Propagation speed of acoustic waves across the 2D plane. |
+| `alarm_call_rate` | Float | `0.12` | Frequency of distress calls emitted when attacked by hostiles. |
+| `food_call_rate` | Float | `0.08` | Frequency of foraging calls alerting clan members to rich food sources. |
+| `help_call_enabled` | Boolean | `true` | Starving or injured creatures call nearby kin for assistance. |
+| `help_radius` | Float | `12.0` | Range at which kin respond to emergency help calls. |
+| `aid_rate` | Float | `0.05` | Altruistic food-sharing rate between kin carrying basket reserves. |
+| `knowledge_share_rate` | Float | `0.05` | Speed of skill experience transfer during elder teaching sessions. |
+| `knowledge_ttl` | Integer | `600` | Persistence duration of transmitted mental waypoint markers. |
+| `dialect_drift_enabled` | Boolean | `true` | Clan vocal frequencies gradually drift over generations into regional dialects. |
+| `scent_enabled` | Boolean | `true` | Creatures leave chemical scent trails marking frequently traveled paths. |
+
+### Diplomacy & Warfare
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `war_enabled` | Boolean | `true` | Rival clans engage in border skirmishes, granary raids, and house sieges. |
+| `attack_damage` | Float | `30.0` | Baseline combat strike damage inflicted by soldiers. |
+| `attack_radius` | Float | `1.8` | Melee combat strike range. |
+| `coalitions_enabled` | Boolean | `true` | Clans form defensive mutual pacts against dominant expansionist hegemonies. |
+| `coalition_min_size` | Integer | `2` | Minimum allied clans required to declare a formal mutual defense league. |
+| `coalition_threshold` | Integer | `40` | Minimum threat score required before a coalition activates military defense. |
+| `alliance_threshold` | Integer | `50` | Diplomatic relation score required to formalize an alliance treaty. |
+| `rivalry_threshold` | Integer | `-45` | Negative relation score triggering hostile rivalry and border skirmishes. |
+| `relation_drift_rate` | Float | `2.2` | Baseline rate at which inter-clan diplomatic tensions decay toward neutrality. |
+| `trespass_decay` | Float | `0.45` | Rate at which border trespass grievances decay over time. |
+| `tribute_enabled` | Boolean | `true` | Weaker clans pay food grain tribute to avoid destructive military invasion. |
+| `envoys_enabled` | Boolean | `true` | Clans dispatch peaceful diplomatic emissaries to negotiate treaties. |
+| `markets_enabled` | Boolean | `true` | Inter-clan trade caravans barter goods and share combat/farming techniques. |
+| `banquets_enabled` | Boolean | `true` | Allied clans host joint feasts to solidify diplomatic bonds (+25 trust). |
+
+### Internal Politics & Defection
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `schism_enabled` | Boolean | `true` | Overcrowded or oppressed factions can rebel and split into independent clans. |
+| `schism_min_pop` | Integer | `8` | Minimum clan population required before a civil schism can trigger. |
+| `schism_threshold` | Float | `0.6` | Internal clan friction threshold required to spark a revolutionary schism. |
+| `defection_enabled` | Boolean | `true` | Dissatisfied individuals can abandon their clan and swear loyalty to rivals. |
+| `betrayal_enabled` | Boolean | `true` | Corrupt leaders or ambitious soldiers can stage coups and seize power. |
 
 ---
 
-## 📖 9. God Passkey Authentication & REST API Reference
+## 5. Theology & Sacred Avatars 🔮
 
-All God Laws can be inspected and adjusted programmatically:
+### Theology & Ages
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `theology_enabled` | Boolean | `true` | Priests build shrines and temples to channel the higher-dimensional Sphere. |
+| `temple_faith_cost` | Float | `400.0` | Faith points required to consecrate a grand temple dedicated to The Sphere. |
+| `tithe_rate` | Float | `0.04` | Fraction of harvested grains tithed to priestly temples to generate divine favor. |
+| `culture_enabled` | Boolean | `true` | Spreads cultural memes and traditions that provide passive bonuses to members. |
+| `culture_spread_rate` | Float | `0.005` | Velocity of cultural meme transmission between allied settlement houses. |
+| `age_enabled` | Boolean | `true` | Periodic cosmic super-seasons transform global ecological parameters. |
+| `age_length` | Integer | `12000` | Duration of each cosmic Age in simulation ticks (1200s). |
+| `omens_enabled` | Boolean | `true` | Atmospheric celestial portents foreshadow incoming cosmic age transitions. |
 
-```bash
-# Fetch current live laws and active preset
-curl -s http://localhost:8000/api/laws | jq .
+---
 
-# Mutate laws live (e.g. adjust food abundance and carrying capacity)
-curl -X POST "http://localhost:8000/api/laws?persist=true"   -H "Content-Type: application/json"   -d '{"food_count": 300, "carrying_capacity": 400}'
+## 6. World Physics & Disasters ⚙️
 
-# Apply a curated world preset live
-curl -X POST "http://localhost:8000/api/presets/theocracy/apply"
+### Spatial Topology & Demographics
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `width` | Float | `400.0` | World width in spatial coordinate units. |
+| `height` | Float | `300.0` | World height in spatial coordinate units. |
+| `boundary` | String | `wrap` | World boundary mode (`wrap` for toroidal topology, `clamp` for solid edges). |
+| `seed` | Integer | `42` | Primary pseudorandom seed determining procedural terrain and initial state. |
+| `tick_rate` | Float | `10.0` | Simulation advancement rate (ticks per second). |
+| `history_max` | Integer | `200` | Maximum historical event log entries stored in SQLite. |
+| `rock_count` | Integer | `-1` | Number of impassable stone boulders scattered across the map. |
+| `anomaly_count` | Integer | `3` | Number of mysterious spatial singularities located in the world. |
+| `num_women` | Integer | `-1` | Founding population of Line females (crucial foundation of all lineages). |
+| `num_triangles` | Integer | `-1` | Founding population of Isosceles Soldiers and Equilateral Artisans. |
+| `num_squares` | Integer | `-1` | Founding population of Square Gentlemen and Merchants. |
+| `num_pentagons` | Integer | `-1` | Founding population of Pentagon Professionals and Architects. |
+| `num_hexagons` | Integer | `-1` | Founding population of Hexagon Sub-Magistrates. |
+| `num_priests` | Integer | `-1` | Founding population of Circular Priests (guardians of religion). |
 
-# Apply preset and reset the world state
-curl -X POST "http://localhost:8000/api/presets/chaos/apply-and-reset"
+### Physics, Rivers & Cataclysms
+| Law Parameter | Type | Default | Ecological Effect & Hint |
+|---|:---:|:---:|---|
+| `rivers_enabled` | Boolean | `true` | Procedural natural waterways meandering across the landscape. |
+| `river_count` | Integer | `2` | Number of procedural river channels generated across the map. |
+| `relief_enabled` | Boolean | `true` | Terrain elevation gradients influencing movement speed and sight. |
+| `structural_enabled` | Boolean | `true` | House walls possess physical structural integrity and can degrade under siege. |
+| `rubble_blocking_enabled` | Boolean | `true` | Collapsed buildings leave passable debris piles that provide defensive cover. |
+| `wildfire_enabled` | Boolean | `true` | Forest fires ignite during summer droughts and spread across dry grass. |
+| `fire_rate` | Float | `8e-05` | Spontaneous lightning/drought wildfire ignition probability per tick. |
+| `fire_spread_rate` | Float | `0.035` | Velocity of wildfire propagation across flammable vegetation. |
+| `earthquake_enabled` | Boolean | `false` | Seismic ground tremors that can fracture terrain and damage dwellings. |
+| `earthquake_rate` | Float | `8e-05` | Frequency of tectonic seismic disturbances. |
+| `lightning_enabled` | Boolean | `true` | Atmospheric electrical strikes during violent thunderstorms. |
+| `lightning_strike_rate` | Float | `0.0015` | Frequency of lightning ground discharges during severe thunderstorms. |
+| `disaster_enabled` | Boolean | `true` | Master switch for spontaneous macro natural cataclysms. |
+| `disaster_rate` | Float | `4e-05` | Overall occurrence probability for spontaneous global cataclysms. |
+| `omp_enabled` | Boolean | `true` | Native OpenMP vector acceleration for intensive spatial physics calculations. |
+| `omp_threshold` | Integer | `100` | Minimum entity threshold before activating multi-core OpenMP routines. |
 
-# Inspect living wiki documentation
-curl -s http://localhost:8000/api/wiki | jq .
-```
+---
+
+## 🎯 Curated World Presets
+
+Flatland includes 7 balanced, pre-configured world profiles:
+
+1. **⚖️ Balance (Default)**: Goldilocks harmony tuned for **200–350 inhabitants** with 380 food, carrying capacity 400 (max 500), gentle wars, rare predation, agriculture, soft-cap damping (ξ), extinction safeguards (η), and flourishing multi-generational clans.
+2. **🌿 Sustainable**: 1000-day prosperous peace, abundant food (550), carrying capacity 550 (max 600), rich granaries, harvest festivals, and banquets.
+3. **🔮 Theocracy**: Age of the Sphere, divine avatars, glowing temples, avatar miracles, 3D epiphanies, and holy synods.
+4. **⚔️ Warlords**: Clash of clans, imperial conquests, granary raids, house takeovers, territorial expansion, and defensive coalitions.
+5. **🔥 Chaos**: High predator ratio, lethal wars, wildfires, frequent plagues, earthquakes, and fast seasonal turnover.
+6. **💀 Extinction**: Severe famine (120 food), harsh winter (0.3×), high exposure decay, testing societal resilience under collapse.
+7. **🚀 Boom**: High reproduction, 440 food, carrying capacity 800 (max 850) for monumental metropolis expansion.
+
+Presets can be applied instantly via `POST /api/presets/{name}?reset=true` or selected within **⚖ The Sphere (God Panel)**.

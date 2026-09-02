@@ -109,18 +109,18 @@ export default function ClanPanel({ onSelectClan, onSelectCreature, state }: { o
   }, [clans, sortBy])
 
   if (clans.length === 0) return <p className="chip">{t('clanPanel.noClans')}</p>
-  if (sorted.length === 0) return <p className="chip">{t('clanPanel.noClans')} — all fallen</p>
+  if (sorted.length === 0) return <p className="chip">{t('clanPanel.noClans')} — {t('clanPanel.allFallen')}</p>
 
   return (
     <div className="clan-panel" style={{ gap: 6 }}>
       <div className="clan-sort-bar">
-        <span style={{ fontWeight: 600, fontSize: 11, color: '#e6edf3' }}>🏰 {sorted.length} clans · tick {tick}</span>
-        <span style={{ marginLeft: 'auto', fontSize: 11 }}>Sort</span>
+        <span style={{ fontWeight: 600, fontSize: 11, color: '#e6edf3' }}>🏰 {sorted.length} {t('app.mobileSheet.clans').toLowerCase()} · {t('app.hud.tick').toLowerCase()} {tick}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11 }}>{t('clanPanel.sort')}</span>
         <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortKey)} aria-label="Sort clans">
-          <option value="pop">Pop</option>
-          <option value="wins">Wins</option>
-          <option value="larder">Larder</option>
-          <option value="age">Age</option>
+          <option value="pop">{t('clanPanel.pop')}</option>
+          <option value="wins">{t('clanPanel.wins')}</option>
+          <option value="larder">{t('clanPanel.larder')}</option>
+          <option value="age">{t('clanPanel.age')}</option>
         </select>
       </div>
       <div style={{ display: 'grid', gap: 6 }}>

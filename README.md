@@ -25,7 +25,7 @@
 In Flatland, The Sphere (God) sets the **laws of nature** from Spaceland but never touches an individual life. The Sphere cannot kill, heal, or move a single creature; the simulation advances deterministically under physical and biological rules.
 - **The Sphere Panel (`⚖ The Sphere`)**: Full control over world dynamics via a dedicated **🎯 Presets** selector and 6 streamlined **⚖️ Macro Domains** (Ecology & Survival, Biology & Evolution, Climate & Sky, Society, Warfare & Trade, Theology & Sacred Avatars, World Physics & Disasters) with instant search, modified-only filtering, baseline comparison, and real-time dual sliders.
 - **Curated World Presets**:
-  - **⚖️ Balance (Default)**: Goldilocks harmony tuned for **200–350 inhabitants** with 300 food, carrying capacity 400 (max 500), gentle wars, rare predation, agriculture, soft-cap damping ($\xi$), extinction safeguards ($\eta$), and flourishing multi-generational clans.
+  - **⚖️ Balance (Default)**: Goldilocks harmony tuned for **200–350 inhabitants** with 380 food, carrying capacity 400 (max 500), gentle wars, rare predation, agriculture, soft-cap damping ($\xi$), extinction safeguards ($\eta$), and flourishing multi-generational clans.
   - **🌿 Sustainable**: 1000-day prosperous peace, abundant food (550), carrying capacity 550 (max 600), rich granaries, and banquets.
   - **🔮 Theocracy**: Age of the Sphere, divine avatars, glowing temples, avatar miracles, 3D epiphanies, and holy synods.
   - **⚔️ Warlords**: Clash of clans, imperial conquests, granary raids, house takeovers, and defensive coalitions.

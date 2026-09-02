@@ -21,7 +21,7 @@ The world self-balances across hundreds of days and multi-generational dynastic 
 
 ## Curated Presets
 
-- **balance** ⚖️ (Default) — Goldilocks harmony tuned for **200–350 inhabitants** with 300 food, carrying capacity 400 (max 500), gentle wars, rare predation, agriculture, density damping ($\xi$), extinction safeguards ($\eta$), and flourishing multi-generational clans.
+- **balance** ⚖️ (Default) — Goldilocks harmony tuned for **200–350 inhabitants** with 380 food, carrying capacity 400 (max 500), gentle wars, rare predation, agriculture, density damping ($\xi$), extinction safeguards ($\eta$), and flourishing multi-generational clans.
 - **sustainable** 🌿 — 1000-day prosperous peace: abundant food (550), carrying capacity 550 (max 600), rich granaries, harvest festivals, banquets, and gentle damping.
 - **theocracy** 🔮 — Age of the Sphere: sacred avatars, glowing temples, avatar miracles, 3D epiphanies, holy synods, and divine tithes.
 - **warlords** ⚔️ — Clash of clans: imperial conquests, granary raids, house takeovers, territorial expansion, and defensive coalitions.

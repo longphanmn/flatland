@@ -521,35 +521,35 @@ export default function App() {
         {status !== 'open' && <span className="chip" style={{ color: status === 'connecting' ? '#d29922' : '#f85149' }}>{STATUS_LABEL[status]}</span>}
         {paused && <span className="chip paused">{t("app.status.paused")}</span>}
         {state && (
-          <span className="chip" title={`Time of day ${state.time_of_day} — night (0-0.22, 0.78-1) dims sight 0.6×, fog 0.6× stack; season ${state.season} changes Food target and disease. Weather ${state.weather}: rain slows 0.85×, storm adds wander.`}>
-            {isNight ? '🌙' : '☀'} day <b>{state.day}</b> · {state.season}
+          <span className="chip" title={t('app.hints.timeOfDay', { time: state.time_of_day, season: state.season, weather: state.weather } as any)}>
+            {isNight ? '🌙' : '☀'} {t('app.hud.day')} <b>{state.day}</b> · {state.season}
             {weatherIcon && ` · ${weatherIcon}`}
           </span>
         )}
         {!isMobile && (
-          <span className="chip" title="Current tick — simulation step count (10 ticks/s by default). Est TPS is wall-clock measured from WS stream; if it drops below target, healthz avg_tick_ms shows overrun.">
+          <span className="chip" title={t('app.hints.currentTick')}>
             {t('app.hud.tick')} <b>{state?.tick ?? 0}</b>{estTps !== null && ` · ${estTps} t/s`}
           </span>
         )}
         <span
           className="chip alive"
-          title={`${t('app.hud.alive')}: ${state?.creatures_alive ?? 0} creatures — Flatland castes + Predators + Herbivores. Hover Caste chart for breakdown.`}
-          data-hint={`${t('app.hud.alive')}: ${state?.creatures_alive ?? 0} creatures`}
+          title={t('app.hints.alive', { label: t('app.hud.alive'), count: state?.creatures_alive ?? 0 } as any)}
+          data-hint={`${t('app.hud.alive')}: ${state?.creatures_alive ?? 0}`}
         >
           💚{isMobile ? '' : ` ${t('app.hud.alive')}`} <b>{state?.creatures_alive ?? 0}</b>
         </span>
         <span
           className="chip dead desktop-only"
-          title={`${t('app.hud.dead')}: ${state?.creatures_dead ?? 0} — ${deadBreakdown} (hover for per-cause breakdown: starvation/old_age/euthanasia/disease/predation/war/poison).`}
-          data-hint={`${t('app.hud.dead')}: ${state?.creatures_dead ?? 0} creatures (${deadBreakdown})`}
+          title={t('app.hints.dead', { label: t('app.hud.dead'), count: state?.creatures_dead ?? 0, breakdown: deadBreakdown } as any)}
+          data-hint={`${t('app.hud.dead')}: ${state?.creatures_dead ?? 0} (${deadBreakdown})`}
         >
           💀 {t('app.hud.dead')} <b>{state?.creatures_dead ?? 0}</b>
         </span>
         {hungryCount > 0 && (
           <span
             className="chip hungry desktop-only"
-            title={`Hungry: ${hungryCount} creatures (energy ≤ 35% of max) — perceives food farther (1.3×), still fertile.`}
-            data-hint={`Hungry: ${hungryCount} creatures`}
+            title={t('app.hints.hungry', { count: hungryCount } as any)}
+            data-hint={`${t('app.hud.hungry')}: ${hungryCount}`}
           >
             🍖 <b>{hungryCount}</b>
           </span>
@@ -557,8 +557,8 @@ export default function App() {
         {starvingCount > 0 && (
           <span
             className="chip starving desktop-only"
-            title={`Starving: ${starvingCount} creatures (energy ≤ 15%) — sees farthest (1.6×) and moves 1.35× faster, pulsing red, will die soon.`}
-            data-hint={`Starving: ${starvingCount} creatures`}
+            title={t('app.hints.starving', { count: starvingCount } as any)}
+            data-hint={`${t('app.hud.starving')}: ${starvingCount}`}
           >
             ⚠️ <b>{starvingCount}</b>
           </span>
@@ -566,8 +566,8 @@ export default function App() {
         {(state?.infected_count ?? 0) > 0 && (
           <span
             className="chip sick desktop-only"
-            title={`Infected: ${state?.infected_count} creatures — loses 0.15 energy/tick + 1.0 health/tick (winter ×1.5 spread), green pulsing ring, may recover.`}
-            data-hint={`Infected: ${state?.infected_count} creatures`}
+            title={t('app.hints.infected', { count: state?.infected_count } as any)}
+            data-hint={`${t('app.hud.infected')}: ${state?.infected_count}`}
           >
             ☣️ <b>{state?.infected_count}</b>
           </span>
@@ -576,8 +576,8 @@ export default function App() {
           <span
             className="chip desktop-only"
             style={{ color: '#79c0ff' }}
-            title={`Chilled: ${chilledCount} creatures — built rain/storm/winter-night outside, past 12 drains health 0.18/tick. Shelter sheds 2.5× faster.`}
-            data-hint={`Chilled: ${chilledCount} creatures`}
+            title={t('app.hints.chilled', { count: chilledCount } as any)}
+            data-hint={`${t('app.hud.chilled')}: ${chilledCount}`}
           >
             🥶 <b>{chilledCount}</b>
           </span>
@@ -585,8 +585,8 @@ export default function App() {
         {raining && exposedCount > 0 && (
           <span
             className="chip exposed desktop-only"
-            title={`Exposed: ${exposedCount} creatures — awake, outdoors, not in a House during rain/storm or winter night (loses 0.03 energy/tick extra).`}
-            data-hint={`Exposed: ${exposedCount} creatures`}
+            title={t('app.hints.exposed', { count: exposedCount } as any)}
+            data-hint={`${t('app.hud.exposed')}: ${exposedCount}`}
           >
             ⛈ <b>{exposedCount}</b>
           </span>
@@ -594,10 +594,10 @@ export default function App() {
         {state && state.age && (
           <span
             className="chip desktop-only"
-            title={`Age ${state.age} — super-season bending world: Ice (food×0.55 chill×1.4), Chaos (mutation×1.8), Plague (disease×1.8), Golden (food×1.25 birth×1.3). Day ${ageDay} of ${ageTotalDays} in this age.`}
-            data-hint={`Age ${state.age} · Day ${ageDay}/${ageTotalDays}`}
+            title={t('app.hints.age', { age: state.age, day: ageDay, total: ageTotalDays } as any)}
+            data-hint={`${t('app.hud.age')} ${state.age} · ${t('app.hud.day')} ${ageDay}/${ageTotalDays}`}
           >
-            🗓 age <b>{state.age}</b> · day {ageDay}/{ageTotalDays}
+            🗓 {t('app.hud.age')} <b>{state.age}</b> · {t('app.hud.day')} {ageDay}/{ageTotalDays}
           </span>
         )}
 
@@ -660,15 +660,15 @@ export default function App() {
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>
             <span className="chip" style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any, borderColor: '#e3b341', color: '#e3b341', flex: '0 0 100%', width: '100%', boxSizing: 'border-box' as any, justifyContent: 'flex-start' }}>{t('app.hud.tick')} <b>{state?.tick ?? 0}</b>{estTps !== null && ` · ${estTps} t/s`}</span>
-            <span className="chip" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>entities <b>{state?.entities.length ?? 0}</b></span>
-            <span className="chip dead" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>dead <b>{state?.creatures_dead ?? 0}</b></span>
+            <span className="chip" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{t('app.hud.entities')} <b>{state?.entities.length ?? 0}</b></span>
+            <span className="chip dead" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{t('app.hud.dead')} <b>{state?.creatures_dead ?? 0}</b></span>
             <span className="chip" style={{ fontSize: 10, color: '#8b949e', whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'anywhere' as any, flex: '0 0 100%', width: '100%', boxSizing: 'border-box' as any }}>{deadBreakdown}</span>
-            {(state?.infected_count ?? 0) > 0 && <span className="chip sick" style={{ whiteSpace: 'normal' }}>infected <b>{state?.infected_count}</b></span>}
-            {(state?.entities.filter((e) => (e.chill ?? 0) >= 12).length ?? 0) > 0 && <span className="chip" style={{ color: '#79c0ff', whiteSpace: 'normal' }}>🥶 chilled <b>{state?.entities.filter((e) => (e.chill ?? 0) >= 12).length}</b></span>}
-            {raining && exposedCount > 0 && <span className="chip exposed" style={{ whiteSpace: 'normal' }}>⛈ exposed <b>{exposedCount}</b></span>}
-            {hello && <span className="chip" style={{ whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>seed <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×{state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}</span>}
-            {state?.age && <span className="chip" style={{ whiteSpace: 'normal' }}>🗓 age <b>{state.age}</b> · day {ageDay}/{ageTotalDays}</span>}
-            <span className="chip" style={{ whiteSpace: 'normal' }}>hungry <b>{hungryCount}</b> · starving <b>{starvingCount}</b></span>
+            {(state?.infected_count ?? 0) > 0 && <span className="chip sick" style={{ whiteSpace: 'normal' }}>{t('app.hud.infected')} <b>{state?.infected_count}</b></span>}
+            {(state?.entities.filter((e) => (e.chill ?? 0) >= 12).length ?? 0) > 0 && <span className="chip" style={{ color: '#79c0ff', whiteSpace: 'normal' }}>🥶 {t('app.hud.chilled')} <b>{state?.entities.filter((e) => (e.chill ?? 0) >= 12).length}</b></span>}
+            {raining && exposedCount > 0 && <span className="chip exposed" style={{ whiteSpace: 'normal' }}>⛈ {t('app.hud.exposed')} <b>{exposedCount}</b></span>}
+            {hello && <span className="chip" style={{ whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>{t('app.hud.seed')} <b>{state?.seed ?? hello.seed}</b> · {state?.width ?? hello.width}×{state?.height ?? hello.height} · {state?.boundary ?? hello.boundary}</span>}
+            {state?.age && <span className="chip" style={{ whiteSpace: 'normal' }}>🗓 {t('app.hud.age')} <b>{state.age}</b> · {t('app.hud.day')} {ageDay}/{ageTotalDays}</span>}
+            <span className="chip" style={{ whiteSpace: 'normal' }}>{t('app.hud.hungry')} <b>{hungryCount}</b> · {t('app.hud.starving')} <b>{starvingCount}</b></span>
           </div>
           {worlds.length > 0 && (
             <div style={{ display: 'flex', flexDirection: isMobile ? 'column' as const : 'row' as const, flexWrap: 'wrap', alignItems: isMobile ? 'stretch' : 'center', gap: 8, marginTop: 6, paddingTop: 6, borderTop: '1px solid #21262d', wordBreak: 'break-word', overflowWrap: 'anywhere' as any }}>
@@ -728,12 +728,11 @@ export default function App() {
       {/* Mobile thumb bar — persistent 48px */}
       {isMobile && (
         <div className="mobile-thumb-bar">
-          <button onClick={paused ? sendResume : sendPause} title={paused ? 'Resume (space)' : 'Pause (space)'}>{paused ? '▶' : '⏸'}</button>
-          <button onClick={sendStep} title="Step (S)">⏭</button>
-          <button onClick={confirmReset} title="Reset world with new seed (R)" style={{ color: '#ff7b72' }}>🔄</button>
-          <button onClick={() => setGodOpen(true)} title="Laws of the Sphere (God)">⚖</button>
+          <button onClick={paused ? sendResume : sendPause} title={paused ? t('app.controls.resume') : t('app.controls.pause')}>{paused ? '▶' : '⏸'}</button>
+          <button onClick={sendStep} title={t('app.controls.step')}>⏭</button>
+          <button onClick={confirmReset} title={t('app.controls.reset')} style={{ color: '#ff7b72' }}>🔄</button>
+          <button onClick={() => setGodOpen(true)} title={t('app.controls.god')}>⚖</button>
           <button
-
             className={sheetState !== 'hidden' ? 'active-sheet-btn' : ''}
             onClick={() => {
               if (sheetState === 'hidden') {
@@ -743,11 +742,11 @@ export default function App() {
                 setSheetState('hidden')
               }
             }}
-            title="Toggle stats & log sheet"
+            title={t('app.rightStack.chronicle')}
           >
             📊
           </button>
-          <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))} title="Fit view (F)">⛶</button>
+          <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))} title={t('app.controls.fit')}>⛶</button>
           <select value={speed} onChange={e => changeSpeed(Number(e.target.value))} title="ticks/s">
             {SPEEDS.map(v => <option key={v} value={v}>{v}t/s</option>)}
           </select>
@@ -1041,24 +1040,24 @@ export default function App() {
         <div className="help-backdrop" onClick={() => setHelpOpen(false)}>
           <div className="help-panel" onClick={(e) => e.stopPropagation()}>
             <header className="god-head">
-              <h3>Hints</h3>
+              <h3>{t('app.hintsModal.title')}</h3>
               <button className="god-close" onClick={() => setHelpOpen(false)}>×</button>
             </header>
-            <p className="god-note">Tap any chip to see its hint. The Sphere (God) sets universal laws from Spaceland, never touching a single life.</p>
+            <p className="god-note">{t('app.hintsModal.subtitle')}</p>
             <ul>
-              <li><b>tick</b>: step count, 10/s by default, same seed ⇒ same world</li>
-              <li><b>entities</b>: creatures + Food plants + Houses + Corpses</li>
-              <li><b>alive/dead</b>: alive castes + predators/herbivores; dead per-cause breakdown on hover/tap</li>
-              <li><b>hungry/starving</b>: ≤35%/15% energy, see farther, starving 1.35× speed pulsing red</li>
-              <li><b>infected</b>: 0.15 energy +1 health/tick drain, winter 1.5× spread, green ring</li>
-              <li><b>exposed</b>: awake outdoors rain/storm/winter night −0.03 energy, shelter scarce</li>
-              <li><b>chilled</b>: rain/storm/winter-night builds chill ≥12 → −0.18 health/tick, shelter sheds 2.5×</li>
-              <li><b>seed·WxH·boundary</b>: seed determines world, Reset rolls new seed</li>
-              <li><b>day/season/weather</b>: night 0.6× sight, fog 0.6×, rain 0.85× speed, storm +wander; seasons change Food target</li>
-              <li><b>age</b>: super-season Golden/Ice/Chaos/Plague bends food/mut/disease</li>
-              <li><b>Overview</b>: alive spark + caste/trophic graphs + ClanPanel + Plots; Chronicle below is history only (blooms hidden)</li>
-              <li><b>Tap creature</b>: works at any zoom (44px hit radius), shows dossier left, gold halo + name glyph</li>
-              <li><b>Controls</b>: space pause, S step, R reset, F fit, +/- zoom, drag pan, pinch zoom</li>
+              <li><b>{t('app.hud.tick')}</b>: {t('app.hintsModal.tick')}</li>
+              <li><b>{t('app.hud.entities')}</b>: {t('app.hintsModal.entities')}</li>
+              <li><b>{t('app.hud.alive')}/{t('app.hud.dead')}</b>: {t('app.hintsModal.aliveDead')}</li>
+              <li><b>{t('app.hud.hungry')}/{t('app.hud.starving')}</b>: {t('app.hintsModal.hungryStarving')}</li>
+              <li><b>{t('app.hud.infected')}</b>: {t('app.hintsModal.infected')}</li>
+              <li><b>{t('app.hud.exposed')}</b>: {t('app.hintsModal.exposed')}</li>
+              <li><b>{t('app.hud.chilled')}</b>: {t('app.hintsModal.chilled')}</li>
+              <li><b>{t('app.hud.seed')}·WxH·boundary</b>: {t('app.hintsModal.seedDimensions')}</li>
+              <li><b>{t('app.hud.day')}/{t('app.hud.season')}/{t('app.hud.weather')}</b>: {t('app.hintsModal.weatherSeasons')}</li>
+              <li><b>{t('app.hud.age')}</b>: {t('app.hintsModal.age')}</li>
+              <li><b>{t('app.rightStack.overview')}</b>: {t('app.hintsModal.overview')}</li>
+              <li><b>{t('app.hintsModal.tapCreature').split(':')[0] || 'Tap creature'}</b>: {t('app.hintsModal.tapCreature')}</li>
+              <li><b>{t('app.hintsModal.controls').split(':')[0] || 'Controls'}</b>: {t('app.hintsModal.controls')}</li>
             </ul>
           </div>
         </div>

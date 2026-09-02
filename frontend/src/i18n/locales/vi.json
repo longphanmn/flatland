@@ -125,6 +125,23 @@
       "collapse": "Thu gọn",
       "expand": "Mở rộng",
       "live": "Trực tiếp"
+    },
+    "hintsModal": {
+      "title": "Gợi ý & Cơ chế",
+      "subtitle": "Chạm vào bất kỳ thẻ nào để xem gợi ý. Quả Cầu (Thượng Đế) ban hành quy luật vũ trụ từ Spaceland, không can thiệp trực tiếp vào số mệnh của sinh linh.",
+      "tick": "bước mô phỏng, mặc định 10 tick/giây, cùng seed ⇒ cùng thế giới",
+      "entities": "sinh vật + cây lương thực + nhà ở + hài cốt",
+      "aliveDead": "các đẳng cấp đang sống + dã thú/động vật ăn cỏ; phân tích nguyên nhân tử vong khi rê chuột/chạm",
+      "hungryStarving": "năng lượng ≤35%/15%, tầm nhìn xa hơn, đói lả tăng tốc 1.35× phát sáng đỏ",
+      "infected": "mất 0.15 năng lượng + 1 máu/tick, lây lan ×1.5 vào mùa đông, vòng tròn xanh lục",
+      "exposed": "thức ngoài trời mưa/bão/đêm đông −0.03 năng lượng, nơi trú ẩn khan hiếm",
+      "chilled": "nhiễm lạnh tích lũy ≥12 → −0.18 máu/tick, trú ẩn giúp giải lạnh nhanh 2.5×",
+      "seedDimensions": "seed quyết định thế giới, Đặt lại sẽ tạo seed mới",
+      "weatherSeasons": "đêm giảm 0.6× tầm nhìn, sương mù 0.6×, mưa giảm 0.85× tốc độ, bão thêm lang thang; mùa thay đổi mục tiêu lương thực",
+      "age": "đại kỷ nguyên Hoàng Kim/Băng Giá/Hỗn Loạn/Dịch Bệnh biến đổi thức ăn/đột biến/bệnh tật",
+      "overview": "biểu đồ sống + đẳng cấp/chuỗi thức ăn + Bảng Tộc + Âm mưu; Biên niên sử bên dưới là lịch sử",
+      "tapCreature": "chạm ở mọi mức phóng to (bán kính 44px), hiện hồ sơ bên trái, hào quang vàng + ký tự danh tính",
+      "controls": "phím cách tạm dừng, S từng bước, R đặt lại, F vừa khung hình, +/- phóng to thu nhỏ, kéo lia, chụm zoom"
     }
   },
   "god": {
@@ -271,7 +288,10 @@
         "cosmology": "Các vùng ẩn với định luật vật lý biến đổi — đất đai trù phú, trọng lực nặng, không khí tĩnh lặng. Sinh vật hái lượm tinh tường sẽ khám phá ra chúng.",
         "theology_avatars": "8 Avatar Thiêng liêng: ⭕ Sung túc · ⚡ Thịnh nộ · 👁️ Toàn tri · 🛡️ Vĩnh cửu · 🌿 Hồi sinh · ⚖️ Cân bằng · 🌀 Thăng hoa · 🕯️ Thánh địa"
       }
-    }
+    },
+    "curatedPresetsTitle": "Các Cấu hình Tuyển chọn",
+    "lawsOfNatureTitle": "Các Quy luật Tự nhiên",
+    "baselinePrefix": "Mặc định:"
   },
   "history": {
     "title": "Lịch sử & Biên niên thế giới",
@@ -490,7 +510,7 @@
     "danger": "⚠ {{count}}",
     "food": "🍃 {{count}}",
     "culture": "Văn hóa — lan tỏa tới đồng minh, có thể rẽ nhánh thành tập tục đối địch; ban thưởng cộng đồng",
-    "larder": "kho {{count}}",
+    "larder": "Kho lương",
     "granary": "vựa {{count}}",
     "feasting": "yến tiệc",
     "temple": "đền",
@@ -498,7 +518,11 @@
     "faith": "đức tin {{count}}",
     "clickForDetails": "Nhấn để xem chi tiết tộc",
     "showLeader": "xem hồ sơ thủ lĩnh",
-    "showFounder": "xem hồ sơ khai tổ"
+    "showFounder": "xem hồ sơ khai tổ",
+    "sort": "Sắp xếp",
+    "wins": "Thắng",
+    "age": "Tuổi thọ",
+    "allFallen": "tất cả đã tử vong"
   },
   "clanDetails": {
     "loading": "đang tải…",
@@ -537,7 +561,7 @@
     "specialization": "Chuyên môn hóa",
     "members": "Thành viên ({{count}})",
     "noMembers": "Không còn ai sống sót — tộc đã tuyệt diệt.",
-    "recentActivity": "Hoạt động gần đây",
+    "recentActivity": "Hoạt động Gần đây",
     "noEvents": "Không có sự kiện tộc gần đây.",
     "fullHistory": "📚 Toàn bộ lịch sử (tất cả trang)",
     "fullHistoryTitle": "📚 Lịch sử toàn bộ · {{total}} sự kiện",
@@ -548,7 +572,8 @@
     "tabStronghold": "Thành trì",
     "tabRoster": "Đội hình",
     "tabWarfare": "Chiến tranh & Ngoại giao",
-    "tabAnnals": "Biên niên"
+    "tabAnnals": "Biên niên",
+    "diplomaticIntel": "Tình báo Ngoại giao"
   },
   "inspector": {
     "creature": "Sinh vật",
@@ -612,7 +637,16 @@
     "tabLineage": "Dòng dõi & Họ hàng",
     "tabChronicle": "Biên niên cuộc đời",
     "alive": "còn sống",
-    "children": "Con cái"
+    "children": "Con cái",
+    "mutantTag": "ĐỘT BIẾN",
+    "abbottOrthodoxy": "Abbott Chuẩn",
+    "mutated": "Đã Đột biến",
+    "irregularityLabel": "Bất quy tắc",
+    "stageLabel": "Giai đoạn",
+    "sidesLabel": "Số cạnh",
+    "shapeLabel": "Hình dạng",
+    "polarPending": "Đang tính toán đặc tính cực — tôi luyện có thể đang tắt hoặc sinh vật thuộc thế hệ cũ.",
+    "gatheringNeural": "Đang thu thập trạng thái mạng nơ-ron trực tiếp — 16→12→7 (295) ở tần số 15 Hz."
   },
   "plots": {
     "noPlots": "không có âm mưu — thế giới đang yên bình",
@@ -1402,5 +1436,18 @@
       "unrest": "Chỉ số bất ổn nội bộ do chật chội nhà cửa, đói kém và xung đột tính cách.",
       "schism_risk": "Ngưỡng cảnh báo nguy cơ phân ly bộ tộc hoặc bạo loạn."
     }
+  },
+  "overviewPanel": {
+    "vitals": "Chỉ số Sống",
+    "inspect": "soi chi tiết",
+    "clan": "tộc"
+  },
+  "mutationLab": {
+    "morphospaceTitle": "Không gian Hình thái — Diện tích vs Độ sắc nhọn (BG-12)",
+    "areaAxis": "Diện tích A (kích thước) →",
+    "sharpnessAxis": "Độ sắc nhọn θₘᵢₙ (góc nhọn) →",
+    "clustersHint": "Cụm: mũi nhọn sắc bén diện tích nhỏ vs giáp trụ đồ sộ diện tích lớn",
+    "phylogenyTitle": "Cây Phả hệ Hình thái — Abbott → Đột biến dị biệt (BG-11)",
+    "phylogenyHint": "Đường kẻ = phả hệ được ghi nhận; kích thước thể hiện độ bất quy tắc. Biểu tượng mờ = chuẩn Abbott (đa giác đều 3/4/5/8/24)."
   }
 }

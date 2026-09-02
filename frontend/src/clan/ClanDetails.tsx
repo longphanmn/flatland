@@ -331,7 +331,7 @@ export default function ClanDetails({
             </div>
           )}
           <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: '#8b949e' }}>
-            <div style={{ fontWeight: 600, color: '#e6edf3', marginBottom: 4, fontSize: 11, textTransform: 'uppercase' }}>Diplomatic Intelligence</div>
+            <div style={{ fontWeight: 600, color: '#e6edf3', marginBottom: 4, fontSize: 11, textTransform: 'uppercase' }}>{t('clanDetails.diplomaticIntel')}</div>
             <p style={{ margin: 0 }}>Relations drift {data.territory_radius ? `@ ${data.territory_radius} radius` : ''} · War pairs and alliances tracked in Overview’s Geopolitics. Clan-specific Casus Belli (famine/territory/blood feud) surfaced via `war_declared` history.</p>
             {data.events.length > 0 && <div style={{ marginTop: 6, fontSize: 11 }}>{data.events.slice(0,3).map((ev: any,i:number)=>(<div key={i} style={{ padding: '2px 0', borderBottom: '1px solid #21262d' }}><b>{ev.type}</b> tick {ev.tick} {ev.cause?`· ${ev.cause}`:''}</div>))}</div>}
           </div>
@@ -356,7 +356,7 @@ export default function ClanDetails({
             </div>
           )}
           <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 6, padding: '6px 8px' }}>
-            <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', marginBottom: 4 }}>Recent Activity</div>
+            <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', marginBottom: 4 }}>{t('clanDetails.recentActivity')}</div>
             {data.events.length === 0 ? (
               <p className="chip" style={{ margin: '4px 0' }}>{t('clanDetails.noEvents')}</p>
             ) : (

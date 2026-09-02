@@ -125,6 +125,23 @@
       "collapse": "Réduire",
       "expand": "Agrandir",
       "live": "En direct"
+    },
+    "hintsModal": {
+      "title": "Astuces & Mécaniques",
+      "subtitle": "Touchez un chip pour voir son astuce. La Sphère (Dieu) établit les lois universelles depuis Spaceland, sans jamais toucher une vie individuelle.",
+      "tick": "compteur d'étapes, 10/s par défaut, même graine ⇒ même monde",
+      "entities": "créatures + plantes comestibles + maisons + cadavres",
+      "aliveDead": "castes vivantes + prédateurs/herbivores ; détail des causes de mort au survol/clic",
+      "hungryStarving": "énergie ≤35%/15%, vision accrue, affamé 1.35× vitesse avec pulsation rouge",
+      "infected": "perte de 0.15 énergie + 1 santé/tick, propagation ×1.5 en hiver, anneau vert",
+      "exposed": "éveillé dehors sous pluie/tempête/nuit d'hiver −0.03 énergie, abris rares",
+      "chilled": "froid cumulé ≥12 → −0.18 santé/tick, l'abri dissipe le froid 2.5× plus vite",
+      "seedDimensions": "la graine détermine le monde, Réinitialiser génère une nouvelle graine",
+      "weatherSeasons": "nuit 0.6× vision, brouillard 0.6×, pluie 0.85× vitesse, tempête +errance ; saisons modifient l'objectif de nourriture",
+      "age": "super-saison Doré/Glace/Chaos/Peste modifiant nourriture/mutations/maladies",
+      "overview": "courbe vivants + graphes castes/trophiques + panneau de clan + intrigues ; Chronique ci-dessous réservée à l'histoire",
+      "tapCreature": "fonctionne à tout niveau de zoom (rayon 44px), affiche le dossier à gauche, halo doré + glyphe",
+      "controls": "espace pause, S pas, R réinit, F cadrer, +/- zoom, glisser panoramique, pincer zoom"
     }
   },
   "god": {
@@ -271,7 +288,10 @@
         "cosmology": "Zones cachées de physique altérée — sol fertile, gravité lourde, air calme. Les récolteurs habiles les découvrent.",
         "theology_avatars": "8 Avatars Sacrés : ⭕ Abondance · ⚡ Colère · 👁️ Omniscience · 🛡️ Permanence · 🌿 Renouveau · ⚖️ Équilibre · 🌀 Ascension · 🕯️ Sanctuaire"
       }
-    }
+    },
+    "curatedPresetsTitle": "Préréglages curés",
+    "lawsOfNatureTitle": "Lois de la Nature",
+    "baselinePrefix": "Base :"
   },
   "history": {
     "title": "Histoire & Chronique du monde",
@@ -490,7 +510,7 @@
     "danger": "⚠ {{count}}",
     "food": "🍃 {{count}}",
     "culture": "Culture — se diffuse aux alliés, peut diverger en traditions rivales ; confère un bonus collectif",
-    "larder": "garde-manger {{count}}",
+    "larder": "Garde-manger",
     "granary": "grenier {{count}}",
     "feasting": "festin",
     "temple": "temple",
@@ -498,7 +518,11 @@
     "faith": "foi {{count}}",
     "clickForDetails": "Cliquer pour voir les détails du clan",
     "showLeader": "voir profil du chef",
-    "showFounder": "voir profil du fondateur"
+    "showFounder": "voir profil du fondateur",
+    "sort": "Trier",
+    "wins": "Victoires",
+    "age": "Âge",
+    "allFallen": "tous tombés"
   },
   "clanDetails": {
     "loading": "chargement…",
@@ -548,7 +572,8 @@
     "tabStronghold": "Bastion",
     "tabRoster": "Effectif",
     "tabWarfare": "Guerre & Diplomatie",
-    "tabAnnals": "Annales"
+    "tabAnnals": "Annales",
+    "diplomaticIntel": "Renseignement diplomatique"
   },
   "inspector": {
     "creature": "Créature",
@@ -612,7 +637,16 @@
     "tabLineage": "Lignée & Parentèle",
     "tabChronicle": "Chronique de vie",
     "alive": "vivant",
-    "children": "Progéniture"
+    "children": "Progéniture",
+    "mutantTag": "MUTANT",
+    "abbottOrthodoxy": "Abbott",
+    "mutated": "Đột biến",
+    "irregularityLabel": "Irrégularité",
+    "stageLabel": "Stade",
+    "sidesLabel": "Côtés",
+    "shapeLabel": "Forme",
+    "polarPending": "Calcul des traits polaires en attente — recuit désactivé ou créature d'ancienne génération.",
+    "gatheringNeural": "Collecte de l'état neuronal en direct — 16→12→7 (295) à 15 Hz."
   },
   "plots": {
     "noPlots": "aucun complot — le monde est paisible",
@@ -1402,5 +1436,18 @@
       "unrest": "Friction interne du clan basée sur le surpeuplement des abris, la faim et les tensions de personnalité.",
       "schism_risk": "Seuil d'alerte indiquant un risque de scission clanique ou de mutinerie."
     }
+  },
+  "overviewPanel": {
+    "vitals": "Signes vitaux",
+    "inspect": "examiner",
+    "clan": "clan"
+  },
+  "mutationLab": {
+    "morphospaceTitle": "Morpho-espace — Surface vs Acuité (BG-12)",
+    "areaAxis": "Surface A (taille) →",
+    "sharpnessAxis": "Acuité θₘᵢₙ (độ nhọn) →",
+    "clustersHint": "Groupes : sommet acéré à faible surface vs armure volumineuse à grande surface",
+    "phylogenyTitle": "Phylogénie — Abbott → Aberrant (BG-11)",
+    "phylogenyHint": "Lignes = filiation documentée si disponible ; taille = irrégularité. Icônes pâles = orthodoxie Abbott (réguliers 3/4/5/8/24)."
   }
 }

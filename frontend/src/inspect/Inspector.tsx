@@ -93,6 +93,7 @@ function pseudoRand(seed: number, i: number): number {
   return x - Math.floor(x)
 }
 function PolarRadar({ e }: { e: EntityState }) {
+  const { t } = useI18n()
   const cx = 70, cy = 70, R = 46
   const k = Math.max(3, Math.min(24, (e as any).morph_k ?? e.sides ?? 4))
   const id = (e as any).id ?? 1
@@ -132,7 +133,7 @@ function PolarRadar({ e }: { e: EntityState }) {
   return (
     <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 8, padding: '8px 8px 6px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <span style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>🧬 Polar Morph — {e.caste} · K={k} {isMutant && <span style={{ color: '#d2a8ff', border: '1px solid #a371f766', background: '#a371f733', padding: '0 4px', borderRadius: 3, fontSize: 9 }}>MUTANT</span>}</span>
+        <span style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>🧬 Polar Morph — {e.caste} · K={k} {isMutant && <span style={{ color: '#d2a8ff', border: '1px solid #a371f766', background: '#a371f733', padding: '0 4px', borderRadius: 3, fontSize: 9 }}>{t('inspector.mutantTag')}</span>}</span>
         <span style={{ fontSize: 10, color: '#8b949e' }}>irr {irr.toFixed(3)}</span>
       </div>
       <svg width={140} height={140} viewBox="0 0 140 140" style={{ display: 'block', margin: '0 auto', background: '#161b22', borderRadius: 6, border: '1px solid #30363d' }}>
@@ -156,14 +157,15 @@ function PolarRadar({ e }: { e: EntityState }) {
         <circle cx={cx} cy={cy} r={1.2} fill="#e6edf3" />
       </svg>
       <div style={{ display: 'flex', gap: 6, marginTop: 4, fontSize: 10, color: '#8b949e' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 2, background: '#8b949e', opacity: 0.6, display: 'inline-block', border: '1px dashed #8b949e' }} /> Abbott</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 2, background: isMutant ? '#d2a8ff' : '#79c0ff', display: 'inline-block' }} /> Mutated</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 2, background: '#8b949e', opacity: 0.6, display: 'inline-block', border: '1px dashed #8b949e' }} /> {t('inspector.abbottOrthodoxy')}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 2, background: isMutant ? '#d2a8ff' : '#79c0ff', display: 'inline-block' }} /> {t('inspector.mutated')}</span>
         {mt && <span style={{ marginLeft: 'auto', color: '#8b949e' }}>A {mt[0]?.toFixed(2)} · θ {((mt[3]||0)*180/Math.PI).toFixed(1)}°</span>}
       </div>
     </div>
   )
 }
 function BiomechHUD({ e }: { e: EntityState }) {
+  const { t } = useI18n()
   const mt = (e as any).morph_traits as number[] | undefined
   const irr = (e as any).irregularity ?? 0
   const area = mt?.[0] ?? 0
@@ -179,12 +181,12 @@ function BiomechHUD({ e }: { e: EntityState }) {
       <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '8px 10px' }}>
         <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>⚙️ Biomechanical Dossier (BG-10)</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 11 }}>
-          <span className="chip" style={{ justifyContent: 'space-between', background: '#0d1117' }}>Irregularity <b style={{ color: irr>0.4?'#f85149':'#e6edf3' }}>{irr.toFixed(3)}</b></span>
-          <span className="chip" style={{ justifyContent: 'space-between', background: '#0d1117' }}>Stage <b>{e.stage}</b></span>
-          <span className="chip" style={{ justifyContent: 'space-between', background: '#0d1117' }}>Sides <b>{e.sides}</b></span>
+          <span className="chip" style={{ justifyContent: 'space-between', background: '#0d1117' }}>{t('inspector.irregularityLabel')} <b style={{ color: irr>0.4?'#f85149':'#e6edf3' }}>{irr.toFixed(3)}</b></span>
+          <span className="chip" style={{ justifyContent: 'space-between', background: '#0d1117' }}>{t('inspector.stageLabel')} <b>{e.stage}</b></span>
+          <span className="chip" style={{ justifyContent: 'space-between', background: '#0d1117' }}>{t('inspector.sidesLabel')} <b>{e.sides}</b></span>
           <span className="chip" style={{ justifyContent: 'space-between', background: '#0d1117' }}>Gen <b>{(e as any).generation ?? 0}</b></span>
         </div>
-        <div style={{ fontSize: 10, color: '#6e7681', marginTop: 6 }}>Polar trait bake pending — annealing may be off or creature from legacy gen.</div>
+        <div style={{ fontSize: 10, color: '#6e7681', marginTop: 6 }}>{t('inspector.polarPending')}</div>
       </div>
     )
   }
@@ -496,9 +498,9 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
             <PolarRadar e={e} />
             <BiomechHUD e={e} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 11 }}>
-              <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>Sides <b>{e.sides}</b> {(e as any).morph_k && (e as any).morph_k !== e.sides ? <span style={{ color: '#d2a8ff' }}>→{ (e as any).morph_k}</span> : null}</span>
-              <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>Shape <b>{e.shape}</b></span>
-              <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>Stage <b>{e.stage}</b></span>
+              <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>{t('inspector.sidesLabel')} <b>{e.sides}</b> {(e as any).morph_k && (e as any).morph_k !== e.sides ? <span style={{ color: '#d2a8ff' }}>→{ (e as any).morph_k}</span> : null}</span>
+              <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>{t('inspector.shapeLabel')} <b>{e.shape}</b></span>
+              <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>{t('inspector.stageLabel')} <b>{e.stage}</b></span>
               <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>Gen <b>{e.generation ?? 0}</b></span>
             </div>
           </div>
@@ -538,7 +540,7 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
               <span style={{ color: '#58a6ff', textTransform: 'none' }}>hidden {e.nn_hidden?.toFixed(3) ?? '—'}</span>
             </div>
             {e.nn_hidden == null && !e.nn_outputs ? (
-              <div className="chip" style={{ background: '#161b22', border: '1px solid #30363d', padding: '8px', borderRadius: 6, fontSize: 12, color: '#8b949e' }}>Gathering live neural state — 16→12→7 (295) at 15 Hz.</div>
+              <div className="chip" style={{ background: '#161b22', border: '1px solid #30363d', padding: '8px', borderRadius: 6, fontSize: 12, color: '#8b949e' }}>{t('inspector.gatheringNeural')}</div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
                 {[

@@ -125,6 +125,23 @@
       "collapse": "Collapse right panel",
       "expand": "Expand right panel",
       "live": "Live"
+    },
+    "hintsModal": {
+      "title": "Hints & Mechanics",
+      "subtitle": "Tap any chip to see its hint. The Sphere (God) sets universal laws from Spaceland, never touching a single life.",
+      "tick": "step count, 10/s by default, same seed ⇒ same world",
+      "entities": "creatures + Food plants + Houses + Corpses",
+      "aliveDead": "alive castes + predators/herbivores; dead per-cause breakdown on hover/tap",
+      "hungryStarving": "≤35%/15% energy, see farther, starving 1.35× speed pulsing red",
+      "infected": "0.15 energy +1 health/tick drain, winter 1.5× spread, green ring",
+      "exposed": "awake outdoors rain/storm/winter night −0.03 energy, shelter scarce",
+      "chilled": "rain/storm/winter-night builds chill ≥12 → −0.18 health/tick, shelter sheds 2.5×",
+      "seedDimensions": "seed determines world, Reset rolls new seed",
+      "weatherSeasons": "night 0.6× sight, fog 0.6×, rain 0.85× speed, storm +wander; seasons change Food target",
+      "age": "super-season Golden/Ice/Chaos/Plague bends food/mut/disease",
+      "overview": "alive spark + caste/trophic graphs + ClanPanel + Plots; Chronicle below is history only",
+      "tapCreature": "works at any zoom (44px hit radius), shows dossier left, gold halo + name glyph",
+      "controls": "space pause, S step, R reset, F fit, +/- zoom, drag pan, pinch zoom"
     }
   },
   "god": {
@@ -271,7 +288,10 @@
         "cosmology": "Hidden zones of altered physics — fertile ground, heavy gravity, calm air. Skilled foragers discover them.",
         "theology_avatars": "8 Sacred Avatars: ⭕ Abundance · ⚡ Wrath · 👁️ Omniscience · 🛡️ Permanence · 🌿 Renewal · ⚖️ Equilibrium · 🌀 Ascent · 🕯️ Sanctuary"
       }
-    }
+    },
+    "curatedPresetsTitle": "Curated Presets",
+    "lawsOfNatureTitle": "Laws of Nature",
+    "baselinePrefix": "Baseline:"
   },
   "history": {
     "title": "World History & Chronicle",
@@ -490,7 +510,7 @@
     "danger": "⚠ {{count}}",
     "food": "🍃 {{count}}",
     "culture": "Culture — spreads to allies, can diverge into rival traditions; grants small collective bonus",
-    "larder": "larder {{count}}",
+    "larder": "Larder",
     "granary": "granary {{count}}",
     "feasting": "feasting",
     "temple": "temple",
@@ -498,7 +518,11 @@
     "faith": "faith {{count}}",
     "clickForDetails": "Click for clan details",
     "showLeader": "show leader profile",
-    "showFounder": "show founder profile"
+    "showFounder": "show founder profile",
+    "sort": "Sort",
+    "wins": "Wins",
+    "age": "Age",
+    "allFallen": "all fallen"
   },
   "clanDetails": {
     "loading": "loading…",
@@ -548,7 +572,8 @@
     "tabStronghold": "Stronghold",
     "tabRoster": "Roster",
     "tabWarfare": "Warfare & Diplomacy",
-    "tabAnnals": "Annals"
+    "tabAnnals": "Annals",
+    "diplomaticIntel": "Diplomatic Intelligence"
   },
   "inspector": {
     "creature": "Creature",
@@ -612,7 +637,16 @@
     "tabLineage": "Lineage & Kin",
     "tabChronicle": "Life Chronicle",
     "alive": "alive",
-    "children": "Offspring"
+    "children": "Offspring",
+    "mutantTag": "MUTANT",
+    "abbottOrthodoxy": "Abbott",
+    "mutated": "Mutated",
+    "irregularityLabel": "Irregularity",
+    "stageLabel": "Stage",
+    "sidesLabel": "Sides",
+    "shapeLabel": "Shape",
+    "polarPending": "Polar trait bake pending — annealing may be off or creature from legacy gen.",
+    "gatheringNeural": "Gathering live neural state — 16→12→7 (295) at 15 Hz."
   },
   "plots": {
     "noPlots": "no plots — the world is calm",
@@ -1402,5 +1436,18 @@
       "unrest": "Internal clan friction based on overcrowded shelters, hunger stress, and personality discord.",
       "schism_risk": "Warning threshold indicating risk of clan rebellion, desertion, or civil fragmentation."
     }
+  },
+  "overviewPanel": {
+    "vitals": "Vitals",
+    "inspect": "inspect",
+    "clan": "clan"
+  },
+  "mutationLab": {
+    "morphospaceTitle": "Morphospace — Area vs Sharpness (BG-12)",
+    "areaAxis": "Shoelace Area A (size) →",
+    "sharpnessAxis": "Sharpness θₘᵢₙ (acuteness) →",
+    "clustersHint": "Clusters: low-A sharp apex vs high-A bulky armor",
+    "phylogenyTitle": "Phylogeny — Abbott → Aberrant (BG-11)",
+    "phylogenyHint": "Lines = documented parentage when available; size encodes irregularity. Faint icons = Abbott orthodoxy (regular 3/4/5/8/24)."
   }
 }

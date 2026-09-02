@@ -244,7 +244,7 @@ export default function OverviewPanel({
 
       {/* 3. Compact 2-row vitals pill strip */}
       <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: '6px 8px' }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: '#8b949e', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 5 }}>Vitals</div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: '#8b949e', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 5 }}>{t('overviewPanel.vitals')}</div>
         <div className="vitals-strip" style={{ marginBottom: 4 }}>
           <span className="vitals-pill" title="Male creatures">♂ {t('app.overview.men')} <b style={{ color: '#79c0ff' }}>{menCount}</b></span>
           <span className="vitals-pill" title="Female creatures">♀ {t('app.overview.women')} <b style={{ color: '#ff9bce' }}>{womenCount}</b></span>
@@ -254,8 +254,8 @@ export default function OverviewPanel({
         <div className="vitals-strip">
           <span className="vitals-pill" style={{ color: hungryCount + starvingCount > 0 ? '#d29922' : undefined }} title="Hungry + starving">🍖 {t('app.overview.hungry')} <b>{hungryCount + starvingCount}</b>{starvingCount > 0 ? ` · ⚠ ${starvingCount}` : ''}</span>
           <span className="vitals-pill" style={{ color: chilledCount > 0 ? '#79c0ff' : undefined }} title="Chilled">🥶 {t('app.overview.chilled')} <b>{chilledCount}</b></span>
-          <span className="vitals-pill" title="Total alive">💚 <b>{state.creatures_alive}</b> alive</span>
-          <span className="vitals-pill" title="Total dead">💀 <b>{state.creatures_dead}</b> fallen</span>
+          <span className="vitals-pill" title="Total alive">💚 <b>{state.creatures_alive}</b> {t('app.hud.alive').toLowerCase()}</span>
+          <span className="vitals-pill" title="Total dead">💀 <b>{state.creatures_dead}</b> {t('app.hud.dead').toLowerCase()}</span>
         </div>
       </div>
 
@@ -329,13 +329,13 @@ export default function OverviewPanel({
             {eldestCreature && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                 <span style={{ color: '#8b949e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>⏳ {t('app.overview.eldest', { name: eldestCreature.personal_name || eldestCreature.caste || 'Citizen', id: eldestCreature.id, age: eldestCreature.age ?? 0, gen: eldestCreature.generation ?? 0 })}</span>
-                <button onClick={() => onSelectCreature(eldestCreature.id)} style={{ background: 'transparent', border: 'none', color: '#58a6ff', cursor: 'pointer', fontSize: 11, padding: 0, textDecoration: 'underline', flex: 'none' }}>inspect</button>
+                <button onClick={() => onSelectCreature(eldestCreature.id)} style={{ background: 'transparent', border: 'none', color: '#58a6ff', cursor: 'pointer', fontSize: 11, padding: 0, textDecoration: 'underline', flex: 'none' }}>{t('overviewPanel.inspect')}</button>
               </div>
             )}
             {topChief && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                 <span style={{ color: '#8b949e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>👑 {t('app.overview.topChief', { id: topChief.id, clan: topChief.clanName, wins: topChief.wins })}</span>
-                <button onClick={() => onSelectClan(topChief.clanId)} style={{ background: 'transparent', border: 'none', color: '#58a6ff', cursor: 'pointer', fontSize: 11, padding: 0, textDecoration: 'underline', flex: 'none' }}>clan</button>
+                <button onClick={() => onSelectClan(topChief.clanId)} style={{ background: 'transparent', border: 'none', color: '#58a6ff', cursor: 'pointer', fontSize: 11, padding: 0, textDecoration: 'underline', flex: 'none' }}>{t('overviewPanel.clan')}</button>
               </div>
             )}
           </div>
