@@ -3,11 +3,11 @@
 The Sphere model: The Sphere (God) sets **laws** from Spaceland, never touches individual creatures. Everything else emerges.
 Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observability · `- [ ]` open · `- [x]` done · *parked* = decided, not pending
 
-> **Active backlog only.** Completed roadmaps §F–§BD (632 items) + §BE (10) + §BF (5) = 647 items → [`docs/roadmap-archive.md`](docs/roadmap-archive.md). This file tracks the **0 open items — §BE ✅ Done (10/10) + §BF ✅ Done (5/5) — + 8 parked**.
+> **Active backlog only.** Completed roadmaps §F–§BF (647 items) → [`docs/roadmap-archive.md`](docs/roadmap-archive.md). This file tracks the **12 open items in §BG (Mutational Shape & Visual Phenotypes) + 8 parked**.
 
 ---
 
-## Open work — 0 items (Morphological Physics Evolution & Density-Dependent Soft-Cap Damping — ✅ Done 18/18)
+## Open work — 12 items (Mutational Shape & Visual Phenotypes)
 
 ### Project Status & Architectural Context
 - **Completed**:
@@ -185,6 +185,32 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 - [x] [P1] **BF-3 Early-world cooldown multiplier (`boom_cooldown_mult`)** — In `_birth()`, extend `_cooldown_eff` by up to ×3 at day 0, linearly decaying to ×1 at `boom_ramp_days`. `simulation.py:7529` — done ×3 ramp
 - [x] [P1] **BF-4 `mate_energy_min` ramp (`boom_energy_mult`)** — Raise effective `_mate_thr_eff` by up to ×2.5 at day 0, decaying to ×1 at `boom_ramp_days`. Only the well-fed breed on day 0. `simulation.py:7433` — done ×2.5 ramp
 - [x] [P1] **BF-5 `initial_season_offset`: Start worlds in autumn** — Add `initial_season_offset: int = 0` to `Config`; patch `_season()` to add offset. Set to `2` (autumn) in balance/sustainable presets so founders face winter before earning the spring birth bonus. `simulation.py:888` — done offset 2
+
+---
+
+## §BG Mutational Shape & Visual Phenotypes — Open (12 items)
+
+> **Context**: Backend models rich polar polygon genomes ($K \in [3,24]$, radii $r_i$, angles $\phi_i$, $\lambda(g)$ annealing, Shoelace area, moment of inertia, tip sharpness), but frontend previously rendered all creatures as rigid, symmetrical regular $N$-gons. This roadmap transforms creature visuals to reflect genetic mutations, razor isosceles apexes, physical traits, and speciation. See `mutation_visual_brainstorm.md` for full design.
+
+### Phase 1: Dynamic Mutated Geometry & Razor Isosceles (Canvas2D & SVG) [P0]
+- [ ] [P0] **BG-1 True Isosceles Soldier razor apex** — Render Soldiers with their true `iso_angle` ($\theta_{\text{iso}} \in [10^\circ, 59.5^\circ]$) pointing forward along velocity heading in `renderCore.ts` and `CreatureAvatar.tsx` instead of equilateral triangles.
+- [ ] [P0] **BG-2 Dynamic mutated polygon geometry** — Procedurally reconstruct and render irregular, asymmetric polygons on canvas using `(sides, irregularity, seed, id)` with vertex radii offsets and angular jitter.
+- [ ] [P0] **BG-3 Line caste (Woman) variable thickness & taper** — Render Women with variable tip sharpness and mid-span taper reflecting perimeter and metabolic genes.
+- [ ] [P0] **BG-4 Topological aberration rendering** — Render non-standard vertex counts ($K \in [3,24]$, e.g., 7-sided noble, 11-sided aberration) with accurate vertex distribution.
+
+### Phase 2: Visual Mutational Phenotypes & Accents [P1]
+- [ ] [P1] **BG-5 Blade Glint (Kinetic Pierce Accent)** — Render a highlighted neon glint on the creature's sharpest interior vertex ($\theta_{\min}$) scaled by attack damage.
+- [ ] [P1] **BG-6 Heavy Inertia Armor** — Render double-layered perimeter strokes and darker fill opacity for creatures with high rotational inertia $I_{zz}$ and large Shoelace area $A$.
+- [ ] [P1] **BG-7 Speciation chromatic aberration** — Add iridescent dual-tone edge accents as $\lambda(g) \to 0$ (high generational divergence from Abbott orthodoxy).
+- [ ] [P1] **BG-8 Elder lineage nucleus** — Render an internal inscribed geometric core or ancestral glyph inside high-generation elders and clan chiefs.
+
+### Phase 3: Inspector Polar Radar & Biomechanical Dossier [P1]
+- [ ] [P1] **BG-9 Polar Morphology Radar in Inspector** — Interactive SVG radar overlay in `Inspector.tsx` showing the creature's mutated polygon against the ghosted orthodox Abbott template.
+- [ ] [P1] **BG-10 Biomechanical trait HUD** — Display live computed metrics: Sharpness Index ($\theta_{\min}$), Irregularity score ($\sigma_r^2/\bar{r}$), Rotational Inertia ($I_{zz}$), and Shoelace Area ($A$).
+
+### Phase 4: Mutation Lab Lineage Tree & Morphospace [P2]
+- [ ] [P2] **BG-11 Morphological Phylogeny Tree** — Visual ancestral drift tree in `MutationLab.tsx` showing geometric evolution from founding Platonic solids to aberrant polyforms.
+- [ ] [P2] **BG-12 Morphospace 2D Scatterplot** — Interactive Area vs. Sharpness scatterplot in Mutation Lab visualizing emergent sub-species clusters.
 
 ---
 
