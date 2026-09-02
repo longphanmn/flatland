@@ -309,6 +309,131 @@ export default function MutationLab({ data, onSelectCreature }: Props) {
         )}
       </div>
 
+      {/* §BG-12 Morphospace 2D Scatterplot — Area vs Sharpness */}
+      {(() => {
+        const scatter: any[] = gen.morph_scatter ?? []
+        if (scatter.length === 0) return null
+        const W = 360, H = 200, pad = 28
+        const areas = scatter.map((p:any)=>p.area)
+        const thetas = scatter.map((p:any)=>p.theta_min*180/Math.PI)
+        const minA = Math.min(...areas, 0.5), maxA = Math.max(...areas, 6)
+        const minT = Math.min(...thetas, 5), maxT = Math.max(...thetas, 120)
+        const sx = (a:number)=> pad + ((a-minA)/Math.max(0.01,maxA-minA))*(W-pad*2)
+        const sy = (t:number)=> H-pad - ((t-minT)/Math.max(0.01,maxT-minT))*(H-pad*2-14)
+        return (
+        <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 13 }}>🗺️</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Morphospace — Area vs Sharpness (BG-12)</span>
+            </div>
+            <span style={{ fontSize: 10, color: '#8b949e' }}>{scatter.length} points · elders ★ highlight</span>
+          </div>
+          <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ background: '#0d1117', borderRadius: 6, border: '1px solid #21262d', maxWidth: '100%', height: 'auto' }}>
+            {/* grid */}
+            {[0,0.25,0.5,0.75,1].map(f=>(
+              <g key={'g'+f}>
+                <line x1={pad + f*(W-pad*2)} y1={14} x2={pad + f*(W-pad*2)} y2={H-pad} stroke="#21262d" strokeWidth={0.6} strokeDasharray="2 2" />
+                <line x1={pad} y1={14+f*(H-pad*2-14)} x2={W-pad} y2={14+f*(H-pad*2-14)} stroke="#21262d" strokeWidth={0.6} strokeDasharray="2 2" />
+              </g>
+            ))}
+            {/* axes */}
+            <line x1={pad} y1={H-pad} x2={W-pad} y2={H-pad} stroke="#30363d" strokeWidth={0.8}/>
+            <line x1={pad} y1={14} x2={pad} y2={H-pad} stroke="#30363d" strokeWidth={0.8}/>
+            <text x={W/2} y={H-6} textAnchor="middle" fontSize={7} fill="#8b949e">Shoelace Area A (size) →</text>
+            <text x={8} y={H/2} textAnchor="middle" fontSize={7} fill="#8b949e" transform={`rotate(-90 8 ${H/2})`}>Sharpness θₘᵢₙ (acuteness) →</text>
+            {scatter.map((p:any)=>{
+              const x=sx(p.area), y=sy(p.theta_min*180/Math.PI)
+              const col = SIDES_COLORS[p.sides] || (p.irregularity>0.3?'#d2a8ff':'#79c0ff')
+              const isElder = p.is_elder
+              return (
+                <g key={p.id} style={{ cursor: onSelectCreature? 'pointer':'default' }} onClick={()=>onSelectCreature?.(p.id)}>
+                  <circle cx={x} cy={y} r={2.8 + p.irregularity*4} fill={col} fillOpacity={0.85} stroke={isElder?'#e3b341':'#0d1117'} strokeWidth={isElder?1.2:0.7} />
+                  {isElder && <text x={x} y={y-6} textAnchor="middle" fontSize={5} fill="#e3b341">★</text>}
+                </g>
+              )
+            })}
+          </svg>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 9, color: '#8b949e' }}>
+            <span>◉ area = Shoelace A, y = θₘᵢₙ (°) lower = sharper razor</span>
+            <span style={{ marginLeft:'auto' }}>Clusters: low-A sharp apex vs high-A bulky armor</span>
+          </div>
+        </div>
+        )})()}
+
+      {/* §BG-11 Morphological Phylogeny Tree */}
+      {(() => {
+        const nodes: any[] = gen.phylogeny_nodes ?? []
+        if (nodes.length === 0) return null
+        const sorted = [...nodes].sort((a,b)=>a.generation-b.generation)
+        const maxG = Math.max(...sorted.map(n=>n.generation), 1)
+        const Wp = 360, Hp = 160, padT = 12, padL = 24
+        const xFor = (g:number)=> padL + (g/Math.max(1,maxG))*(Wp-padL-12)
+        // group by generation buckets for y spreading
+        const buckets: Record<number, any[]> = {}
+        sorted.forEach(n=>{ const b=Math.floor(n.generation/ Math.max(1, Math.ceil(maxG/6))); (buckets[b]=buckets[b]||[]).push(n)})
+        const yFor = (n:any)=>{
+          const b=Math.floor(n.generation/ Math.max(1, Math.ceil(maxG/6)))
+          const arr=buckets[b]||[]
+          const idx=arr.indexOf(n)
+          const h=(Hp-padT*2)/Math.max(1, arr.length)
+          return padT+ idx*h + h/2
+        }
+        const idMap = new Map<number, any>(sorted.map(n=>[n.id,n]))
+        return (
+        <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 13 }}>🌳</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#c9d1d9', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Phylogeny — Abbott → Aberrant (BG-11)</span>
+            </div>
+            <span style={{ fontSize: 10, color: '#8b949e' }}>gen 0→{maxG} · dashed = ancestral ghost</span>
+          </div>
+          <svg width="100%" viewBox={`0 0 ${Wp} ${Hp}`} style={{ background: '#0d1117', borderRadius: 6, border: '1px solid #21262d' }}>
+            {/* generational axis */}
+            {[0, maxG].map(g=>(
+              <g key={g}>
+                <line x1={xFor(g)} y1={padT} x2={xFor(g)} y2={Hp-padT} stroke="#21262d" strokeWidth={0.5} strokeDasharray="3 3"/>
+                <text x={xFor(g)} y={Hp-2} textAnchor="middle" fontSize={6} fill="#6e7681">g{g}</text>
+              </g>
+            ))}
+            {/* Abbott ghost templates as faint icons at g0 */}
+            {[
+              {s:3, y: Hp*0.18}, {s:4, y: Hp*0.38}, {s:5, y: Hp*0.58}, {s:8, y: Hp*0.78}, {s:24, y: Hp*0.92}
+            ].map(t=>(
+              <g key={'ab'+t.s} opacity={0.22}>
+                <polygon
+                  points={Array.from({length: Math.min(24,t.s)},(_,i)=>{ const a=(i/t.s)*Math.PI*2 -Math.PI/2; const cx=xFor(0)+7, cy=t.y; const rr=7; return `${cx+Math.cos(a)*rr},${cy+Math.sin(a)*rr}`}).join(' ')}
+                  fill="none" stroke="#8b949e" strokeWidth={0.7} strokeDasharray="2 2"
+                />
+                <text x={xFor(0)-8} y={t.y+2} textAnchor="end" fontSize={5} fill="#6e7681">{t.s===24?'○ Priest':`${t.s}-gon`}</text>
+              </g>
+            ))}
+            {/* parent edges */}
+            {sorted.map(n=>{
+              const parents=[n.mother_id, n.father_id].filter(id=>id && idMap.has(id))
+              return parents.map((pid:any)=>{
+                const p=idMap.get(pid)
+                return <line key={`${n.id}-${pid}`} x1={xFor(p.generation)} y1={yFor(p)} x2={xFor(n.generation)} y2={yFor(n)} stroke="#388bfd" strokeWidth={0.7} opacity={0.35} />
+              })
+            })}
+            {/* nodes */}
+            {sorted.map(n=>{
+              const col=SIDES_COLORS[n.sides]||'#d2a8ff'
+              const isElder=n.stage==='elder'
+              return (
+                <g key={n.id} style={{ cursor: onSelectCreature? 'pointer':'default' }} onClick={()=>onSelectCreature?.(n.id)}>
+                  <circle cx={xFor(n.generation)} cy={yFor(n)} r={4 + n.irregularity*5} fill={col} stroke={isElder?'#e3b341':'#0d1117'} strokeWidth={isElder?1.2:0.8} opacity={0.95} />
+                  {isElder && <text x={xFor(n.generation)} y={yFor(n)-7} textAnchor="middle" fontSize={5} fill="#e3b341">👑</text>}
+                  <text x={xFor(n.generation)+7} y={yFor(n)+2} fontSize={5} fill="#8b949e">#{n.id} {n.caste}·{n.sides}</text>
+                </g>
+              )
+            })}
+          </svg>
+          <div style={{ fontSize: 9, color: '#8b949e' }}>Lines = documented parentage when available; size encodes irregularity. Faint icons = Abbott orthodoxy (regular 3/4/5/8/24).</div>
+        </div>
+        )})()}
+
       {/* Live Mutation Chronicle Feed */}
       <div
         style={{

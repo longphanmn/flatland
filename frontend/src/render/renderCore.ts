@@ -12,6 +12,45 @@ export const PRIEST_SIDES = 24
 export const MIN_SCALE_FACTOR = 0.4
 export const MAX_SCALE = 80
 
+// §BG: deterministic pseudo-random per creature/vertex (sin-hash, no allocation)
+function bgPseudoRand(seed: number, i: number): number {
+  const x = Math.sin(seed * 127.1 + i * 311.7) * 43758.5453
+  return x - Math.floor(x)
+}
+// §BG: mutated polygon helpers — reconstruct irregular vertices from (sides, irregularity, id)
+export function bgMutatedPoints(
+  cx: number, cy: number, sides: number, radius: number, baseAngle: number,
+  irregularity: number, id: number,
+): Array<[number, number]> {
+  const irr = Math.max(0, Math.min(1, irregularity || 0))
+  const pts: Array<[number, number]> = []
+  const startAng = baseAngle - Math.PI / 2
+  for (let i = 0; i < sides; i++) {
+    const aJitter = (bgPseudoRand(id, i * 2) - 0.5) * irr * 0.65
+    const rJitter = 1 + (bgPseudoRand(id, i * 2 + 1) - 0.5) * irr * 0.9
+    const a = startAng + (i / sides) * TAU + aJitter
+    const rr = radius * rJitter
+    pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr])
+  }
+  return pts
+}
+// §BG: true isosceles soldier razor apex points (apex forward along heading)
+function bgSoldierRazor(cx: number, cy: number, radius: number, heading: number, isoAngleDeg: number): Array<[number, number]> {
+  const theta = Math.max(8, Math.min(59.8, isoAngleDeg)) * Math.PI / 180
+  const xr = radius * 1.05
+  const xb = radius * 0.55
+  const dx = xr + xb
+  const yb = dx * Math.tan(theta / 2)
+  // local triangle: apex forward, base left/right behind
+  const local: Array<[number, number]> = [
+    [xr, 0],
+    [-xb, yb],
+    [-xb, -yb],
+  ]
+  const ca = Math.cos(heading), sa = Math.sin(heading)
+  return local.map(([lx, ly]) => [cx + lx * ca - ly * sa, cy + lx * sa + ly * ca])
+}
+
 export function clusterEntities<T extends { x: number; y: number }>(entities: T[], maxDist: number = 38.0): T[][] {
   if (entities.length === 0) return []
   const clusters: T[][] = []
@@ -364,11 +403,13 @@ export function drawBatchedEntities(
     ctx.globalAlpha = 1
   }
 
-  // Draw Women (Lines)
+  // §BG Draw Women (Lines) — variable thickness & taper (BG-3)
   if (women.length > 0) {
     const color = CASTE_COLORS.Woman || '#ff9bce'
+    ctx.fillStyle = color
     ctx.strokeStyle = color
-    ctx.lineWidth = 0.7
+    ctx.lineWidth = 0.35
+    ctx.globalAlpha = 0.92
     ctx.beginPath()
     for (const w of women) {
       const stage = w.stage ?? 'adult'
@@ -376,15 +417,31 @@ export function drawBatchedEntities(
       const r = (w.radius ?? 0.9) * sizeF * (w.scale_jitter ?? 1)
       const len = Math.max(1.8, r * 2.4)
       const ang = w.angle + (w.angle_jitter ?? 0)
-      const cosA = Math.cos(ang)
-      const sinA = Math.sin(ang)
-      ctx.moveTo(w.x - len * cosA, w.y - len * sinA)
-      ctx.lineTo(w.x + len * cosA, w.y + len * sinA)
+      const irr = (w as any).irregularity ?? 0
+      const mt = (w as any).morph_traits as number[] | undefined
+      const perimFactor = mt && mt[1] ? Math.max(0.7, Math.min(1.9, mt[1] / 5.657)) : 1
+      const wMid = Math.max(0.16, r * 0.30 * perimFactor * (0.85 + irr * 0.9))
+      // needle diamond: front tip, midTop, back tip, midBottom
+      const ca = Math.cos(ang), sa = Math.sin(ang)
+      const paX = -sa, paY = ca // perp
+      const frontX = w.x + ca * len, frontY = w.y + sa * len
+      const backX = w.x - ca * len * 0.92, backY = w.y - sa * len * 0.92
+      const midTopX = w.x + paX * wMid, midTopY = w.y + paY * wMid
+      const midBotX = w.x - paX * wMid, midBotY = w.y - paY * wMid
+      ctx.moveTo(frontX, frontY)
+      ctx.lineTo(midTopX, midTopY)
+      ctx.lineTo(backX, backY)
+      ctx.lineTo(midBotX, midBotY)
+      ctx.closePath()
     }
+    ctx.globalAlpha = 0.20
+    ctx.fill()
+    ctx.globalAlpha = 0.95
     ctx.stroke()
+    ctx.globalAlpha = 1
   }
 
-  // Draw Polygons
+  // §BG Draw Polygons — mutated geometry (BG-1, BG-2, BG-4)
   const useCircleLOD = isVeryZoomedOut || (isZoomedOut && isDense)
   for (const [caste, list] of polygonsByCaste.entries()) {
     const color = CASTE_COLORS[caste] || '#8b949e'
@@ -393,22 +450,48 @@ export function drawBatchedEntities(
       const stage = c.stage ?? 'adult'
       const sizeF = stage === 'infant' ? 0.55 : stage === 'juvenile' ? 0.8 : 1.0
       const r = (c.radius ?? 1.2) * sizeF * (c.scale_jitter ?? 1)
-      const sides = c.sides ?? 4
+      const sidesRaw = (c as any).morph_k ?? c.sides ?? 4
+      const sides = Math.max(3, Math.min(24, sidesRaw))
       const ang = c.angle + (c.angle_jitter ?? 0)
-
-      if (useCircleLOD || sides >= PRIEST_SIDES) {
-        ctx.moveTo(c.x + r, c.y)
-        ctx.arc(c.x, c.y, r, 0, TAU)
-      } else {
-        const startAng = ang - Math.PI / 2
-        for (let i = 0; i < sides; i++) {
-          const a = startAng + (i / sides) * TAU
-          const px = c.x + Math.cos(a) * r
-          const py = c.y + Math.sin(a) * r
-          if (i === 0) ctx.moveTo(px, py)
-          else ctx.lineTo(px, py)
-        }
+      const irr = (c as any).irregularity ?? 0
+      const isoAngle = (c as any).iso_angle
+      const isSoldierRazor = c.caste === 'Soldier' && sides === 3 && typeof isoAngle === 'number' && isoAngle < 59.9
+      if (isSoldierRazor) {
+        const pts = bgSoldierRazor(c.x, c.y, r, ang, isoAngle)
+        ctx.moveTo(pts[0][0], pts[0][1])
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1])
         ctx.closePath()
+        continue
+      }
+      if (useCircleLOD || sides >= PRIEST_SIDES) {
+        // Priest circle — add subtle jitter when irregular
+        if (irr > 0.08 && sides >= PRIEST_SIDES) {
+          const pts = bgMutatedPoints(c.x, c.y, sides, r, ang, Math.min(0.3, irr), c.id)
+          ctx.moveTo(pts[0][0], pts[0][1])
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1])
+          ctx.closePath()
+        } else {
+          ctx.moveTo(c.x + r, c.y)
+          ctx.arc(c.x, c.y, r, 0, TAU)
+        }
+      } else {
+        // BG-2 irregular mutated polygon & BG-4 topological aberration (K∈[3,24])
+        if (irr > 0.02) {
+          const pts = bgMutatedPoints(c.x, c.y, sides, r, ang, irr, c.id)
+          ctx.moveTo(pts[0][0], pts[0][1])
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1])
+          ctx.closePath()
+        } else {
+          const startAng = ang - Math.PI / 2
+          for (let i = 0; i < sides; i++) {
+            const a = startAng + (i / sides) * TAU
+            const px = c.x + Math.cos(a) * r
+            const py = c.y + Math.sin(a) * r
+            if (i === 0) ctx.moveTo(px, py)
+            else ctx.lineTo(px, py)
+          }
+          ctx.closePath()
+        }
       }
     }
     ctx.globalAlpha = 0.22
@@ -418,6 +501,153 @@ export function drawBatchedEntities(
     ctx.strokeStyle = color
     ctx.lineWidth = 0.3
     ctx.stroke()
+  }
+  // §BG Visual phenotypes overlays — BG-5 Blade Glint, BG-6 Armor, BG-7 Speciation, BG-8 Elder nucleus
+  for (const c of visibleCreatures) {
+    if (c.kind !== 'creature' || c.shape === 'line') continue
+    const mt = (c as any).morph_traits as number[] | undefined
+    const irr = (c as any).irregularity ?? 0
+    const stage = (c as any).stage ?? 'adult'
+    const gen = (c as any).generation ?? 0
+    const sidesRaw = (c as any).morph_k ?? c.sides ?? 4
+    const sides = Math.max(3, Math.min(24, sidesRaw))
+    const r = (c.radius ?? 1.2) * (stage === 'infant' ? 0.55 : stage === 'juvenile' ? 0.8 : 1) * ((c as any).scale_jitter ?? 1)
+    const ang = c.angle + ((c as any).angle_jitter ?? 0)
+    // parse traits
+    const area = mt && mt.length > 0 ? mt[0] : 2.0
+    const izz = mt && mt.length > 2 ? mt[2] : 0.3
+    const thetaMin = mt && mt.length > 3 ? mt[3] : 2.0
+    const dmult = mt && mt.length > 5 ? mt[5] : Math.max(0, (Math.cos(thetaMin) - 0.5)/0.5)
+    const color = CASTE_COLORS[c.caste || ''] || '#8b949e'
+    // BG-6 Heavy inertia armor — double perimeter + darker fill when high Izz/area
+    if ((izz > 0.65 || area > 3.2) && sides < PRIEST_SIDES) {
+      ctx.globalAlpha = 0.18
+      ctx.fillStyle = color
+      ctx.beginPath()
+      if ((c.caste === 'Soldier' && sides===3 && typeof (c as any).iso_angle==='number' && (c as any).iso_angle < 59.9)) {
+        const isoA = (c as any).iso_angle
+        const pts = bgSoldierRazor(c.x, c.y, r*0.88, ang, isoA)
+        ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]); ctx.closePath()
+      } else if (irr > 0.02) {
+        const pts = bgMutatedPoints(c.x, c.y, sides, r*0.88, ang, irr, c.id)
+        ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]); ctx.closePath()
+      } else {
+        const sa = ang - Math.PI/2
+        for(let i=0;i<sides;i++){ const a=sa+(i/sides)*TAU; const px=c.x+Math.cos(a)*r*0.88, py=c.y+Math.sin(a)*r*0.88; if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);} ctx.closePath()
+      }
+      ctx.fill()
+      ctx.globalAlpha = 0.55
+      ctx.strokeStyle = color
+      ctx.lineWidth = 0.55
+      ctx.stroke()
+      ctx.globalAlpha = 1
+    }
+    // BG-5 Blade glint — neon on sharpest vertex scaled by Dmult
+    if (dmult > 0.18) {
+      let gx = c.x, gy = c.y
+      let found = false
+      if (c.caste === 'Soldier' && sides===3 && typeof (c as any).iso_angle==='number' && (c as any).iso_angle < 59.9) {
+        const pts = bgSoldierRazor(c.x, c.y, r, ang, (c as any).iso_angle)
+        gx = pts[0][0]; gy = pts[0][1]; found = true
+      } else {
+        // compute polygon points and find sharpest by interior angle or minimal edge length centroid distance
+        let pts: Array<[number,number]>
+        if (irr > 0.02) pts = bgMutatedPoints(c.x, c.y, sides, r, ang, irr, c.id)
+        else {
+          const sa = ang - Math.PI/2
+          pts = Array.from({length:sides},(_,i)=>{ const a=sa+(i/sides)*TAU; return [c.x+Math.cos(a)*r, c.y+Math.sin(a)*r] as [number,number] })
+        }
+        // find vertex with smallest interior angle
+        let best = 999, bx=pts[0][0], by=pts[0][1]
+        for(let i=0;i<pts.length;i++){
+          const im1=(i-1+pts.length)%pts.length, ip1=(i+1)%pts.length
+          const ux=pts[im1][0]-pts[i][0], uy=pts[im1][1]-pts[i][1]
+          const vx=pts[ip1][0]-pts[i][0], vy=pts[ip1][1]-pts[i][1]
+          const nu=Math.hypot(ux,uy), nv=Math.hypot(vx,vy)
+          if(nu<1e-6||nv<1e-6) continue
+          const cosv=(ux*vx+uy*vy)/(nu*nv)
+          const av=Math.acos(Math.max(-1,Math.min(1,cosv)))
+          if(av<best){ best=av; bx=pts[i][0]; by=pts[i][1]; }
+        }
+        gx=bx; gy=by; found=true
+      }
+      if(found){
+        const glintAlpha = Math.min(0.95, 0.35 + dmult * 0.75)
+        const glintR = 0.35 + dmult * 0.7
+        ctx.globalAlpha = glintAlpha
+        ctx.fillStyle = '#ffe08a'
+        ctx.beginPath()
+        ctx.arc(gx, gy, glintR, 0, TAU)
+        ctx.fill()
+        ctx.globalAlpha = glintAlpha * 0.5
+        ctx.strokeStyle = '#ffffff'
+        ctx.lineWidth = 0.25
+        ctx.beginPath()
+        ctx.moveTo(gx - 0.6, gy)
+        ctx.lineTo(gx + 0.6, gy)
+        ctx.moveTo(gx, gy - 0.6)
+        ctx.lineTo(gx, gy + 0.6)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
+    }
+    // BG-7 Speciation chromatic aberration — iridescent dual-tone when divergent
+    const genLambdaProxy = gen > 40 ? Math.max(0, Math.min(1, 1 - (gen - 15)/250)) : 1
+    const specIntensity = Math.max(irr*1.8, (1-genLambdaProxy))* (sides >=7 || irr>0.25 ? 1 : 0.5)
+    if (specIntensity > 0.42) {
+      ctx.globalAlpha = 0.42 * Math.min(1, specIntensity)
+      ctx.strokeStyle = specIntensity > 0.7 ? '#ff7b72' : '#d2a8ff'
+      ctx.lineWidth = 0.22
+      ctx.beginPath()
+      if (irr > 0.02) {
+        const pts = bgMutatedPoints(c.x+0.22, c.y+0.13, sides, r, ang, irr, c.id)
+        ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]); ctx.closePath()
+      } else {
+        const sa = ang - Math.PI/2
+        for(let i=0;i<sides;i++){ const a=sa+(i/sides)*TAU; const px=c.x+0.22+Math.cos(a)*r, py=c.y+0.13+Math.sin(a)*r; if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);} ctx.closePath()
+      }
+      ctx.stroke()
+      ctx.strokeStyle = '#79c0ff'
+      ctx.globalAlpha = 0.32 * Math.min(1, specIntensity)
+      ctx.beginPath()
+      if (irr > 0.02) {
+        const pts = bgMutatedPoints(c.x-0.18, c.y-0.12, sides, r, ang, irr, c.id)
+        ctx.moveTo(pts[0][0], pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]); ctx.closePath()
+      } else {
+        const sa = ang - Math.PI/2
+        for(let i=0;i<sides;i++){ const a=sa+(i/sides)*TAU; const px=c.x-0.18+Math.cos(a)*r, py=c.y-0.12+Math.sin(a)*r; if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);} ctx.closePath()
+      }
+      ctx.stroke()
+      ctx.globalAlpha = 1
+    }
+    // BG-8 Elder lineage nucleus — inscribed core for elders/high gen
+    if (stage === 'elder' && gen >= 10) {
+      const innerR = r * 0.38
+      const glyph = (c as any).glyph
+      ctx.globalAlpha = 0.28
+      ctx.fillStyle = color
+      ctx.beginPath()
+      if (sides >= PRIEST_SIDES) {
+        ctx.arc(c.x, c.y, innerR, 0, TAU)
+      } else {
+        const sa = ang - Math.PI/2
+        for(let i=0;i<sides;i++){ const a=sa+(i/sides)*TAU; const px=c.x+Math.cos(a)*innerR, py=c.y+Math.sin(a)*innerR; if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);} ctx.closePath()
+      }
+      ctx.fill()
+      ctx.globalAlpha = 0.55
+      ctx.strokeStyle = '#e6edf3'
+      ctx.lineWidth = 0.2
+      ctx.stroke()
+      if (glyph && r > 0.9) {
+        ctx.globalAlpha = 0.9
+        ctx.fillStyle = '#e6edf3'
+        ctx.font = `${innerR*0.9}px ui-monospace, monospace`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(glyph, c.x, c.y + 0.08)
+      }
+      ctx.globalAlpha = 1
+    }
   }
 
   // Draw Crests

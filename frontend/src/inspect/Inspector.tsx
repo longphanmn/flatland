@@ -87,6 +87,142 @@ function KinCardView({
   )
 }
 
+// §BG-9 Polar Morphology Radar — mutated vs Abbott ghost
+function pseudoRand(seed: number, i: number): number {
+  const x = Math.sin(seed * 127.1 + i * 311.7) * 43758.5453
+  return x - Math.floor(x)
+}
+function PolarRadar({ e }: { e: EntityState }) {
+  const cx = 70, cy = 70, R = 46
+  const k = Math.max(3, Math.min(24, (e as any).morph_k ?? e.sides ?? 4))
+  const id = (e as any).id ?? 1
+  const irr = (e as any).irregularity ?? 0
+  const mt = (e as any).morph_traits as number[] | undefined
+  const radii = (e as any).morph_radii as number[] | undefined
+  const angles = (e as any).morph_angles as number[] | undefined
+  const hasDetailed = Array.isArray(radii) && Array.isArray(angles) && radii.length >= k
+  // Mutated points
+  const mutPts: Array<[number, number]> = []
+  if (hasDetailed) {
+    for (let i = 0; i < k; i++) {
+      const r = Number(radii![i]) || 1
+      const a = Number(angles![i]) || (2 * Math.PI * i / k)
+      // normalize radii to fit: scale by R / maxR? max approx 2.5 -> map to R
+      const rr = (r / 1.6) * R
+      mutPts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr])
+    }
+  } else {
+    for (let i = 0; i < k; i++) {
+      const aJ = (pseudoRand(id, i * 2) - 0.5) * irr * 0.65
+      const rJ = 1 + (pseudoRand(id, i * 2 + 1) - 0.5) * irr * 0.9
+      const a = (i / k) * Math.PI * 2 - Math.PI / 2 + aJ
+      const rr = R * rJ * 0.82
+      mutPts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr])
+    }
+  }
+  // Ghost Abbott regular template
+  const ghostPts: Array<[number, number]> = []
+  for (let i = 0; i < k; i++) {
+    const a = (i / k) * Math.PI * 2 - Math.PI / 2
+    ghostPts.push([cx + Math.cos(a) * R * 0.82, cy + Math.sin(a) * R * 0.82])
+  }
+  const mutStr = mutPts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
+  const ghostStr = ghostPts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
+  const isMutant = irr > 0.25 || ![3,4,5,8,24].includes(k)
+  return (
+    <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 8, padding: '8px 8px 6px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <span style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>🧬 Polar Morph — {e.caste} · K={k} {isMutant && <span style={{ color: '#d2a8ff', border: '1px solid #a371f766', background: '#a371f733', padding: '0 4px', borderRadius: 3, fontSize: 9 }}>MUTANT</span>}</span>
+        <span style={{ fontSize: 10, color: '#8b949e' }}>irr {irr.toFixed(3)}</span>
+      </div>
+      <svg width={140} height={140} viewBox="0 0 140 140" style={{ display: 'block', margin: '0 auto', background: '#161b22', borderRadius: 6, border: '1px solid #30363d' }}>
+        {/* radial grid */}
+        {[1, 0.66, 0.33].map((s, idx) => (
+          <circle key={idx} cx={cx} cy={cy} r={R * s * 0.82} fill="none" stroke="#21262d" strokeWidth={0.6} strokeDasharray={idx === 0 ? undefined : '2 2'} />
+        ))}
+        {Array.from({ length: k }, (_, i) => {
+          const a = (i / k) * Math.PI * 2 - Math.PI / 2
+          return <line key={i} x1={cx} y1={cy} x2={cx + Math.cos(a) * R * 0.82} y2={cy + Math.sin(a) * R * 0.82} stroke="#21262d" strokeWidth={0.4} />
+        })}
+        {/* ghost Abbott */}
+        <polygon points={ghostStr} fill="none" stroke="#8b949e" strokeWidth={1.1} opacity={0.35} strokeDasharray="3 3" strokeLinejoin="round" />
+        {/* mutated */}
+        <polygon points={mutStr} fill={isMutant ? 'rgba(163,113,247,0.18)' : 'rgba(121,192,255,0.18)'} stroke={isMutant ? '#d2a8ff' : '#79c0ff'} strokeWidth={1.4} strokeLinejoin="round" />
+        {/* vertices */}
+        {mutPts.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={1.7} fill={isMutant ? '#d2a8ff' : '#79c0ff'} stroke="#0d1117" strokeWidth={0.7} />
+        ))}
+        {/* centroid */}
+        <circle cx={cx} cy={cy} r={1.2} fill="#e6edf3" />
+      </svg>
+      <div style={{ display: 'flex', gap: 6, marginTop: 4, fontSize: 10, color: '#8b949e' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 2, background: '#8b949e', opacity: 0.6, display: 'inline-block', border: '1px dashed #8b949e' }} /> Abbott</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 2, background: isMutant ? '#d2a8ff' : '#79c0ff', display: 'inline-block' }} /> Mutated</span>
+        {mt && <span style={{ marginLeft: 'auto', color: '#8b949e' }}>A {mt[0]?.toFixed(2)} · θ {((mt[3]||0)*180/Math.PI).toFixed(1)}°</span>}
+      </div>
+    </div>
+  )
+}
+function BiomechHUD({ e }: { e: EntityState }) {
+  const mt = (e as any).morph_traits as number[] | undefined
+  const irr = (e as any).irregularity ?? 0
+  const area = mt?.[0] ?? 0
+  const perim = mt?.[1] ?? 0
+  const izz = mt?.[2] ?? 0
+  const theta = mt?.[3] ?? Math.PI/3
+  const asym = mt?.[4] ?? irr/1.5
+  const dmult = mt?.[5] ?? 0
+  const hasData = mt && area > 1e-6
+  const Aref = 2.0, Iref = 0.666, Pref = 5.657
+  if (!hasData) {
+    return (
+      <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '8px 10px' }}>
+        <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>⚙️ Biomechanical Dossier (BG-10)</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 11 }}>
+          <span className="chip" style={{ justifyContent: 'space-between', background: '#0d1117' }}>Irregularity <b style={{ color: irr>0.4?'#f85149':'#e6edf3' }}>{irr.toFixed(3)}</b></span>
+          <span className="chip" style={{ justifyContent: 'space-between', background: '#0d1117' }}>Stage <b>{e.stage}</b></span>
+          <span className="chip" style={{ justifyContent: 'space-between', background: '#0d1117' }}>Sides <b>{e.sides}</b></span>
+          <span className="chip" style={{ justifyContent: 'space-between', background: '#0d1117' }}>Gen <b>{(e as any).generation ?? 0}</b></span>
+        </div>
+        <div style={{ fontSize: 10, color: '#6e7681', marginTop: 6 }}>Polar trait bake pending — annealing may be off or creature from legacy gen.</div>
+      </div>
+    )
+  }
+  const sharpDeg = (theta * 180 / Math.PI)
+  const sharpPct = Math.max(0, Math.min(100, (1 - theta / (Math.PI)) * 100 + dmult * 30))
+  const asymPct = Math.max(0, Math.min(100, asym * 180))
+  const areaPct = Math.max(0, Math.min(100, (area / (Aref * 2.5)) * 100))
+  const izzPct = Math.max(0, Math.min(100, (izz / (Iref * 2.2)) * 100))
+  return (
+    <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '8px 10px' }}>
+      <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>⚙️ Biomechanical Dossier</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        {[
+          { label: 'Sharpness θₘᵢₙ', value: `${sharpDeg.toFixed(1)}°`, sub: `D×${dmult.toFixed(2)}`, pct: sharpPct, color: sharpDeg < 30 ? '#ff7b72' : sharpDeg < 60 ? '#f2cc60' : '#79c0ff' },
+          { label: 'Irregularity σ²/ r̄', value: asym.toFixed(3), sub: `irr ${irr.toFixed(3)}`, pct: asymPct, color: asym > 0.4 ? '#f85149' : asym > 0.15 ? '#f2cc60' : '#3fb950' },
+          { label: 'Rot. Inertia Izz', value: izz.toFixed(3), sub: `/${Iref.toFixed(2)} ${ (izz/Iref).toFixed(2)}×`, pct: izzPct, color: izz > 1.0 ? '#ff7b72' : '#79c0ff' },
+          { label: 'Shoelace Area A', value: area.toFixed(2), sub: `/${Aref.toFixed(1)} ${ (area/Aref).toFixed(2)}×`, pct: areaPct, color: '#d2a8ff' },
+        ].map((m) => (
+          <div key={m.label} style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 6, padding: '6px 7px' }}>
+            <div style={{ fontSize: 9, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.4 }}>{m.label}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3' }}>{m.value}</span>
+              <span style={{ fontSize: 10, color: '#8b949e' }}>{m.sub}</span>
+            </div>
+            <div style={{ height: 3, background: '#21262d', borderRadius: 2, overflow: 'hidden', marginTop: 4 }}>
+              <div style={{ width: `${Math.round(m.pct)}%`, height: '100%', background: m.color }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 6, fontSize: 10, color: '#8b949e', flexWrap: 'wrap' }}>
+        <span>P {perim.toFixed(2)}·Pᵣₑf {Pref.toFixed(1)}</span>
+        <span style={{ marginLeft: 'auto' }}>Eₘₐₓ ×{Math.max(0.5, Math.min(2.5, area / Aref)).toFixed(2)} · decay ×{Math.max(0.7, Math.min(2.0, perim / Pref)).toFixed(2)}</span>
+      </div>
+    </div>
+  )
+}
+
 interface Props {
   id: number
   state?: any
@@ -274,16 +410,16 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
             )}
             {e.trait && <span className="chip"> {e.trait === 'greedy' ? '⬔' : e.trait === 'peaceful' ? '◯' : e.trait === 'paranoid' ? '⬥' : e.trait === 'bold' ? '▲' : '•'} {e.trait}</span>}
           </div>
-          {/* Morphology (BC) placeholder — shows when annealing enabled */}
-          <div style={{ marginTop: 8, background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '8px 10px' }}>
-            <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>🧬 Morphology (BC)</div>
+          {/* §BG-9 Polar Radar & §BG-10 Biomech HUD */}
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <PolarRadar e={e} />
+            <BiomechHUD e={e} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 11 }}>
-              <span className="chip" style={{ justifyContent: 'space-between' }}>Sides <b>{e.sides}</b></span>
-              <span className="chip" style={{ justifyContent: 'space-between' }}>Shape <b>{e.shape}</b></span>
-              <span className="chip" style={{ justifyContent: 'space-between' }}>Stage <b>{e.stage}</b></span>
-              <span className="chip" style={{ justifyContent: 'space-between' }}>Gen <b>{e.generation ?? 0}</b></span>
+              <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>Sides <b>{e.sides}</b> {(e as any).morph_k && (e as any).morph_k !== e.sides ? <span style={{ color: '#d2a8ff' }}>→{ (e as any).morph_k}</span> : null}</span>
+              <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>Shape <b>{e.shape}</b></span>
+              <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>Stage <b>{e.stage}</b></span>
+              <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>Gen <b>{e.generation ?? 0}</b></span>
             </div>
-            <div style={{ fontSize: 10, color: '#8b949e', marginTop: 4 }}>Polar (r, φ) K 3-64 · trait baking A,P,Izz → Emax/steer when Morphology on.</div>
           </div>
         </>
       )}

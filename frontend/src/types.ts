@@ -70,6 +70,11 @@ export interface EntityState {
   sex?: 'male' | 'female'
   mother_id?: number
   father_id?: number
+  iso_angle?: number | null  // §BG soldier razor
+  morph_k?: number | null  // §BG K∈[3,24]
+  morph_traits?: number[] | null  // §BG [A,P,Izz,theta_min,asym,Dmult]
+  morph_radii?: number[] | null
+  morph_angles?: number[] | null
   nn_hidden?: number | null
   nn_outputs?: number[] | null
   nn_genome_preview?: number[] | null

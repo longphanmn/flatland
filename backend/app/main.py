@@ -3125,6 +3125,48 @@ def _creature_dossier(creature_id: int) -> dict:
             entity = None
     else:
         entity = None
+    # §BG: enrich dossier with detailed polar morph arrays (for Inspector radar) when available
+    if entity is not None and ent is not None:
+        try:
+            soa = getattr(RT.sim, "_soa", None)
+            midx = -1
+            if soa is not None and hasattr(soa, "ids"):
+                try:
+                    import numpy as _npd  # type: ignore
+                    if hasattr(soa.ids, "shape"):
+                        arrd = soa.ids[: soa.N]  # type: ignore
+                        wd = _npd.where(arrd == creature_id)[0]
+                        if len(wd):
+                            midx = int(wd[0])
+                    else:
+                        for _jj in range(getattr(soa, "N", 0)):
+                            if int(soa.ids[_jj]) == creature_id:  # type: ignore
+                                midx = _jj
+                                break
+                except Exception:
+                    midx = -1
+            if midx >= 0:
+                try:
+                    if hasattr(soa, "morph_radii"):
+                        k = int(soa.morph_k[midx]) if hasattr(soa, "morph_k") else int(entity.get("sides") or 4)  # type: ignore
+                        rr = soa.morph_radii[midx]  # type: ignore
+                        pa = soa.morph_angles[midx]  # type: ignore
+                        # serialize first k values
+                        entity["morph_radii"] = [round(float(rr[i]), 4) for i in range(k)]  # type: ignore
+                        entity["morph_angles"] = [round(float(pa[i]), 4) for i in range(k)]  # type: ignore
+                        entity["morph_k"] = k
+                except Exception:
+                    pass
+            elif hasattr(ent, "_bc_morph_r"):
+                try:
+                    k = int(getattr(ent, "_bc_morph_k", 4))  # type: ignore
+                    entity["morph_radii"] = [round(float(v), 4) for v in getattr(ent, "_bc_morph_r", [])[:k]]  # type: ignore
+                    entity["morph_angles"] = [round(float(v), 4) for v in getattr(ent, "_bc_morph_phi", [])[:k]]  # type: ignore
+                    entity["morph_k"] = k
+                except Exception:
+                    pass
+        except Exception:
+            pass
     # AZ Phase 1 P1: pass entity_id to DB.history to avoid 2000 json.loads filter
     events = DB.history(RT.world_id, since_id=0, limit=500, entity_id=creature_id) if RT.world_id else []
     # merge pending without flush

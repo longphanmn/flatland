@@ -11165,6 +11165,7 @@ class Simulation:
                 # §AQ PH-7: cold-torpor collapses the body in place
                 "torpid": self._is_torpid(e) or None,
                 "trait": e.trait,
+                "iso_angle": round(float(getattr(e, "iso_angle", 60.0) or 60.0), 2) if e.sides == 3 else None,
                 "equipped_item": getattr(e, "equipped_item", None),
                 "food_basket": getattr(e, "food_basket", 0) or None,
                 "personality": getattr(e, "personality", "brave"),
@@ -11172,6 +11173,45 @@ class Simulation:
                 "title": getattr(e, "title", None),
                 "emote": getattr(e, "emote", None),
             }
+            # §BG: morph traits (iso_angle already above; add morph_k + morph_traits)
+            try:
+                soa = getattr(self, "_soa", None)
+                if soa is not None and hasattr(soa, "ids"):
+                    midx = -1
+                    try:
+                        import numpy as _np2  # type: ignore
+                        if hasattr(soa.ids, "shape"):
+                            arr2 = soa.ids[: soa.N]  # type: ignore
+                            w2 = _np2.where(arr2 == e.id)[0]
+                            if len(w2):
+                                midx = int(w2[0])
+                        else:
+                            for _ii in range(getattr(soa, "N", 0)):
+                                if int(soa.ids[_ii]) == e.id:  # type: ignore
+                                    midx = _ii
+                                    break
+                    except Exception:
+                        midx = -1
+                    if midx >= 0 and hasattr(soa, "morph_k"):
+                        try:
+                            base["morph_k"] = int(soa.morph_k[midx])  # type: ignore
+                        except Exception:
+                            pass
+                        try:
+                            if hasattr(soa, "morph_traits"):
+                                mt = soa.morph_traits[midx]  # type: ignore
+                                # only expose when baked (area>0)
+                                if hasattr(mt, "__len__") and len(mt) >= 6:
+                                    # check area not zero
+                                    _area = float(mt[0]) if hasattr(mt, "__getitem__") else 0.0
+                                    if _area > 1e-6:
+                                        base["morph_traits"] = [round(float(v), 4) for v in mt]  # type: ignore
+                        except Exception:
+                            pass
+                    # expose polar radii/angles for detailed inspector (lightweight: 6 floats extra per tick is ok, but full 24*2 is heavy)
+                    # For per-tick payload we send only morph_traits; detailed arrays are only for /api/creature detail below
+            except Exception:
+                pass
             # BA: NN state — always on, SoA has this creature
             if getattr(self, "_soa", None) is not None:
                 try:

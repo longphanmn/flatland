@@ -229,7 +229,7 @@ class AnalyticsEngine:
         mobility = round(sum(1 for c in creatures if c.generation == max_gen) / max(1, len(creatures)), 3)
         mutated = sum(1 for c in creatures if (float(getattr(c, "irregularity", 0.0) or 0.0) > 0.0 or bool(getattr(c, "trait", None))))
         mutation_freq = round(mutated / max(1, len(creatures)), 3)
-        asym = [round(float(getattr(c, "irregularity", 0.0) or 0.0), 3) for c in creatures if float(getattr(c, "irregularity", 0.0) or 0.0) > 0.0]
+        asym_dist = [round(float(getattr(c, "irregularity", 0.0) or 0.0), 3) for c in creatures if float(getattr(c, "irregularity", 0.0) or 0.0) > 0.0]
         abbott: dict[int, int] = {}
         for c in creatures:
             if getattr(c, "shape", "") == "line" or getattr(c, "sides", 3) == 2:
@@ -269,16 +269,111 @@ class AnalyticsEngine:
                 lam = lambda_for_generation(max_gen, sim.config)
             except Exception:
                 lam = 1.0
+        # §BG: morphospace scatter — sample up to 80 points with A vs theta_min
+        morph_scatter: list[dict] = []
+        phylogeny_nodes: list[dict] = []
+        try:
+            soa = getattr(sim, "_soa", None)
+            # Build id->idx map for fast lookup
+            id_to_idx: dict[int, int] = {}
+            if soa is not None and hasattr(soa, "ids"):
+                try:
+                    import numpy as _np  # type: ignore
+                    if hasattr(soa.ids, "shape"):
+                        arr = soa.ids[: soa.N]  # type: ignore
+                        for _ii in range(int(soa.N)):
+                            id_to_idx[int(arr[_ii])] = _ii
+                    else:
+                        for _ii in range(int(getattr(soa, "N", 0))):
+                            id_to_idx[int(soa.ids[_ii])] = _ii  # type: ignore
+                except Exception:
+                    pass
+            # Scatter: limit to 80 random/sampled creatures for performance
+            import random as _rnd
+            sampled = creatures[:]
+            if len(sampled) > 80:
+                _rnd.shuffle(sampled)
+                sampled = sampled[:80]
+            for c in sampled:
+                idx_sc = id_to_idx.get(int(c.id), -1)
+                area = None
+                theta = None
+                sc_asym = float(getattr(c, "irregularity", 0.0) or 0.0)
+                if idx_sc >= 0 and soa is not None and hasattr(soa, "morph_traits"):
+                    try:
+                        mt = soa.morph_traits[idx_sc]  # type: ignore
+                        area = float(mt[0]) if len(mt) > 0 else None  # type: ignore
+                        theta = float(mt[3]) if len(mt) > 3 else None  # type: ignore
+                        if area is not None and area < 1e-6:
+                            area = None
+                            theta = None
+                    except Exception:
+                        area = None
+                        theta = None
+                if area is None:
+                    # approximate area from scale_jitter & sides: regular polygon area proxy
+                    r = float(getattr(c, "radius", 1.2) or 1.2) * float(getattr(c, "scale_jitter", 1.0) or 1.0)
+                    k = int(getattr(c, "sides", 4) or 4)
+                    if k >= 3:
+                        area = 0.5 * k * r * r * math.sin(2 * math.pi / k)
+                    else:
+                        area = r * r
+                    # approximate theta: 60° for regular, scaled by irregularity & iso_angle
+                    if k == 3 and getattr(c, "iso_angle", 60.0) < 60.0:
+                        theta = math.radians(float(getattr(c, "iso_angle", 60.0)))
+                    else:
+                        # sharper when irregular high
+                        base_theta = 2 * math.pi / max(3, k)  # interior approx? use pi - 2pi/k
+                        # interior angle of regular K-gon
+                        base_theta = (k - 2) * math.pi / k
+                        theta = max(0.15, base_theta - sc_asym * 0.8)
+                morph_scatter.append({
+                    "id": c.id,
+                    "caste": c.caste,
+                    "sides": getattr(c, "sides", 4),
+                    "generation": getattr(c, "generation", 0),
+                    "irregularity": round(sc_asym, 3),
+                    "area": round(float(area or 0.0), 3),
+                    "theta_min": round(float(theta or 0.0), 3),
+                    "clan_id": getattr(c, "clan_id", None),
+                    "clan_color": (sim.clans.get(c.clan_id, {}).get("color") if hasattr(sim, "clans") and getattr(c, "clan_id", None) else "#8b949e"),
+                    "is_elder": getattr(c, "stage", "adult") == "elder",
+                })
+            # Phylogeny: build nodes keyed by generation + sides buckets for lineage overview
+            # group by generation quartile
+            max_g_for_phy = max(1, max_gen)
+            for c in creatures:
+                if float(getattr(c, "irregularity", 0.0) or 0.0) <= 0.0 and getattr(c, "generation", 0) < max_g_for_phy * 0.5:
+                    continue  # skip low-variance early normals unless high gen
+                # keep limited set: top irregular + elders
+                if len(phylogeny_nodes) >= 20:
+                    break
+                phylogeny_nodes.append({
+                    "id": c.id,
+                    "generation": getattr(c, "generation", 0),
+                    "caste": c.caste,
+                    "sides": getattr(c, "sides", 4),
+                    "irregularity": round(float(getattr(c, "irregularity", 0.0) or 0.0), 3),
+                    "stage": getattr(c, "stage", "adult"),
+                    "clan_id": getattr(c, "clan_id", None),
+                    "mother_id": getattr(c, "mother_id", 0),
+                    "father_id": getattr(c, "father_id", 0),
+                })
+        except Exception:
+            morph_scatter = []
+            phylogeny_nodes = []
         return {
             "mobility": mobility,
             "mutation_freq": mutation_freq,
-            "asymmetry_dist": asym[:20],
+            "asymmetry_dist": asym_dist[:20],
             "abbott_ladder": abbott,
             "generations": dict(gens),
             "max_generation": max_gen,
             "lambda_val": round(lam, 3),
             "top_mutants": top_mutants,
             "recent_mutations": list(self.recent_mutations),
+            "morph_scatter": morph_scatter,
+            "phylogeny_nodes": phylogeny_nodes,
         }
     def lotka_volterra(self, sim: Any) -> dict:
         creatures = getattr(sim, "_cached_creatures", None) or list(sim.world.creatures()) if hasattr(sim, "world") else []

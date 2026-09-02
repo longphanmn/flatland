@@ -71,6 +71,11 @@ class EntityState(BaseModel):
     body_temp: Optional[float] = None  # §AQ PH-1: body temperature (°C-ish)
     torpid: Optional[bool] = None  # §AQ PH-7: cold-torpor shutdown
     trait: Optional[str] = None
+    iso_angle: Optional[float] = None  # §BG: isosceles apex angle for Soldier razor
+    morph_k: Optional[int] = None  # §BG: active vertex count K∈[3,24]
+    morph_traits: Optional[list[float]] = None  # §BG: [A,P,Izz,theta_min,asym,Dmult]
+    morph_radii: Optional[list[float]] = None  # §BG: polar radii (detailed, inspector only)
+    morph_angles: Optional[list[float]] = None  # §BG: polar angles (detailed, inspector only)
     door_width: Optional[float] = None
     door_offset: Optional[float] = None
     door_side: Optional[Literal["north", "east", "south", "west"]] = None
