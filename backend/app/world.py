@@ -141,6 +141,7 @@ class World:
 
         T: toroidal dx iteration for fixed 8; correct wrap handling.
         AF: inlined squared distance check eliminates math.hypot / math.sqrt and tuple allocation overhead.
+        PERF: locals-hoisted hot path — identical math and visit order.
         """
         cs = self.cell_size
         r2 = radius * radius
@@ -153,6 +154,7 @@ class World:
         half_h = h * 0.5
         is_wrap = self.config.boundary == "wrap"
         res: list[Entity] = []
+        res_append = res.append
 
         if is_wrap:
             cx_center = int(x // cs) % cols if cols else 0
@@ -178,7 +180,7 @@ class World:
                             if edy < 0: edy = -edy
                             if edy > half_h: edy -= h
                             if edx * edx + edy * edy <= r2:
-                                res.append(e)
+                                res_append(e)
                 return res
             for dx_grid in range(-rx, rx + 1):
                 cx = (cx_center + dx_grid) % cols
@@ -192,7 +194,7 @@ class World:
                         if edy < 0: edy = -edy
                         if edy > half_h: edy -= h
                         if edx * edx + edy * edy <= r2:
-                            res.append(e)
+                            res_append(e)
             return res
         # clamp: no wrap
         x0 = int((x - radius) // cs)
@@ -210,7 +212,7 @@ class World:
                     edx = x - e.x
                     edy = y - e.y
                     if edx * edx + edy * edy <= r2:
-                        res.append(e)
+                        res_append(e)
         return res
 
     def query_radius_with_dist_sq(self, x: float, y: float, radius: float) -> list[tuple[Entity, float]]:
@@ -226,6 +228,7 @@ class World:
         half_h = h * 0.5
         is_wrap = self.config.boundary == "wrap"
         res: list[tuple[Entity, float]] = []
+        res_append = res.append
 
         if is_wrap:
             cx_center = int(x // cs) % cols if cols else 0
@@ -252,7 +255,7 @@ class World:
                             if edy > half_h: edy -= h
                             d2 = edx * edx + edy * edy
                             if d2 <= r2:
-                                res.append((e, d2))
+                                res_append((e, d2))
                 return res
             for dx_grid in range(-rx, rx + 1):
                 cx = (cx_center + dx_grid) % cols
@@ -267,7 +270,7 @@ class World:
                         if edy > half_h: edy -= h
                         d2 = edx * edx + edy * edy
                         if d2 <= r2:
-                            res.append((e, d2))
+                            res_append((e, d2))
             return res
         # clamp: no wrap
         x0 = int((x - radius) // cs)
@@ -286,7 +289,7 @@ class World:
                     edy = y - e.y
                     d2 = edx * edx + edy * edy
                     if d2 <= r2:
-                        res.append((e, d2))
+                        res_append((e, d2))
         return res
 
     def query_radius_list(self, x: float, y: float, radius: float) -> list[Entity]:

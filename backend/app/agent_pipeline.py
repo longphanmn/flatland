@@ -52,6 +52,49 @@ def _raycast_world(world, origin: tuple[float, float], angle: float, max_dist: f
     return best_dist, best_type
 
 
+def _batch_raycast(grid, x: float, y: float, ray_angles: tuple, max_ds: tuple, ignore_id: int | None = None) -> list:
+    """PERF (no logic change): one spatial query per ray instead of per step.
+
+    Coverage proof: step s sits at distance d_s in (0, max_d] along the ray;
+    the midpoint query disc (center M at max_d/2, radius 1.1*max_d) contains
+    every step disc (triangle inequality, both wrap and clamp modes). And any
+    candidate passing the proj/perp test lies within some step disc (step
+    spacing << disc diameter), so the evaluated set is identical. Per-candidate
+    math below is verbatim copies of SpatialHashGrid.raycast, and since only
+    (dist, type) escape — with grid types always None on this path — output
+    ties resolve to identical floats regardless of visit order.
+    """
+    out: list = []
+    _qr = grid.query_radius
+    _pos = grid._pos
+    _delta = grid._toroidal_delta
+    _w = grid.width
+    _h = grid.height
+    for a, max_dist in zip(ray_angles, max_ds):
+        cos_a = math.cos(a)
+        sin_a = math.sin(a)
+        mx = x + cos_a * (max_dist * 0.5)
+        my = y + sin_a * (max_dist * 0.5)
+        candidates = _qr(mx, my, max_dist * 1.1)
+        best = max_dist
+        best_type = None
+        for eid in candidates:
+            if ignore_id is not None and eid == ignore_id:
+                continue
+            ex, ey, et = _pos[eid]
+            dx = _delta(ex, x, _w)
+            dy = _delta(ey, y, _h)
+            proj = dx * cos_a + dy * sin_a
+            if proj <= 0.2 or proj >= best:
+                continue
+            perp = abs(dx * sin_a - dy * cos_a)
+            if perp <= 1.5:
+                best = proj
+                best_type = et
+        out.append((best, best_type))
+    return out
+
+
 def build_inputs_batch(soa, spatial_grid=None, world=None, max_chill: float = 12.0) -> object:
     """Build (N,16) inputs from SoA. Pure vectorized where numpy available.
 
@@ -77,6 +120,9 @@ def build_inputs_batch(soa, spatial_grid=None, world=None, max_chill: float = 12
         # 3-8: raycasts — BH-7 neuro-morphological coupling
         # Precompute morph-coupled span & sensitivity per agent if traits baked
         has_morph = hasattr(soa, "morph_traits") and getattr(soa.morph_traits, "shape", None) is not None and soa.morph_traits.shape[0] >= N  # type: ignore
+        # PERF: resolve the sensing path once per batch (grid/_pos are static
+        # across the batch, so branch outcomes are identical per agent).
+        use_grid = spatial_grid is not None and bool(getattr(spatial_grid, "_pos", None))
         for n in range(N):
             x = float(soa.pos[n, 0])
             y = float(soa.pos[n, 1])
@@ -101,16 +147,27 @@ def build_inputs_batch(soa, spatial_grid=None, world=None, max_chill: float = 12
                     pass
             # side ray deltas scaled by span_factor
             deltas = (-0.610865 * span_factor, 0.0, 0.610865 * span_factor)
+            ray_angles = (ang + deltas[0], ang + deltas[1], ang + deltas[2])
+            max_ds = (32.0, 32.0 * forward_gain, 32.0)
+            if use_grid:
+                # PERF: one batched query per agent (3 rays share nothing but
+                # the math is per-ray identical to the per-step version).
+                ray_hits = _batch_raycast(spatial_grid, x, y, ray_angles, max_ds, ignore_id=aid)
+            else:
+                ray_hits = []
+                for ri2, a2 in enumerate(ray_angles):
+                    max_d2 = max_ds[ri2]
+                    if spatial_grid is not None and getattr(spatial_grid, "_pos", None):
+                        dist2, typ2 = spatial_grid.raycast((x, y), a2, max_d2, ignore_id=aid)
+                    elif world is not None:
+                        dist2, typ2 = _raycast_world(world, (x, y), a2, max_d2, ignore_id=aid)
+                    else:
+                        dist2, typ2 = max_d2, None
+                    ray_hits.append((dist2, typ2))
             for ri, delta in enumerate(deltas):  # -35°*span,0,+35°*span
-                a = ang + delta
                 # forward ray (ri==1) gets sensitivity boost via extended max_dist scaling in norm
-                max_d = 32.0 * (forward_gain if ri == 1 else 1.0)
-                if spatial_grid is not None and getattr(spatial_grid, "_pos", None):
-                    dist, typ = spatial_grid.raycast((x, y), a, max_d, ignore_id=aid)
-                elif world is not None:
-                    dist, typ = _raycast_world(world, (x, y), a, max_d, ignore_id=aid)
-                else:
-                    dist, typ = max_d, None
+                max_d = max_ds[ri]
+                dist, typ = ray_hits[ri]
                 norm = 1.0 - min(dist / max_d, 1.0)
                 # forward ray boosted already via max_d scaling; also amplify norm slightly for sharp hunters
                 if ri == 1 and forward_gain != 1.0:

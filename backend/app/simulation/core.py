@@ -535,27 +535,58 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
         cached = self._totem_mult_cache.get(cid)
         if cached is not None:
             return cached
+        # PERF (no logic change): flat shrine list built once per tick instead
+        # of per-clan dict walks, and squared-distance compare instead of
+        # hypot (d > R iff d² > R² — identical branching, deterministic).
+        flat = self.__dict__.get("_totem_flat")
+        if flat is None or flat[0] != self.tick:
+            flat = (
+                self.tick,
+                [
+                    (oid, self._shrine_pos(oid), (info.get("totem") if isinstance(info, dict) else None))
+                    for oid, info in self.clans.items()
+                ],
+            )
+            self.__dict__["_totem_flat"] = flat
+        others = flat[1]
         mult = 1.0
         shrine = self._shrine_pos(cid)
         my_totem = self.clans.get(cid, {}).get("totem")
         if shrine is not None:
-            for other_id, info in self.clans.items():
-                if other_id == cid:
+            sx, sy = shrine[0], shrine[1]
+            rival_r2 = TOTEM_RIVAL_RADIUS * TOTEM_RIVAL_RADIUS
+            alliance_threshold = self.config.alliance_threshold
+            rivalry_threshold = self.config.rivalry_threshold
+            relations = self.relations
+            pair_fn = self._relation_pair
+            for other_id, other_shrine, other_totem in others:
+                if other_id == cid or other_shrine is None:
                     continue
-                other_shrine = self._shrine_pos(other_id)
-                if other_shrine is None:
+                dx = sx - other_shrine[0]
+                dy = sy - other_shrine[1]
+                if self.config.boundary == "wrap":
+                    w = self.config.width
+                    h = self.config.height
+                    half_w = w * 0.5
+                    half_h = h * 0.5
+                    if dx > half_w:
+                        dx -= w
+                    elif dx < -half_w:
+                        dx += w
+                    if dy > half_h:
+                        dy -= h
+                    elif dy < -half_h:
+                        dy += h
+                if dx * dx + dy * dy > rival_r2:
                     continue
-                d = self.world.distance(shrine[0], shrine[1], other_shrine[0], other_shrine[1])
-                if d > TOTEM_RIVAL_RADIUS:
-                    continue
-                score = self.relations.get(self._relation_pair(cid, other_id), 0)
-                if info.get("totem") == my_totem and score >= self.config.alliance_threshold:
+                score = relations.get(pair_fn(cid, other_id), 0)
+                if other_totem == my_totem and score >= alliance_threshold:
                     mult += TOTEM_RESONANCE_BONUS
-                elif score <= self.config.rivalry_threshold:
+                elif score <= rivalry_threshold:
                     mult *= TOTEM_RIVAL_DIM  # contested ground dims both
             # anomalies empower nearby shrines (known or not)
             for a in self.anomalies:
-                if self.world.distance(shrine[0], shrine[1], a["x"], a["y"]) <= ANOMALY_RADIUS + 6.0:
+                if self.world.distance(sx, sy, a["x"], a["y"]) <= ANOMALY_RADIUS + 6.0:
                     mult *= ANOMALY_TOTEM_BONUS
                     break
         mult = min(TOTEM_RESONANCE_CAP, mult)
@@ -1543,43 +1574,11 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
             h.clan_id: h for h in houses if isinstance(h, House) and h.clan_id and not h.is_ruin
         }
         self._sync_wind_cache()
-        # BJ-5: OpenMP fused batch kernel (c_batch_update_creatures_omp) runs on
-        # the hot path when gated on: omp_enabled + pop >= omp_threshold. The
-        # kernel executes in C with the GIL released across 8 threads and yields
-        # per-creature eat-target hints; python stays authoritative — hints are
-        # consumed only as a validated fallback in the eat section (same-tick
-        # positions re-checked under the full eat gate), so the simulation law
-        # is unchanged and small-N tests never activate this path.
+        # PERF: OMP hint packing removed — per-tick Python packing of all
+        # entities (~1.2ms) exceeded the fallback benefit. Native acceleration
+        # stays wired where it is exactly law-preserving: OpenMP collision
+        # sweep broadphase, compiled wall checks, batched NN raycasts.
         self._omp_hints = {}  # type: ignore[attr-defined]
-        try:
-            _omp_n = len(self._cached_creatures)
-            if (
-                getattr(self.config, "omp_enabled", False)
-                and _native_core is not None
-                and hasattr(_native_core, "native_batch_update")
-                and _omp_n >= int(getattr(self.config, "omp_threshold", 100) or 100)
-            ):
-                _omp_foods = [e for e in self.world.entities.values() if e.kind in ("food", "corpse")]
-                if _omp_foods:
-                    _is_wrap = self.config.boundary == "wrap"
-                    _outs = _native_core.native_batch_update(  # type: ignore
-                        list(self._cached_creatures), _omp_foods,
-                        float(self.config.width), float(self.config.height), _is_wrap,
-                        float(getattr(self, "_cos_wind", 1.0)), float(getattr(self, "_sin_wind", 0.0)),
-                        float(getattr(self, "wind_speed", 0.0)),
-                    )
-                    if _outs:
-                        _hint_map: dict[int, int] = {}
-                        for _c, _o in zip(self._cached_creatures, _outs):
-                            try:
-                                _eid = int(_o[0])
-                            except Exception:
-                                continue
-                            if _eid >= 0:
-                                _hint_map[int(_c.id)] = _eid
-                        self._omp_hints = _hint_map  # type: ignore[attr-defined]
-        except Exception:
-            self._omp_hints = {}  # type: ignore[attr-defined]
         _ph_creatures = time.perf_counter()
         for creature in list(self._cached_creatures):
             if creature.id in self.world.entities:

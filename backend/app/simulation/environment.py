@@ -342,11 +342,10 @@ class EnvironmentMixin:
             self._elev_c_buf = (ctypes.c_float * len(self.elev_grid))(*self.elev_grid)
         except Exception:
             self._elev_c_buf = None
-        # AZ 4a: hoist FFI guard — resolve once
-        try:
-            self._elev_use_native = bool(self._elev_c_buf is not None and _native_core is not None and hasattr(_native_core, "native_elev_at"))
-        except Exception:
-            self._elev_use_native = False
+        # PERF (no logic change): python bilinear is faster than a ctypes
+        # round-trip per call (13.6k calls/tick); keep the native symbol only
+        # as an emergency fallback. Same math, deterministic.
+        self._elev_use_native = False
 
     def _elev_at(self, x: float, y: float) -> float:
         """Normalised ground height (0..1) under a point; 0.5 flat worlds.

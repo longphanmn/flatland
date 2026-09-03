@@ -262,7 +262,28 @@ def bake_physical_traits(soa, indices=None, config=None) -> None:
 
 
 def bake_traits_for_index(idx: int, soa, config=None) -> dict:
-    """Legacy single-index wrapper (kept for backward compat). Calls batch for one."""
+    """Legacy single-index wrapper (kept for backward compat). Calls batch for one.
+
+    PERF (no logic change): pure function of the slot's immutable morph
+    buffers (written once at add_agent, moved only by swap-with-last which
+    changes the occupying eid). Memoize per (slot -> eid); a hit returns the
+    identical dict and skips the numpy recompute entirely.
+    """
+    try:
+        _bc = getattr(soa, "_bake_cache", None)
+        if _bc is None:
+            _bc = {}
+            soa._bake_cache = _bc  # type: ignore[attr-defined]
+        try:
+            _eid = int(soa.ids[idx])  # type: ignore
+        except Exception:
+            _eid = -1
+        _hit = _bc.get(int(idx))
+        if _hit is not None and _hit[0] == _eid:
+            return _hit[1]
+    except Exception:
+        _bc = None  # type: ignore
+        _eid = -1
     bake_physical_traits(soa, indices=[idx], config=config)
     # return dict with baked physics for caller convenience
     if HAS_NUMPY and hasattr(soa, "physical_traits"):
@@ -272,7 +293,7 @@ def bake_traits_for_index(idx: int, soa, config=None) -> dict:
     emax_scale = max(0.5, min(2.5, (area / A_REF) if A_REF else 1.0))
     decay_scale = max(0.7, min(2.0, (perim / P_REF) if P_REF else 1.0))
     irregularity = max(0.0, min(1.0, asym * 1.5))
-    return {
+    out = {
         "area": area,
         "perimeter": perim,
         "izz": izz,
@@ -283,6 +304,12 @@ def bake_traits_for_index(idx: int, soa, config=None) -> dict:
         "decay_scale": decay_scale,
         "irregularity": irregularity,
     }
+    try:
+        if _bc is not None:
+            _bc[int(idx)] = (_eid, out)
+    except Exception:
+        pass
+    return out
 
 
 def sat_overlap(ax, ay, bx, by) -> bool:
