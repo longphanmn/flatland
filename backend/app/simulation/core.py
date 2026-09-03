@@ -1845,6 +1845,16 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
                             hidden = self._soa.hidden_state[: self._soa.N] if _agent_soa.HAS_NUMPY else None
                             outputs, _ = forward_batch(inputs, self._soa.genomes[: self._soa.N] if _agent_soa.HAS_NUMPY else [self._soa.genomes[i] for i in range(self._soa.N)], hidden_state=self._soa.hidden_state[: self._soa.N] if _agent_soa.HAS_NUMPY else None)
                             apply_outputs_batch(self._soa, outputs)
+                            # PERF (no logic change): snapshot outputs as plain
+                            # lists once per inference. outputs_buf is written
+                            # ONLY here (swap-with-last/add never touch it),
+                            # so per-creature tolist() reads below see the
+                            # identical values — including the same staleness
+                            # for swapped slots.
+                            try:
+                                self._nn_out_cache = outputs.tolist() if hasattr(outputs, "tolist") else [list(r) for r in outputs]  # type: ignore[attr-defined]
+                            except Exception:
+                                self._nn_out_cache = None  # type: ignore[attr-defined]
                         except Exception as _e:
                             # BA must never break the tick
                             pass

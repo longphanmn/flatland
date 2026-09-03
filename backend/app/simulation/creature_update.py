@@ -72,13 +72,19 @@ class CreatureUpdateMixin:
                 h.clan_id: h for h in houses if isinstance(h, House) and h.clan_id and not h.is_ruin
             }
         # BA 8.x NN latched outputs (15Hz, SoA) — wired but soft-gated for test stability
+        # PERF: read the per-inference snapshot when available (identical
+        # values to outputs_buf, which is only written at inference time).
         _nn_out = None
         if getattr(self, "_soa", None) is not None and hasattr(self, "_soa_id_map") and c.id in getattr(self, "_soa_id_map", {}):
             try:
                 _nn_idx = self._soa_id_map[c.id]  # type: ignore
-                _nn_out = self._soa.outputs_buf[_nn_idx]  # type: ignore
-                if hasattr(_nn_out, "tolist"):
-                    _nn_out = _nn_out.tolist()  # type: ignore
+                _nn_cache = getattr(self, "_nn_out_cache", None)
+                if _nn_cache is not None and 0 <= _nn_idx < len(_nn_cache):
+                    _nn_out = _nn_cache[_nn_idx]
+                else:
+                    _nn_out = self._soa.outputs_buf[_nn_idx]  # type: ignore
+                    if hasattr(_nn_out, "tolist"):
+                        _nn_out = _nn_out.tolist()  # type: ignore
             except Exception:
                 _nn_out = None
 
@@ -1188,18 +1194,26 @@ class CreatureUpdateMixin:
                 _cy0 = int(c.y // _sg_cs) % _sg_rows if _sg_rows else 0
                 if self.world.config.boundary == "wrap":
                     _cand: list[tuple[int, dict]] = []
-                    _seen_cells: set[tuple[int,int]] = set()
+                    # PERF (no logic change): cell repeats are impossible when
+                    # the visit range fits the grid — skip the seen-set, keep
+                    # the sort (visit order still isn't insertion order).
+                    _span = 2 * _rx + 1
+                    _need_seen = _span > _sg_cols or _span > _sg_rows
+                    _seen_cells = set() if _need_seen else None
                     for _dx in range(-_rx, _rx + 1):
                         for _dy in range(-_rx, _rx + 1):
                             _cx = (_cx0 + _dx) % _sg_cols if _sg_cols else 0
                             _cy = (_cy0 + _dy) % _sg_rows if _sg_rows else 0
-                            if (_cx, _cy) in _seen_cells:
-                                continue
-                            _seen_cells.add((_cx, _cy))
+                            if _need_seen:
+                                if (_cx, _cy) in _seen_cells:
+                                    continue
+                                _seen_cells.add((_cx, _cy))
                             bucket = _sg_grid.get((_cx, _cy))
                             if bucket:
                                 _cand.extend(bucket)
-                    _cand.sort(key=lambda t: t[0])
+                    # sorting ≤1 element is a no-op — skip it (identical order)
+                    if len(_cand) > 1:
+                        _cand.sort(key=lambda t: t[0])
                     _iter_signals = (sg for _, sg in _cand)
                 else:
                     # clamp: collect cells overlapping max_hear_d square
