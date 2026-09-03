@@ -73,8 +73,8 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
             style={{ flex: 1, minWidth: 160, background: '#161b22', color: '#e6edf3', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}
           />
           <a href={`/wiki?lang=${activeLang}`} target="_blank" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22', color: '#58a6ff', textDecoration: 'none' }}>/wiki</a>
-          <a href="/guide" target="_blank" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22', color: '#58a6ff', textDecoration: 'none' }}>/guide</a>
           <a href="/docs" target="_blank" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22', color: '#58a6ff', textDecoration: 'none' }}>/docs</a>
+          <a href="/openapi.json" target="_blank" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22', color: '#58a6ff', textDecoration: 'none' }}>/openapi.json</a>
         </div>
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -113,8 +113,7 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
 
             <h4 style={{ color: '#e6edf3' }}>{t('wiki.docsTitle')}</h4>
             <ul>
-              <li><a href="/wiki">{t('wiki.docWiki')}</a></li>
-              <li><a href="/guide">{t('wiki.docGuide')}</a></li>
+              <li><a href={`/wiki?lang=${activeLang}`}>{t('wiki.docWiki')}</a></li>
               <li><a href="/docs">{t('wiki.docApi')}</a> + <a href="/openapi.json">/openapi.json</a></li>
               <li><a href="/docs/god-laws.md">{t('wiki.docLaws')}</a></li>
             </ul>

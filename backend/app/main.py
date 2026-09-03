@@ -29,7 +29,6 @@ MAX_SPEED = 120.0
 
 # AZ Phase 1 P1: caches for blocking calls off the event loop
 _VERSION_CACHE: dict | None = None
-_GUIDE_CACHE: str | None = None
 _WIKI_CACHE: dict[str, str] = {}
 _PROCSTAT_CACHE: tuple[float, list[dict]] | None = None  # (timestamp, cores)
 # BD.1.3 analytics cache (1s memoization)
@@ -185,6 +184,12 @@ class RuntimeState:
         self._tick_times: list[float] = []  # monotonic timestamps of last 300 ticks
         self._tick_durs: list[float] = []  # durations (ms) of last 300 steps
         self._tick_creature_counts: list[int] = []  # creature count at each tick
+        # 120-minute rollup for the /healthz tick graph (high-res ring above
+        # covers only ~30s at 10 TPS). One bucket per wall-clock minute.
+        from collections import deque as _deque
+
+        self._tick_min_cur: list = [0, 0, 0.0, 0.0, 0, 0]  # [min_key, n, sum_ms, max_ms, sum_pop, overruns]
+        self._tick_minutes: _deque = _deque(maxlen=180)  # finalized minute dicts, oldest first
 
 
 CONFIG = Config.from_env()
@@ -230,6 +235,63 @@ def _on_event(e) -> None:
 
 
 # --------------------------------------------------------------------- loop
+def _roll_minute(rt: RuntimeState, dur_ms: float, pop: int, interval_ms: float) -> None:
+    """Fold one tick sample into the per-minute /healthz rollup.
+
+    Caller must hold rt.lock. Buckets finalize on minute rollover into
+    rt._tick_minutes (180-min cap, oldest first). The in-progress minute is
+    exposed separately so the GUI graph always reaches "now".
+    """
+    try:
+        key = int(time.time() // 60)
+        cur = rt._tick_min_cur
+        if cur[0] != key:
+            if cur[1] > 0:
+                rt._tick_minutes.append({
+                    "t": cur[0] * 60,
+                    "n": cur[1],
+                    "avg_ms": round(cur[2] / cur[1], 2),
+                    "max_ms": round(cur[3], 2),
+                    "avg_pop": round(cur[4] / cur[1], 1),
+                    "overruns": cur[5],
+                })
+            cur[0] = key
+            cur[1] = 0
+            cur[2] = 0.0
+            cur[3] = 0.0
+            cur[4] = 0
+            cur[5] = 0
+        cur[1] += 1
+        cur[2] += dur_ms
+        if dur_ms > cur[3]:
+            cur[3] = dur_ms
+        cur[4] += pop
+        if dur_ms > interval_ms * 1.2:
+            cur[5] += 1
+    except Exception:
+        pass
+
+
+def _minute_history(rt: RuntimeState) -> list[dict]:
+    """Finalized minute buckets + the in-progress minute (JSON-ready)."""
+    try:
+        out = list(rt._tick_minutes)
+        cur = rt._tick_min_cur
+        if cur[1] > 0:
+            out.append({
+                "t": cur[0] * 60,
+                "n": cur[1],
+                "avg_ms": round(cur[2] / cur[1], 2),
+                "max_ms": round(cur[3], 2),
+                "avg_pop": round(cur[4] / cur[1], 1),
+                "overruns": cur[5],
+                "partial": True,
+            })
+        return out[-180:]
+    except Exception:
+        return []
+
+
 def advance_world(rt: RuntimeState, hub: Hub | None = None, force_keyframe: bool = False) -> dict | None:
     """Advance the world one tick (caller holds rt.lock).
 
@@ -280,6 +342,7 @@ def advance_world(rt: RuntimeState, hub: Hub | None = None, force_keyframe: bool
                 if now - last >= 5.0:
                     print(f"[tick-engine] overrun tick={rt.sim.tick} dur={dur_ms:.1f}ms > interval={interval_ms:.1f}ms (speed={rt.speed})", flush=True)
                     rt._last_overrun_log = now  # type: ignore
+            _roll_minute(rt, dur_ms, int(rt._tick_creature_counts[-1]) if rt._tick_creature_counts else 0, interval_ms)
         except Exception:
             pass
     # Extinction tick must always be serialized & cached even with no listeners or throttling,
@@ -350,6 +413,7 @@ def advance_world_lockless(rt: RuntimeState, hub: Hub | None = None, force_keyfr
                     if now - last >= 5.0:
                         print(f"[tick-engine] overrun tick={rt.sim.tick} dur={dur_ms:.1f}ms > interval={interval_ms:.1f}ms (speed={rt.speed})", flush=True)
                         rt._last_overrun_log = now  # type: ignore
+                _roll_minute(rt, dur_ms, int(rt._tick_creature_counts[-1]) if rt._tick_creature_counts else 0, interval_ms)
         except Exception:
             pass
     is_extinct = is_extinct_tick or (rt.sim.tick > 30 and len(rt.sim._cached_creatures) == 0)
@@ -2253,19 +2317,21 @@ async def healthz() -> dict:
         "ok": True,
         "tick": RT.sim.tick,
         "paused": RT.paused,
-        "speed_target": RT.speed,
-        "actual_tps": actual_tps,
+        "speed_target": RT.speed,        "actual_tps": actual_tps,
         "avg_tick_ms": avg_dur,
         "max_tick_ms": max_dur,
         "interval_ms": round(1000.0 / max(RT.speed, MIN_SPEED), 1),
         "clients": len(HUB.clients),
         "db_pending": DB.pending,  # §AD ops still in the RAM log
+        "tick_failures": RT.tick_failures,
         "creatures": len(RT.sim._cached_creatures) if getattr(RT.sim, "_cached_creatures", None) is not None else len(RT.sim.world.creatures()),
         # BJ-6: tick-budget regression data — per-subsystem last-tick ms +
         # rolling averages + dev/N150 budgets (45ms dev ≈ 85ms N150).
         "subsystems_ms": dict(getattr(RT.sim, "_phase_ms", {}) or {}),
         "subsystems_avg_ms": RT.sim.phase_averages() if hasattr(RT.sim, "phase_averages") else {},
         "tick_budget": {"dev_ms": 45.0, "n150_ms": 85.0, "mean_ms": avg_dur},
+        # 120-minute per-minute rollup for the frontend health page graph.
+        "history_120m": _minute_history(RT),
     }
     if RT.last_tick_error:
         out["ok"] = False
@@ -3312,8 +3378,8 @@ async def get_state() -> StateMessage:
 
 
 @app.get("/guide", response_class=HTMLResponse)
-async def get_guide(format: str | None = None):
-    """Living guide — backend-rendered, always matches the running code."""
+async def get_guide(request: Request, format: str | None = None, lang: str | None = None):
+    """Living guide — merged into /wiki (returns rich wiki HTML or JSON)."""
     if format == "json":
         return JSONResponse(
             {
@@ -3321,13 +3387,7 @@ async def get_guide(format: str | None = None):
                 "routes": [getattr(r, "path", "") for r in app.routes],
             }
         )
-    global _GUIDE_CACHE
-    if _GUIDE_CACHE is not None:
-        return HTMLResponse(_GUIDE_CACHE)
-    from .guide import build_guide_html
-    html = build_guide_html(app)
-    _GUIDE_CACHE = html
-    return HTMLResponse(html)
+    return await get_wiki(request, lang=lang)
 
 
 @app.get("/wiki", response_class=HTMLResponse)

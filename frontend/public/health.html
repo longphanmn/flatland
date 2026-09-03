@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flatland Health</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0d1117; color: #e6edf3; font: 14px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid #21262d; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  header .sub { color: #8b949e; font-size: 12px; }
+  .pill { padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+  .pill.ok { background: #1a472a; color: #7ee787; }
+  .pill.warn { background: #4d2c00; color: #ffa657; }
+  .pill.bad { background: #5a1a1a; color: #ff7b72; }
+  main { max-width: 1080px; margin: 0 auto; padding: 16px 20px 40px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 14px 0; }
+  .card { background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 10px 12px; }
+  .card .k { color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  .card .v { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .card .v small { font-size: 12px; color: #8b949e; font-weight: 400; }
+  section.panel { background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+  section.panel h2 { margin: 0 0 4px; font-size: 13px; color: #8b949e; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  section.panel h2 .r { float: right; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  canvas { width: 100%; height: 220px; display: block; }
+  canvas.mini { height: 110px; }
+  #tip { position: fixed; pointer-events: none; background: #0d1117ee; border: 1px solid #30363d; border-radius: 8px; padding: 6px 10px; font-size: 12px; display: none; z-index: 9; font-variant-numeric: tabular-nums; }
+  .bars div.row { display: grid; grid-template-columns: 150px 1fr 90px; gap: 8px; align-items: center; margin: 5px 0; font-size: 12px; }
+  .bars .track { background: #0d1117; border-radius: 5px; height: 10px; position: relative; overflow: hidden; }
+  .bars .fill { background: #58a6ff; height: 100%; border-radius: 5px; }
+  .bars .num { text-align: right; font-variant-numeric: tabular-nums; color: #8b949e; }
+  footer { color: #8b949e; font-size: 12px; padding: 8px 0; }
+  footer a { color: #58a6ff; }
+  .err { background: #5a1a1a; border: 1px solid #8b2020; border-radius: 10px; padding: 10px 14px; margin: 12px 0; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <span id="pill" class="pill ok">…</span>
+  <h1>Flatland Health</h1>
+  <span class="sub" id="subtitle">tick engine · same-port status UI</span>
+</header>
+<main>
+  <div class="err" id="err"></div>
+  <div class="cards" id="cards"></div>
+
+  <section class="panel">
+    <h2>Tick time — last 120 min <span class="r" id="grange"></span></h2>
+    <canvas id="g" width="1000" height="220"></canvas>
+  </section>
+
+  <section class="panel">
+    <h2>Population — last 120 min</h2>
+    <canvas id="gp" class="mini" width="1000" height="110"></canvas>
+  </section>
+
+  <section class="panel">
+    <h2>Subsystems <span class="r">last tick / rolling avg (ms)</span></h2>
+    <div class="bars" id="bars"></div>
+  </section>
+
+  <footer>
+    auto-refreshes every 5s · raw JSON: <a href="/healthz">/healthz</a> ·
+    perf: <a href="/api/perf/telemetry">/api/perf/telemetry</a> ·
+    api docs: <a href="/docs">/docs</a>
+  </footer>
+</main>
+<div id="tip"></div>
+<script>
+(function () {
+  "use strict";
+  var g = document.getElementById("g"), gp = document.getElementById("gp"), tip = document.getElementById("tip");
+  var cur = null, hover = -1;
+
+  function fmtT(epochSec) {
+    return new Date(epochSec * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+
+  function status() {
+    if (!cur) return ["…", "ok"];
+    if (cur.ok === false) return ["ERROR", "bad"];
+    if (cur.paused) return ["PAUSED", "warn"];
+    if (cur.overrun) return ["OVERRUN", "warn"];
+    return ["LIVE", "ok"];
+  }
+
+  function renderCards() {
+    var pill = document.getElementById("pill"), st = status();
+    pill.textContent = st[0]; pill.className = "pill " + st[1];
+    document.getElementById("subtitle").textContent =
+      "tick " + (cur ? cur.tick : "—") + " · target " + (cur ? cur.speed_target : "—") + " TPS";
+    var items = [
+      ["TPS", cur ? cur.actual_tps : "—", ""],
+      ["Tick avg", cur ? cur.avg_tick_ms : "—", "ms"],
+      ["Tick max", cur ? cur.max_tick_ms : "—", "ms"],
+      ["Budget", cur ? cur.interval_ms : "—", "ms"],
+      ["Creatures", cur ? cur.creatures : "—", ""],
+      ["Clients", cur ? cur.clients : "—", ""],
+      ["DB pending", cur ? cur.db_pending : "—", ""],
+      ["Failures", cur ? (cur.tick_failures || 0) : "—", ""]
+    ];
+    document.getElementById("cards").innerHTML = items.map(function (it) {
+      return '<div class="card"><div class="k">' + it[0] + '</div><div class="v">' + esc(it[1]) +
+        (it[2] ? ' <small>' + it[2] + "</small>" : "") + "</div></div>";
+    }).join("");
+    if (cur && cur.last_tick_error) {
+      var e = document.getElementById("err");
+      e.style.display = "block"; e.textContent = "last tick error: " + cur.last_tick_error;
+    } else {
+      document.getElementById("err").style.display = "none";
+    }
+  }
+
+  function setupCanvas(cv) {
+    var r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    cv.width = Math.max(300, Math.round(r.width * dpr));
+    cv.height = Math.round(parseFloat(getComputedStyle(cv).height) * dpr);
+    var ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx: ctx, W: r.width, H: parseFloat(getComputedStyle(cv).height) };
+  }
+
+  function drawGraph() {
+    var s = setupCanvas(g), ctx = s.ctx, W = s.W, H = s.H;
+    ctx.clearRect(0, 0, W, H);
+    var hist = (cur && cur.history_120m) || [];
+    document.getElementById("grange").textContent =
+      hist.length ? fmtT(hist[0].t) + " → " + fmtT(hist[hist.length - 1].t) + " · " + hist.length + " min" : "warming up…";
+    var padL = 44, padB = 18, padT = 8, padR = 8;
+    var iw = W - padL - padR, ih = H - padT - padB;
+    var interval = (cur && cur.interval_ms) || 100;
+    var ymax = interval * 1.6;
+    hist.forEach(function (m) { if (m.max_ms > ymax) ymax = m.max_ms; });
+    ymax = Math.max(ymax, 1);
+    function X(i) { return padL + (hist.length < 2 ? iw / 2 : (i / (hist.length - 1)) * iw); }
+    function Y(v) { return padT + ih - Math.min(v / ymax, 1) * ih; }
+    ctx.strokeStyle = "#21262d"; ctx.fillStyle = "#8b949e"; ctx.font = "10px sans-serif"; ctx.lineWidth = 1;
+    [0, 0.5, 1].forEach(function (f) {
+      var y = padT + ih * f, v = ymax * (1 - f);
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      ctx.fillText(v >= 100 ? Math.round(v) + "" : v.toFixed(0), 4, y + 3);
+    });
+    // budget line
+    var by = Y(interval);
+    ctx.strokeStyle = "#7ee787"; ctx.setLineDash([5, 4]); ctx.beginPath();
+    ctx.moveTo(padL, by); ctx.lineTo(W - padR, by); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = "#7ee787"; ctx.fillText("budget " + interval + "ms", W - padR - 86, by - 4);
+    if (!hist.length) {
+      ctx.fillStyle = "#8b949e"; ctx.font = "13px sans-serif";
+      ctx.fillText("collecting per-minute samples…", padL + 10, padT + 24);
+      return;
+    }
+    // x labels every ~30 min
+    ctx.fillStyle = "#8b949e";
+    var step = Math.max(1, Math.floor(hist.length / 4));
+    for (var i = 0; i < hist.length; i += step) ctx.fillText(fmtT(hist[i].t), X(i) - 14, H - 4);
+    // max whiskers
+    ctx.strokeStyle = "#30363d";
+    hist.forEach(function (m, i) {
+      ctx.beginPath(); ctx.moveTo(X(i), Y(m.avg_ms)); ctx.lineTo(X(i), Y(m.max_ms)); ctx.stroke();
+    });
+    // avg area
+    ctx.beginPath();
+    hist.forEach(function (m, i) { i ? ctx.lineTo(X(i), Y(m.avg_ms)) : ctx.moveTo(X(i), Y(m.avg_ms)); });
+    ctx.strokeStyle = "#58a6ff"; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.lineTo(X(hist.length - 1), padT + ih); ctx.lineTo(X(0), padT + ih); ctx.closePath();
+    ctx.fillStyle = "rgba(88,166,255,.13)"; ctx.fill();
+    // overrun minutes
+    hist.forEach(function (m, i) {
+      if (m.overruns > 0) {
+        ctx.fillStyle = "#ff7b72";
+        ctx.beginPath(); ctx.arc(X(i), Y(m.max_ms) - 4, 2.6, 0, 7); ctx.fill();
+      }
+    });
+    // hover
+    if (hover >= 0 && hover < hist.length) {
+      ctx.strokeStyle = "#8b949e"; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(X(hover), padT); ctx.lineTo(X(hover), padT + ih); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    g.onmousemove = function (ev) {
+      var r = g.getBoundingClientRect(), mx = ev.clientX - r.left;
+      var best = -1, bd = 1e9;
+      hist.forEach(function (m, i) { var d = Math.abs(X(i) - mx); if (d < bd) { bd = d; best = i; } });
+      hover = best;
+      if (best >= 0) {
+        var m = hist[best];
+        tip.style.display = "block";
+        tip.style.left = (ev.clientX + 14) + "px"; tip.style.top = (ev.clientY + 10) + "px";
+        tip.innerHTML = "<b>" + fmtT(m.t) + (m.partial ? " (partial)" : "") + "</b><br>avg " + m.avg_ms +
+          "ms · max " + m.max_ms + "ms<br>pop " + m.avg_pop + " · ticks " + m.n + " · overruns " + m.overruns;
+      }
+      drawGraph();
+    };
+    g.onmouseleave = function () { hover = -1; tip.style.display = "none"; drawGraph(); };
+  }
+
+  function drawPop() {
+    var s = setupCanvas(gp), ctx = s.ctx, W = s.W, H = s.H;
+    ctx.clearRect(0, 0, W, H);
+    var hist = (cur && cur.history_120m) || [];
+    var padL = 44, padB = 14, padT = 6, padR = 8;
+    var iw = W - padL - padR, ih = H - padT - padB;
+    var pmax = 1;
+    hist.forEach(function (m) { if (m.avg_pop > pmax) pmax = m.avg_pop; });
+    function X(i) { return padL + (hist.length < 2 ? iw / 2 : (i / (hist.length - 1)) * iw); }
+    function Y(v) { return padT + ih - Math.min(v / pmax, 1) * ih; }
+    ctx.strokeStyle = "#21262d"; ctx.fillStyle = "#8b949e"; ctx.font = "10px sans-serif";
+    [0, 1].forEach(function (f) {
+      var y = padT + ih * f;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+    });
+    ctx.fillText(Math.round(pmax) + "", 4, padT + 9);
+    if (!hist.length) return;
+    ctx.beginPath();
+    hist.forEach(function (m, i) { i ? ctx.lineTo(X(i), Y(m.avg_pop)) : ctx.moveTo(X(i), Y(m.avg_pop)); });
+    ctx.strokeStyle = "#3fb950"; ctx.lineWidth = 1.4; ctx.stroke();
+  }
+
+  function renderBars() {
+    var el = document.getElementById("bars");
+    if (!cur || !cur.subsystems_avg_ms) { el.innerHTML = "<span style='color:#8b949e'>no data</span>"; return; }
+    var last = cur.subsystems_ms || {}, avg = cur.subsystems_avg_ms || {};
+    var keys = Object.keys(avg).sort();
+    var mx = 1;
+    keys.forEach(function (k) { mx = Math.max(mx, avg[k] || 0, last[k] || 0); });
+    el.innerHTML = keys.map(function (k) {
+      var v = last[k] || 0, a = avg[k] || 0, pct = Math.min(100, (v / mx) * 100);
+      return '<div class="row"><span>' + esc(k) + '</span><div class="track"><div class="fill" style="width:' +
+        pct.toFixed(1) + '%"></div></div><span class="num">' + v.toFixed(2) + " / " + a.toFixed(2) + " ms</span></div>";
+    }).join("");
+  }
+
+  function render() { renderCards(); drawGraph(); drawPop(); renderBars(); }
+
+  function poll() {
+    fetch("/healthz", { headers: { Accept: "application/json" }, cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
+      .then(function (j) { cur = j; render(); })
+      .catch(function (e) {
+        var el = document.getElementById("err");
+        el.style.display = "block"; el.textContent = "fetch /healthz failed: " + e.message;
+      });
+  }
+  window.addEventListener("resize", function () { if (cur) render(); });
+  poll();
+  setInterval(poll, 5000);
+})();
+</script>
+</body>
+</html>

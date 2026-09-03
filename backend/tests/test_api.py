@@ -212,6 +212,10 @@ def test_wiki_json_and_html(client):
     assert data_vi["lang"] == "vi"
     assert "Bách khoa toàn thư" in data_vi["overview"]
     assert "thực ăn" in data_vi["law_details"]["food_count"]["hint"] or "thức ăn" in data_vi["law_details"]["food_count"]["hint"]
+    assert "Nguyên lý vận hành" in data_vi["how_it_works"]
+    assert "Cấu hình & Vận hành" in data_vi["config_ops"]
+    assert "Bản đồ mã nguồn" in data_vi["codebase_map"]
+    assert "Mô hình dữ liệu" in data_vi["data_model"]
 
     # French API JSON
     r_json_fr = client.get("/api/wiki?lang=fr")
@@ -220,6 +224,11 @@ def test_wiki_json_and_html(client):
     assert data_fr["lang"] == "fr"
     assert "Encyclopédie" in data_fr["overview"]
     assert "nourricières" in data_fr["law_details"]["food_count"]["hint"]
+    assert "Fonctionnement du monde" in data_fr["how_it_works"]
+    assert "Configuration & Exploitation" in data_fr["config_ops"]
+    assert "Carte du code source" in data_fr["codebase_map"]
+    assert "Modèle de données" in data_fr["data_model"]
+
 
 
 

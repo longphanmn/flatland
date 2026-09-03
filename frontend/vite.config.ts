@@ -27,6 +27,7 @@ export default defineConfig({
         },
       },
       '/ws': { target: 'ws://localhost:8000', ws: true, timeout: 5000 },
+      '/healthz': { target: 'http://localhost:8000', changeOrigin: true, timeout: 5000 },
       '/wiki': { target: 'http://localhost:8000', changeOrigin: true, timeout: 5000 },
       '/guide': { target: 'http://localhost:8000', changeOrigin: true, timeout: 5000 },
       '/docs': { target: 'http://localhost:8000', changeOrigin: true, timeout: 5000 },

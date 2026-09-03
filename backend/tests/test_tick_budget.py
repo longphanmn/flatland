@@ -96,6 +96,52 @@ def test_telemetry_throttle_2hz_production(monkeypatch):
     assert len(sim2._analytics.ring.ticks) == 10
 
 
+def test_healthz_includes_120m_history():
+    RT.config = Config.from_env()
+    RT.paused = False
+    RT.speed = RT.config.tick_rate
+    RT.sim = Simulation(RT.config)
+    from app.main import advance_world
+
+    for _ in range(3):
+        advance_world(RT)
+    start_world()
+    c = TestClient(app)
+    # default (curl-style) Accept stays JSON
+    r = c.get("/healthz")
+    assert r.status_code == 200
+    body = r.json()
+    assert isinstance(body["history_120m"], list)
+    assert body["history_120m"], "in-progress minute bucket must be present"
+    last = body["history_120m"][-1]
+    assert last.get("partial") is True
+    assert last["n"] >= 3
+    assert "avg_ms" in last and "max_ms" in last and "avg_pop" in last
+
+
+def test_minute_rollup_finalizes_on_rollover():
+    from app.main import _minute_history, _roll_minute
+
+    RT.config = Config.from_env()
+    RT.sim = Simulation(RT.config)
+    RT._tick_min_cur = [0, 0, 0.0, 0.0, 0, 0]
+    RT._tick_minutes.clear()
+    _roll_minute(RT, 10.0, 100, 100.0)
+    _roll_minute(RT, 20.0, 110, 100.0)
+    hist = _minute_history(RT)
+    assert len(hist) == 1 and hist[0].get("partial") is True
+    assert hist[0]["n"] == 2 and hist[0]["avg_ms"] == 15.0
+    # force a minute rollover by backdating the open bucket
+    RT._tick_min_cur[0] -= 2
+    _roll_minute(RT, 30.0, 120, 100.0)
+    hist = _minute_history(RT)
+    assert len(hist) == 2
+    assert hist[0]["n"] == 2 and "partial" not in hist[0]
+    assert hist[1].get("partial") is True and hist[1]["n"] == 1
+    RT._tick_min_cur = [0, 0, 0.0, 0.0, 0, 0]
+    RT._tick_minutes.clear()
+
+
 def test_healthz_reports_subsystem_timing():
     RT.config = Config.from_env()
     RT.paused = False

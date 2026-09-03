@@ -1,6 +1,8 @@
-"""Wiki — richer living docs than /guide, with presets, sustainability, API playground & full i18n (en/vi/fr).
+"""Wiki — unified living docs and encyclopedia for Flatland (merged with /guide).
 
-Backend-rendered HTML at /wiki and JSON at /api/wiki. Styled with Flatland's native dark theme.
+Features presets, sustainability, live API playground & full i18n (en/vi/fr).
+Backend-rendered HTML at /wiki (and /guide) and JSON at /api/wiki.
+Styled with Flatland's native dark theme.
 """
 
 from __future__ import annotations
@@ -11,7 +13,13 @@ from typing import Any
 
 from .config import Config
 from .protocol import GodLaws
-from .guide import _api_table, _god_laws_table, _md_to_html, CODEBASE_MAP_MD, CONFIG_OPS_MD, DATA_MODEL_MD, HOW_IT_WORKS_MD
+from .wiki_content_i18n import (
+    CODEBASE_MAP_MD_I18N,
+    CONFIG_OPS_MD_I18N,
+    CURL_EXAMPLES_I18N,
+    DATA_MODEL_MD_I18N,
+    HOW_IT_WORKS_MD_I18N,
+)
 from .wiki_i18n import (
     DEFAULT_LANG,
     FLATLAND_BOOK_COMPARISON_MD_I18N,
@@ -31,10 +39,158 @@ FLATLAND_BOOK_COMPARISON_MD = FLATLAND_BOOK_COMPARISON_MD_I18N["en"]
 SUSTAINABILITY_MD = SUSTAINABILITY_MD_I18N["en"]
 PERFORMANCE_MD = PERFORMANCE_MD_I18N["en"]
 LAW_HINTS_MD = LAW_HINTS_I18N["en"]
+HOW_IT_WORKS_MD = HOW_IT_WORKS_MD_I18N["en"]
+CONFIG_OPS_MD = CONFIG_OPS_MD_I18N["en"]
+CODEBASE_MAP_MD = CODEBASE_MAP_MD_I18N["en"]
+DATA_MODEL_MD = DATA_MODEL_MD_I18N["en"]
+
+
+def _md_to_html(md: str) -> str:
+    """Tiny markdown → HTML: headings, bold, italic, code, links, lists, paragraphs."""
+    lines = md.split("\n")
+    out: list[str] = []
+    in_code = False
+    in_ul = False
+    in_ol = False
+
+    def inline(s: str) -> str:
+        s = html.escape(s)
+        s = re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
+        s = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", s)
+        s = re.sub(r"__([^_]+)__", r"<strong>\1</strong>", s)
+        s = re.sub(r"\*([^*]+)\*", r"<em>\1</em>", s)
+        s = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', s)
+        return s
+
+    for raw in lines:
+        line = raw.rstrip()
+        if line.startswith("```"):
+            if in_code:
+                out.append("</pre>")
+                in_code = False
+            else:
+                out.append("<pre><code>")
+                in_code = True
+            continue
+        if in_code:
+            out.append(html.escape(line))
+            continue
+        if not line.strip():
+            if in_ul:
+                out.append("</ul>")
+                in_ul = False
+            if in_ol:
+                out.append("</ol>")
+                in_ol = False
+            continue
+        m = re.match(r"^(#{1,4})\s+(.*)", line)
+        if m:
+            lvl = len(m.group(1))
+            text = inline(m.group(2).strip())
+            slug = re.sub(r"[^a-z0-9]+", "-", m.group(2).lower()).strip("-")
+            if in_ul:
+                out.append("</ul>")
+                in_ul = False
+            if in_ol:
+                out.append("</ol>")
+                in_ol = False
+            out.append(f'<h{lvl} id="{slug}">{text}</h{lvl}>')
+            continue
+        if re.match(r"^[-*]\s+", line):
+            if not in_ul:
+                out.append("<ul>")
+                in_ul = True
+            if in_ol:
+                out.append("</ol>")
+                in_ol = False
+            txt = inline(re.sub(r"^[-*]\s+", "", line))
+            out.append(f"<li>{txt}</li>")
+            continue
+        if re.match(r"^\d+\.\s+", line):
+            if not in_ol:
+                out.append("<ol>")
+                in_ol = True
+            if in_ul:
+                out.append("</ul>")
+                in_ul = False
+            txt = inline(re.sub(r"^\d+\.\s+", "", line))
+            out.append(f"<li>{txt}</li>")
+            continue
+        out.append(f"<p>{inline(line)}</p>")
+
+    if in_ul:
+        out.append("</ul>")
+    if in_ol:
+        out.append("</ol>")
+    if in_code:
+        out.append("</pre>")
+    return "\n".join(out)
+
+
+def _god_laws_table(lang: str = "en", hints_map: dict | None = None) -> str:
+    """Auto-generated table of every GodLaws field with type/range/default + hint."""
+    cfg = Config()
+    if hints_map is None:
+        hints_map = LAW_HINTS_I18N.get(lang, LAW_HINTS_I18N.get("en", {}))
+    rows = []
+    for name, field in GodLaws.model_fields.items():
+        ann = str(field.annotation)
+        constraints = []
+        for m in getattr(field, "metadata", []):
+            if hasattr(m, "ge") and m.ge is not None:
+                constraints.append(f"≥{m.ge}")
+            if hasattr(m, "le") and m.le is not None:
+                constraints.append(f"≤{m.le}")
+            if hasattr(m, "gt") and m.gt is not None:
+                constraints.append(f">{m.gt}")
+        default = getattr(cfg, name, None) if hasattr(cfg, name) else None
+        typ = ann.replace("Optional", "").replace("[", "").replace("]", "").strip(" |None")
+        hint = html.escape(hints_map.get(name, "")) if hints_map else ""
+        hint_cell = f'<small style="color:var(--text-muted)">{hint}</small> <a href="/docs/god-laws.md#{html.escape(name)}" style="font-size:10px">md</a>' if hint else "—"
+        rows.append(
+            f"<tr><td><code>{html.escape(name)}</code></td>"
+            f"<td>{html.escape(typ)}</td>"
+            f"<td>{html.escape(', '.join(constraints) or '—')}</td>"
+            f"<td>{html.escape(str(default))}</td>"
+            f"<td>{hint_cell}</td></tr>"
+        )
+    headers = {
+        "en": "<tr><th>Law</th><th>Type</th><th>Range</th><th>Default</th><th>Hint + docs</th></tr>",
+        "vi": "<tr><th>Định luật</th><th>Kiểu</th><th>Khoảng</th><th>Mặc định</th><th>Gợi ý & tài liệu</th></tr>",
+        "fr": "<tr><th>Loi</th><th>Type</th><th>Plage</th><th>Défaut</th><th>Indice & docs</th></tr>",
+    }
+    header = headers.get(lang, headers["en"])
+    return f'<div class="table-wrapper"><table><thead>{header}</thead><tbody>{"".join(rows)}</tbody></table></div>'
+
+
+def _api_table(app: Any, lang: str = "en") -> str:
+    """Auto-generated API table from live routes + OpenAPI schema."""
+    rows = []
+    for route in app.routes:
+        path = getattr(route, "path", "")
+        methods = getattr(route, "methods", None)
+        if not path or path.startswith("/openapi") or path.startswith("/docs") or path.startswith("/redoc"):
+            continue
+        if methods:
+            for m in sorted(methods):
+                if m in ("HEAD", "OPTIONS"):
+                    continue
+                rows.append(f"<tr><td><code>{html.escape(m)} {html.escape(path)}</code></td>"
+                            f"<td>{html.escape(getattr(route, 'name', ''))}</td></tr>")
+        else:
+            rows.append(f"<tr><td><code>{html.escape(path)}</code></td><td></td></tr>")
+    rows = sorted(set(rows))
+    headers = {
+        "en": "<tr><th>Route</th><th>Name</th></tr>",
+        "vi": "<tr><th>Tuyến API</th><th>Tên hàm</th></tr>",
+        "fr": "<tr><th>Route API</th><th>Nom</th></tr>",
+    }
+    header = headers.get(lang, headers["en"])
+    return f'<div class="table-wrapper"><table><thead>{header}</thead><tbody>{"".join(rows)}</tbody></table></div>'
 
 
 def _presets_table(lang: str = "en") -> str:
-    from .main import PRESETS, detect_current_preset  # late import to avoid cycle
+    from .main import PRESETS, detect_current_preset
     ui = UI_I18N.get(lang, UI_I18N["en"])
     current = detect_current_preset()
     rows = []
@@ -52,42 +208,16 @@ def _presets_table(lang: str = "en") -> str:
 
 
 def _curl_examples(lang: str = "en") -> str:
-    ui = UI_I18N.get(lang, UI_I18N["en"])
-    return _md_to_html(f"""
-{ui['curl_title']}
+    md = CURL_EXAMPLES_I18N.get(lang, CURL_EXAMPLES_I18N["en"])
+    return _md_to_html(md)
 
-```bash
-# laws
-curl localhost:8000/api/laws
-curl -X POST localhost:8000/api/laws -H 'content-type: application/json' -d '{{"food_count": 90}}' 
-
-# presets (1000-day one click)
-curl -X POST localhost:8000/api/presets/sustainable?reset=true
-curl -X POST localhost:8000/api/presets/chaos
-curl -X POST localhost:8000/api/presets/extinction?reset=true
-
-# state & history
-curl localhost:8000/api/state | jq .tick
-curl localhost:8000/api/history?limit=5 | jq
-curl localhost:8000/api/worlds | jq
-curl localhost:8000/api/clans | jq
-
-# control
-curl -X POST localhost:8000/api/control -H 'content-type: application/json' -d '{{"action":"pause"}}'
-curl -X POST localhost:8000/api/control -d '{{"action":"reset"}}'
-
-# websocket (live)
-# ws://localhost:8000/ws  → {{"type":"hello"}} then {{"type":"state"}} throttled ~30Hz
-# send {{"action":"pause"}} / {{"action":"set_speed","value":20}}
-```
-""")
 
 
 WIKI_TEMPLATE = """<!doctype html>
 <html lang="{lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title>
 <meta name="description" content="{description}">
-<meta name="keywords" content="Flatland, World Simulation, Wiki, Presets, Simulation Mechanics, Long Phan, long@minhnhan.in, Artificial Life">
+<meta name="keywords" content="Flatland, World Simulation, Wiki, Guide, Presets, Simulation Mechanics, Long Phan, long@minhnhan.in, Artificial Life">
 <meta name="author" content="Long Phan <long@minhnhan.in>">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://world.minhnhan.in/wiki?lang={lang}">
@@ -676,7 +806,10 @@ tr:hover td {{ background: rgba(56, 139, 253, 0.05); }}
 
 <nav class="wiki-sidebar" id="wikiSidebar">
   <div class="wiki-brand">
-    <h2>📖 {wiki_heading}</h2>
+    <div>
+      <h2>📖 {wiki_heading}</h2>
+      <div style="font-size:10.5px;color:var(--text-muted);margin-top:2px">Flatland Guide &amp; Living Encyclopedia</div>
+    </div>
     <span class="version-tag">v0.1.5</span>
   </div>
 
@@ -700,7 +833,6 @@ tr:hover td {{ background: rgba(56, 139, 253, 0.05); }}
       <a href="/docs" class="ext-chip">📄 {swagger_docs}</a>
       <a href="/openapi.json" class="ext-chip">🌐 {openapi}</a>
       <a href="/api/wiki?lang={lang}" class="ext-chip">📦 {json_api}</a>
-      <a href="/guide" class="ext-chip">🧭 {guide}</a>
     </div>
 
     <div class="sidebar-card" style="margin-top:10px">
@@ -742,7 +874,7 @@ tr:hover td {{ background: rgba(56, 139, 253, 0.05); }}
     </div>
     <div style="display:flex;align-items:center;gap:12px">
       <span style="font-size:12px;color:var(--text-muted)">{sphere_motto}</span>
-      <a href="/guide" class="hud-pill" style="text-decoration:none;color:var(--accent-blue)">📖 {guide_link}</a>
+      <a href="/docs" class="hud-pill" style="text-decoration:none;color:var(--accent-blue)">📄 Swagger /docs</a>
       <a href="/" class="hud-live-link">
         <span style="width:6px;height:6px;border-radius:50%;background:var(--accent-green);box-shadow:0 0 6px var(--accent-green)"></span>
         {live_world}
@@ -893,19 +1025,34 @@ def build_wiki_html(app: Any, lang: str = "en") -> str:
     sustainability_md = SUSTAINABILITY_MD_I18N.get(lang, SUSTAINABILITY_MD_I18N["en"])
     performance_md = PERFORMANCE_MD_I18N.get(lang, PERFORMANCE_MD_I18N["en"])
 
+    how_it_works_md = HOW_IT_WORKS_MD_I18N.get(lang, HOW_IT_WORKS_MD_I18N["en"])
+    config_ops_md = CONFIG_OPS_MD_I18N.get(lang, CONFIG_OPS_MD_I18N["en"])
+    codebase_map_md = CODEBASE_MAP_MD_I18N.get(lang, CODEBASE_MAP_MD_I18N["en"])
+    data_model_md = DATA_MODEL_MD_I18N.get(lang, DATA_MODEL_MD_I18N["en"])
+
+    # Quickstart split per language
+    if "## Run & deploy" in config_ops_md:
+        quickstart_md = config_ops_md.split("## Run & deploy")[0]
+    elif "## Khởi chạy & Vận hành" in config_ops_md:
+        quickstart_md = config_ops_md.split("## Khởi chạy & Vận hành")[0]
+    elif "## Exécution & Déploiement" in config_ops_md:
+        quickstart_md = config_ops_md.split("## Exécution & Déploiement")[0]
+    else:
+        quickstart_md = config_ops_md
+
     section_bodies = {
         "overview": _md_to_html(overview_md),
         "book-comparison": _md_to_html(book_comp_md),
-        "quickstart": _md_to_html(CONFIG_OPS_MD.split("## Run & deploy")[0]),
-        "how-the-world-works": _md_to_html(HOW_IT_WORKS_MD),
+        "quickstart": _md_to_html(quickstart_md),
+        "how-the-world-works": _md_to_html(how_it_works_md),
         "sustainability": _md_to_html(sustainability_md),
         "performance": _md_to_html(performance_md),
-        "codebase-map": _md_to_html(CODEBASE_MAP_MD),
-        "data-model-protocol": _md_to_html(DATA_MODEL_MD),
+        "codebase-map": _md_to_html(codebase_map_md),
+        "data-model-protocol": _md_to_html(data_model_md),
         "god-laws": laws_html,
         "presets": presets_html,
         "api-reference": api_html,
-        "configuration-ops": _md_to_html(CONFIG_OPS_MD),
+        "configuration-ops": _md_to_html(config_ops_md),
     }
 
     category_titles = {
@@ -961,7 +1108,6 @@ def build_wiki_html(app: Any, lang: str = "en") -> str:
         search_placeholder=html.escape(ui["search_placeholder"]),
         swagger_docs=html.escape(ui["swagger_docs"]),
         openapi=html.escape(ui["openapi"]),
-        guide=html.escape(ui["guide"]),
         json_api=html.escape(ui["json_api"]),
         live_world=html.escape(ui["live_world"]),
         presets_label=html.escape(ui["presets_label"]),
@@ -972,7 +1118,6 @@ def build_wiki_html(app: Any, lang: str = "en") -> str:
         badge_routes=html.escape(ui["badge_routes"].format(routes=len(app.routes))),
         badge_presets=html.escape(ui["badge_presets"].format(presets=len(PRESETS))),
         sphere_motto=html.escape(ui["sphere_motto"]),
-        guide_link=html.escape(ui["guide_link"]),
         footer=ui["footer"],
         btn_active_en="active" if lang == "en" else "",
         btn_active_vi="active" if lang == "vi" else "",
@@ -992,10 +1137,10 @@ def get_wiki_json(app: Any, lang: str = "en") -> dict:
         "book_comparison": FLATLAND_BOOK_COMPARISON_MD_I18N.get(lang, FLATLAND_BOOK_COMPARISON_MD_I18N["en"]),
         "sustainability": SUSTAINABILITY_MD_I18N.get(lang, SUSTAINABILITY_MD_I18N["en"]),
         "performance": PERFORMANCE_MD_I18N.get(lang, PERFORMANCE_MD_I18N["en"]),
-        "how_it_works": HOW_IT_WORKS_MD,
-        "codebase_map": CODEBASE_MAP_MD,
-        "data_model": DATA_MODEL_MD,
-        "config_ops": CONFIG_OPS_MD,
+        "how_it_works": HOW_IT_WORKS_MD_I18N.get(lang, HOW_IT_WORKS_MD_I18N["en"]),
+        "codebase_map": CODEBASE_MAP_MD_I18N.get(lang, CODEBASE_MAP_MD_I18N["en"]),
+        "data_model": DATA_MODEL_MD_I18N.get(lang, DATA_MODEL_MD_I18N["en"]),
+        "config_ops": CONFIG_OPS_MD_I18N.get(lang, CONFIG_OPS_MD_I18N["en"]),
         "laws": list(GodLaws.model_fields.keys()),
         "routes": [getattr(r, "path", "") for r in app.routes],
         "presets": PRESETS,
