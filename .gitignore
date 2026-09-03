@@ -39,6 +39,8 @@ snapshot.json
 .env
 .env.*
 !.env.example
+.ga_id
+.gtm_id
 deploy*
 .deployed-commit
 
