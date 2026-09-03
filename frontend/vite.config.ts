@@ -1,8 +1,37 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import fs from 'node:fs'
+import path from 'node:path'
+
+// Serves public/health.html at the clean /health URL (dev only; nginx.conf
+// has the equivalent rule for docker/prod). Registered before Vite's SPA
+// fallback so /health doesn't resolve to index.html.
+function healthPage() {
+  return {
+    name: 'flatland-health-page',
+    configureServer(server: any) {
+      server.middlewares.use((req: any, res: any, next: any) => {
+        const url = (req.url || '').split('?')[0]
+        if (url === '/health' || url === '/health/') {
+          try {
+            const file = path.resolve(__dirname, 'public/health.html')
+            const html = fs.readFileSync(file, 'utf-8')
+            res.setHeader('Content-Type', 'text/html; charset=utf-8')
+            res.setHeader('Cache-Control', 'no-cache')
+            res.end(html)
+            return
+          } catch {
+            // fall through to normal handling
+          }
+        }
+        next()
+      })
+    },
+  }
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), healthPage()],
   server: {
     host: '0.0.0.0',
     port: 5173,

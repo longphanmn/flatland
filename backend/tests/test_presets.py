@@ -89,6 +89,34 @@ def test_preset_transition_hygiene(client):
     assert RT.config.attack_damage == 30.0
 
 
+def test_preset_survives_backend_restart(client):
+    """A deploy restart must keep the active preset + laws (law_state persistence).
+
+    Reproduces: production page flipped to sustainable on every deploy because
+    a fresh process rebuilt laws from env defaults and hardcoded the label.
+    """
+    from app.main import LAW_STATE_KEY, DB, RuntimeState, _restore_law_state
+
+    old_preset, old_saved = RT.current_preset, RT.saved_config
+    try:
+        resp = client.post("/api/presets/warlords?persist=true")
+        assert resp.status_code == 200
+        assert detect_current_preset() == "warlords"
+        assert DB.get_setting(LAW_STATE_KEY)
+
+        # Fresh process state, as after a deploy restart
+        scratch = RuntimeState(Config.from_env())
+        assert _restore_law_state(scratch) is True
+        assert scratch.current_preset == "warlords"
+        assert scratch.config.attack_damage == RT.config.attack_damage == PRESETS["warlords"]["attack_damage"]
+        assert scratch.config.food_count == PRESETS["warlords"]["food_count"]
+        # Saved Reset baseline persisted too, and the fresh sim runs the laws
+        assert scratch.saved_config.attack_damage == RT.saved_config.attack_damage
+        assert scratch.sim.config.attack_damage == PRESETS["warlords"]["attack_damage"]
+    finally:
+        RT.current_preset, RT.saved_config = old_preset, old_saved
+
+
 def test_balance_deep_lifecycle(client):
     """Balance Goldilocks: multi-generational stability with active ecology and civilization."""
     resp = client.post("/api/presets/balance?persist=true&reset=true")

@@ -699,6 +699,15 @@ def _try_restore_snapshot() -> bool:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     DB.connect()
+    # Restore persisted preset + laws BEFORE snapshot rehydration, so the
+    # continued world (or a fresh founding) runs the remembered rules —
+    # otherwise every deploy silently reverts to env defaults relabelled
+    # "sustainable".
+    try:
+        if _restore_law_state(RT):
+            print(f"[restore] laws preset={RT.current_preset}", flush=True)
+    except Exception as exc:
+        print(f"[restore] laws failed {exc}", flush=True)
     # Try to keep same world across deploys
     restored = _try_restore_snapshot()
     if not restored:
@@ -791,6 +800,10 @@ async def apply_control(msg: ControlMessage) -> dict:
             RT._cached_state_text = None
             RT.paused = False
             start_world()
+            # A reset world runs the saved baseline — relabel + persist it so
+            # the next deploy restart keeps it too.
+            RT.current_preset = detect_current_preset()
+            _persist_law_state()
             payload = RT.sim.snapshot_payload()
             payload["paused"] = False
         elif msg.action is ControlAction.SET_SPEED:
@@ -2174,6 +2187,71 @@ def get_laws() -> dict:
     return laws
 
 
+LAW_STATE_KEY = "law_state_v1"
+
+
+def _persist_law_state() -> None:
+    """Durably remember preset + laws so a backend restart (deploy) keeps them.
+
+    The SQLite DB file is excluded from deploy rsync, so the settings table
+    survives restarts while snapshot.json only carries entities. Must be
+    called with RT.lock held, after any law change. Best-effort: a persistence
+    failure must never break the law change itself.
+    """
+    try:
+        try:
+            saved = {name: getattr(RT.saved_config, name) for name in LAW_FIELDS}
+        except Exception:
+            saved = {}
+        payload = {
+            "preset": detect_current_preset(),
+            "laws": get_laws(),
+            "saved_laws": saved,
+        }
+        DB.set_setting(LAW_STATE_KEY, json.dumps(payload))
+    except Exception:
+        pass
+
+
+def _restore_law_state(rt: RuntimeState) -> bool:
+    """Re-apply persisted preset/laws at boot, before snapshot rehydration.
+
+    Rebuilds rt.sim with the restored config (used when no snapshot exists).
+    Unknown/stale fields are dropped; any failure falls back to env defaults.
+    Returns True when a persisted state was applied.
+    """
+    try:
+        raw = DB.get_setting(LAW_STATE_KEY)
+    except Exception:
+        return False
+    if not raw:
+        return False
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return False
+    fields = set(Config.__dataclass_fields__)
+
+    def _clean(d) -> dict:
+        return {k: v for k, v in (d or {}).items() if k in fields}
+
+    laws = _clean(data.get("laws"))
+    if not laws:
+        return False
+    saved = _clean(data.get("saved_laws")) or dict(laws)
+    try:
+        with rt.lock:
+            rt.config = replace(rt.config, **laws)
+            rt.saved_config = replace(rt.saved_config, **saved)
+            rt.current_preset = data.get("preset")
+            rt.sim = Simulation(rt.config)
+            rt._cached_clans_payload = None
+            rt._cached_state_text = None
+    except Exception:
+        return False
+    return True
+
+
 def apply_laws(laws: GodLaws, persist: bool = True) -> dict:
     """God sets the rules; the world and every creature must obey them.
 
@@ -2223,6 +2301,11 @@ def apply_laws(laws: GodLaws, persist: bool = True) -> dict:
                         DB.add_law_change(RT.world_id, RT.sim.tick, name, value)
                     except Exception:
                         pass
+        # Remember preset + laws so the next deploy restart keeps them
+        # (applies to both persist=True baseline and persist=False live-only
+        # tweaks — a restart continues the world, it is not a Reset).
+        if updates:
+            _persist_law_state()
     return get_laws()
 
 
