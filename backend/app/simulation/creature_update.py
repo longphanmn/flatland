@@ -581,7 +581,7 @@ class CreatureUpdateMixin:
             perceive *= SCAR_SIGHT_MULT ** c.scars
         # §AU CPU: hoist clan totem stats once (law-preserving, _clan_totem_stats is final mult).
         _totem = getattr(self, "_clan_totem_stats", {}).get(c.clan_id, {}) if c.clan_id and self.config.totems_enabled else {}
-        # Totem sight (§P): Eye +25%, Owl +35%, Raven +15% …
+        # Avatar sight (§P/AP): All-Seeing Vertex +40% sight, clarity pierces dark …
         perceive *= 1.0 + _totem.get("sight", 0.0)
         # §AP: the All-Seeing Vertex sees clearly even in the dark of the world —
         # its clarity recovers the night/fog dimming.
@@ -594,7 +594,7 @@ class CreatureUpdateMixin:
         elif c.status == "starving":
             perceive *= cfg.desperate_perceive_mult
             speed_mult = cfg.desperate_speed_mult
-        # Totem speed: hunting/fleeing burst (Wolf, Stag, Fox, Serpent …)
+        # Avatar speed (§AP): Celestial Strike hunting/fleeing burst
         if _totem and (c.is_predator or perceive > cfg.perceive_radius):
             speed_mult *= 1.0 + _totem.get("speed", 0.0)
 
@@ -695,7 +695,7 @@ class CreatureUpdateMixin:
         # Use fast list variant to avoid generator overhead (1627) — always populated for food perception
         _batch_list: list[tuple[Entity, float]] = w.query_radius_with_dist_sq_list(c.x, c.y, _batch_r) if _batch_r > 0 else []  # type: ignore[assignment]
         if cfg.predation_enabled and c.is_predator and c.bite_cooldown <= 0:
-                # Find nearest non-predator prey within hunt_radius (+2 Wolf totem)
+                # Find nearest non-predator prey within hunt_radius (+2 Celestial Strike avatar)
                 # §AO Phase B: night vision +40% in the dark; a lit campfire
                 # is a wall of light no beast will cross.
                 hunt_r = _hunt_r_tmp

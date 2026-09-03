@@ -459,7 +459,7 @@ class SocietyMixin:
         )
 
     def _update_war(self) -> None:
-        """Rival-clan creatures fight on contact (§I). Shield totem reduces damage (§P).
+        """Rival-clan creatures fight on contact (§I). Indomitable Monolith reduces damage (§P/AP).
 
         AA: pair discovery via the spatial hash — id-ascending outer loop, each
         rival neighbour within attack_radius considered once, so the schedule
@@ -538,7 +538,7 @@ class SocietyMixin:
                 # blocked; a fight's winner may still lose a later duel.
                 if loser.id in fallen or winner.id in fallen:
                     continue
-                # Shield totem: 30% damage reduction; warrior specialization adds bite (§P); traits bold/peaceful (§S)
+                # Indomitable Monolith: 30% damage reduction; warrior specialization adds bite (§P); traits bold/peaceful (§S)
                 dmg = cfg.attack_damage
                 # warrior clan hits harder
                 w_spec = self.clans.get(winner.clan_id, {}).get("specialization", {}).get("warrior", 0.33) if winner.clan_id else 0.33

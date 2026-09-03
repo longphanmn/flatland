@@ -60,7 +60,7 @@ class Config:
     max_clans: int = -1  # -1 = one clan per house; N ≥ 1 clusters founders into N spatial clans
 
     # Totem & clan depth (§P)
-    totems_enabled: bool = True  # §P: each clan bears a totem (Wolf/Tree/Shield/Eye) with subtle buff
+    totems_enabled: bool = True  # §P/AP: each clan bears a Sacred Avatar totem with subtle buff
     succession_enabled: bool = True  # §P: leader succession on death emits succession event
 
     # Schism — WorldBox rebellion (§S P1) — enabled but rare

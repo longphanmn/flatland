@@ -465,7 +465,7 @@ A comparative study between **Edwin A. Abbott’s 1884 satirical classic *Flatla
 ## 5. Clan Diplomacy, Totems & Autonomous Society
 
 While Abbott’s book portrays a centralized Victorian government, our app layers an **evolutionary social simulation**:
-- **Tribal Totems & Specialization**: Clans worship distinct totems (🐺 Wolf, 🐻 Bear, 🦅 Eagle, 🦌 Stag, 🐍 Serpent, 🦉 Owl), shifting personality traits and societal balance between warriors, farmers, and scavengers.
+- **Sacred Avatars & Specialization**: Each clan bears one of the 8 Sacred Avatars of the Sphere (⭕ Radiant Circle, ⚡ Celestial Strike, 👁️ All-Seeing Vertex, 🛡️ Indomitable Monolith, 🌿 Sacred Spiral, ⚖️ Cosmic Scales, 🌀 Dimensional Rift, 🕯️ Eternal Hearth), each granting a distinct divine buff and biasing the clan's balance of warriors, farmers, and scavengers.
 - **Diplomacy, Tributes & War**: Dynamic clan relations with wars, peace treaties, tribute subjugation, and schisms.
 - **Personal Autonomy & Inventory**: Independent personality archetypes (Brave, Cautious, Altruistic, Greedy, Explorer, Builder) with personal foraging baskets, tools (spears, crowns, herb poultices), and emergency self-preservation eating.
 
@@ -540,7 +540,7 @@ Nghiên cứu đối chiếu giữa tiểu thuyết châm biếm kinh điển n�
 ## 5. Ngoại giao Bộ tộc, Linh thú Totem & Xã hội Tự trị
 
 Khác với chính quyền tập quyền thời Victoria trong sách, ứng dụng triển khai **mô phỏng xã hội tiến hóa**:
-- **Linh thú Totem**: Các bộ tộc tôn thờ linh thú riêng (🐺 Sói, 🐻 Gấu, 🦅 Đại bàng, 🦌 Hươu, 🐍 Rắn, 🦉 Cú), tạo nên xu hướng tính cách và sự chuyên môn hóa kinh tế khác biệt giữa các chiến binh, nông dân và thợ săn.
+- **Linh thú Totem**: Mỗi bộ tộc mang một trong 8 Hóa thân Linh thiêng của Sphere (⭕ Radiant Circle, ⚡ Celestial Strike, 👁️ All-Seeing Vertex, 🛡️ Indomitable Monolith, 🌿 Sacred Spiral, ⚖️ Cosmic Scales, 🌀 Dimensional Rift, 🕯️ Eternal Hearth), tạo nên xu hướng tính cách và sự chuyên môn hóa kinh tế khác biệt giữa các chiến binh, nông dân và thợ săn.
 - **Ngoại giao, Cống nạp & Chiến tranh**: Quan hệ bộ tộc diễn tiến linh hoạt với các hiệp ước hòa bình, liên minh quân sự, nộp cống và nguy cơ phân liệt phe phái.
 - **Quyền tự trị cá nhân**: Các hình mẫu tính cách độc lập (Dũng cảm, Cẩn trọng, Vị tha, Tham lam, Thám hiểm, Thợ xây) mang giỏ thức ăn cá nhân, vũ khí và phản xạ tự cứu mình khi nguy cấp.
 
@@ -615,7 +615,7 @@ Mối liên kết sâu sắc nhất giữa ứng dụng và tác phẩm chính l
 ## 5. Diplomatie de Clan, Totems & Société Évolutive
 
 Au-delà de l'État victorien centralisé d'Abbott, l'application met en scène une **société évolutive vivante** :
-- **Totems & Spécialisation** : Vénération de totems animaux (🐺 Loup, 🐻 Ours, 🦅 Aigle, 🦌 Cerf, 🐍 Serpent, 🦉 Chouette), orientant les vocations du clan.
+- **Totems & Spécialisation** : Vénération de l'un des 8 Avatars Sacrés de la Sphère (⭕ Radiant Circle, ⚡ Celestial Strike, 👁️ All-Seeing Vertex, 🛡️ Indomitable Monolith, 🌿 Sacred Spiral, ⚖️ Cosmic Scales, 🌀 Dimensional Rift, 🕯️ Eternal Hearth), orientant les vocations du clan.
 - **Diplomatie, Tributs & Conflits** : Relations mouvantes entre clans incluant traités, guerres de conquête, pillages de greniers et scissions.
 - **Autonomie individuelle** : Tempéraments personnalisés (Brave, Prudent, Altruiste, Avare, Explorateur, Bâtisseur) dotés de paniers individuels et d'outils façonnés.
 

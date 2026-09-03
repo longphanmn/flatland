@@ -688,7 +688,7 @@ class LifecycleMixin:
             mother_clan = self.clans.get(mother.clan_id) if mother.clan_id else None
             if mother_clan and self.tick < int(mother_clan.get("feast_until", 0)):
                 rate = min(1.0, rate * BANQUET_FERTILITY_MULT)
-            rate *= 1.0 + self._totem_stat(mother, "birth")  # Stag/Rabbit fecundity
+            rate *= 1.0 + self._totem_stat(mother, "birth")  # Radiant Circle fecundity
             # §BF-1 birth rate ramp — days 0-6 throttled to 0.12× → 1.0× linearly (skip for tests with adult_age 0)
             _ramp = float(getattr(cfg, "boom_ramp_days", 6.0) or 6.0)
             _floor = float(getattr(cfg, "boom_birth_floor", 0.12) or 0.12)
@@ -941,7 +941,7 @@ class LifecycleMixin:
         self._init_creature_evolution(child, mother, father)
         self.world.add(child)
         self._promote_pending_caches(child)
-        gift = self._totem_stat(child, "health")  # totem vitality: Bear/Shield cubs
+        gift = self._totem_stat(child, "health")  # avatar vitality: Indomitable Monolith birth-gift
         if gift:
             child.health = min(child.max_health, child.health + gift)
         if child.clan_id == 0:
