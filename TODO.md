@@ -3,7 +3,7 @@
 The Sphere model: The Sphere (God) sets **laws** from Spaceland, never touches individual creatures. Everything else emerges.
 Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observability · `- [ ]` open · `- [x]` done · *parked* = decided, not pending
 
-> **Active backlog only.** Completed roadmaps §F–§BH (669 items) → [`docs/roadmap-archive.md`](docs/roadmap-archive.md). This file tracks **0 open items — all caught up + 8 parked**. §BG (12) 2026-09-02, §BH (10) 2026-09-02.
+> **Active backlog only.** Completed roadmaps §F–§BH (669 items) → [`docs/roadmap-archive.md`](docs/roadmap-archive.md). This file tracks **16 open items** (10 in §BI, 6 in §BJ) + 8 parked.
 
 ---
 
@@ -53,6 +53,93 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 
 ---
 
+## §BI Simulation Engine Decomposition — 0/10 open — 2026-09-02
+
+> **Context**: `simulation.py` is an 11,624-line monolith containing 7 distinct domains. Decompose into a mixin-based `simulation/` package for maintainability, navigation, and merge-conflict reduction. Zero logic changes — method bodies move as-is. All 487 tests must remain green at every phase.
+
+### Phase 1: Scaffold Package [P0]
+- [ ] [P0] **BI-1 Create `simulation/` package scaffold** — Create `backend/app/simulation/` with `__init__.py` re-exporting `Simulation`. Move `simulation.py` → `simulation/core.py`. Update all imports across codebase. Verify `pytest -q` 487/487.
+- [ ] [P0] **BI-2 Extract `constants.py`** — Move all module-level constants, lookup tables, season/age multipliers, clan name generators, and utility functions (`personal_name_for`, `glyph_for`, `variation_for`) from L1–719 into `simulation/constants.py`.
+
+### Phase 2: Extract Domain Mixins (least coupled first) [P0]
+- [ ] [P0] **BI-3 Extract `SerializationMixin`** — Move snapshot/delta wire protocol, entity payloads, identity caching, and hash signatures (~600 lines) into `simulation/serialization.py`.
+- [ ] [P0] **BI-4 Extract `EcologyMixin`** — Move flora lifecycle, agriculture, banquets, corpse decomposition, nutrient cycling, and food law enforcement (~600 lines) into `simulation/ecology.py`.
+- [ ] [P0] **BI-5 Extract `EnvironmentMixin`** — Move sky/weather, wind, temperature grids, elevation, rivers, seismic, lightning, traffic, anomalies, fires, campfires, disasters, and builders (~1,300 lines) into `simulation/environment.py`.
+- [ ] [P0] **BI-6 Extract `SettlementMixin`** — Move housing economy, construction, claims, takeover, doorway navigation, and wall geometry caching (~520 lines) into `simulation/settlement.py`.
+- [ ] [P0] **BI-7 Extract `TheologyMixin`** — Move faith/shrines, blessings, miracles, synods, epiphanies, and dogma (~500 lines) into `simulation/theology.py`.
+- [ ] [P0] **BI-8 Extract `SocietyMixin`** — Move clans, diplomacy, warfare, coalitions, leaders, larders, defection, trade, culture, cannibalism, and specialization (~2,200 lines) into `simulation/society.py`.
+- [ ] [P0] **BI-9 Extract `LifecycleMixin`** — Move spawning, evolution init, morphology inheritance, reproduction, birth, death, disease, and skill/title progression (~1,700 lines) into `simulation/lifecycle.py`.
+
+### Phase 3: Decompose the Agent Loop Monolith [P1]
+- [ ] [P1] **BI-10 Extract `CreatureUpdateMixin` & decompose `_update_creature`** — Move the 2,572-line `_update_creature` into `simulation/creature_update.py` and decompose into 7 named phase methods: `_creature_tick_timers`, `_creature_night_rest`, `_creature_predation`, `_creature_forage`, `_creature_steering`, `_creature_movement`, `_creature_collisions`, `_creature_feeding`, `_creature_metabolism`.
+
+---
+
+## §BJ Production Performance & Tick Budget Restoration (3 → 10+ TPS) — 0/6 open — 2026-09-03
+
+> **Context**: Production servers (e.g. Intel N150 / 4-core Linux) run new worlds at **~3.0 TPS** (330ms/tick) against a 100ms budget (`tick_rate=10.0`). Profiling reveals that 5 compounded bottlenecks stall each step:
+> 1. Full `AgentSoA` & `SpatialHashGrid` allocation/rebuilding every birth/death (~80–120ms)
+> 2. Duplicate `_refresh_cache()` passes with O(N) house bounding-box searches (~40–80ms)
+> 3. Un-throttled synchronous `_analytics.on_tick()` O(N) telemetry rings (~10–15ms)
+> 4. Full JSON payload serialization executed while holding `RT.lock` (~15–25ms)
+> 5. Pure Python sequential creature update loop ignoring compiled `c_batch_update_creatures_omp` (~60–100ms)
+
+### Solutions & Implementation Roadmap
+
+- [ ] [P0] **BJ-1 Incremental AgentSoA Slot Management (Eliminate Full Rebuild)**
+  - **Location**: `backend/app/simulation/core.py:1479-1566`
+  - **Problem**: `if self._soa.N != len(self._cached_creatures)` executes on virtually every tick (births/deaths occur constantly). It instantiates a brand-new `AgentSoA(capacity=2000)`, re-allocates 12+ numpy arrays (~800KB), performs deep Python loops copying positions, angles, genomes, and instantiates a brand-new `SpatialHashGrid`.
+  - **Solution**: Implement in-place slot management in `AgentSoA`:
+    1. *Death*: Compact-remove the dead agent via swap-with-last O(1) compaction (`pos[idx] = pos[N-1]`, `N -= 1`) and update `_soa_id_map`.
+    2. *Birth*: Append the newborn directly into slot `self._soa.add_agent(...)` using the existing pre-allocated buffer without reallocating arrays.
+    3. *Grid*: Incrementally insert/delete/update agent positions in `SpatialHashGrid` without recreating the grid.
+    4. *Capacity*: Only reallocate a larger buffer if `len(creatures) >= capacity`.
+  - **Expected Impact**: Saves **80–120ms/tick** (immediately boosts production from ~3.0 TPS to ~6.5 TPS).
+
+- [ ] [P0] **BJ-2 Single-Pass `_refresh_cache()` with Lightweight Post-Movement Refresh**
+  - **Location**: `backend/app/simulation/core.py:936-1076`, `1158`, `1281`
+  - **Problem**: `_refresh_cache()` is called twice per tick (before and after creature updates). Each invocation performs an O(N_entities) scan across all world entities (food, houses, corpses, creatures), constructs a 50×50 spatial house grid, runs nested bounding-box checks for bed/roof occupancy, and computes leader/shrine/priest/totem lookups.
+  - **Solution**:
+    1. Keep the full entity classification and house grid construction solely at tick start (`L1158`).
+    2. Replace the second invocation (`L1281`) with `_refresh_movement_cache()`, which ONLY refreshes dynamic creature coordinates: `_leader_pos`, `_priest_pos`, and updates `house_occ`/`bodies` using the already-built spatial house grid. Skip scanning foods, corpses, ruins, and rebuilding `_houses_by_clan`.
+  - **Expected Impact**: Saves **25–40ms/tick**.
+
+- [ ] [P1] **BJ-3 Decouple Telemetry & Analytics Ring from Simulation Hot-Path**
+  - **Location**: `backend/app/simulation/core.py:1608-1610`, `backend/app/analytics.py:52-137`
+  - **Problem**: `self._analytics.on_tick(self)` is called every single tick. It iterates all creatures to aggregate biomass, energy, lifespans, irregularity, and appends to 12 deques. Furthermore, the 1 Hz WebSocket analytics broadcast (`_analytics_payload`) runs `generational_tracker` (sorting all creatures by irregularity, calculating polygon areas/angles with trigonometry) synchronously on the simulation thread.
+  - **Solution**:
+    1. Throttle telemetry sampling: run `self._analytics.on_tick(self)` at 2 Hz (`if self.tick % max(1, int(self.config.tick_rate // 2)) == 0:`), or maintain running scalar accumulators during birth/death/eat.
+    2. In `_analytics_payload`, cache the `summary` result or sample a smaller fixed subset of creatures (e.g. 20 instead of 80) for the morphospace scatterplot.
+    3. Ensure `TelemetryRing.push()` avoids re-iterating `world.entities` if `_cached_creatures` is already in memory.
+  - **Expected Impact**: Saves **8–15ms/tick** and eliminates periodic 1 Hz stutter spikes.
+
+- [ ] [P1] **BJ-4 Lockless Snapshot Serialization & Broadcast Pipeline**
+  - **Location**: `backend/app/main.py:345-386`
+  - **Problem**: `advance_world()` runs `rt.sim.step()`, then immediately calls `rt.sim.snapshot_payload()` / `snapshot_delta_payload()` and `_clans_payload()` while holding `with self.rt.lock:`. Serializing hundreds of entity dictionaries and encoding JSON inside the lock blocks HTTP API requests and holds the Python GIL during heavy JSON dumps.
+  - **Solution**:
+    1. Take `rt.lock` ONLY for `rt.sim.step()`.
+    2. Extract a shallow list of dirty entity states or a frozen snapshot reference, then immediately release `rt.lock`.
+    3. Perform dictionary formatting, delta payload calculation, and `_dumps()` JSON encoding outside the lock before enqueueing to the broadcast hub.
+  - **Expected Impact**: Eliminates **15–25ms** of lock contention; keeps HTTP endpoints (`/api/state`, `/healthz`) responsive even during high tick rates.
+
+- [ ] [P1] **BJ-5 Wire Compiled Native Core C/OpenMP Batch Accelerators**
+  - **Location**: `backend/app/simulation/core.py:1231-1233`, `backend/app/native_core.py:115-180`
+  - **Problem**: `deploy.sh:125` compiles `_flatland_core.so` with `-O3 -fopenmp -march=native -ffast-math` containing `c_batch_update_creatures_omp`, `c_query_radius`, and `c_toroidal_dist_sq`. However, `simulation/core.py` runs a purely sequential Python loop over `list(self._cached_creatures)` calling `_update_creature` (~60–100ms for 170 creatures).
+  - **Solution**:
+    1. Wire `native_core.c_query_radius` and toroidal distance math into the hotspot paths of `_update_creature` (predator prey detection, food perception, house door collision checks).
+    2. Enable the OpenMP batch kernel `c_batch_update_creatures_omp` when `config.omp_enabled=True` and living population exceeds `config.omp_threshold`.
+  - **Expected Impact**: Saves **30–60ms/tick** at N >= 170.
+
+- [ ] [P0] **BJ-6 Production Tick-Budget Regression Benchmark**
+  - **Location**: `backend/tests/test_tick_budget.py`
+  - **Problem**: Lack of automated CI testing for tick latency under production-sized founding conditions (170 creatures, 380 food, 88 houses).
+  - **Solution**:
+    1. Add `test_production_tick_budget()` running 100 ticks under the `sustainable` preset.
+    2. Assert mean tick duration $\le 45\text{ms}$ on dev hardware (equivalent to $\le 85\text{ms}$ on low-power Intel N150 / 4-core servers), guaranteeing a solid $\ge 11.5\text{ TPS}$ headroom for the 10.0 TPS target.
+    3. Include per-subsystem timing telemetry in `/healthz` and `/api/perf/telemetry` for live verification.
+
+---
+
 ## Parked — decided, not pending (8 items; 9 before dedupe)
 
 These are documented decisions with rationale, not overdue work. The original 22 unchecked items included 9 such; 2 were the same task.
@@ -67,6 +154,8 @@ These are documented decisions with rationale, not overdue work. The original 22
 | 6 | **BA P1 9.2 Fill sensor slots 9–13** | Slots remain 0; full scent/signal integration needs §AN grid wiring — deferred to avoid churn before 8.1 hard switch. |
 | 7 | **BA P0 9.4 Vectorize the raycast sensor loop** | Python loop stays within 50 ms CI budget (`test_n2000_budget` ≤50 ms; 12 ms target is N150). Defer numpy vectorization until profiling shows bottleneck. |
 | 8 | **BA P0 10.1 Extend `test_neuroevolution.py`** | Deferred until 8.1 hard switch — soft-gated wiring would make tests flaky. Current 8 tests cover SoA/genome/forward/sensors/mating/latch/budget. |
+| 9 | **BJ-1 (SoA incremental) and BJ-2 (single cache pass) can land before or after §BI** | Can be implemented directly on `simulation/core.py` without conflicting with mixin modularization, and provides immediate production speedup. |
+| 10 | **BJ-4 (Lockless serialization) must not modify `sim.step()` semantics** | State read outside the lock must be immutable snapshots or deltas. |
 
 ---
 
@@ -76,10 +165,13 @@ These are documented decisions with rationale, not overdue work. The original 22
 1. **BH-1 Polar Crossover before BG-9 Inspector Radar** — Two-parent geometry structure must be stabilized before wireframe visualizer binds to it.
 2. **BH-4 Live NN crossover on `_birth` before BH-5 block rates** — Base crossover wiring in `_birth` must exist before adding block-wise mutation rates.
 3. **BG-1 Isosceles & BG-2 Mutated Polygons can land independently in frontend** without touching backend simulation loop.
+4. **BI-1 Scaffold before any mixin extraction** — Package structure must exist before moving methods into mixin files.
+5. **BI-3→BI-9 Mixin extractions are sequential** — Each extraction must pass `pytest -q` 487/487 before the next begins. Least-coupled modules first (serialization → ecology → environment → settlement → theology → society → lifecycle).
+6. **BI-10 Creature update decomposition last** — The 2,572-line `_update_creature` touches helpers from every other mixin. Extract only after all other mixins are stable.
 
 ---
 
 ## Archive index
-§F Infrastructure — Database · §A Life cycle · §B Reproduction · §C Irregularity & caste · §D Health & disease · §E Environment · §G God-law & observability · §H Food ecosystem · §I Society · §J Creature profile · §K Documentation · §L Shelter · Cross-system synergies · §W World generation · §N New frontiers · §O Ecosystem depth · §P Clan depth · §Q Creatures 2.0 · §R Weather as life · §S WorldBox inspirations · §T Sustainability & performance · §U Mobile UI/UX · §V Clan founding redesign · §X Fixes · §X2 Communication II · §Y UI polish · §Z Terminal frontend · §AA Performance round 2 · §AB Politics · §AC Desperation cannibalism · §AD OS-log persistence · §AE Food decay · §AF Performance & Massive Scale · §AG Autonomous Evolution · §AH Energy Dynamics · §AI TUI Feature Parity · §AJ Next-Gen Performance (3 phases) · §AK Clan Lifecycle · §AL Creature Cognitive Agency · §AM Food & Agriculture · §AN Communication, Language & Diplomatic · §AO Nocturnal Perils · §AP Unified Theology · §AQ 2D Physics · §AR Creature Senses · §AS Clan Leader Importance · §AT Four Immediate Issues · §AU Performance Optimizations · §AV Frontend & TUI Performance · §AW Emergency 1–2 TPS · §AX High-Density 20 TPS · §AY Multi-Core Engine · §AY2 World Simulation Presets · §AZ Backend Performance Audit · §BA Micro-Neural Network · §BC Geometric Physics & Morphological Evolution · §BD World Analytics & Telemetry Engine · §BE Creature Movement AI Overhaul · §BF Early Population Boom Limiter · §BG Mutational Shape & Visual Phenotypes · §BH Next-Gen Evolutionary Mutation Engine & Neuroevolution
+§F Infrastructure — Database · §A Life cycle · §B Reproduction · §C Irregularity & caste · §D Health & disease · §E Environment · §G God-law & observability · §H Food ecosystem · §I Society · §J Creature profile · §K Documentation · §L Shelter · Cross-system synergies · §W World generation · §N New frontiers · §O Ecosystem depth · §P Clan depth · §Q Creatures 2.0 · §R Weather as life · §S WorldBox inspirations · §T Sustainability & performance · §U Mobile UI/UX · §V Clan founding redesign · §X Fixes · §X2 Communication II · §Y UI polish · §Z Terminal frontend · §AA Performance round 2 · §AB Politics · §AC Desperation cannibalism · §AD OS-log persistence · §AE Food decay · §AF Performance & Massive Scale · §AG Autonomous Evolution · §AH Energy Dynamics · §AI TUI Feature Parity · §AJ Next-Gen Performance (3 phases) · §AK Clan Lifecycle · §AL Creature Cognitive Agency · §AM Food & Agriculture · §AN Communication, Language & Diplomatic · §AO Nocturnal Perils · §AP Unified Theology · §AQ 2D Physics · §AR Creature Senses · §AS Clan Leader Importance · §AT Four Immediate Issues · §AU Performance Optimizations · §AV Frontend & TUI Performance · §AW Emergency 1–2 TPS · §AX High-Density 20 TPS · §AY Multi-Core Engine · §AY2 World Simulation Presets · §AZ Backend Performance Audit · §BA Micro-Neural Network · §BC Geometric Physics & Morphological Evolution · §BD World Analytics & Telemetry Engine · §BE Creature Movement AI Overhaul · §BF Early Population Boom Limiter · §BG Mutational Shape & Visual Phenotypes · §BH Next-Gen Evolutionary Mutation Engine & Neuroevolution · §BI Simulation Engine Decomposition · §BJ Production Performance & Tick Budget Restoration
 
 Full completed content → [`docs/roadmap-archive.md`](docs/roadmap-archive.md)
