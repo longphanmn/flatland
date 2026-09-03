@@ -53,6 +53,32 @@ class SpatialHashGrid:
         except ValueError:
             pass
 
+    def move(self, entity_id: int, x: float, y: float, type_str: str | None = None) -> None:
+        """BJ-1: incremental single-agent position update.
+
+        Moves the id between buckets only when its cell changes; otherwise
+        just refreshes the stored position. O(1) average, no full rebucket.
+        """
+        eid = int(entity_id)
+        fx, fy = float(x), float(y)
+        old = self._pos.get(eid)
+        if old is None:
+            self.insert(eid, fx, fy, type_str)
+            return
+        _, _, old_t = old
+        t = type_str if type_str is not None else old_t
+        old_cell = self._cell(old[0], old[1])
+        new_cell = self._cell(fx, fy)
+        self._pos[eid] = (fx, fy, t)
+        if old_cell == new_cell:
+            return
+        try:
+            self._buckets[old_cell].remove(eid)
+        except ValueError:
+            pass
+        if eid not in self._buckets[new_cell]:
+            self._buckets[new_cell].append(eid)
+
     def update_positions(self, ids, pos_array) -> None:
         """Batch update: ids iterable, pos_array shape (N,2)."""
         # clear and rebucket for simplicity (O(N))

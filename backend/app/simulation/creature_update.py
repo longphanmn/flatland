@@ -2216,6 +2216,37 @@ class CreatureUpdateMixin:
                 o.emote_ticks = 15
                 break
 
+        # BJ-5: OpenMP hint fallback — python perception selected nothing, but
+        # the fused C kernel flagged an adjacent meal. Revalidated under the
+        # full eat gate (kind, liveness, radius, energy, predator diet, grudges).
+        if target is None:
+            try:
+                _omp_hint_id = (getattr(self, "_omp_hints", None) or {}).get(c.id)
+            except Exception:
+                _omp_hint_id = None
+            if _omp_hint_id is not None:
+                try:
+                    _he = w.entities.get(_omp_hint_id)
+                    if (
+                        _he is not None
+                        and _he.kind in ("food", "corpse")
+                        and _he.id not in self._eaten
+                        and w.distance_sq(c.x, c.y, _he.x, _he.y) <= cfg.eat_radius * cfg.eat_radius
+                        and (
+                            c.is_predator
+                            or c.energy <= 0.85 * cfg.energy_max
+                            or (isinstance(_he, Food) and _he.variant == "medicinal_herb" and c.health < 60.0)
+                        )
+                        and not (c.is_predator and _he.kind == "food")
+                        and (
+                            cfg.food_giveup_ticks <= 0
+                            or (self.tick - c.give_ups.get(_he.id, -cfg.food_giveup_ticks) >= cfg.food_giveup_ticks)
+                        )
+                    ):
+                        target = _he
+                except Exception:
+                    pass
+
         # 5. Eat or Harvest into basket / reserve. Full creatures (>85% energy) do not consume food.
         can_eat = target is not None and w.distance_sq(c.x, c.y, target.x, target.y) <= cfg.eat_radius * cfg.eat_radius and (
             c.is_predator or c.energy <= 0.85 * cfg.energy_max

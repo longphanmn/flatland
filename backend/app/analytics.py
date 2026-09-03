@@ -50,6 +50,9 @@ class TelemetryRing:
         self._death_ticks: deque[int] = deque()
 
     def push(self, tick: int, sim: Any) -> None:
+        # BJ-3: cache-first — the tick cache is authoritative on the hot path;
+        # fall back to a world scan only when the cache is empty/stale (e.g.
+        # direct world.add without a refresh, as in unit tests).
         creatures = getattr(sim, "_cached_creatures", None) or list(sim.world.creatures()) if hasattr(sim, "world") else []
         n = len(creatures)
         biomass = 0.0
@@ -288,12 +291,12 @@ class AnalyticsEngine:
                             id_to_idx[int(soa.ids[_ii])] = _ii  # type: ignore
                 except Exception:
                     pass
-            # Scatter: limit to 80 random/sampled creatures for performance
+            # Scatter: BJ-3 limit to 20 sampled creatures for 1 Hz broadcast perf
             import random as _rnd
             sampled = creatures[:]
-            if len(sampled) > 80:
+            if len(sampled) > 20:
                 _rnd.shuffle(sampled)
-                sampled = sampled[:80]
+                sampled = sampled[:20]
             for c in sampled:
                 idx_sc = id_to_idx.get(int(c.id), -1)
                 area = None

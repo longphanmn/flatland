@@ -3,7 +3,7 @@
 The Sphere model: The Sphere (God) sets **laws** from Spaceland, never touches individual creatures. Everything else emerges.
 Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observability · `- [ ]` open · `- [x]` done · *parked* = decided, not pending
 
-> **Active backlog only.** Completed roadmaps §F–§BH (669 items) → [`docs/roadmap-archive.md`](docs/roadmap-archive.md). This file tracks **16 open items** (10 in §BI, 6 in §BJ) + 8 parked.
+> **Active backlog only.** Completed roadmaps §F–§BJ (675 items) → [`docs/roadmap-archive.md`](docs/roadmap-archive.md). This file tracks **10 open items** (10 in §BI) + 8 parked.
 
 ---
 
@@ -75,7 +75,7 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 
 ---
 
-## §BJ Production Performance & Tick Budget Restoration (3 → 10+ TPS) — 0/6 open — 2026-09-03
+## §BJ Production Performance & Tick Budget Restoration (3 → 10+ TPS) — ✅ Done (6/6) — 2026-09-03
 
 > **Context**: Production servers (e.g. Intel N150 / 4-core Linux) run new worlds at **~3.0 TPS** (330ms/tick) against a 100ms budget (`tick_rate=10.0`). Profiling reveals that 5 compounded bottlenecks stall each step:
 > 1. Full `AgentSoA` & `SpatialHashGrid` allocation/rebuilding every birth/death (~80–120ms)
@@ -83,10 +83,12 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
 > 3. Un-throttled synchronous `_analytics.on_tick()` O(N) telemetry rings (~10–15ms)
 > 4. Full JSON payload serialization executed while holding `RT.lock` (~15–25ms)
 > 5. Pure Python sequential creature update loop ignoring compiled `c_batch_update_creatures_omp` (~60–100ms)
+>
+> **Result**: `test_production_tick_budget` (100 ticks, sustainable preset, 170 creatures / 380 food / 88 houses) reports **mean 28.8ms / max 35.5ms** on dev hardware — inside the 45ms budget (85ms N150 equiv). Full suite **490 passed, 14 skipped**.
 
 ### Solutions & Implementation Roadmap
 
-- [ ] [P0] **BJ-1 Incremental AgentSoA Slot Management (Eliminate Full Rebuild)**
+- [x] [P0] **BJ-1 Incremental AgentSoA Slot Management (Eliminate Full Rebuild)**
   - **Location**: `backend/app/simulation/core.py:1479-1566`
   - **Problem**: `if self._soa.N != len(self._cached_creatures)` executes on virtually every tick (births/deaths occur constantly). It instantiates a brand-new `AgentSoA(capacity=2000)`, re-allocates 12+ numpy arrays (~800KB), performs deep Python loops copying positions, angles, genomes, and instantiates a brand-new `SpatialHashGrid`.
   - **Solution**: Implement in-place slot management in `AgentSoA`:
@@ -96,7 +98,7 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
     4. *Capacity*: Only reallocate a larger buffer if `len(creatures) >= capacity`.
   - **Expected Impact**: Saves **80–120ms/tick** (immediately boosts production from ~3.0 TPS to ~6.5 TPS).
 
-- [ ] [P0] **BJ-2 Single-Pass `_refresh_cache()` with Lightweight Post-Movement Refresh**
+- [x] [P0] **BJ-2 Single-Pass `_refresh_cache()` with Lightweight Post-Movement Refresh**
   - **Location**: `backend/app/simulation/core.py:936-1076`, `1158`, `1281`
   - **Problem**: `_refresh_cache()` is called twice per tick (before and after creature updates). Each invocation performs an O(N_entities) scan across all world entities (food, houses, corpses, creatures), constructs a 50×50 spatial house grid, runs nested bounding-box checks for bed/roof occupancy, and computes leader/shrine/priest/totem lookups.
   - **Solution**:
@@ -104,7 +106,7 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
     2. Replace the second invocation (`L1281`) with `_refresh_movement_cache()`, which ONLY refreshes dynamic creature coordinates: `_leader_pos`, `_priest_pos`, and updates `house_occ`/`bodies` using the already-built spatial house grid. Skip scanning foods, corpses, ruins, and rebuilding `_houses_by_clan`.
   - **Expected Impact**: Saves **25–40ms/tick**.
 
-- [ ] [P1] **BJ-3 Decouple Telemetry & Analytics Ring from Simulation Hot-Path**
+- [x] [P1] **BJ-3 Decouple Telemetry & Analytics Ring from Simulation Hot-Path**
   - **Location**: `backend/app/simulation/core.py:1608-1610`, `backend/app/analytics.py:52-137`
   - **Problem**: `self._analytics.on_tick(self)` is called every single tick. It iterates all creatures to aggregate biomass, energy, lifespans, irregularity, and appends to 12 deques. Furthermore, the 1 Hz WebSocket analytics broadcast (`_analytics_payload`) runs `generational_tracker` (sorting all creatures by irregularity, calculating polygon areas/angles with trigonometry) synchronously on the simulation thread.
   - **Solution**:
@@ -113,7 +115,7 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
     3. Ensure `TelemetryRing.push()` avoids re-iterating `world.entities` if `_cached_creatures` is already in memory.
   - **Expected Impact**: Saves **8–15ms/tick** and eliminates periodic 1 Hz stutter spikes.
 
-- [ ] [P1] **BJ-4 Lockless Snapshot Serialization & Broadcast Pipeline**
+- [x] [P1] **BJ-4 Lockless Snapshot Serialization & Broadcast Pipeline**
   - **Location**: `backend/app/main.py:345-386`
   - **Problem**: `advance_world()` runs `rt.sim.step()`, then immediately calls `rt.sim.snapshot_payload()` / `snapshot_delta_payload()` and `_clans_payload()` while holding `with self.rt.lock:`. Serializing hundreds of entity dictionaries and encoding JSON inside the lock blocks HTTP API requests and holds the Python GIL during heavy JSON dumps.
   - **Solution**:
@@ -122,7 +124,7 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
     3. Perform dictionary formatting, delta payload calculation, and `_dumps()` JSON encoding outside the lock before enqueueing to the broadcast hub.
   - **Expected Impact**: Eliminates **15–25ms** of lock contention; keeps HTTP endpoints (`/api/state`, `/healthz`) responsive even during high tick rates.
 
-- [ ] [P1] **BJ-5 Wire Compiled Native Core C/OpenMP Batch Accelerators**
+- [x] [P1] **BJ-5 Wire Compiled Native Core C/OpenMP Batch Accelerators**
   - **Location**: `backend/app/simulation/core.py:1231-1233`, `backend/app/native_core.py:115-180`
   - **Problem**: `deploy.sh:125` compiles `_flatland_core.so` with `-O3 -fopenmp -march=native -ffast-math` containing `c_batch_update_creatures_omp`, `c_query_radius`, and `c_toroidal_dist_sq`. However, `simulation/core.py` runs a purely sequential Python loop over `list(self._cached_creatures)` calling `_update_creature` (~60–100ms for 170 creatures).
   - **Solution**:
@@ -130,7 +132,7 @@ Legend: [P0] foundational · [P1] core Flatland identity · [P2] flavor/observab
     2. Enable the OpenMP batch kernel `c_batch_update_creatures_omp` when `config.omp_enabled=True` and living population exceeds `config.omp_threshold`.
   - **Expected Impact**: Saves **30–60ms/tick** at N >= 170.
 
-- [ ] [P0] **BJ-6 Production Tick-Budget Regression Benchmark**
+- [x] [P0] **BJ-6 Production Tick-Budget Regression Benchmark**
   - **Location**: `backend/tests/test_tick_budget.py`
   - **Problem**: Lack of automated CI testing for tick latency under production-sized founding conditions (170 creatures, 380 food, 88 houses).
   - **Solution**:

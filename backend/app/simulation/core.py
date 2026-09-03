@@ -86,6 +86,101 @@ from .theology import TheologyMixin
 from .serialization import SerializationMixin
 
 
+def _morph_sat_pair(sim, soa, idx: int, j: int) -> None:
+    """BJ-5: shared SAT narrowphase for one SoA index pair (broadphase-agnostic).
+
+    Moved verbatim from `_update_morph_collisions` so the OpenMP sweep
+    broadphase and the legacy spatial-hash broadphase share one narrowphase.
+    """
+    import math as _m
+
+    try:
+        eid = int(soa.ids[idx]) if hasattr(soa.ids, "__getitem__") else -1
+        ent = sim.world.entities.get(eid)
+        other_id = int(soa.ids[j]) if hasattr(soa.ids, "__getitem__") else -1
+        other = sim.world.entities.get(other_id)
+        if ent is None or other is None or not isinstance(ent, Creature) or not isinstance(other, Creature):
+            return
+        if hasattr(soa.morph_radii, "shape"):
+            kr = int(soa.morph_k[idx]); ko = int(soa.morph_k[j])
+            if kr < 3 or ko < 3:
+                return
+            rr = soa.morph_radii[idx, :kr]; pa = soa.morph_angles[idx, :kr]
+            ro = soa.morph_radii[j, :ko]; po = soa.morph_angles[j, :ko]
+            import numpy as _np  # type: ignore
+            try:
+                asym_a = float(soa.physical_traits[idx, 4]) if hasattr(soa.physical_traits, "shape") else float(soa.physical_traits[idx][4])  # type: ignore
+                asym_b = float(soa.physical_traits[j, 4]) if hasattr(soa.physical_traits, "shape") else float(soa.physical_traits[j][4])  # type: ignore
+            except Exception:
+                asym_a = asym_b = 1.0
+            use_circle_a = (kr >= 24 and asym_a < 0.05)
+            use_circle_b = (ko >= 24 and asym_b < 0.05)
+            xa = (rr * _np.cos(pa) + ent.x).tolist() if hasattr(rr, "tolist") else [rr[i]*_m.cos(pa[i])+ent.x for i in range(kr)]
+            ya = (rr * _np.sin(pa) + ent.y).tolist() if hasattr(rr, "tolist") else [rr[i]*_m.sin(pa[i])+ent.y for i in range(kr)]
+            xb = (ro * _np.cos(po) + other.x).tolist() if hasattr(ro, "tolist") else [ro[i]*_m.cos(po[i])+other.x for i in range(ko)]
+            yb = (ro * _np.sin(po) + other.y).tolist() if hasattr(ro, "tolist") else [ro[i]*_m.sin(po[i])+other.y for i in range(ko)]
+            if use_circle_a or use_circle_b:
+                try:
+                    if use_circle_a:
+                        cx, cy = ent.x, ent.y
+                        crad = float(soa.physical_traits[idx, 0] / soa.physical_traits[idx, 1] * 2) if hasattr(soa.physical_traits, "shape") else 1.0
+                        crad = float(_np.mean(rr)) if hasattr(rr, "mean") else sum(rr)/len(rr) if rr else 1.0
+                        if use_circle_a and use_circle_b:
+                            dx = ent.x - other.x
+                            dy = ent.y - other.y
+                            dx, dy = sim.world.delta(ent.x, ent.y, other.x, other.y)
+                            dist2 = dx*dx + dy*dy
+                            overlap = dist2 <= (crad + (float(_np.mean(ro)) if hasattr(ro, "mean") else 1.0))**2
+                        else:
+                            overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+                    else:
+                        overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+                except Exception:
+                    overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+            else:
+                overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+        else:
+            kr = int(soa.morph_k[idx]); ko = int(soa.morph_k[j])
+            if kr < 3 or ko < 3:
+                return
+            rr = soa.morph_radii[idx]; pa = soa.morph_angles[idx]
+            ro = soa.morph_radii[j]; po = soa.morph_angles[j]
+            xa = [rr[i]*_m.cos(pa[i])+ent.x for i in range(kr)]
+            ya = [rr[i]*_m.sin(pa[i])+ent.y for i in range(kr)]
+            xb = [ro[i]*_m.cos(po[i])+other.x for i in range(ko)]
+            yb = [ro[i]*_m.sin(po[i])+other.y for i in range(ko)]
+            try:
+                asym_a = float(soa.physical_traits[idx][4])  # type: ignore
+                asym_b = float(soa.physical_traits[j][4])  # type: ignore
+            except Exception:
+                asym_a = asym_b = 1.0
+            if (kr >= 24 and asym_a < 0.05) and (ko >= 24 and asym_b < 0.05):
+                dx, dy = sim.world.delta(ent.x, ent.y, other.x, other.y)
+                crad = sum(rr)/len(rr) if rr else 1.0
+                orad = sum(ro)/len(ro) if ro else 1.0
+                overlap = (dx*dx + dy*dy) <= (crad + orad)**2
+            elif kr >= 24 and asym_a < 0.05 or ko >= 24 and asym_b < 0.05:
+                overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+            else:
+                overlap = _morphology.sat_overlap(xa, ya, xb, yb)
+        if overlap:
+            if (ent.clan_id and ent.clan_id == other.clan_id) or getattr(ent, "sleeping", False) or getattr(other, "sleeping", False) or ent.shape == "line" or other.shape == "line":
+                return
+            try:
+                da = float(soa.morph_traits[idx, 5]) if hasattr(soa.morph_traits, "shape") else float(soa.morph_traits[idx][5])
+                db = float(soa.morph_traits[j, 5]) if hasattr(soa.morph_traits, "shape") else float(soa.morph_traits[j][5])
+            except Exception:
+                da = db = 0.0
+            dmg = max(da, db) * sim.config.attack_damage * 0.2
+            if dmg > 0:
+                tgt = other if other.health < ent.health else ent
+                tgt.health -= dmg
+                if tgt.health <= 0:
+                    sim._kill(tgt, "collision")
+    except Exception:
+        return
+
+
 class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementMixin, TheologyMixin, SocietyMixin, LifecycleMixin, CreatureUpdateMixin):
     def __init__(
         self,
@@ -195,6 +290,10 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
         self._soa: object | None = None  # AgentSoA when enabled
         self._nn_grid: object | None = None  # SpatialHashGrid when enabled
         self._nn_tick: int = 0
+        # BJ-6: per-subsystem tick timing (last-tick ms + rolling avg for /healthz + /api/perf/telemetry)
+        self._phase_ms: dict[str, float] = {}
+        self._phase_totals: dict[str, float] = {}
+        self._phase_counts: dict[str, int] = {}
         # BD Analytics — zero-alloc telemetry engine
         try:
             from .. import analytics as _bd_analytics  # type: ignore
@@ -1080,6 +1179,220 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
         self._refresh_cache()
         return self._cached_creatures
 
+    def _refresh_movement_cache(self) -> None:
+        """BJ-2: lightweight post-movement refresh (no full entity rescan).
+
+        Keeps the full house grid / clan tables built at tick start and only
+        refreshes dynamic creature coordinates: creature list (creature-only
+        scan), clan membership, leader/priest positions, and house occupancy
+        bodies using the already-built spatial house grid. Skips foods,
+        corpses, ruins, and _houses_by_clan rebuild.
+        """
+        creatures: list[Creature] = []
+        m: dict[int, list[Creature]] = {}
+        for e in self.world.entities.values():
+            if type(e) is Creature:
+                creatures.append(e)
+                m.setdefault(e.clan_id, []).append(e)  # type: ignore[union-attr]
+        self._cached_creatures = creatures
+        self._clan_members = m
+        self._cached_creatures_sorted = creatures
+        house_grid = getattr(self, "_house_grid", {}) or {}
+        house_occ: dict[int, int] = {}
+        bodies: dict[int, int] = {}
+        for c in creatures:
+            for h in house_grid.get((int(c.x // 50), int(c.y // 50)), []):
+                half = h.size / 2
+                if abs(c.x - h.x) < half and abs(c.y - h.y) < half:
+                    bodies[h.id] = bodies.get(h.id, 0) + 1
+                    break
+            if getattr(c, "sleeping", False):
+                hid = getattr(c, "house_id", None)
+                if hid is not None:
+                    house_occ[hid] = house_occ.get(hid, 0) + 1
+                else:
+                    for h in house_grid.get((int(c.x // 50), int(c.y // 50)), []):
+                        if self._inside_house(c, h):
+                            house_occ[h.id] = house_occ.get(h.id, 0) + 1
+                            break
+        self._house_occupants = house_occ
+        self._house_bodies = bodies
+        leader_pos: dict[int, tuple[float, float]] = {}
+        for cid, info in self.clans.items():
+            lid = info.get("leader_id")
+            if not lid:
+                continue
+            ent = self.world.entities.get(lid)
+            if isinstance(ent, Creature) and ent.clan_id == cid:
+                leader_pos[cid] = (ent.x, ent.y)
+        self._leader_pos = leader_pos
+        priest_pos: dict[int, tuple[float, float]] = {}
+        for cid, members in m.items():
+            for c in members:
+                if c.caste == "Priest" and c.energy > 20.0:
+                    priest_pos[cid] = (c.x, c.y)
+                    break
+        self._priest_pos = priest_pos
+
+    def _sync_soa_incremental(self) -> None:
+        """BJ-1: incremental AgentSoA slot management (no full rebuild).
+
+        - Death: swap-with-last O(1) compaction + _soa_id_map fixup + grid remove.
+        - Birth: append via add_agent into pre-allocated buffer + grid insert.
+        - Move: in-place sync_slot + incremental grid.move.
+        - Capacity: grow (doubling) only when len(alive) >= capacity.
+        Newborns added to world after the last _refresh_cache are picked up
+        via a creature-only delta scan so same-tick births join the SoA.
+        """
+        soa = getattr(self, "_soa", None)
+        if soa is None:
+            return
+        id_map: dict[int, int] = getattr(self, "_soa_id_map", None)  # type: ignore
+        if id_map is None:
+            id_map = {}
+            self._soa_id_map = id_map  # type: ignore[attr-defined]
+        grid = getattr(self, "_nn_grid", None)
+        # Include same-tick newborns missing from the (pre-reproduce) cache.
+        alive: list[Creature] = self._cached_creatures
+        try:
+            alive_ids: set[int] = {c.id for c in alive}
+            for e in self.world.entities.values():
+                if type(e) is Creature and e.id not in alive_ids:
+                    alive.append(e)
+                    alive_ids.add(e.id)
+                    self._clan_members.setdefault(e.clan_id, []).append(e)  # type: ignore[union-attr]
+        except Exception:
+            alive_ids = {c.id for c in alive}
+        # --- deaths: compact-remove slots whose id is no longer alive ---
+        try:
+            for eid in list(id_map.keys()):
+                if eid not in alive_ids:
+                    idx = id_map.get(eid)
+                    if idx is None:
+                        continue
+                    # Identify the id occupying the last slot (moves into idx).
+                    try:
+                        last_idx = soa.N - 1
+                        if hasattr(soa.ids, "tolist"):
+                            last_eid = int(soa.ids[last_idx]) if soa.N > 0 else -1
+                        else:
+                            last_eid = int(soa.ids[last_idx]) if soa.N > 0 else -1
+                    except Exception:
+                        last_eid = -1
+                    try:
+                        soa.remove_at(int(idx))
+                    except Exception:
+                        continue
+                    id_map.pop(eid, None)
+                    if last_eid != -1 and last_eid != eid and last_eid in id_map:
+                        id_map[last_eid] = int(idx)
+                    if grid is not None:
+                        try:
+                            grid.remove(int(eid))
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+        # --- capacity: grow once if needed (no per-tick realloc) ---
+        try:
+            if len(alive) >= int(getattr(soa, "capacity", 0)):
+                soa.ensure_capacity(max(2000, len(alive) * 2 + 10))
+        except Exception:
+            pass
+        # --- births + moves ---
+        for c in alive:
+            idx = id_map.get(c.id)
+            if idx is None:
+                _mr = _ma = _mk = None
+                try:
+                    if hasattr(self, "_morph_cache") and c.id in self._morph_cache:
+                        _mr, _ma, _mk = self._morph_cache[c.id]  # type: ignore
+                    else:
+                        _mr = getattr(c, "_bc_morph_r", None)
+                        _ma = getattr(c, "_bc_morph_phi", None)
+                        _mk = getattr(c, "_bc_morph_k", None)
+                except Exception:
+                    pass
+                existing_genome = None
+                try:
+                    if hasattr(self, "_nn_cache") and c.id in self._nn_cache:
+                        existing_genome = self._nn_cache[c.id]  # type: ignore
+                except Exception:
+                    pass
+                if existing_genome is None:
+                    try:
+                        if _evolution is not None and hasattr(soa, "genomes"):
+                            pa_idx = id_map.get(getattr(c, "mother_id", None))
+                            pb_idx = id_map.get(getattr(c, "father_id", None))
+                            if pa_idx is not None and pb_idx is not None:
+                                g_a = soa.genomes[pa_idx]
+                                g_b = soa.genomes[pb_idx]
+                                if hasattr(_evolution, "crossover_mutate_blockwise"):
+                                    existing_genome = _evolution.crossover_mutate_blockwise(g_a, g_b, rng=self.rng)
+                                else:
+                                    existing_genome = _evolution.crossover_mutate(
+                                        g_a, g_b,
+                                        p_mut=float(getattr(self.config, "mutation_rate", 0.05)),
+                                        sigma=float(getattr(self.config, "mutation_sigma", 0.08)),
+                                    )
+                            elif getattr(c, "_nn_genome", None) is not None:
+                                existing_genome = c._nn_genome  # type: ignore
+                            else:
+                                existing_genome = _evolution._build_base_genome(soa.genome_size)
+                    except Exception:
+                        existing_genome = None
+                try:
+                    new_idx = soa.add_agent(
+                        int(c.id), float(c.x), float(c.y),
+                        angle=float(c.angle), energy=float(c.energy), health=float(c.health),
+                        genome=existing_genome, morph_radii=_mr, morph_angles=_ma, morph_k=_mk,
+                    )
+                    id_map[int(c.id)] = int(new_idx)
+                    if grid is not None:
+                        try:
+                            grid.insert(int(c.id), float(c.x), float(c.y))
+                        except Exception:
+                            pass
+                except Exception:
+                    continue
+            else:
+                try:
+                    if 0 <= int(idx) < int(soa.N):
+                        soa.sync_slot(int(idx), float(c.x), float(c.y), float(c.angle), float(c.energy), float(c.health))
+                    else:
+                        id_map.pop(c.id, None)
+                        continue
+                except Exception:
+                    continue
+                if grid is not None:
+                    try:
+                        if hasattr(grid, "move"):
+                            grid.move(int(c.id), float(c.x), float(c.y))
+                        else:
+                            grid.insert(int(c.id), float(c.x), float(c.y))
+                    except Exception:
+                        pass
+
+    def _record_phase(self, name: str, ms: float) -> None:
+        """BJ-6: record one subsystem timing sample (last + rolling totals)."""
+        try:
+            self._phase_ms[name] = round(float(ms), 3)
+            self._phase_totals[name] = float(self._phase_totals.get(name, 0.0)) + float(ms)
+            self._phase_counts[name] = int(self._phase_counts.get(name, 0)) + 1
+        except Exception:
+            pass
+
+    def phase_averages(self) -> dict[str, float]:
+        """BJ-6: mean ms per subsystem over recorded ticks (for telemetry)."""
+        out: dict[str, float] = {}
+        try:
+            for k, total in self._phase_totals.items():
+                n = max(1, int(self._phase_counts.get(k, 1)))
+                out[k] = round(total / n, 3)
+        except Exception:
+            pass
+        return out
+
     # ------------------------------------------------------------------ tick
     def step(self) -> None:
         """Advance the world by exactly one tick (deterministic)."""
@@ -1155,7 +1468,9 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
             self._density_scales = {}
         self._update_plants()
         self.world.rebuild_index()
+        _ph_cache = time.perf_counter()
         self._refresh_cache()
+        self._record_phase("cache_full", (time.perf_counter() - _ph_cache) * 1000.0)
         self._update_anomaly_discovery()  # §AQ PH-10: explorers map the strange
 
         # AZ Phase 2 P1: evict _identity_cache for dead entities (never queried again)
@@ -1228,9 +1543,48 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
             h.clan_id: h for h in houses if isinstance(h, House) and h.clan_id and not h.is_ruin
         }
         self._sync_wind_cache()
+        # BJ-5: OpenMP fused batch kernel (c_batch_update_creatures_omp) runs on
+        # the hot path when gated on: omp_enabled + pop >= omp_threshold. The
+        # kernel executes in C with the GIL released across 8 threads and yields
+        # per-creature eat-target hints; python stays authoritative — hints are
+        # consumed only as a validated fallback in the eat section (same-tick
+        # positions re-checked under the full eat gate), so the simulation law
+        # is unchanged and small-N tests never activate this path.
+        self._omp_hints = {}  # type: ignore[attr-defined]
+        try:
+            _omp_n = len(self._cached_creatures)
+            if (
+                getattr(self.config, "omp_enabled", False)
+                and _native_core is not None
+                and hasattr(_native_core, "native_batch_update")
+                and _omp_n >= int(getattr(self.config, "omp_threshold", 100) or 100)
+            ):
+                _omp_foods = [e for e in self.world.entities.values() if e.kind in ("food", "corpse")]
+                if _omp_foods:
+                    _is_wrap = self.config.boundary == "wrap"
+                    _outs = _native_core.native_batch_update(  # type: ignore
+                        list(self._cached_creatures), _omp_foods,
+                        float(self.config.width), float(self.config.height), _is_wrap,
+                        float(getattr(self, "_cos_wind", 1.0)), float(getattr(self, "_sin_wind", 0.0)),
+                        float(getattr(self, "wind_speed", 0.0)),
+                    )
+                    if _outs:
+                        _hint_map: dict[int, int] = {}
+                        for _c, _o in zip(self._cached_creatures, _outs):
+                            try:
+                                _eid = int(_o[0])
+                            except Exception:
+                                continue
+                            if _eid >= 0:
+                                _hint_map[int(_c.id)] = _eid
+                        self._omp_hints = _hint_map  # type: ignore[attr-defined]
+        except Exception:
+            self._omp_hints = {}  # type: ignore[attr-defined]
+        _ph_creatures = time.perf_counter()
         for creature in list(self._cached_creatures):
             if creature.id in self.world.entities:
                 self._update_creature(creature, houses, tod, is_night, env_sight, env_speed, clan_house_map)
+        self._record_phase("creatures", (time.perf_counter() - _ph_creatures) * 1000.0)
         # BH-9: refresh archetype tags every 20 ticks (cheap) for UI + nocturnal gate
         if self.tick % 20 == 0:
             for c in self._cached_creatures:
@@ -1268,6 +1622,7 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
         # and rebuilt spatial index; next tick's _refresh_cache will be fresh.
         # M-4: stagger heavy post-creature work at >700c (saves ~30ms at 800c, keeps 300c single-core)
         _do_heavy_post = not (len(self._cached_creatures) > 700 and self.tick % 2 == 1)
+        _ph_post = time.perf_counter()
         if _do_heavy_post:
             self._update_disease()
         # AA: positions moved this tick; re-bucket so the spatial war/mob
@@ -1278,7 +1633,10 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
         self._update_night_watch()  # §AO C: spearmen guard the thresholds
         self._update_leader_orders()  # §AS L-2: retreat, ritual, harvest, evacuate
         self._prune_extinct_clans()  # §P0: keep clan bookkeeping bounded
-        self._refresh_cache()
+        # BJ-2: lightweight post-movement refresh — full entity classification
+        # + house grid stay from tick start; only dynamic creature coords update.
+        self._refresh_movement_cache()
+        self._record_phase("post_disease_war", (time.perf_counter() - _ph_post) * 1000.0)
         # Phase 5 Safeguards — 1 Hz homeostatic loop (eta, Tier1/2/3)
         if getattr(self.config, "safeguard_enabled", False) and not _IS_TEST and getattr(self, "_safeguard", None) is not None and self.tick % 10 == 0:
             try:
@@ -1383,6 +1741,7 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
                         pass
             except Exception:
                 pass
+        _ph_society = time.perf_counter()
         self._reproduce()
         # BC bake traits for any new SoA morph entries (lazy)
         if getattr(self.config, "morphology_annealing_enabled", True) and getattr(self, "_soa", None) is not None and _morphology is not None:
@@ -1437,7 +1796,9 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
         self._enforce_food_law()
         self._update_corpses()
         self._update_settlements()
+        self._record_phase("society", (time.perf_counter() - _ph_society) * 1000.0)
         # BA: micro-neural — always on (60Hz physics, 15Hz inference every 4th tick)
+        _ph_soa = time.perf_counter()
         if _agent_soa is not None and _neural_engine is not None:
             try:
                 if self._soa is None:
@@ -1468,116 +1829,10 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
                                             self._soa.genomes[idx] = self._nn_cache[c.id]  # type: ignore
                             except Exception:
                                 pass
-                # 60Hz: sync positions from world to SoA and vice versa (pos += vel)
-                # For now keep SoA as shadow; update grid
+                # BJ-1: incremental slot management — O(delta) births/deaths, in-place moves.
                 if getattr(self, "_soa", None) is not None and self._soa is not None:
-                    # sync world pos -> SoA pos (one-way, keep SoA coherent)
-                    # simple linear scan to update SoA pos from creatures
                     try:
-                        # rebuild SoA pos from current creatures (keep ids aligned)
-                        # If SoA size mismatches, rebuild
-                        if self._soa.N != len(self._cached_creatures):
-                            # rebuild SoA to match world (handles births/deaths)
-                            from ..agent_soa import AgentSoA as _AS
-
-                            old_soa = self._soa
-                            old_id_map = getattr(self, "_soa_id_map", {})
-                            new_soa = _AS(capacity=max(2000, len(self._cached_creatures) * 2 + 10))
-                            for c in self._cached_creatures:
-                                _mr = _ma = _mk = None
-                                if hasattr(self, "_morph_cache") and c.id in self._morph_cache:
-                                    _mr, _ma, _mk = self._morph_cache[c.id]  # type: ignore
-                                else:
-                                    _mr = getattr(c, "_bc_morph_r", None)
-                                    _ma = getattr(c, "_bc_morph_phi", None)
-                                    _mk = getattr(c, "_bc_morph_k", None)
-                                old_idx = old_id_map.get(c.id)
-                                existing_genome = None
-                                # BH-4 NN cache first
-                                if hasattr(self, "_nn_cache") and c.id in self._nn_cache:
-                                    try:
-                                        existing_genome = self._nn_cache[c.id]  # type: ignore
-                                    except Exception:
-                                        pass
-                                if old_idx is not None and old_idx < old_soa.N:
-                                    if _mr is None and hasattr(old_soa, "morph_radii"):
-                                        _mr = old_soa.morph_radii[old_idx]
-                                        _ma = old_soa.morph_angles[old_idx]
-                                        _mk = int(old_soa.morph_k[old_idx])
-                                    if existing_genome is None and hasattr(old_soa, "genomes"):
-                                        existing_genome = old_soa.genomes[old_idx]
-                                new_soa.add_agent(
-                                    int(c.id),
-                                    float(c.x),
-                                    float(c.y),
-                                    angle=float(c.angle),
-                                    energy=float(c.energy),
-                                    health=float(c.health),
-                                    genome=existing_genome,
-                                    morph_radii=_mr,
-                                    morph_angles=_ma,
-                                    morph_k=_mk,
-                                )
-                            self._soa_id_map = {c.id: idx for idx, c in enumerate(self._cached_creatures)}
-                            # Crossover & mutation for newborns without inherited genome
-                            if hasattr(new_soa, "genomes"):
-                                for new_idx, c in enumerate(self._cached_creatures):
-                                    old_idx = old_id_map.get(c.id)
-                                    if old_idx is None or old_idx >= old_soa.N:
-                                        pa_id = getattr(c, "mother_id", None)
-                                        pb_id = getattr(c, "father_id", None)
-                                        pa_idx = self._soa_id_map.get(pa_id)
-                                        pb_idx = self._soa_id_map.get(pb_id)
-                                        child_g = None
-                                        if pa_idx is not None and pb_idx is not None and _evolution is not None:
-                                            try:
-                                                g_a = new_soa.genomes[pa_idx]
-                                                g_b = new_soa.genomes[pb_idx]
-                                                # BH-4/5/6: blockwise crossover with inversion, pass rng for determinism
-                                                if hasattr(_evolution, "crossover_mutate_blockwise"):
-                                                    child_g = _evolution.crossover_mutate_blockwise(
-                                                        g_a,
-                                                        g_b,
-                                                        rng=self.rng,
-                                                    )
-                                                else:
-                                                    child_g = _evolution.crossover_mutate(
-                                                        g_a,
-                                                        g_b,
-                                                        p_mut=float(getattr(self.config, "mutation_rate", 0.05)),
-                                                        sigma=float(getattr(self.config, "mutation_sigma", 0.08)),
-                                                    )
-                                            except Exception:
-                                                child_g = None
-                                        if child_g is not None:
-                                            new_soa.genomes[new_idx] = child_g
-                                        elif getattr(c, "_nn_genome", None) is not None:  # type: ignore
-                                            try:
-                                                new_soa.genomes[new_idx] = c._nn_genome  # type: ignore
-                                            except Exception:
-                                                pass
-                                        elif _evolution is not None:
-                                            try:
-                                                new_soa.genomes[new_idx] = _evolution._build_base_genome(new_soa.genome_size)
-                                            except Exception:
-                                                pass
-                            self._soa = new_soa
-                            self._nn_grid = _spatial_grid.SpatialHashGrid(width=self.config.width, height=self.config.height, cell_size=32.0, boundary=self.config.boundary)
-                        else:
-                            self._soa_id_map = {c.id: idx for idx, c in enumerate(self._cached_creatures)}
-                            for idx, c in enumerate(self._cached_creatures):
-                                if _agent_soa.HAS_NUMPY:
-                                    self._soa.pos[idx, 0] = float(c.x)
-                                    self._soa.pos[idx, 1] = float(c.y)
-                                    self._soa.angle[idx] = float(c.angle)
-                                    self._soa.stats[idx, 0] = float(c.energy)
-                                    self._soa.stats[idx, 2] = float(c.health)
-                                else:
-                                    self._soa.pos[idx][0] = float(c.x)
-                                    self._soa.pos[idx][1] = float(c.y)
-                                    self._soa.angle[idx] = float(c.angle)
-                                    self._soa.stats[idx][0] = float(c.energy)
-                                    self._soa.stats[idx][2] = float(c.health)
+                        self._sync_soa_incremental()
                     except Exception:
                         pass
                     # 15Hz inference every 4th tick
@@ -1596,6 +1851,10 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
                             pass
             except Exception:
                 pass
+        try:
+            self._record_phase("soa_nn", (time.perf_counter() - _ph_soa) * 1000.0)
+        except Exception:
+            pass
         # Manual GC every 200 ticks to avoid stop-the-world at 1300c
         if self.tick % 200 == 0:
             gc.collect(1)
@@ -1604,10 +1863,18 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
         if dur > 0.15:
             print(f"[sim] slow tick={self.tick} {dur*1000:.1f}ms c={len(self._cached_creatures)} food={len(self._cached_foods)} houses={len(self._cached_houses)}", flush=True)
         self.tick += 1
-        # BD Analytics — vectorized ring push
+        # BJ-3: throttle telemetry to 2 Hz in production — O(N) ring aggregation
+        # no longer runs on the hot path every tick. Unit tests (_IS_TEST) keep
+        # every-tick sampling so velocity/counter assertions stay deterministic.
+        # 1 Hz WS broadcast is still served from the cached analytics.summary().
         try:
             if getattr(self, "_analytics", None) is not None:
-                self._analytics.on_tick(self)  # type: ignore[attr-defined]
+                if _IS_TEST:
+                    self._analytics.on_tick(self)  # type: ignore[attr-defined]
+                else:
+                    _tele_hz = max(1, int(float(getattr(self.config, "tick_rate", 10.0)) // 2))
+                    if self.tick % _tele_hz == 0:
+                        self._analytics.on_tick(self)  # type: ignore[attr-defined]
         except Exception:
             pass
 
@@ -1626,6 +1893,58 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
         # broadphase radius = max r
         try:
             import math as _m
+            # BJ-5: OpenMP sweep broadphase when gated on (single batch call,
+            # GIL released); shared narrowphase below keeps the law identical.
+            if (
+                getattr(self.config, "omp_enabled", False)
+                and _native_core is not None
+                and hasattr(_native_core, "native_collision_sweep")
+                and N >= max(32, int(getattr(self.config, "omp_threshold", 100) or 100))
+            ):
+                try:
+                    _sx: list[float] = []
+                    _sy: list[float] = []
+                    _sr: list[float] = []
+                    _sids: list[int] = []
+                    for _idx in range(N):
+                        try:
+                            _eid = int(soa.ids[_idx])  # type: ignore
+                        except Exception:
+                            continue
+                        _ent = self.world.entities.get(_eid)
+                        if _ent is None or not isinstance(_ent, Creature):
+                            continue
+                        try:
+                            _k = int(soa.morph_k[_idx])  # type: ignore
+                            _rr = soa.morph_radii[_idx]  # type: ignore
+                            if hasattr(_rr, "max"):
+                                _rmax = float(_rr[:_k].max()) if _k > 0 else 1.0
+                            else:
+                                _rmax = float(max(_rr[:_k])) if _k > 0 else 1.0
+                        except Exception:
+                            _rmax = 1.0
+                        _sx.append(float(_ent.x))
+                        _sy.append(float(_ent.y))
+                        _sr.append(float(_rmax) + 2.5)
+                        _sids.append(int(_eid))
+                    if _sids:
+                        _sweep = _native_core.native_collision_sweep(  # type: ignore
+                            _sx, _sy, _sr, _sids,
+                            float(self.config.width), float(self.config.height),
+                            self.config.boundary == "wrap",
+                        )
+                        _id2idx = getattr(self, "_soa_id_map", {}) or {}
+                        for _a, _b in _sweep:
+                            _i = _id2idx.get(_a)
+                            _jj = _id2idx.get(_b)
+                            if _i is None or _jj is None or _i == _jj:
+                                continue
+                            if _jj < _i:
+                                _i, _jj = _jj, _i
+                            _morph_sat_pair(self, soa, int(_i), int(_jj))
+                        return
+                except Exception:
+                    pass
             # Build id->idx map already
             # Query each creature's neighbors via world spatial query using bounding radius
             for idx in range(N):
@@ -1653,97 +1972,7 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
                     if j is None or j <= idx:  # avoid double
                         continue
                     try:
-                        if hasattr(soa.morph_radii, "shape"):
-                            kr = int(soa.morph_k[idx]); ko = int(soa.morph_k[j])
-                            if kr < 3 or ko < 3:
-                                continue
-                            # build vertices local + world offset
-                            rr = soa.morph_radii[idx, :kr]; pa = soa.morph_angles[idx, :kr]
-                            ro = soa.morph_radii[j, :ko]; po = soa.morph_angles[j, :ko]
-                            import numpy as _np  # type: ignore
-                            # vertices
-                            # Phase 7.1 circle fallback: K>=24 and asym<0.05 -> circle-polygon
-                            try:
-                                asym_a = float(soa.physical_traits[idx, 4]) if hasattr(soa.physical_traits, "shape") else float(soa.physical_traits[idx][4])  # type: ignore
-                                asym_b = float(soa.physical_traits[j, 4]) if hasattr(soa.physical_traits, "shape") else float(soa.physical_traits[j][4])  # type: ignore
-                            except Exception:
-                                asym_a = asym_b = 1.0
-                            use_circle_a = (kr >= 24 and asym_a < 0.05)
-                            use_circle_b = (ko >= 24 and asym_b < 0.05)
-                            xa = (rr * _np.cos(pa) + ent.x).tolist() if hasattr(rr, "tolist") else [rr[i]*_m.cos(pa[i])+ent.x for i in range(kr)]
-                            ya = (rr * _np.sin(pa) + ent.y).tolist() if hasattr(rr, "tolist") else [rr[i]*_m.sin(pa[i])+ent.y for i in range(kr)]
-                            xb = (ro * _np.cos(po) + other.x).tolist() if hasattr(ro, "tolist") else [ro[i]*_m.cos(po[i])+other.x for i in range(ko)]
-                            yb = (ro * _np.sin(po) + other.y).tolist() if hasattr(ro, "tolist") else [ro[i]*_m.sin(po[i])+other.y for i in range(ko)]
-                            # circle approximation: if one is circle-like, use circle-polygon test (1 axis)
-                            if use_circle_a or use_circle_b:
-                                # approximate circle as center + avg radius
-                                try:
-                                    if use_circle_a:
-                                        cx, cy = ent.x, ent.y
-                                        crad = float(soa.physical_traits[idx, 0] / soa.physical_traits[idx, 1] * 2) if hasattr(soa.physical_traits, "shape") else 1.0  # area/perim heuristic
-                                        # simpler: avg r
-                                        crad = float(_np.mean(rr)) if hasattr(rr, "mean") else sum(rr)/len(rr) if rr else 1.0
-                                        # circle vs polygon SAT: test polygon normals + circle center axis
-                                        # For now, fallback to polygon SAT but with fewer axes (circle has no edges, so only polygon normals)
-                                        # If both circles, check distance
-                                        if use_circle_a and use_circle_b:
-                                            dx = ent.x - other.x
-                                            dy = ent.y - other.y
-                                            # wrap
-                                            dx, dy = self.world.delta(ent.x, ent.y, other.x, other.y)
-                                            dist2 = dx*dx + dy*dy
-                                            overlap = dist2 <= (crad + (float(_np.mean(ro)) if hasattr(ro, "mean") else 1.0))**2
-                                        else:
-                                            overlap = _morphology.sat_overlap(xa, ya, xb, yb)
-                                    else:
-                                        overlap = _morphology.sat_overlap(xa, ya, xb, yb)
-                                except Exception:
-                                    overlap = _morphology.sat_overlap(xa, ya, xb, yb)
-                            else:
-                                overlap = _morphology.sat_overlap(xa, ya, xb, yb)
-                        else:
-                            kr = int(soa.morph_k[idx]); ko = int(soa.morph_k[j])
-                            if kr < 3 or ko < 3:
-                                continue
-                            rr = soa.morph_radii[idx]; pa = soa.morph_angles[idx]
-                            ro = soa.morph_radii[j]; po = soa.morph_angles[j]
-                            xa = [rr[i]*_m.cos(pa[i])+ent.x for i in range(kr)]
-                            ya = [rr[i]*_m.sin(pa[i])+ent.y for i in range(kr)]
-                            xb = [ro[i]*_m.cos(po[i])+other.x for i in range(ko)]
-                            yb = [ro[i]*_m.sin(po[i])+other.y for i in range(ko)]
-                            # circle fallback for python path
-                            try:
-                                asym_a = float(soa.physical_traits[idx][4])  # type: ignore
-                                asym_b = float(soa.physical_traits[j][4])  # type: ignore
-                            except Exception:
-                                asym_a = asym_b = 1.0
-                            if (kr >= 24 and asym_a < 0.05) and (ko >= 24 and asym_b < 0.05):
-                                dx, dy = self.world.delta(ent.x, ent.y, other.x, other.y)
-                                import math as _mm2
-                                crad = sum(rr)/len(rr) if rr else 1.0
-                                orad = sum(ro)/len(ro) if ro else 1.0
-                                overlap = (dx*dx + dy*dy) <= (crad + orad)**2
-                            elif kr >= 24 and asym_a < 0.05 or ko >= 24 and asym_b < 0.05:
-                                overlap = _morphology.sat_overlap(xa, ya, xb, yb)
-                            else:
-                                overlap = _morphology.sat_overlap(xa, ya, xb, yb)
-                        if overlap:
-                            # §BF-FriendlyFire: do not inflict accidental lethal collision damage between clan members, sleeping creatures, or women
-                            if (ent.clan_id and ent.clan_id == other.clan_id) or getattr(ent, "sleeping", False) or getattr(other, "sleeping", False) or ent.shape == "line" or other.shape == "line":
-                                continue
-                            # impulse & Dmult damage: use sharper Dmult
-                            try:
-                                da = float(soa.morph_traits[idx, 5]) if hasattr(soa.morph_traits, "shape") else float(soa.morph_traits[idx][5])
-                                db = float(soa.morph_traits[j, 5]) if hasattr(soa.morph_traits, "shape") else float(soa.morph_traits[j][5])
-                            except Exception:
-                                da = db = 0.0
-                            dmg = max(da, db) * self.config.attack_damage * 0.2  # scaled
-                            if dmg > 0:
-                                # apply to weaker
-                                target = other if other.health < ent.health else ent
-                                target.health -= dmg
-                                if target.health <= 0:
-                                    self._kill(target, "collision")
+                        _morph_sat_pair(self, soa, idx, j)
                     except Exception:
                         continue
         except Exception:

@@ -161,6 +161,87 @@ class AgentSoA:
         self.N += 1
         return idx
 
+    def ensure_capacity(self, min_capacity: int) -> None:
+        """BJ-1: grow pre-allocated buffers only when needed (doubling).
+
+        No-op when current capacity already fits. Preserves all N active slots.
+        """
+        if int(min_capacity) <= self.capacity:
+            return
+        new_cap = max(int(min_capacity), self.capacity * 2 if self.capacity else 16)
+        if HAS_NUMPY:
+            import numpy as _np  # type: ignore
+
+            def _grow(arr, shape_fn):
+                nxt = _np.zeros(shape_fn(new_cap), dtype=arr.dtype)
+                nxt[: self.N] = arr[: self.N]
+                return nxt
+
+            self.pos = _grow(self.pos, lambda c: (c, 2))
+            self.vel = _grow(self.vel, lambda c: (c, 2))
+            self.angle = _grow(self.angle, lambda c: (c,))
+            self.stats = _grow(self.stats, lambda c: (c, 4))
+            self.hidden_state = _grow(self.hidden_state, lambda c: (c, 1))
+            self.genomes = _grow(self.genomes, lambda c: (c, self.genome_size))
+            nxt_mask = _np.zeros((new_cap,), dtype=_np.bool_)
+            nxt_mask[: self.N] = self.active_mask[: self.N]
+            self.active_mask = nxt_mask
+            nxt_ids = _np.zeros((new_cap,), dtype=_np.int32) - 1
+            nxt_ids[: self.N] = self.ids[: self.N]
+            self.ids = nxt_ids
+            self.morph_radii = _grow(self.morph_radii, lambda c: (c, self.KMAX))
+            self.morph_angles = _grow(self.morph_angles, lambda c: (c, self.KMAX))
+            nxt_k = _np.full((new_cap,), 4, dtype=_np.int32)
+            nxt_k[: self.N] = self.morph_k[: self.N]
+            self.morph_k = nxt_k
+            self.morph_traits = _grow(self.morph_traits, lambda c: (c, 6))
+            self.physical_traits = self.morph_traits  # keep alias on same buffer
+            nxt_role = _np.zeros((new_cap,), dtype=_np.int8)
+            nxt_role[: self.N] = self.reproduction_role[: self.N]
+            self.reproduction_role = nxt_role
+            self.inputs_buf = _grow(self.inputs_buf, lambda c: (c, 16))
+            self.outputs_buf = _grow(self.outputs_buf, lambda c: (c, 7))
+            self.hidden_buf = _grow(self.hidden_buf, lambda c: (c, 1))
+        else:
+            _ext = new_cap - self.capacity
+            self.pos.extend([[0.0, 0.0] for _ in range(_ext)])
+            self.vel.extend([[0.0, 0.0] for _ in range(_ext)])
+            self.angle.extend([0.0] * _ext)
+            self.stats.extend([[0.0, 0.0, 0.0, 0.0] for _ in range(_ext)])
+            self.hidden_state.extend([[0.0] for _ in range(_ext)])
+            self.genomes.extend([[0.0] * self.genome_size for _ in range(_ext)])
+            self.active_mask.extend([False] * _ext)
+            self.ids.extend([-1] * _ext)
+            import math as _math
+
+            self.morph_radii.extend([[1.0] * self.KMAX for _ in range(_ext)])
+            self.morph_angles.extend(
+                [[(2 * _math.pi * k / self.KMAX) for k in range(self.KMAX)] for _ in range(_ext)]
+            )
+            self.morph_k.extend([4] * _ext)
+            self.morph_traits.extend([[0.0] * 6 for _ in range(_ext)])
+            self.physical_traits = self.morph_traits
+            self.reproduction_role.extend([0] * _ext)
+            self.inputs_buf.extend([[0.0] * 16 for _ in range(_ext)])
+            self.outputs_buf.extend([[0.0] * 7 for _ in range(_ext)])
+            self.hidden_buf.extend([[0.0] for _ in range(_ext)])
+        self.capacity = new_cap
+
+    def sync_slot(self, idx: int, x: float, y: float, angle: float, energy: float, health: float) -> None:
+        """BJ-1: in-place per-tick shadow sync without reallocation."""
+        if HAS_NUMPY:
+            self.pos[idx, 0] = x
+            self.pos[idx, 1] = y
+            self.angle[idx] = angle
+            self.stats[idx, 0] = energy
+            self.stats[idx, 2] = health
+        else:
+            self.pos[idx][0] = float(x)
+            self.pos[idx][1] = float(y)
+            self.angle[idx] = float(angle)
+            self.stats[idx][0] = float(energy)
+            self.stats[idx][2] = float(health)
+
     def remove_at(self, idx: int) -> None:
         last = self.N - 1
         if idx < 0 or idx >= self.N:

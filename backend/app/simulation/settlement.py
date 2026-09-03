@@ -710,6 +710,16 @@ def _path_crosses_wall(
     max_y = qy if py < qy else py
     if max_x < hx - half or min_x > hx + half or max_y < hy - half or min_y > hy + half:
         return False
+    # BJ-5: compiled C segment intersection for the door-collision hotspot
+    # (same math as python segments_intersect; falls back on any error).
+    try:
+        from ..native_core import native_path_crosses_wall as _native_wall  # type: ignore
+
+        segments = _house_wall_segments_closed(h) if predator_blocked else _house_wall_segments(h)
+        flat = [(a[0], a[1], b[0], b[1]) for a, b in segments]
+        return bool(_native_wall(float(px), float(py), float(qx), float(qy), flat))
+    except Exception:
+        pass
     path = ((px, py), (qx, qy))
     segments = _house_wall_segments_closed(h) if predator_blocked else _house_wall_segments(h)
     return any(

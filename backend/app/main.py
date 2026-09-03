@@ -305,6 +305,80 @@ def advance_world(rt: RuntimeState, hub: Hub | None = None, force_keyframe: bool
 
 
 
+def advance_world_lockless(rt: RuntimeState, hub: Hub | None = None, force_keyframe: bool = False) -> dict | None:
+    """BJ-4: lockless broadcast pipeline — step under lock, serialize outside.
+
+    Takes `rt.lock` ONLY for `rt.sim.step()` + timing bookkeeping, then
+    releases it before the 15–25ms `snapshot_payload()` / delta dict build
+    and JSON encoding. Snapshot reads outside the lock must be immutable or
+    retried: on `RuntimeError` (concurrent mutation during iteration) we
+    retake the lock once and rebuild under it. `advance_world()` is kept
+    for tests / single-threaded callers.
+    """
+    if rt.paused:
+        return None
+    t0 = time.monotonic()
+    is_extinct_tick = False
+    try:
+        with rt.lock:
+            rt.sim.step()
+            if rt.sim.tick > 30 and len(rt.sim._cached_creatures) == 0:
+                rt.paused = True
+                is_extinct_tick = True
+    except Exception as exc:
+        rt.tick_failures += 1
+        rt.last_tick_error = f"{type(exc).__name__}: {exc}"
+        print(f"\n[tick-engine] step() FAILED at tick={rt.sim.tick}: {rt.last_tick_error} — skipping\n", flush=True)
+        traceback.print_exc()
+        sys.stdout.flush()
+        return None
+    finally:
+        dur_ms = (time.monotonic() - t0) * 1000.0
+        try:
+            with rt.lock:
+                rt._tick_durs.append(dur_ms)
+                rt._tick_times.append(time.monotonic())
+                rt._tick_creature_counts.append(len(rt.sim._cached_creatures) if getattr(rt.sim, "_cached_creatures", None) is not None else len(rt.sim.world.entities))
+                if len(rt._tick_durs) > 300:
+                    rt._tick_durs.pop(0)
+                    rt._tick_times.pop(0)
+                    rt._tick_creature_counts.pop(0)
+                interval_ms = 1000.0 / max(rt.speed, MIN_SPEED)
+                if dur_ms > interval_ms * 1.2:
+                    now = time.monotonic()
+                    last = getattr(rt, "_last_overrun_log", 0.0)
+                    if now - last >= 5.0:
+                        print(f"[tick-engine] overrun tick={rt.sim.tick} dur={dur_ms:.1f}ms > interval={interval_ms:.1f}ms (speed={rt.speed})", flush=True)
+                        rt._last_overrun_log = now  # type: ignore
+        except Exception:
+            pass
+    is_extinct = is_extinct_tick or (rt.sim.tick > 30 and len(rt.sim._cached_creatures) == 0)
+    if hub is not None and not hub.clients and not is_extinct:
+        return None
+    every = max(1, int(round(rt.speed / 20))) if rt.speed > 20 else 1
+    if every > 1 and rt.sim.tick % every != 0 and not is_extinct:
+        return None
+    use_keyframe = bool(is_extinct or force_keyframe or rt.sim.tick % 60 == 0 or not getattr(rt.sim, "_last_broadcast_state", None))
+    # Serialize OUTSIDE the lock; retry once under lock on concurrent mutation.
+    p: dict | None = None
+    try:
+        p = rt.sim.snapshot_payload() if use_keyframe else rt.sim.snapshot_delta_payload()
+    except RuntimeError:
+        try:
+            with rt.lock:
+                p = rt.sim.snapshot_payload() if use_keyframe else rt.sim.snapshot_delta_payload()
+        except Exception:
+            return None
+    except Exception:
+        return None
+    if p is not None and isinstance(p, dict):
+        try:
+            p["paused"] = rt.paused
+        except Exception:
+            pass
+    return p
+
+
 class SimEngine:
     """Owns a dedicated OS thread that advances the world.
 
@@ -342,16 +416,16 @@ class SimEngine:
             started = time.monotonic()
             payload = None
             text: str | None = None
-            with self.rt.lock:
-                if not self.rt.paused:
-                    payload = advance_world(self.rt, self.hub)
-                    # BD.1.4 WebSocket Analytics Stream Coalescing — 1 Hz analytics frame piggybacks
-                    if payload is not None and isinstance(payload, dict) and payload.get("type") in ("state", "delta_state"):
-                        if getattr(self.rt.sim, "tick", 0) % max(1, int(round(self.rt.speed / 10)) or 10) == 0:
-                            try:
-                                payload["analytics"] = _analytics_payload(self.rt.sim)
-                            except Exception:
-                                pass
+            # BJ-4: step under lock, serialize outside — HTTP stays responsive.
+            if not self.rt.paused:
+                payload = advance_world_lockless(self.rt, self.hub)
+                # BD.1.4 WebSocket Analytics Stream Coalescing — 1 Hz analytics frame piggybacks
+                if payload is not None and isinstance(payload, dict) and payload.get("type") in ("state", "delta_state"):
+                    if getattr(self.rt.sim, "tick", 0) % max(1, int(round(self.rt.speed / 10)) or 10) == 0:
+                        try:
+                            payload["analytics"] = _analytics_payload(self.rt.sim)
+                        except Exception:
+                            pass
             if payload is not None:
                 try:
                     text = _dumps(payload)
@@ -2187,6 +2261,11 @@ async def healthz() -> dict:
         "clients": len(HUB.clients),
         "db_pending": DB.pending,  # §AD ops still in the RAM log
         "creatures": len(RT.sim._cached_creatures) if getattr(RT.sim, "_cached_creatures", None) is not None else len(RT.sim.world.creatures()),
+        # BJ-6: tick-budget regression data — per-subsystem last-tick ms +
+        # rolling averages + dev/N150 budgets (45ms dev ≈ 85ms N150).
+        "subsystems_ms": dict(getattr(RT.sim, "_phase_ms", {}) or {}),
+        "subsystems_avg_ms": RT.sim.phase_averages() if hasattr(RT.sim, "phase_averages") else {},
+        "tick_budget": {"dev_ms": 45.0, "n150_ms": 85.0, "mean_ms": avg_dur},
     }
     if RT.last_tick_error:
         out["ok"] = False
@@ -2261,6 +2340,14 @@ async def get_telemetry(window_seconds: int = 60) -> dict:
         },
         "overruns": sum(1 for d in filtered_durs if d > (1000.0 / max(RT.speed, MIN_SPEED)) * 1.1),
         "proc_cores": cores_usage,
+        # BJ-6: per-subsystem timing + tick-budget regression data.
+        "subsystems_ms": dict(getattr(RT.sim, "_phase_ms", {}) or {}),
+        "subsystems_avg_ms": RT.sim.phase_averages() if hasattr(RT.sim, "phase_averages") else {},
+        "tick_budget": {
+            "dev_ms": 45.0,
+            "n150_ms": 85.0,
+            "mean_ms": round(sum(filtered_durs) / len(filtered_durs), 2) if filtered_durs else 0.0,
+        },
     }
 
 
