@@ -1808,18 +1808,6 @@ select {
   .hud .chip b { margin: 0 1px; }
   /* hide overflow chips; they live in detail sheet */
   .hud .chip.desktop-only { display: none !important; }
-  .hud .hud-more-btn {
-    margin-left: auto;
-    flex: none;
-    min-height: 28px !important;
-    height: 28px;
-    padding: 2px 8px !important;
-    font-size: 11px;
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    color: #58a6ff;
-  }
   .hud-detail-backdrop {
     position: fixed; inset: 0; z-index: 39;
     background: rgba(0,0,0,0.35);
@@ -1890,12 +1878,12 @@ select {
   .mobile-sheet[data-state="half"]{ height: 48dvh; }
   .mobile-sheet[data-state="full"]{ height: 76dvh; }
   .mobile-sheet-handle{
-    flex: none; width: 100%; padding: 8px 0 6px; margin: 0;
+    flex: none; width: 100%; padding: 6px 0 5px; margin: 0;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; touch-action: pan-y; background: transparent; border: none;
   }
   .mobile-sheet-handle::before{
-    content: ''; width: 40px; height: 4px; border-radius: 2px; background: #30363d;
+    content: ''; width: 36px; height: 5px; border-radius: 3px; background: #30363d;
     display: block;
   }
   .mobile-sheet-header{
@@ -2028,7 +2016,7 @@ select {
 }
 .inspector-handle{
   display:none;
-  width:36px; height:4px; border-radius:2px; background:#30363d;
+  width:36px; height:5px; border-radius:3px; background:#30363d;
   margin:0 auto 6px; flex:none; cursor:pointer; touch-action:none;
 }
 @media (max-width: 768px){

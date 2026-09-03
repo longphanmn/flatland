@@ -612,17 +612,7 @@ export default function App() {
           </span>
         )}
 
-        {isMobile && (
-          <button
-            type="button"
-            className="hud-more-btn"
-            onClick={(e) => { e.stopPropagation(); setStatusExpanded(o => !o) }}
-            aria-expanded={statusExpanded}
-            aria-label="More world details"
-          >
-            {statusExpanded ? `▲ ${t('common.close')}` : `▼ ${t('common.language') === 'Langue' ? 'Plus' : t('common.language') === 'Ngôn ngữ' ? 'Thêm' : 'More'}`}
-          </button>
-        )}
+        {isMobile && <span className="chip" onClick={(e) => { e.stopPropagation(); setStatusExpanded(o => !o) }} style={{ marginLeft: 'auto', fontSize: 10, color: '#58a6ff', cursor: 'pointer' }}>{statusExpanded ? `▲ ${t('common.close')}` : `▼ ${t('common.language') === 'Langue' ? 'Plus' : t('common.language') === 'Ngôn ngữ' ? 'Thêm' : 'More'}`}</span>}
 
         <div className="top-right-panel" style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'nowrap', flexShrink: 0 }}>
           <select
@@ -726,9 +716,6 @@ export default function App() {
             </button>
             <button className="god-btn" onClick={() => { setStatusExpanded(false); setAnalyticsOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
               📊 {t('analytics.open')}
-            </button>
-            <button className="god-btn god-main-btn" onClick={() => { setStatusExpanded(false); setGodOpen(true); }} style={{ flex: 1, minHeight: 38, fontSize: 12 }}>
-              ⚖ {t('god.shortTitle')}
             </button>
           </div>
         </div>
