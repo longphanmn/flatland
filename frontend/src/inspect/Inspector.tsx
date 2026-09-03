@@ -78,7 +78,7 @@ function KinCardView({
       className={`kin-node ${kin.alive ? '' : 'dead'}`}
       onClick={() => onNavigate(kin.id)}
       title={kin.alive ? t('inspector.openDossier') : t('inspector.deceased')}
-      style={{ background: kin.alive ? '#161b22' : '#21262d', border: `1px solid ${kin.clan_color ?? '#30363d'}`, borderLeft: `3px solid ${kin.clan_color ?? '#8b949e'}`, borderRadius: 6, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 2, cursor: 'pointer', textAlign: 'left', minWidth: 120 }}
+      style={{ background: kin.alive ? '#161b22' : '#21262d', border: `1px solid ${kin.clan_color ?? '#30363d'}`, borderLeft: `3px solid ${kin.clan_color ?? '#8b949e'}`, borderRadius: 6, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 2, cursor: 'pointer', textAlign: 'left', minWidth: 0, width: '100%', overflow: 'hidden' }}
     >
       <span style={{ fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>{role} {kin.alive ? '' : '†'}</span>
       <span style={{ fontWeight: 700, color: '#e6edf3', fontSize: 12 }}>{kin.personal_name ? `${kin.personal_name} ` : ''}#{kin.id} <span style={{ opacity: 0.7 }}>{kin.glyph ?? ''}</span></span>
@@ -131,12 +131,12 @@ function PolarRadar({ e }: { e: EntityState }) {
   const ghostStr = ghostPts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
   const isMutant = irr > 0.25 || ![3,4,5,8,24].includes(k)
   return (
-    <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 8, padding: '8px 8px 6px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <span style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>🧬 Polar Morph — {e.caste} · K={k} {isMutant && <span style={{ color: '#d2a8ff', border: '1px solid #a371f766', background: '#a371f733', padding: '0 4px', borderRadius: 3, fontSize: 9 }}>{t('inspector.mutantTag')}</span>}</span>
-        <span style={{ fontSize: 10, color: '#8b949e' }}>irr {irr.toFixed(3)}</span>
+    <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 8, padding: '8px 8px 6px', minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginBottom: 4, minWidth: 0 }}>
+        <span style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🧬 Polar Morph — {e.caste} · K={k} {isMutant && <span style={{ color: '#d2a8ff', border: '1px solid #a371f766', background: '#a371f733', padding: '0 4px', borderRadius: 3, fontSize: 9 }}>{t('inspector.mutantTag')}</span>}</span>
+        <span style={{ fontSize: 10, color: '#8b949e', flex: 'none' }}>irr {irr.toFixed(3)}</span>
       </div>
-      <svg width={140} height={140} viewBox="0 0 140 140" style={{ display: 'block', margin: '0 auto', background: '#161b22', borderRadius: 6, border: '1px solid #30363d' }}>
+      <svg width={140} height={140} viewBox="0 0 140 140" style={{ display: 'block', margin: '0 auto', background: '#161b22', borderRadius: 6, border: '1px solid #30363d', maxWidth: '100%', height: 'auto' }}>
         {/* radial grid */}
         {[1, 0.66, 0.33].map((s, idx) => (
           <circle key={idx} cx={cx} cy={cy} r={R * s * 0.82} fill="none" stroke="#21262d" strokeWidth={0.6} strokeDasharray={idx === 0 ? undefined : '2 2'} />
@@ -196,9 +196,9 @@ function BiomechHUD({ e }: { e: EntityState }) {
   const areaPct = Math.max(0, Math.min(100, (area / (Aref * 2.5)) * 100))
   const izzPct = Math.max(0, Math.min(100, (izz / (Iref * 2.2)) * 100))
   return (
-    <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '8px 10px' }}>
+    <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 6, padding: '8px 10px', minWidth: 0 }}>
       <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>⚙️ Biomechanical Dossier</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+      <div className="insp-2col">
         {[
           { label: 'Sharpness θₘᵢₙ', value: `${sharpDeg.toFixed(1)}°`, sub: `D×${dmult.toFixed(2)}`, pct: sharpPct, color: sharpDeg < 30 ? '#ff7b72' : sharpDeg < 60 ? '#f2cc60' : '#79c0ff' },
           { label: 'Irregularity σ²/ r̄', value: asym.toFixed(3), sub: `irr ${irr.toFixed(3)}`, pct: asymPct, color: asym > 0.4 ? '#f85149' : asym > 0.15 ? '#f2cc60' : '#3fb950' },
@@ -264,12 +264,12 @@ function NNHeatmap({ e }: { e: EntityState }) {
   const W1w = 16 * (cellW1 + gap) + 8, W1h = 12 * (cellH1 + gap) + 18
   const W2w = 12 * (cellW1 + gap) + 8, W2h = 7 * (cellH1 + gap) + 18
   return (
-    <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 8, padding: '8px 10px', marginTop: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <span style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5 }}>🧠 NN Connectivity 16→12→7</span>
-        <span style={{ fontSize: 9, color: '#6e7681' }}>295w · red + / blue − · BH-5 blocks Sensory/Motor/Rec</span>
+    <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 8, padding: '8px 10px', marginTop: 8, minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginBottom: 6, minWidth: 0 }}>
+        <span style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🧠 NN Connectivity 16→12→7</span>
+        <span style={{ fontSize: 9, color: '#6e7681', flex: 'none' }}>295w · BH-5</span>
       </div>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div className="nn-heatmap-wrap" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
         {/* W1 16→12 */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: 9, color: '#8b949e' }}>W1 16×12 Sensory (p0.03 σ0.06)</span>
@@ -411,9 +411,11 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
       )}
 
       {e && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-          <CreatureAvatar e={e} />
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', minWidth: 0 }}>
+          <div style={{ flex: 'none' }}>
+            <CreatureAvatar e={e} />
+          </div>
+          <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
             {statusChips.length > 0 && (
               <div className="status-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {statusChips.map((s) => (
@@ -445,7 +447,7 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
       {!e && data && <p className="god-note">{t('inspector.noLongerLiving')}</p>}
 
       {/* 4-Tab Navigation */}
-      <div style={{ display: 'flex', gap: 4, margin: '10px 0 8px', borderBottom: '1px solid #21262d', paddingBottom: 6, flexWrap: 'wrap' }}>
+      <div className="insp-tabs" style={{ display: 'flex', gap: 4, margin: '10px 0 8px', borderBottom: '1px solid #21262d', paddingBottom: 6 }}>
         {([
           ['vitals', t('inspector.tabVitals') !== 'inspector.tabVitals' ? t('inspector.tabVitals') : 'Vitals & Morph'],
           ['skills', t('inspector.tabSkills') !== 'inspector.tabSkills' ? t('inspector.tabSkills') : 'Skills & Neural'],
@@ -480,7 +482,7 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
             <Bar label={t('inspector.health')} value={e.health ?? 0} max={100} color="#3fb950" />
             {typeof e.chill === 'number' && e.chill > 0.5 && <Bar label={t('inspector.chill')} value={e.chill} max={24} color="#79c0ff" />}
           </div>
-          <div className="insp-grid" style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+          <div className="insp-grid insp-2col" style={{ marginTop: 8 }}>
             <span className="chip">{t('inspector.age')} <b>{e.age ?? 0}</b> / {Math.round(e.lifespan ?? 0)}</span>
             <span className="chip">{t('inspector.meals')} <b>{e.meals ?? 0}</b> · {t('inspector.sides')} <b>{e.sides}</b></span>
             {typeof e.irregularity === 'number' && e.irregularity > 0 && <span className="chip" style={{ color: '#f85149' }}>{t('inspector.irregularity')} <b>{e.irregularity}</b></span>}
@@ -494,10 +496,10 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
             {(e as any).archetype && <span className="chip" style={{ background: (e as any).archetype==='Apex Hunter' ? 'rgba(255,123,114,0.18)' : (e as any).archetype==='Nocturnal Forager' ? 'rgba(121,192,255,0.18)' : (e as any).archetype==='Granary Courier' ? 'rgba(63,185,80,0.16)' : 'rgba(210,168,255,0.16)', border: `1px solid ${(e as any).archetype==='Apex Hunter' ? '#ff7b72' : (e as any).archetype==='Nocturnal Forager' ? '#79c0ff' : (e as any).archetype==='Granary Courier' ? '#3fb950' : '#d2a8ff'}`, color: '#e6edf3', fontWeight: 700 }} >{(e as any).archetype==='Apex Hunter'?'⚔':(e as any).archetype==='Nocturnal Forager'?'🌙':(e as any).archetype==='Granary Courier'?'🧺':'🛡️'} {(e as any).archetype}</span>}
           </div>
           {/* §BG-9 Polar Radar & §BG-10 Biomech HUD */}
-          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
             <PolarRadar e={e} />
             <BiomechHUD e={e} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 11 }}>
+            <div className="insp-2col" style={{ fontSize: 11 }}>
               <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>{t('inspector.sidesLabel')} <b>{e.sides}</b> {(e as any).morph_k && (e as any).morph_k !== e.sides ? <span style={{ color: '#d2a8ff' }}>→{ (e as any).morph_k}</span> : null}</span>
               <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>{t('inspector.shapeLabel')} <b>{e.shape}</b></span>
               <span className="chip" style={{ justifyContent: 'space-between', background: '#161b22' }}>{t('inspector.stageLabel')} <b>{e.stage}</b></span>
@@ -510,7 +512,7 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
       {e && activeTab === 'skills' && (
         <>
           {/* 2x2 circular mastery badge grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+          <div className="insp-2col" style={{ marginBottom: 8 }}>
             {[
               { name: t('inspector.farming'), key: 'farming', icon: '🌾', color: '#3fb950', max: 30 },
               { name: t('inspector.combat'), key: 'combat', icon: '⚔️', max: 30, color: '#ff7b72' },
@@ -542,7 +544,7 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
             {e.nn_hidden == null && !e.nn_outputs ? (
               <div className="chip" style={{ background: '#161b22', border: '1px solid #30363d', padding: '8px', borderRadius: 6, fontSize: 12, color: '#8b949e' }}>{t('inspector.gatheringNeural')}</div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+              <div className="insp-2col">
                 {[
                   { label: 'Thrust', idx: 0, color: '#f0883e' },
                   { label: 'Steer', idx: 1, color: '#79c0ff' },
@@ -571,8 +573,8 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
       )}
 
       {e && activeTab === 'lineage' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+          <div className="insp-2col">
             <KinCardView kin={fam?.mother ?? null} role={t('inspector.mother')} onNavigate={onNavigate} />
             <KinCardView kin={fam?.father ?? null} role={t('inspector.father')} onNavigate={onNavigate} />
           </div>
@@ -584,7 +586,7 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
             {(fam?.children ?? []).length === 0 ? (
               <span className="chip" style={{ fontSize: 12 }}>{t('inspector.noOffspring')}</span>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 6, maxHeight: 220, overflowY: 'auto', minWidth: 0 }}>
                 {fam!.children.map((k) => (
                   <KinCardView key={k.id} kin={k} role={t('inspector.child')} onNavigate={onNavigate} />
                 ))}

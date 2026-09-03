@@ -930,8 +930,8 @@ ${stylePrompt}
                         }}
                       >
                         {/* One-Line Day Row */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 auto', minWidth: 0 }}>
                             <span
                               className="chip"
                               style={{
@@ -952,12 +952,15 @@ ${stylePrompt}
                                 fontSize: 12,
                                 fontWeight: 500,
                                 lineHeight: 1.4,
+                                minWidth: 0,
+                                overflowWrap: 'anywhere',
+                                wordBreak: 'break-word',
                               }}
                             >
                               {d.summaryLine}
                             </span>
                           </div>
-                          <span style={{ fontSize: 11, color: '#8b949e', flexShrink: 0, marginLeft: 8 }}>
+                          <span style={{ fontSize: 11, color: '#8b949e', flex: 'none', marginLeft: 4 }}>
                             {isExpanded ? '▲' : '▼'}
                           </span>
                         </div>

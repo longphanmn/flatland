@@ -112,8 +112,8 @@ export default function ClanPanel({ onSelectClan, onSelectCreature, state }: { o
   if (sorted.length === 0) return <p className="chip">{t('clanPanel.noClans')} — {t('clanPanel.allFallen')}</p>
 
   return (
-    <div className="clan-panel" style={{ gap: 6 }}>
-      <div className="clan-sort-bar">
+    <div className="clan-panel" style={{ gap: 6, minWidth: 0 }}>
+      <div className="clan-sort-bar" style={{ minWidth: 0 }}>
         <span style={{ fontWeight: 600, fontSize: 11, color: '#e6edf3' }}>🏰 {sorted.length} {t('app.mobileSheet.clans').toLowerCase()} · {t('app.hud.tick').toLowerCase()} {tick}</span>
         <span style={{ marginLeft: 'auto', fontSize: 11 }}>{t('clanPanel.sort')}</span>
         <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortKey)} aria-label="Sort clans">
@@ -136,7 +136,7 @@ export default function ClanPanel({ onSelectClan, onSelectCreature, state }: { o
               key={c.id}
               className="clan-banner"
               onClick={() => onSelectClan?.(c.id)}
-              style={{ borderLeft: `3px solid ${c.color}` }}
+              style={{ borderLeft: `3px solid ${c.color}`, minWidth: 0 }}
               title={onSelectClan ? t('clanPanel.clickForDetails') : undefined}
             >
               <div className="clan-banner-head">

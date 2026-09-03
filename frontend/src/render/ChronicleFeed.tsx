@@ -177,9 +177,9 @@ export default function ChronicleFeed({
         }}
       >
         {/* compact inline search */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
           <span style={{ fontSize: 12, color: '#8b949e', flex: 'none' }}>🔍</span>
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('chronicleEvents.searchPlaceholder')} className="chronicle-search-input" style={{ flex: 1 }} />
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('chronicleEvents.searchPlaceholder')} className="chronicle-search-input" style={{ flex: '1 1 auto', minWidth: 0 }} />
           {search && <button type="button" onClick={() => setSearch('')} style={{ background: 'transparent', border: 'none', color: '#8b949e', fontSize: 12, cursor: 'pointer', padding: '2px 6px', minHeight: 28 }} title="Clear search">✕</button>}
         </div>
 

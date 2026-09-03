@@ -42,7 +42,7 @@ export default function WorldEndSummary({
           <div className="chip" style={{ marginTop: 6 }}>{t('worldEnd.tick', { tick: state.tick, days: totalDays, day: state.day, season: state.season, seed: state.seed })}</div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div className="world-end-2col">
           <div style={{ background: 'rgba(248,81,73,0.08)', border: '1px solid #30363d', borderRadius: 6, padding: 10 }}>
             <div style={{ fontSize: 12, color: '#8b949e' }}>{t('worldEnd.totalDead')}</div>
             <div style={{ fontSize: 28, color: '#f85149', fontWeight: 700 }}>{state.creatures_dead}</div>

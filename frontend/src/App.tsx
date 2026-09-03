@@ -138,6 +138,18 @@ export default function App() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
+  // Phone: never leave the detail dropdown open on desktop, and never stack
+  // the bottom sheet under the creature/clan inspectors.
+  useEffect(() => {
+    if (!isMobile) setStatusExpanded(false)
+  }, [isMobile])
+  useEffect(() => {
+    if (isMobile && (selectedId !== null || selectedClanId !== null)) {
+      setSheetState('hidden')
+      setStatusExpanded(false)
+    }
+  }, [isMobile, selectedId, selectedClanId])
+
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
   // Custom tooltip for HUD chips and law hints — works on hover (desktop) and tap (mobile)
   useEffect(() => {
@@ -514,7 +526,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className={`hud ${isMobile ? 'hud-compact' : ''}`} onClick={isMobile ? () => setStatusExpanded(o => !o) : undefined} style={isMobile ? { cursor: 'pointer' } : undefined}>
+      <header className={`hud ${isMobile ? 'hud-compact' : ''}`}>
         <span className="title">{t('app.title')}</span>
         <span className={`dot ${status}`} title={t("app.hints.connection", { status: t(`app.status.${STATUS_LABEL[status]}`) } as any)} data-hint={t("app.hints.connection", { status: t(`app.status.${STATUS_LABEL[status]}`) } as any)} />
         {status !== 'open' && <span className="chip" style={{ color: status === 'connecting' ? '#d29922' : '#f85149' }}>{STATUS_LABEL[status]}</span>}
@@ -600,7 +612,17 @@ export default function App() {
           </span>
         )}
 
-        {isMobile && <span className="chip" style={{ marginLeft: 'auto', fontSize: 10, color: '#58a6ff' }}>{statusExpanded ? `▲ ${t('common.close')}` : `▼ ${t('common.language') === 'Langue' ? 'Plus' : t('common.language') === 'Ngôn ngữ' ? 'Thêm' : 'More'}`}</span>}
+        {isMobile && (
+          <button
+            type="button"
+            className="hud-more-btn"
+            onClick={(e) => { e.stopPropagation(); setStatusExpanded(o => !o) }}
+            aria-expanded={statusExpanded}
+            aria-label="More world details"
+          >
+            {statusExpanded ? `▲ ${t('common.close')}` : `▼ ${t('common.language') === 'Langue' ? 'Plus' : t('common.language') === 'Ngôn ngữ' ? 'Thêm' : 'More'}`}
+          </button>
+        )}
 
         <div className="top-right-panel" style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'nowrap', flexShrink: 0 }}>
           <select
@@ -640,6 +662,8 @@ export default function App() {
         </div>
       </header>
       {isMobile && statusExpanded && (
+        <>
+        <div className="hud-detail-backdrop" onClick={() => setStatusExpanded(false)} />
         <div className="hud-detail-sheet" onClick={(e) => { if ((e.target as HTMLElement).tagName !== 'SELECT' && (e.target as HTMLElement).tagName !== 'BUTTON') setStatusExpanded(false); }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 4, gap: 8 }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: '#e6edf3', flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.hud.worldDetails')}</span>
@@ -703,11 +727,12 @@ export default function App() {
             <button className="god-btn" onClick={() => { setStatusExpanded(false); setAnalyticsOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
               📊 {t('analytics.open')}
             </button>
-            <button className="god-btn god-main-btn" onClick={() => { setStatusExpanded(false); setGodOpen(true); }} style={{ flex: 1, minHeight: 34, fontSize: 12 }}>
+            <button className="god-btn god-main-btn" onClick={() => { setStatusExpanded(false); setGodOpen(true); }} style={{ flex: 1, minHeight: 38, fontSize: 12 }}>
               ⚖ {t('god.shortTitle')}
             </button>
           </div>
         </div>
+        </>
       )}
 
       <main className="stage">
@@ -724,13 +749,13 @@ export default function App() {
         />
       </main>
 
-      {/* Mobile thumb bar — persistent 48px */}
+      {/* Mobile thumb bar — persistent bottom bar */}
       {isMobile && (
-        <div className="mobile-thumb-bar">
-          <button onClick={paused ? sendResume : sendPause} title={paused ? t('app.controls.resume') : t('app.controls.pause')}>{paused ? '▶' : '⏸'}</button>
-          <button onClick={sendStep} title={t('app.controls.step')}>⏭</button>
-          <button onClick={confirmReset} title={t('app.controls.reset')} style={{ color: '#ff7b72' }}>🔄</button>
-          <button onClick={() => setGodOpen(true)} title={t('app.controls.god')}>⚖</button>
+        <div className="mobile-thumb-bar" role="toolbar" aria-label="World controls">
+          <button onClick={paused ? sendResume : sendPause} title={paused ? t('app.controls.resume') : t('app.controls.pause')} aria-label={paused ? t('app.controls.resume') : t('app.controls.pause')}>{paused ? '▶' : '⏸'}</button>
+          <button onClick={sendStep} title={t('app.controls.step')} aria-label={t('app.controls.step')}>⏭</button>
+          <button onClick={confirmReset} title={t('app.controls.reset')} aria-label={t('app.controls.reset')} style={{ color: '#ff7b72' }}>🔄</button>
+          <button onClick={() => setGodOpen(true)} title={t('app.controls.god')} aria-label={t('app.controls.god')}>⚖</button>
           <button
             className={sheetState !== 'hidden' ? 'active-sheet-btn' : ''}
             onClick={() => {
@@ -742,11 +767,13 @@ export default function App() {
               }
             }}
             title={t('app.rightStack.chronicle')}
+            aria-label={t('app.rightStack.chronicle')}
+            aria-expanded={sheetState !== 'hidden'}
           >
-            📊
+            📜
           </button>
-          <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))} title={t('app.controls.fit')}>⛶</button>
-          <select value={speed} onChange={e => changeSpeed(Number(e.target.value))} title="ticks/s">
+          <button onClick={() => window.dispatchEvent(new Event('flatworld-fit'))} title={t('app.controls.fit')} aria-label={t('app.controls.fit')}>⛶</button>
+          <select value={speed} onChange={e => changeSpeed(Number(e.target.value))} title="ticks/s" aria-label="ticks/s">
             {SPEEDS.map(v => <option key={v} value={v}>{v}t/s</option>)}
           </select>
         </div>
@@ -755,33 +782,17 @@ export default function App() {
       {/* Mobile tabbed sheet — World / Clans / Chronicle */}
       {isMobile && sheetState !== 'hidden' && (
         <div className="mobile-sheet" data-state={sheetState}>
-          <div
+          <button
+            type="button"
             className="mobile-sheet-handle"
             onClick={() => setSheetState(s => s === 'peek' ? 'half' : s === 'half' ? 'full' : 'peek')}
-            onTouchStart={e => {
-              const startY = e.touches[0].clientY
-              const startState = sheetState
-              const onMove = (ev: TouchEvent) => {
-                const dy = ev.touches[0].clientY - startY
-                if (dy < -30 && startState === 'peek') setSheetState('half')
-                else if (dy < -30 && startState === 'half') setSheetState('full')
-                else if (dy > 30 && startState === 'full') setSheetState('half')
-                else if (dy > 30 && startState === 'half') setSheetState('peek')
-                else if (dy > 30 && startState === 'peek') setSheetState('hidden')
-              }
-              const onEnd = () => {
-                window.removeEventListener('touchmove', onMove as any)
-                window.removeEventListener('touchend', onEnd as any)
-              }
-              window.addEventListener('touchmove', onMove as any, { passive: true })
-              window.addEventListener('touchend', onEnd as any)
-            }}
+            aria-label="Resize sheet"
           />
           <div className="mobile-sheet-header">
-            <div className="mobile-sheet-tabs" style={{ flexWrap: 'wrap' } as any}>
-              <button className={sheetTab === 'world' ? 'active' : ''} onClick={() => setSheetTab('world')} style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.controls.world')}</button>
-              <button className={sheetTab === 'clans' ? 'active' : ''} onClick={() => setSheetTab('clans')} style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.controls.clans')}</button>
-              <button className={sheetTab === 'chronicle' ? 'active' : ''} onClick={() => setSheetTab('chronicle')} style={{ whiteSpace: 'normal', wordBreak: 'break-word' as any }}>{t('app.controls.chronicle')}</button>
+            <div className="mobile-sheet-tabs" role="tablist" aria-label="Sheet panels">
+              <button role="tab" aria-selected={sheetTab === 'world'} className={sheetTab === 'world' ? 'active' : ''} onClick={() => setSheetTab('world')}>{t('app.controls.world')}</button>
+              <button role="tab" aria-selected={sheetTab === 'clans'} className={sheetTab === 'clans' ? 'active' : ''} onClick={() => setSheetTab('clans')}>{t('app.controls.clans')}</button>
+              <button role="tab" aria-selected={sheetTab === 'chronicle'} className={sheetTab === 'chronicle' ? 'active' : ''} onClick={() => setSheetTab('chronicle')}>{t('app.controls.chronicle')}</button>
             </div>
             <button
               className="mobile-sheet-close"

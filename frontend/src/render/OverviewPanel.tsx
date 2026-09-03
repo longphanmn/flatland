@@ -180,15 +180,16 @@ export default function OverviewPanel({
   const seasonIdx = seasonOrder[state.season] ?? 0
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12, color: '#c9d1d9' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12, color: '#c9d1d9', minWidth: 0 }}>
       {/* 1. Unified Era & Season progress strip — single top strip */}
-      <div className="overview-progress-strip">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5, gap: 6 }}>
-          <span style={{ fontWeight: 700, color: '#e6edf3', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
-            <span>{ageIcon}</span> {ageName}
-            <span style={{ fontWeight: 400, color: '#8b949e', fontSize: 11 }}>· {seasonIcon} {state.season.toUpperCase()} · Day {state.day} · {weatherIcon} {state.weather}</span>
+      <div className="overview-progress-strip" style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', marginBottom: 5, gap: 4 }}>
+          <span style={{ fontWeight: 700, color: '#e6edf3', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
+            <span style={{ flex: 'none' }}>{ageIcon}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ageName}</span>
+            <span style={{ fontWeight: 400, color: '#8b949e', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>· {seasonIcon} {state.season.toUpperCase()} · Day {state.day} · {weatherIcon} {state.weather}</span>
           </span>
-          <span style={{ fontSize: 10, color: '#8b949e', whiteSpace: 'nowrap' }}>Day {ageDay}/{ageTotalDays}</span>
+          <span style={{ fontSize: 10, color: '#8b949e', whiteSpace: 'nowrap', flex: 'none' }}>Day {ageDay}/{ageTotalDays}</span>
         </div>
         {/* single progress: era fill + season marker */}
         <div style={{ position: 'relative', background: '#21262d', height: 6, borderRadius: 3, overflow: 'hidden' }}>
@@ -323,19 +324,19 @@ export default function OverviewPanel({
 
       {/* 7. Prominent Living Figures */}
       {(eldestCreature || topChief) && (
-        <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: '7px 8px' }}>
+        <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: '7px 8px', minWidth: 0 }}>
           <div style={{ fontWeight: 700, color: '#e6edf3', marginBottom: 4, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('app.overview.notableTitle')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, minWidth: 0 }}>
             {eldestCreature && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                <span style={{ color: '#8b949e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>⏳ {t('app.overview.eldest', { name: eldestCreature.personal_name || eldestCreature.caste || 'Citizen', id: eldestCreature.id, age: eldestCreature.age ?? 0, gen: eldestCreature.generation ?? 0 })}</span>
-                <button onClick={() => onSelectCreature(eldestCreature.id)} style={{ background: 'transparent', border: 'none', color: '#58a6ff', cursor: 'pointer', fontSize: 11, padding: 0, textDecoration: 'underline', flex: 'none' }}>{t('overviewPanel.inspect')}</button>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, minWidth: 0 }}>
+                <span style={{ color: '#8b949e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: '1 1 auto', minWidth: 0 }}>⏳ {t('app.overview.eldest', { name: eldestCreature.personal_name || eldestCreature.caste || 'Citizen', id: eldestCreature.id, age: eldestCreature.age ?? 0, gen: eldestCreature.generation ?? 0 })}</span>
+                <button onClick={() => onSelectCreature(eldestCreature.id)} style={{ background: 'transparent', border: 'none', color: '#58a6ff', cursor: 'pointer', fontSize: 11, padding: '4px 2px', textDecoration: 'underline', flex: 'none' }}>{t('overviewPanel.inspect')}</button>
               </div>
             )}
             {topChief && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                <span style={{ color: '#8b949e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>👑 {t('app.overview.topChief', { id: topChief.id, clan: topChief.clanName, wins: topChief.wins })}</span>
-                <button onClick={() => onSelectClan(topChief.clanId)} style={{ background: 'transparent', border: 'none', color: '#58a6ff', cursor: 'pointer', fontSize: 11, padding: 0, textDecoration: 'underline', flex: 'none' }}>{t('overviewPanel.clan')}</button>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, minWidth: 0 }}>
+                <span style={{ color: '#8b949e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: '1 1 auto', minWidth: 0 }}>👑 {t('app.overview.topChief', { id: topChief.id, clan: topChief.clanName, wins: topChief.wins })}</span>
+                <button onClick={() => onSelectClan(topChief.clanId)} style={{ background: 'transparent', border: 'none', color: '#58a6ff', cursor: 'pointer', fontSize: 11, padding: '4px 2px', textDecoration: 'underline', flex: 'none' }}>{t('overviewPanel.clan')}</button>
               </div>
             )}
           </div>

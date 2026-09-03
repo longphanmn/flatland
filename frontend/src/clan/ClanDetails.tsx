@@ -185,13 +185,13 @@ export default function ClanDetails({
     <aside className="inspector clan-inspector" data-snap={snap}>
       <div className="inspector-handle" role="button" aria-label="drag handle" onClick={cycleSnap} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd} />
       {/* Hero Header & Banner Crest */}
-      <header className="god-head" style={{ borderBottom: `2px solid ${data.color}`, background: `${data.color}12`, margin: '-12px -12px 0 -12px', padding: '10px 12px', borderRadius: '8px 8px 0 0' }} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, color: data.color, fontSize: 15 }}>
-          <span style={{ width: 14, height: 14, borderRadius: '50%', background: data.color, display: 'inline-block', boxShadow: `0 0 8px ${data.color}` }} />
-          {data.name} <span style={{ fontSize: 11, color: '#8b949e' }}>#{data.id}</span>
-          {data.totem && <span style={{ fontSize: 16 }}>{totemEmoji(data.totem)}</span>}
+      <header className="god-head" style={{ borderBottom: `2px solid ${data.color}`, background: `${data.color}12`, margin: '-14px -16px 0 -16px', padding: '10px 12px', borderRadius: '12px 12px 0 0', gap: 8 }} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, color: data.color, fontSize: 15, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+          <span style={{ width: 14, height: 14, borderRadius: '50%', background: data.color, display: 'inline-block', boxShadow: `0 0 8px ${data.color}`, flex: 'none' }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.name}</span> <span style={{ fontSize: 11, color: '#8b949e', flex: 'none' }}>#{data.id}</span>
+          {data.totem && <span style={{ fontSize: 16, flex: 'none' }}>{totemEmoji(data.totem)}</span>}
         </h2>
-        <button className="god-close" onClick={onClose} aria-label="close">×</button>
+        <button className="god-close" onClick={onClose} aria-label="close" style={{ flex: 'none' }}>×</button>
       </header>
 
       <div className="chip" style={{ fontSize: 11, opacity: 0.9, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
@@ -218,7 +218,7 @@ export default function ClanDetails({
       </div>
 
       {/* 4-Tab Codex */}
-      <div style={{ display: 'flex', gap: 4, margin: '8px 0 8px', borderBottom: '1px solid #21262d', paddingBottom: 6, flexWrap: 'wrap' }}>
+      <div className="insp-tabs" style={{ display: 'flex', gap: 4, margin: '8px 0 8px', borderBottom: '1px solid #21262d', paddingBottom: 6 }}>
         {([
           ['stronghold', t('clanDetails.tabStronghold') !== 'clanDetails.tabStronghold' ? t('clanDetails.tabStronghold') : 'Stronghold'],
           ['roster', t('clanDetails.tabRoster') !== 'clanDetails.tabRoster' ? t('clanDetails.tabRoster') : 'Roster'],
@@ -236,8 +236,8 @@ export default function ClanDetails({
       </div>
 
       {activeTab === 'stronghold' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div className="insp-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+          <div className="insp-grid insp-2col">
             <span className="chip">{t('clanDetails.founded', { day: data.founded_day ?? Math.floor((data.born_tick ?? 0)/1200) })}</span>
             <span className="chip dead">{t('clanDetails.dead', { count: data.dead_count ?? 0 })}</span>
             <span className="chip">{t('clanDetails.founder')} {data.founder_id ? <button onClick={() => onSelectCreature?.(data.founder_id)} className="chronicle-name" style={{ fontWeight: 600 }}>#{data.founder_id} ↗</button> : '—'}</span>
@@ -278,21 +278,21 @@ export default function ClanDetails({
           {filteredMembers.length === 0 ? (
             <p className="chip" style={{ margin: '4px 0' }}>{t('clanDetails.noMembers')}</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 320, overflowY: 'auto' }}>
+            <div className="clan-roster-list" style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 320, overflowY: 'auto', minWidth: 0 }}>
               {filteredMembers.map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   className="kin-node"
                   onClick={() => onSelectCreature?.(m.id)}
-                  style={{ textAlign: 'left', borderLeft: `3px solid ${data.color}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', cursor: 'pointer', background: '#161b22', borderRadius: 6, border: '1px solid #21262d', borderLeftColor: data.color }}
+                  style={{ textAlign: 'left', borderLeft: `3px solid ${data.color}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '6px 8px', cursor: 'pointer', background: '#161b22', borderRadius: 6, border: '1px solid #21262d', borderLeftColor: data.color, minWidth: 0, width: '100%' }}
                   title={t('clanDetails.inspectCreature', { id: m.id })}
                 >
-                  <span style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <span style={{ fontWeight: 700, color: '#e6edf3', fontSize: 12 }}><b>{m.personal_name}</b> {m.glyph} #{m.id} · {m.caste} <span style={{ color: m.sex === 'female' ? '#ff9bce' : '#79c0ff', fontSize: 10 }}>{m.stage}</span></span>
-                    <span style={{ fontSize: 10, color: '#8b949e' }}>{m.status ? `${m.status} · ` : ''}Age {m.age}/{Math.round(m.lifespan)} · {m.energy.toFixed(0)}⚡ {m.health.toFixed(0)}❤</span>
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, flex: 1 }}>
+                    <span style={{ fontWeight: 700, color: '#e6edf3', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><b>{m.personal_name}</b> {m.glyph} #{m.id} · {m.caste} <span style={{ color: m.sex === 'female' ? '#ff9bce' : '#79c0ff', fontSize: 10 }}>{m.stage}</span></span>
+                    <span style={{ fontSize: 10, color: '#8b949e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.status ? `${m.status} · ` : ''}Age {m.age}/{Math.round(m.lifespan)} · {m.energy.toFixed(0)}⚡ {m.health.toFixed(0)}❤</span>
                   </span>
-                  <span style={{ fontSize: 11, color: '#58a6ff' }}>↗</span>
+                  <span style={{ fontSize: 11, color: '#58a6ff', flex: 'none' }}>↗</span>
                 </button>
               ))}
             </div>
