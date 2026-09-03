@@ -28,7 +28,8 @@ function matchPreset(laws: Record<string, any> | null, presets?: Record<string, 
 }
 
 export default function Wiki({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  const activeLang = lang === 'vn' ? 'vi' : lang
   const [data, setData] = useState<WikiData | null>(null)
   const [tab, setTab] = useState<'guide' | 'book' | 'api' | 'laws' | 'presets'>('guide')
   const [q, setQ] = useState('')
@@ -38,7 +39,7 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
   useEffect(() => {
     if (!open) return
     Promise.all([
-      fetch('/api/wiki').then(r => r.json()).catch(() => null),
+      fetch(`/api/wiki?lang=${activeLang}`).then(r => r.json()).catch(() => null),
       fetch('/api/laws').then(r => r.json()).catch(() => null),
       fetch('/api/presets').then(r => r.json()).catch(() => null),
     ]).then(([wikiData, lawsData, presetsData]) => {
@@ -47,7 +48,7 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
       if (presetsData?.current) setCurrentPreset(presetsData.current)
       else if (wikiData?.current_preset) setCurrentPreset(wikiData.current_preset)
     })
-  }, [open])
+  }, [open, activeLang])
 
   if (!open) return null
 
@@ -71,9 +72,9 @@ export default function Wiki({ open, onClose }: { open: boolean; onClose: () => 
             onChange={e => setQ(e.target.value)}
             style={{ flex: 1, minWidth: 160, background: '#161b22', color: '#e6edf3', border: '1px solid #30363d', borderRadius: 6, padding: '6px 8px' }}
           />
-          <span className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>/wiki</span>
-          <span className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>/guide</span>
-          <span className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22' }}>/docs</span>
+          <a href={`/wiki?lang=${activeLang}`} target="_blank" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22', color: '#58a6ff', textDecoration: 'none' }}>/wiki</a>
+          <a href="/guide" target="_blank" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22', color: '#58a6ff', textDecoration: 'none' }}>/guide</a>
+          <a href="/docs" target="_blank" rel="noreferrer" className="chip" style={{ border: '1px solid #30363d', borderRadius: 6, padding: '4px 8px', background: '#161b22', color: '#58a6ff', textDecoration: 'none' }}>/docs</a>
         </div>
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>

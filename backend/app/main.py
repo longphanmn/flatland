@@ -30,7 +30,7 @@ MAX_SPEED = 120.0
 # AZ Phase 1 P1: caches for blocking calls off the event loop
 _VERSION_CACHE: dict | None = None
 _GUIDE_CACHE: str | None = None
-_WIKI_CACHE: str | None = None
+_WIKI_CACHE: dict[str, str] = {}
 _PROCSTAT_CACHE: tuple[float, list[dict]] | None = None  # (timestamp, cores)
 # BD.1.3 analytics cache (1s memoization)
 _ANALYTICS_CACHE: dict[str, tuple[float, dict]] = {}
@@ -3331,23 +3331,31 @@ async def get_guide(format: str | None = None):
 
 
 @app.get("/wiki", response_class=HTMLResponse)
-async def get_wiki():
-    """Wiki — richer guide with presets, sustainability, playground."""
+async def get_wiki(request: Request, lang: str | None = None):
+    """Wiki — richer guide with presets, sustainability, playground with i18n (en/vi/fr)."""
+    from .wiki_i18n import normalize_lang
+    if not lang:
+        header = request.headers.get("accept-language", "")
+        selected_lang = normalize_lang(header)
+    else:
+        selected_lang = normalize_lang(lang)
+
     global _WIKI_CACHE
-    if _WIKI_CACHE is not None:
-        return HTMLResponse(_WIKI_CACHE)
+    if selected_lang in _WIKI_CACHE:
+        return HTMLResponse(_WIKI_CACHE[selected_lang])
     from .wiki import build_wiki_html
-    html = build_wiki_html(app)
-    _WIKI_CACHE = html
+    html = build_wiki_html(app, lang=selected_lang)
+    _WIKI_CACHE[selected_lang] = html
     return HTMLResponse(html)
 
 
 @app.get("/api/wiki")
-async def get_wiki_json():
-    """Structured wiki data for frontend Wiki.tsx."""
+async def get_wiki_json(lang: str = "en"):
+    """Structured wiki data for frontend Wiki.tsx with i18n support."""
     from .wiki import get_wiki_json as _get
+    from .wiki_i18n import normalize_lang
 
-    return _get(app)
+    return _get(app, lang=normalize_lang(lang))
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)

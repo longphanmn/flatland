@@ -612,10 +612,19 @@ class CreatureUpdateMixin:
                 dark_cap = max(dark_cap, cfg.perceive_radius * env_sight)
             else:
                 # a torch within TORCH_LIGHT_RADIUS lights the ground here too
-                for o in w.query_radius(c.x, c.y, TORCH_LIGHT_RADIUS):
-                    if isinstance(o, Creature) and o.equipped_item == "torch" and not o.indoors:
-                        dark_cap = max(dark_cap, cfg.perceive_radius * env_sight * 0.9)
-                        break
+                _bearers = getattr(self, "_torch_bearers", None)
+                if _bearers is not None and len(_bearers) <= 24:
+                    _t2 = TORCH_LIGHT_RADIUS * TORCH_LIGHT_RADIUS
+                    for o in _bearers:
+                        if isinstance(o, Creature) and o.equipped_item == "torch" and not o.indoors:
+                            if w.distance_sq(c.x, c.y, o.x, o.y) <= _t2:
+                                dark_cap = max(dark_cap, cfg.perceive_radius * env_sight * 0.9)
+                                break
+                else:
+                    for o in w.query_radius(c.x, c.y, TORCH_LIGHT_RADIUS):
+                        if isinstance(o, Creature) and o.equipped_item == "torch" and not o.indoors:
+                            dark_cap = max(dark_cap, cfg.perceive_radius * env_sight * 0.9)
+                            break
             perceive = min(perceive, dark_cap)
 
         # trait paranoid/bold nudges flee threshold (§S); §AR S-0 starvation

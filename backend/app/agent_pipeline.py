@@ -52,30 +52,31 @@ def _raycast_world(world, origin: tuple[float, float], angle: float, max_dist: f
     return best_dist, best_type
 
 
-def _batch_raycast(grid, x: float, y: float, ray_angles: tuple, max_ds: tuple, ignore_id: int | None = None) -> list:
-    """PERF (no logic change): one spatial query per ray instead of per step.
+def _batch_raycast_all(grid, x: float, y: float, ray_angles: tuple, max_ds: tuple, ignore_id: int | None = None) -> list:
+    """PERF (no logic change): ONE agent-centered query serves all 3 rays.
 
-    Coverage proof: step s sits at distance d_s in (0, max_d] along the ray;
-    the midpoint query disc (center M at max_d/2, radius 1.1*max_d) contains
-    every step disc (triangle inequality, both wrap and clamp modes). And any
-    candidate passing the proj/perp test lies within some step disc (step
-    spacing << disc diameter), so the evaluated set is identical. Per-candidate
-    math below is verbatim copies of SpatialHashGrid.raycast, and since only
-    (dist, type) escape — with grid types always None on this path — output
-    ties resolve to identical floats regardless of visit order.
+    Coverage: every step disc (point P on ray i at |P| <= max_d_i, radius
+    0.6*max_d_i) sits inside the origin disc of radius 1.6*max(max_d_i)
+    (triangle inequality, wrap and clamp modes). Any candidate passing the
+    proj/perp test lies within some step disc (spacing << diameter), so each
+    ray evaluates a superset containing every candidate the per-step version
+    would test. Per-candidate math is verbatim SpatialHashGrid.raycast, and
+    only (dist, None-type) escape — ties resolve to identical floats.
     """
-    out: list = []
-    _qr = grid.query_radius
+    r_max = max_ds[0]
+    for _m in max_ds:
+        if _m > r_max:
+            r_max = _m
+    radius = r_max * 1.6
+    candidates = grid.query_radius(x, y, radius)
     _pos = grid._pos
     _delta = grid._toroidal_delta
     _w = grid.width
     _h = grid.height
+    out: list = []
     for a, max_dist in zip(ray_angles, max_ds):
         cos_a = math.cos(a)
         sin_a = math.sin(a)
-        mx = x + cos_a * (max_dist * 0.5)
-        my = y + sin_a * (max_dist * 0.5)
-        candidates = _qr(mx, my, max_dist * 1.1)
         best = max_dist
         best_type = None
         for eid in candidates:
@@ -150,9 +151,8 @@ def build_inputs_batch(soa, spatial_grid=None, world=None, max_chill: float = 12
             ray_angles = (ang + deltas[0], ang + deltas[1], ang + deltas[2])
             max_ds = (32.0, 32.0 * forward_gain, 32.0)
             if use_grid:
-                # PERF: one batched query per agent (3 rays share nothing but
-                # the math is per-ray identical to the per-step version).
-                ray_hits = _batch_raycast(spatial_grid, x, y, ray_angles, max_ds, ignore_id=aid)
+                # PERF: one agent-centered query serves all 3 rays (see proof).
+                ray_hits = _batch_raycast_all(spatial_grid, x, y, ray_angles, max_ds, ignore_id=aid)
             else:
                 ray_hits = []
                 for ri2, a2 in enumerate(ray_angles):

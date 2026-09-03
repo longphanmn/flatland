@@ -1579,6 +1579,20 @@ class Simulation(SerializationMixin, EcologyMixin, EnvironmentMixin, SettlementM
         # stays wired where it is exactly law-preserving: OpenMP collision
         # sweep broadphase, compiled wall checks, batched NN raycasts.
         self._omp_hints = {}  # type: ignore[attr-defined]
+        # PERF (no logic change): inverted torch-bearer index for the night
+        # perceive gate. Object refs (not ids): fields are read live, so
+        # mid-loop moves/equips/douses/deaths are observed exactly as the
+        # spatial query would see them (same objects, same math) — including
+        # corpse-light from bearers killed earlier in the loop. Existential
+        # predicate (break on first hit, no RNG) → order-free. Falls back to
+        # the spatial query when torches are numerous.
+        if is_night:
+            try:
+                self._torch_bearers = [o for o in self._cached_creatures if o.equipped_item == "torch"]  # type: ignore[attr-defined]
+            except Exception:
+                self._torch_bearers = None  # type: ignore[attr-defined]
+        else:
+            self._torch_bearers = []  # type: ignore[attr-defined]
         _ph_creatures = time.perf_counter()
         for creature in list(self._cached_creatures):
             if creature.id in self.world.entities:

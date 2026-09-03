@@ -164,14 +164,39 @@ def test_history_filtering(client):
 
 
 def test_wiki_json_and_html(client):
-    """Verify /wiki HTML and /api/wiki JSON return valid structured data with laws, routes, and presets."""
+    """Verify /wiki HTML and /api/wiki JSON return valid structured data with laws, routes, presets and i18n."""
+    # English default
     r_html = client.get("/wiki")
     assert r_html.status_code == 200
     assert "Flatland" in r_html.text
+    assert "Overview" in r_html.text
 
+    # Vietnamese via query param
+    r_vi = client.get("/wiki?lang=vi")
+    assert r_vi.status_code == 200
+    assert "Bách khoa toàn thư Flatland" in r_vi.text
+    assert "Tổng quan" in r_vi.text
+
+    # French via query param
+    r_fr = client.get("/wiki?lang=fr")
+    assert r_fr.status_code == 200
+    assert "Encyclopédie Flatland" in r_fr.text
+    assert "Aperçu" in r_fr.text
+
+    # Accept-Language header detection
+    r_hdr_vi = client.get("/wiki", headers={"Accept-Language": "vi-VN,vi;q=0.9,en;q=0.8"})
+    assert r_hdr_vi.status_code == 200
+    assert "Bách khoa toàn thư Flatland" in r_hdr_vi.text
+
+    r_hdr_fr = client.get("/wiki", headers={"Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8"})
+    assert r_hdr_fr.status_code == 200
+    assert "Encyclopédie Flatland" in r_hdr_fr.text
+
+    # English API JSON
     r_json = client.get("/api/wiki")
     assert r_json.status_code == 200
     data = r_json.json()
+    assert data["lang"] == "en"
     assert "laws" in data and len(data["laws"]) > 50
     assert "routes" in data and len(data["routes"]) > 10
     assert "presets" in data and len(data["presets"]) >= 7
@@ -179,6 +204,22 @@ def test_wiki_json_and_html(client):
     assert "balance" in data["presets"]
     assert "safeguard_enabled" in data["laws"]
     assert "soft_cap_enabled" in data["laws"]
+
+    # Vietnamese API JSON
+    r_json_vi = client.get("/api/wiki?lang=vi")
+    assert r_json_vi.status_code == 200
+    data_vi = r_json_vi.json()
+    assert data_vi["lang"] == "vi"
+    assert "Bách khoa toàn thư" in data_vi["overview"]
+    assert "thực ăn" in data_vi["law_details"]["food_count"]["hint"] or "thức ăn" in data_vi["law_details"]["food_count"]["hint"]
+
+    # French API JSON
+    r_json_fr = client.get("/api/wiki?lang=fr")
+    assert r_json_fr.status_code == 200
+    data_fr = r_json_fr.json()
+    assert data_fr["lang"] == "fr"
+    assert "Encyclopédie" in data_fr["overview"]
+    assert "nourricières" in data_fr["law_details"]["food_count"]["hint"]
 
 
 

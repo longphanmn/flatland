@@ -108,14 +108,19 @@ def _md_to_html(md: str) -> str:
     return "\n".join(out)
 
 
-def _god_laws_table() -> str:
+def _god_laws_table(lang: str = "en", hints_map: dict | None = None) -> str:
     """Auto-generated table of every GodLaws field with type/range/default + hint."""
     cfg = Config()
-    # keep hints in sync with frontend/src/god/GodPanel.tsx LAW_HINTS and docs/god-laws.md
-    try:
-        from .wiki import LAW_HINTS_MD
-    except Exception:
-        LAW_HINTS_MD = {}
+    if hints_map is None:
+        try:
+            from .wiki_i18n import LAW_HINTS_I18N
+            hints_map = LAW_HINTS_I18N.get(lang, LAW_HINTS_I18N.get("en", {}))
+        except Exception:
+            try:
+                from .wiki import LAW_HINTS_MD
+                hints_map = LAW_HINTS_MD
+            except Exception:
+                hints_map = {}
     rows = []
     for name, field in GodLaws.model_fields.items():
         ann = str(field.annotation)
@@ -129,7 +134,7 @@ def _god_laws_table() -> str:
                 constraints.append(f">{m.gt}")
         default = getattr(cfg, name, None) if hasattr(cfg, name) else None
         typ = ann.replace("Optional", "").replace("[", "").replace("]", "").strip(" |None")
-        hint = html.escape(LAW_HINTS_MD.get(name, "")) if 'LAW_HINTS_MD' in locals() else ""
+        hint = html.escape(hints_map.get(name, "")) if hints_map else ""
         hint_cell = f'<small style="color:#8b949e">{hint}</small> <a href="/docs/god-laws.md#{html.escape(name)}" style="font-size:10px">md</a>' if hint else "—"
         rows.append(
             f"<tr><td><code>{html.escape(name)}</code></td>"
@@ -138,11 +143,16 @@ def _god_laws_table() -> str:
             f"<td>{html.escape(str(default))}</td>"
             f"<td>{hint_cell}</td></tr>"
         )
-    header = "<tr><th>Law</th><th>Type</th><th>Range</th><th>Default</th><th>Hint + docs</th></tr>"
+    headers = {
+        "en": "<tr><th>Law</th><th>Type</th><th>Range</th><th>Default</th><th>Hint + docs</th></tr>",
+        "vi": "<tr><th>Định luật</th><th>Kiểu</th><th>Khoảng</th><th>Mặc định</th><th>Gợi ý & tài liệu</th></tr>",
+        "fr": "<tr><th>Loi</th><th>Type</th><th>Plage</th><th>Défaut</th><th>Indice & docs</th></tr>",
+    }
+    header = headers.get(lang, headers["en"])
     return f'<div style="overflow-x:auto"><table><thead>{header}</thead><tbody>{"".join(rows)}</tbody></table></div>'
 
 
-def _api_table(app: Any) -> str:
+def _api_table(app: Any, lang: str = "en") -> str:
     """Auto-generated API table from live routes + OpenAPI schema."""
     rows = []
     for route in app.routes:
@@ -165,7 +175,12 @@ def _api_table(app: Any) -> str:
             rows.append(f"<tr><td><code>{html.escape(path)}</code></td><td></td></tr>")
     # ensure every REST route is listed: deduplicate
     rows = sorted(set(rows))
-    header = "<tr><th>Route</th><th>Name</th></tr>"
+    headers = {
+        "en": "<tr><th>Route</th><th>Name</th></tr>",
+        "vi": "<tr><th>Tuyến API</th><th>Tên hàm</th></tr>",
+        "fr": "<tr><th>Route API</th><th>Nom</th></tr>",
+    }
+    header = headers.get(lang, headers["en"])
     return f"<table><thead>{header}</thead><tbody>{''.join(rows)}</tbody></table>"
 
 
