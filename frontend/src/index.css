@@ -1784,8 +1784,9 @@ select {
     min-height: 100dvh;
     overflow: hidden;
     padding-top: env(safe-area-inset-top);
-    /* thumb bar is fixed — keep it out of .app flow, no bottom padding here */
-    padding-bottom: 0;
+    /* fixed thumb bar is out of flow — reserve its space here so the
+       stage (and its absolute-fill canvas) ends exactly above it */
+    padding-bottom: calc(var(--thumb-h) + env(safe-area-inset-bottom));
   }
   /* collapsed status bar — single line, only More toggles the sheet */
   .hud {
@@ -1824,15 +1825,13 @@ select {
   }
   .hud-detail-sheet .chip{ font-size: 11px; white-space: normal !important; word-break: break-word; overflow-wrap: anywhere; min-width: 0; }
   .hud-detail-sheet .god-btn { min-height: 34px !important; }
-  /* immersive stage — reserve room for the fixed thumb bar so canvas isn't hidden */
+  /* immersive stage — edge-to-edge canvas, fills all space above the thumb bar */
   .stage {
     flex: 1 1 auto;
     height: auto;
     min-height: 0;
     overflow: hidden;
-    padding-bottom: calc(var(--thumb-h) + env(safe-area-inset-bottom));
   }
-  .stage .world-canvas { inset: 0 0 calc(var(--thumb-h) + env(safe-area-inset-bottom)) 0; height: auto; }
   /* hide desktop right-stack & controls; replaced by sheet + thumb bar */
   .right-stack { display: none !important; }
   .info-panel { display: none !important; }
