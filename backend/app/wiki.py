@@ -201,7 +201,8 @@ def _presets_table(lang: str = "en") -> str:
             preview += f" … +{len(laws)-6} more"
         active_badge = f' <span class="badge" style="background:#238636;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">{html.escape(ui["active_badge"])}</span>' if is_active else ''
         row_style = ' style="background:rgba(35,134,54,0.08);"' if is_active else ''
-        apply_btn = f'<button class="preset-btn" onclick="applyPreset(\'{html.escape(name)}\')">⚡ {html.escape(name)}</button>'
+        # Presets are read-only on /wiki — applying is reserved for the app UI and TUI.
+        apply_btn = f'<span style="color:var(--text-muted);font-size:11px;">{html.escape(ui["preset_via_app"])}</span>'
         rows.append(f"<tr{row_style}><td><code>{html.escape(name)}</code>{active_badge}</td><td><small style=\"color:var(--text-muted)\">{html.escape(preview)}</small></td><td>{apply_btn}</td></tr>")
     header = f"<tr><th>{html.escape(ui['preset_col_name'])}</th><th>{html.escape(ui['preset_col_laws'])}</th><th>{html.escape(ui['preset_col_apply'])}</th></tr>"
     return f'<div class="table-wrapper"><table><thead>{header}</thead><tbody>{"".join(rows)}</tbody></table></div>'
@@ -840,14 +841,15 @@ tr:hover td {{ background: rgba(56, 139, 253, 0.05); }}
         <span>🎯</span> <span>{presets_label}</span>
       </div>
       <div class="preset-pills">
-        <a href="#" class="preset-pill" onclick="applyPreset('balance');return false">⚖️ balance</a>
-        <a href="#" class="preset-pill" onclick="applyPreset('sustainable');return false">🌿 sustainable</a>
-        <a href="#" class="preset-pill" onclick="applyPreset('theocracy');return false">🔮 theocracy</a>
-        <a href="#" class="preset-pill" onclick="applyPreset('warlords');return false">⚔️ warlords</a>
-        <a href="#" class="preset-pill" onclick="applyPreset('chaos');return false">🔥 chaos</a>
-        <a href="#" class="preset-pill" onclick="applyPreset('extinction');return false">💀 extinction</a>
-        <a href="#" class="preset-pill" onclick="applyPreset('boom');return false">🚀 boom</a>
+        <span class="preset-pill">⚖️ balance</span>
+        <span class="preset-pill">🌿 sustainable</span>
+        <span class="preset-pill">🔮 theocracy</span>
+        <span class="preset-pill">⚔️ warlords</span>
+        <span class="preset-pill">🔥 chaos</span>
+        <span class="preset-pill">💀 extinction</span>
+        <span class="preset-pill">🚀 boom</span>
       </div>
+      <div style="color:var(--text-muted);font-size:11px;margin-top:6px">{preset_sidebar_note}</div>
     </div>
 
     <div class="sidebar-card" style="margin-top:10px;border-color:rgba(88,166,255,0.3)">
@@ -942,15 +944,10 @@ function showToast(msg, isError = false) {{
   }}, 3200);
 }}
 
-// Apply Preset via REST
+// Preset changes are reserved for the app UI and TUI — /wiki is read-only.
+// Kept as a guidance stub so older cached pages degrade gracefully.
 async function applyPreset(name) {{
-  try {{
-    const r = await fetch('/api/presets/' + name + '?persist=true', {{ method: 'POST' }});
-    const j = await r.json();
-    showToast('✓ ' + name.toUpperCase() + ' preset applied successfully!');
-  }} catch (err) {{
-    showToast('✕ Failed to apply preset: ' + err.message, true);
-  }}
+  showToast('Presets can only be changed in the app UI or TUI', true);
 }}
 
 // Enhance code blocks with copy buttons
@@ -1111,6 +1108,7 @@ def build_wiki_html(app: Any, lang: str = "en") -> str:
         json_api=html.escape(ui["json_api"]),
         live_world=html.escape(ui["live_world"]),
         presets_label=html.escape(ui["presets_label"]),
+        preset_sidebar_note=html.escape(ui["preset_sidebar_note"]),
         dev_by=html.escape(ui["dev_by"]),
         dev_name=html.escape(ui["dev_name"]),
         built_with=ui["built_with"],
