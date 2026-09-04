@@ -463,45 +463,6 @@ body {{
   padding: 10px 12px;
   font-size: 12px;
 }}
-.preset-pills {{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 6px;
-}}
-.preset-pill {{
-  font-size: 11px;
-  background: #21262d;
-  color: var(--text-muted);
-  border: 1px solid var(--border-strong);
-  border-radius: 5px;
-  padding: 2px 7px;
-  cursor: pointer;
-  text-decoration: none;
-  transition: all 0.15s ease;
-}}
-.preset-pill:hover {{
-  background: #30363d;
-  color: var(--text-primary);
-  border-color: var(--accent-blue);
-}}
-.preset-btn {{
-  background: #21262d;
-  color: var(--accent-blue);
-  border: 1px solid var(--border-strong);
-  border-radius: 5px;
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}}
-.preset-btn:hover {{
-  background: rgba(56, 139, 253, 0.15);
-  border-color: var(--accent-blue);
-  color: #fff;
-}}
-
 /* Main Content Area */
 .wiki-main {{
   flex: 1;
@@ -836,22 +797,6 @@ tr:hover td {{ background: rgba(56, 139, 253, 0.05); }}
       <a href="/api/wiki?lang={lang}" class="ext-chip">📦 {json_api}</a>
     </div>
 
-    <div class="sidebar-card" style="margin-top:10px">
-      <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;display:flex;align-items:center;gap:4px">
-        <span>🎯</span> <span>{presets_label}</span>
-      </div>
-      <div class="preset-pills">
-        <span class="preset-pill">⚖️ balance</span>
-        <span class="preset-pill">🌿 sustainable</span>
-        <span class="preset-pill">🔮 theocracy</span>
-        <span class="preset-pill">⚔️ warlords</span>
-        <span class="preset-pill">🔥 chaos</span>
-        <span class="preset-pill">💀 extinction</span>
-        <span class="preset-pill">🚀 boom</span>
-      </div>
-      <div style="color:var(--text-muted);font-size:11px;margin-top:6px">{preset_sidebar_note}</div>
-    </div>
-
     <div class="sidebar-card" style="margin-top:10px;border-color:rgba(88,166,255,0.3)">
       <div style="color:var(--text-muted);font-size:11px">{dev_by}</div>
       <strong style="color:var(--text-primary);font-size:13px">{dev_name}</strong>
@@ -1108,7 +1053,6 @@ def build_wiki_html(app: Any, lang: str = "en") -> str:
         json_api=html.escape(ui["json_api"]),
         live_world=html.escape(ui["live_world"]),
         presets_label=html.escape(ui["presets_label"]),
-        preset_sidebar_note=html.escape(ui["preset_sidebar_note"]),
         dev_by=html.escape(ui["dev_by"]),
         dev_name=html.escape(ui["dev_name"]),
         built_with=ui["built_with"],
