@@ -653,14 +653,15 @@ body {
 
 .inspector {
   position: fixed;
-  top: 12px;
-  left: 12px;
-  bottom: auto;
-  width: 320px;
-  max-width: calc(100vw - 24px);
-  max-height: calc(100vh - 24px);
+  top: 48px;
+  left: 14px;
+  bottom: 48px;
+  width: 380px;
+  max-width: calc(100vw - 28px);
+  max-height: calc(100vh - 96px);
   background: rgba(13, 17, 23, 0.95);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid #30363d;
   border-radius: 10px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
@@ -671,6 +672,18 @@ body {
   flex-direction: column;
   gap: 8px;
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
+}
+.inspector::-webkit-scrollbar {
+  width: 6px;
+}
+.inspector::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 3px;
+}
+.inspector::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 
@@ -709,7 +722,254 @@ body {
   min-width: 0;
 }
 .insp-2col > * { min-width: 0; }
-.insp-tabs { min-width: 0; }
+.insp-tabs {
+  display: flex;
+  gap: 4px;
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 8px;
+  padding: 3px;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 8px 0;
+}
+.insp-tabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 32px;
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #8b949e;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.insp-tabs button:hover:not(.active) {
+  background: #161b22;
+  color: #e6edf3;
+}
+.insp-tabs button.active {
+  background: #1f6feb;
+  color: #ffffff;
+  font-weight: 700;
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.insp-tabs .tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.insp-tabs .tab-icon {
+  font-size: 12px;
+  flex: none;
+  line-height: 1;
+}
+.insp-tabs .tab-badge {
+  font-size: 9.5px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.16);
+  color: inherit;
+  font-weight: 600;
+  flex: none;
+}
+
+/* ---- Clan Hero Card in ClanDetails ---- */
+.clan-hero-card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-left: 4px solid #58a6ff;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.clan-hero-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.clan-totem-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #30363d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex: none;
+}
+.clan-hero-info {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.clan-hero-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.clan-hero-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.clan-id-tag {
+  font-size: 11px;
+  color: #8b949e;
+  flex: none;
+}
+.clan-hero-sub {
+  font-size: 11px;
+  color: #8b949e;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.clan-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+.clan-meta-chip {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: #c9d1d9;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.clan-leader-btn {
+  border: 1px solid;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.15s;
+}
+.clan-leader-btn:hover {
+  opacity: 0.85;
+}
+.clan-totem-buff {
+  font-size: 10.5px;
+  color: #8b949e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.insp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #21262d;
+  min-width: 0;
+}
+.insp-head h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #e6edf3;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.insp-close-btn {
+  flex: none;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
+  font-size: 18px;
+  line-height: 1;
+  color: #8b949e !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 0 !important;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.insp-close-btn:hover {
+  background: #21262d !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+/* Responsive chips for clan roster filters (wrap on desktop, scroll on touch phone) */
+.clan-filter-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 2px 0;
+  min-width: 0;
+}
+.clan-filter-pill {
+  flex: none;
+  min-height: 28px;
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 14px;
+  border: 1px solid #30363d;
+  background: #161b22;
+  color: #8b949e;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+.clan-filter-pill.active {
+  background: #1f6feb;
+  color: #ffffff;
+  border-color: #1f6feb;
+  font-weight: 600;
+}
+
 .nn-heatmap-wrap { min-width: 0; }
 .world-end-2col {
   display: grid;
@@ -1930,6 +2190,9 @@ select {
     box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.7);
     padding-bottom: max(14px, env(safe-area-inset-bottom)); z-index: 30;
     overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
   }
   .god-panel {
     left: 50%; right: auto; width: min(420px,92vw); max-width: 92vw; top: 50%; bottom: auto;
@@ -1993,10 +2256,30 @@ select {
   .god-dual-control { flex-wrap: nowrap; }
   .god-number-pill { flex: none; }
   .god-pill-input { width: 56px; }
-  /* inspector tab bars scroll instead of wrapping */
-  .insp-tabs { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; }
-  .insp-tabs::-webkit-scrollbar { display: none; }
-  .insp-tabs button { flex: 1 0 auto !important; white-space: nowrap; }
+  /* inspector tab bars: equal distribution, no cut-off, comfortable touch targets */
+  .insp-tabs {
+    flex-wrap: nowrap;
+    gap: 3px;
+    padding: 3px;
+    margin: 6px 0 8px;
+  }
+  .insp-tabs button {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    min-height: 36px !important;
+    padding: 6px 2px !important;
+    font-size: 11px !important;
+  }
+  /* Touch-friendly horizontal scroll for clan roster filters on phone */
+  .clan-filter-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .clan-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
   /* NN heatmap never forces page-level horizontal scroll */
   .nn-heatmap-wrap { max-width: 100%; overflow-x: auto; }
   .nn-heatmap-wrap svg { flex: none; max-width: none; }
@@ -2011,6 +2294,14 @@ select {
   .god-slider-wrap { width: 100%; }
   .god-number-pill { align-self: flex-end; }
   .god-segment-btn { padding: 8px 8px !important; font-size: 12px !important; }
+  .insp-tabs button {
+    font-size: 10px !important;
+    gap: 2px !important;
+    padding: 5px 1px !important;
+  }
+  .insp-tabs .tab-icon {
+    font-size: 11px !important;
+  }
   .mobile-thumb-bar button { min-width: 40px; font-size: 13px; }
 }
 .inspector-handle{

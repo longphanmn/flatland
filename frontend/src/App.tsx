@@ -90,6 +90,20 @@ export default function App() {
     return state?.clans?.[String(id)]?.name ?? `#${id}`
   }
 
+  const selectCreature = (id: number | null) => {
+    setSelectedId(id)
+    if (id !== null) {
+      setSelectedClanId(null)
+    }
+  }
+
+  const selectClan = (cid: number | null) => {
+    setSelectedClanId(cid)
+    if (cid !== null) {
+      setSelectedId(null)
+    }
+  }
+
   const stateRef = useRef<StateMessage | null>(null)
   const sockRef = useRef<WorldSocket | null>(null)
   const seenEventsRef = useRef(new Set<string>())
@@ -727,12 +741,7 @@ export default function App() {
           stateRef={stateRef}
           selectedRef={selectedRef}
           selectedClanRef={selectedClanRef}
-          onTapCreature={(id) => {
-            setSelectedId(id)
-            if (id === null) {
-              setSelectedClanId(null)
-            }
-          }}
+          onTapCreature={selectCreature}
         />
       </main>
 
@@ -799,18 +808,18 @@ export default function App() {
               <OverviewPanel
                 state={state}
                 aliveHist={aliveHist}
-                onSelectCreature={setSelectedId}
-                onSelectClan={setSelectedClanId}
+                onSelectCreature={selectCreature}
+                onSelectClan={selectClan}
               />
             )}
-            {sheetTab === 'clans' && <ClanPanel state={state} onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />}
+            {sheetTab === 'clans' && <ClanPanel state={state} onSelectClan={selectClan} onSelectCreature={selectCreature} />}
             {sheetTab === 'chronicle' && (
               <div className="chronicle" style={{ background: 'transparent', border: 'none', padding: 0, maxHeight: 'none', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', flex: '1 1 0' }}>
                 <ChronicleFeed
                   events={log}
                   clanLabel={clanLabel}
-                  onSelectCreature={(id) => setSelectedId(id)}
-                  onSelectClan={(id) => setSelectedClanId(id)}
+                  onSelectCreature={selectCreature}
+                  onSelectClan={selectClan}
                   onLoadOlder={loadOlder}
                   loadingOlder={loadingOlder}
                   noMoreHistory={noMoreHistory}
@@ -953,19 +962,19 @@ export default function App() {
               <OverviewPanel
                 state={state}
                 aliveHist={aliveHist}
-                onSelectCreature={setSelectedId}
-                onSelectClan={setSelectedClanId}
+                onSelectCreature={selectCreature}
+                onSelectClan={selectClan}
               />
             )}
             {rightTab === 'clans' && (
-              <ClanPanel state={state} onSelectClan={setSelectedClanId} onSelectCreature={setSelectedId} />
+              <ClanPanel state={state} onSelectClan={selectClan} onSelectCreature={selectCreature} />
             )}
             {rightTab === 'chronicle' && (
               <ChronicleFeed
                 events={log}
                 clanLabel={clanLabel}
-                onSelectCreature={(id) => setSelectedId(id)}
-                onSelectClan={(id) => setSelectedClanId(id)}
+                onSelectCreature={selectCreature}
+                onSelectClan={selectClan}
                 onLoadOlder={loadOlder}
                 loadingOlder={loadingOlder}
                 noMoreHistory={noMoreHistory}
@@ -984,7 +993,7 @@ export default function App() {
           state={state}
           onClose={() => setSelectedId(null)}
           onNavigate={(nid) => setSelectedId(nid)}
-          onSelectClan={(cid) => setSelectedClanId(cid)}
+          onSelectClan={selectClan}
         />
       )}
 
@@ -1001,7 +1010,7 @@ export default function App() {
               <Observatory
                 state={state}
                 onSelectCreature={(id) => {
-                  setSelectedId(id)
+                  selectCreature(id)
                   setAnalyticsOpen(false)
                 }}
               />
@@ -1010,7 +1019,7 @@ export default function App() {
         </div>
       )}
       {selectedClanId !== null && (
-        <ClanDetails clanId={selectedClanId} state={state} onClose={() => setSelectedClanId(null)} onSelectCreature={(id) => { setSelectedClanId(null); setSelectedId(id) }} />
+        <ClanDetails clanId={selectedClanId} state={state} onClose={() => setSelectedClanId(null)} onSelectCreature={selectCreature} />
       )}
       {showWorldEnd && state && (
         <WorldEndSummary
@@ -1026,8 +1035,8 @@ export default function App() {
         state={state}
         worlds={worlds}
         selectedRunId={selectedRunId}
-        onSelectClan={setSelectedClanId}
-        onSelectCreature={setSelectedId}
+        onSelectClan={selectClan}
+        onSelectCreature={selectCreature}
       />
       <ConfirmModal open={resetConfirmOpen} onClose={() => setResetConfirmOpen(false)} onConfirm={doReset} />
 

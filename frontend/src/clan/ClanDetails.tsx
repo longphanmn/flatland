@@ -148,9 +148,9 @@ export default function ClanDetails({
     return (
       <aside className="inspector clan-inspector" data-snap={snap}>
         <div className="inspector-handle" role="button" aria-label="drag handle" onClick={cycleSnap} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd} />
-        <header className="god-head" onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
+        <header className="insp-head" onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
           <h2>Clan #{clanId}</h2>
-          <button className="god-close" onClick={onClose} aria-label="close">×</button>
+          <button type="button" className="insp-close-btn" onClick={onClose} aria-label={t('common.close')}>×</button>
         </header>
         <p className="god-note">{t('clanDetails.loading')}</p>
       </aside>
@@ -161,9 +161,9 @@ export default function ClanDetails({
     return (
       <aside className="inspector clan-inspector" data-snap={snap}>
         <div className="inspector-handle" role="button" aria-label="drag handle" onClick={cycleSnap} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd} />
-        <header className="god-head" onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
+        <header className="insp-head" onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
           <h2>Clan #{clanId}</h2>
-          <button className="god-close" onClick={onClose} aria-label="close">×</button>
+          <button type="button" className="insp-close-btn" onClick={onClose} aria-label={t('common.close')}>×</button>
         </header>
         <p className="god-note">{t('clanDetails.notFound')}</p>
       </aside>
@@ -184,53 +184,104 @@ export default function ClanDetails({
   return (
     <aside className="inspector clan-inspector" data-snap={snap}>
       <div className="inspector-handle" role="button" aria-label="drag handle" onClick={cycleSnap} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd} />
-      {/* Hero Header & Banner Crest */}
-      <header className="god-head" style={{ borderBottom: `2px solid ${data.color}`, background: `${data.color}12`, margin: '-14px -16px 0 -16px', padding: '10px 12px', borderRadius: '12px 12px 0 0', gap: 8 }} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, color: data.color, fontSize: 15, minWidth: 0, flex: 1, overflow: 'hidden' }}>
-          <span style={{ width: 14, height: 14, borderRadius: '50%', background: data.color, display: 'inline-block', boxShadow: `0 0 8px ${data.color}`, flex: 'none' }} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{data.name}</span> <span style={{ fontSize: 11, color: '#8b949e', flex: 'none' }}>#{data.id}</span>
-          {data.totem && <span style={{ fontSize: 16, flex: 'none' }}>{totemEmoji(data.totem)}</span>}
-        </h2>
-        <button className="god-close" onClick={onClose} aria-label="close" style={{ flex: 'none' }}>×</button>
-      </header>
 
-      <div className="chip" style={{ fontSize: 11, opacity: 0.9, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-        <span>{data.totem ? `${totemEmoji(data.totem)} ${data.totem}` : t('clanDetails.noAvatar')} · {t('clanDetails.bornTick', { tick: data.born_tick })}</span>
-        <span style={{ color: data.color, fontWeight: 700 }}>{t('clanDetails.alive', { count: data.population })} · {t('clanDetails.dead', { count: data.dead_count ?? 0 })}</span>
-      </div>
-
-      {(data.faith != null || (data.shrine_level ?? 0) >= 1) && (
-        <div className="chip" style={{ background: '#1c2128', border: '1px solid #30363d', padding: '4px 8px', fontSize: 11, display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
-          <span>{(data.shrine_level ?? 0) >= 2 ? `🏛️ ${t('clanDetails.templeOfSphere')}` : (data.shrine_level ?? 0) >= 1 ? `⛩️ ${t('clanDetails.shrine')}` : t('clanDetails.noShrine')}</span>
-          {typeof data.faith === 'number' && data.faith > 0 ? <span style={{ color: '#e3b341', fontWeight: 600 }}>✨ {Math.round(data.faith)}</span> : null}
-          {data.leader_id && <button onClick={() => onSelectCreature?.(data.leader_id!)} style={{ marginLeft: 'auto', background: data.color, color: '#0d1117', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>👑 #{data.leader_id}</button>}
+      {/* Hero Header & Clan Dossier Card */}
+      <div className="clan-hero-card" style={{ borderLeftColor: data.color }}>
+        <div className="clan-hero-top">
+          <div className="clan-totem-badge" style={{ borderColor: data.color, background: `${data.color}22` }}>
+            {data.totem ? totemEmoji(data.totem) : '🚩'}
+          </div>
+          <div className="clan-hero-info">
+            <div className="clan-hero-title-row">
+              <h2 className="clan-hero-name" style={{ color: data.color }}>
+                {data.name}
+              </h2>
+              <span className="clan-id-tag">#{data.id}</span>
+            </div>
+            <div className="clan-hero-sub">
+              <span>{t('clanDetails.founded', { day: data.founded_day ?? Math.floor((data.born_tick ?? 0)/1200) })}</span>
+              <span>·</span>
+              <span style={{ color: '#3fb950', fontWeight: 600 }}>{data.population} {t('clanDetails.aliveShort') !== 'clanDetails.aliveShort' ? t('clanDetails.aliveShort') : 'alive'}</span>
+              {typeof data.dead_count === 'number' && data.dead_count > 0 ? (
+                <span style={{ color: '#8b949e' }}>({data.dead_count} †)</span>
+              ) : null}
+            </div>
+          </div>
+          <button type="button" className="insp-close-btn" onClick={onClose} aria-label={t('common.close')}>×</button>
         </div>
-      )}
 
-      {/* Banner Crest Hero */}
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0 2px' }}>
-        <div style={{ width: '100%', background: '#161b22', borderRadius: 8, border: `1px solid ${data.color}`, padding: '10px 12px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-          <span style={{ fontSize: 28, lineHeight: 1 }}>{data.totem ? totemEmoji(data.totem) : '🚩'}</span>
-          <div style={{ fontSize: 13, fontWeight: 700, color: data.color }}>{data.name}</div>
-          <div style={{ fontSize: 11, color: '#8b949e' }}>{t('clanDetails.founded', { day: data.founded_day ?? Math.floor((data.born_tick ?? 0)/1200) })} · {t('clanDetails.war', { wins: data.war_wins, losses: data.war_losses })}</div>
-          {totemInfo && <div style={{ fontSize: 10.5, color: '#8b949e', marginTop: 1 }}>{data.totem && t(`totems.${data.totem}`) !== `totems.${data.totem}` ? t(`totems.${data.totem}`) : totemInfo.buff}</div>}
+        {/* Quick Meta Row: Shrine/Faith + Leader + Totem Buff */}
+        <div className="clan-meta-row">
+          {(data.faith != null || (data.shrine_level ?? 0) >= 1) && (
+            <span className="clan-meta-chip">
+              {(data.shrine_level ?? 0) >= 2 ? `🏛️ ${t('clanDetails.templeOfSphere')}` : (data.shrine_level ?? 0) >= 1 ? `⛩️ ${t('clanDetails.shrine')}` : t('clanDetails.noShrine')}
+              {typeof data.faith === 'number' && data.faith > 0 ? ` ✨ ${Math.round(data.faith)}` : ''}
+            </span>
+          )}
+          {data.leader_id && (
+            <button
+              type="button"
+              onClick={() => onSelectCreature?.(data.leader_id!)}
+              className="clan-leader-btn"
+              style={{ background: `${data.color}22`, borderColor: data.color, color: data.color }}
+              title={t('clanDetails.inspectCreature', { id: data.leader_id })}
+            >
+              👑 #{data.leader_id} ↗
+            </button>
+          )}
+          {totemInfo && (
+            <span className="clan-totem-buff" title={totemInfo.buff}>
+              {data.totem && t(`totems.${data.totem}`) !== `totems.${data.totem}` ? t(`totems.${data.totem}`) : totemInfo.buff}
+            </span>
+          )}
         </div>
       </div>
 
       {/* 4-Tab Codex */}
-      <div className="insp-tabs" style={{ display: 'flex', gap: 4, margin: '8px 0 8px', borderBottom: '1px solid #21262d', paddingBottom: 6 }}>
-        {([
-          ['stronghold', t('clanDetails.tabStronghold') !== 'clanDetails.tabStronghold' ? t('clanDetails.tabStronghold') : 'Stronghold'],
-          ['roster', t('clanDetails.tabRoster') !== 'clanDetails.tabRoster' ? t('clanDetails.tabRoster') : 'Roster'],
-          ['warfare', t('clanDetails.tabWarfare') !== 'clanDetails.tabWarfare' ? t('clanDetails.tabWarfare') : 'Warfare & Diplomacy'],
-          ['annals', t('clanDetails.tabAnnals') !== 'clanDetails.tabAnnals' ? t('clanDetails.tabAnnals') : 'Annals'],
-        ] as const).map(([k, label]) => (
+      <div className="insp-tabs">
+        {(
+          [
+            {
+              key: 'stronghold',
+              icon: '🏰',
+              short: t('clanDetails.tabStrongholdShort') !== 'clanDetails.tabStrongholdShort' ? t('clanDetails.tabStrongholdShort') : 'Stronghold',
+              full: t('clanDetails.tabStronghold') !== 'clanDetails.tabStronghold' ? t('clanDetails.tabStronghold') : 'Stronghold',
+            },
+            {
+              key: 'roster',
+              icon: '👥',
+              short: t('clanDetails.tabRosterShort') !== 'clanDetails.tabRosterShort' ? t('clanDetails.tabRosterShort') : 'Roster',
+              full: t('clanDetails.tabRoster') !== 'clanDetails.tabRoster' ? t('clanDetails.tabRoster') : 'Roster',
+              count: data.members.length,
+            },
+            {
+              key: 'warfare',
+              icon: '⚔️',
+              short: t('clanDetails.tabWarfareShort') !== 'clanDetails.tabWarfareShort' ? t('clanDetails.tabWarfareShort') : 'Warfare',
+              full: t('clanDetails.tabWarfare') !== 'clanDetails.tabWarfare' ? t('clanDetails.tabWarfare') : 'Warfare & Diplomacy',
+            },
+            {
+              key: 'annals',
+              icon: '📜',
+              short: t('clanDetails.tabAnnalsShort') !== 'clanDetails.tabAnnalsShort' ? t('clanDetails.tabAnnalsShort') : 'Annals',
+              full: t('clanDetails.tabAnnals') !== 'clanDetails.tabAnnals' ? t('clanDetails.tabAnnals') : 'Annals',
+              count: data.history?.length,
+            },
+          ] as Array<{ key: TabKey; icon: string; short: string; full: string; count?: number }>
+        ).map((tab) => (
           <button
-            key={k}
-            onClick={() => setActiveTab(k)}
-            style={{ flex: 1, minWidth: 64, padding: '6px 8px', fontSize: 11, fontWeight: activeTab===k?700:500, background: activeTab===k ? '#1f6feb' : '#21262d', color: activeTab===k ? '#fff' : '#8b949e', border: `1px solid ${activeTab===k ? '#1f6feb' : '#30363d'}`, borderRadius: 6, cursor: 'pointer' }}
+            key={tab.key}
+            type="button"
+            className={activeTab === tab.key ? 'active' : ''}
+            onClick={() => setActiveTab(tab.key)}
+            title={tab.full}
+            aria-selected={activeTab === tab.key}
           >
-            {label} {k==='roster' && `(${data.members.length})`}
+            <span className="tab-icon">{tab.icon}</span>
+            <span className="tab-label">{tab.short}</span>
+            {typeof tab.count === 'number' && tab.count > 0 && (
+              <span className="tab-badge">{tab.count}</span>
+            )}
           </button>
         ))}
       </div>
@@ -264,12 +315,13 @@ export default function ClanDetails({
 
       {activeTab === 'roster' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {(['all','warriors','harvesters','elders','sick'] as const).map(k => (
+          <div className="clan-filter-bar">
+            {(['all','warriors','harvesters','elders','sick'] as const).map((k) => (
               <button
                 key={k}
+                type="button"
+                className={`clan-filter-pill ${rosterFilter === k ? 'active' : ''}`}
                 onClick={() => setRosterFilter(k)}
-                style={{ padding: '4px 8px', fontSize: 11, borderRadius: 12, border: `1px solid ${rosterFilter===k ? '#1f6feb' : '#30363d'}`, background: rosterFilter===k ? '#1f6feb' : '#21262d', color: rosterFilter===k ? '#fff' : '#8b949e', cursor: 'pointer', fontWeight: rosterFilter===k?600:400 }}
               >
                 {k === 'all' ? `All (${data.members.length})` : k === 'warriors' ? `⚔ Warriors` : k === 'harvesters' ? `🌾 Harvesters` : k === 'elders' ? `👴 Elders` : `🤒 Sick`}
               </button>

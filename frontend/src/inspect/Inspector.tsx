@@ -156,7 +156,7 @@ function PolarRadar({ e }: { e: EntityState }) {
         {/* centroid */}
         <circle cx={cx} cy={cy} r={1.2} fill="#e6edf3" />
       </svg>
-      <div style={{ display: 'flex', gap: 6, marginTop: 4, fontSize: 10, color: '#8b949e' }}>
+      <div style={{ display: 'flex', gap: 6, marginTop: 4, fontSize: 10, color: '#8b949e', flexWrap: 'wrap', alignItems: 'center' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 2, background: '#8b949e', opacity: 0.6, display: 'inline-block', border: '1px dashed #8b949e' }} /> {t('inspector.abbottOrthodoxy')}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 2, background: isMutant ? '#d2a8ff' : '#79c0ff', display: 'inline-block' }} /> {t('inspector.mutated')}</span>
         {mt && <span style={{ marginLeft: 'auto', color: '#8b949e' }}>A {mt[0]?.toFixed(2)} · θ {((mt[3]||0)*180/Math.PI).toFixed(1)}°</span>}
@@ -269,7 +269,7 @@ function NNHeatmap({ e }: { e: EntityState }) {
         <span style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 0.5, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🧠 NN Connectivity 16→12→7</span>
         <span style={{ fontSize: 9, color: '#6e7681', flex: 'none' }}>295w · BH-5</span>
       </div>
-      <div className="nn-heatmap-wrap" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div className="nn-heatmap-wrap" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
         {/* W1 16→12 */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: 9, color: '#8b949e' }}>W1 16×12 Sensory (p0.03 σ0.06)</span>
@@ -393,13 +393,13 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
         onTouchEnd={handleDragEnd}
       />
       {/* Hero Header — compact geometric avatar */}
-      <header className="god-head" style={{ borderBottom: '1px solid #21262d', paddingBottom: 8 }} onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
+      <header className="insp-head" onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 14 }}>
           <span style={{ color: (e?.caste && CASTE_COLORS[e.caste]) || '#e6edf3' }}>{e?.personal_name ?? `${e?.caste ?? t('inspector.creature')}`} #{id}</span>
           {e?.title ? <span style={{ color: '#e3b341', fontSize: '0.85em', fontWeight: 600, background: 'rgba(227,179,65,0.12)', border: '1px solid #e3b341', borderRadius: 4, padding: '1px 5px' }}>{e.title}</span> : null}
           {e?.glyph ? <span title="soul-code glyph" style={{ fontSize: '0.9em' }}>{e.glyph}</span> : null}
         </h2>
-        <button className="god-close" onClick={onClose} aria-label="close">×</button>
+        <button type="button" className="insp-close-btn" onClick={onClose} aria-label={t('common.close')}>×</button>
       </header>
 
       {e && (
@@ -447,30 +447,49 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
       {!e && data && <p className="god-note">{t('inspector.noLongerLiving')}</p>}
 
       {/* 4-Tab Navigation */}
-      <div className="insp-tabs" style={{ display: 'flex', gap: 4, margin: '10px 0 8px', borderBottom: '1px solid #21262d', paddingBottom: 6 }}>
-        {([
-          ['vitals', t('inspector.tabVitals') !== 'inspector.tabVitals' ? t('inspector.tabVitals') : 'Vitals & Morph'],
-          ['skills', t('inspector.tabSkills') !== 'inspector.tabSkills' ? t('inspector.tabSkills') : 'Skills & Neural'],
-          ['lineage', t('inspector.tabLineage') !== 'inspector.tabLineage' ? t('inspector.tabLineage') : 'Lineage & Kin'],
-          ['chronicle', t('inspector.tabChronicle') !== 'inspector.tabChronicle' ? t('inspector.tabChronicle') : 'Life Chronicle'],
-        ] as const).map(([k, label]) => (
+      <div className="insp-tabs">
+        {(
+          [
+            {
+              key: 'vitals',
+              icon: '🧬',
+              short: t('inspector.tabVitalsShort') !== 'inspector.tabVitalsShort' ? t('inspector.tabVitalsShort') : 'Vitals',
+              full: t('inspector.tabVitals') !== 'inspector.tabVitals' ? t('inspector.tabVitals') : 'Vitals & Morph',
+            },
+            {
+              key: 'skills',
+              icon: '⚡',
+              short: t('inspector.tabSkillsShort') !== 'inspector.tabSkillsShort' ? t('inspector.tabSkillsShort') : 'Skills',
+              full: t('inspector.tabSkills') !== 'inspector.tabSkills' ? t('inspector.tabSkills') : 'Skills & Neural',
+            },
+            {
+              key: 'lineage',
+              icon: '🌳',
+              short: t('inspector.tabLineageShort') !== 'inspector.tabLineageShort' ? t('inspector.tabLineageShort') : 'Lineage',
+              full: t('inspector.tabLineage') !== 'inspector.tabLineage' ? t('inspector.tabLineage') : 'Lineage & Kin',
+            },
+            {
+              key: 'chronicle',
+              icon: '📜',
+              short: t('inspector.tabChronicleShort') !== 'inspector.tabChronicleShort' ? t('inspector.tabChronicleShort') : 'Chronicle',
+              full: t('inspector.tabChronicle') !== 'inspector.tabChronicle' ? t('inspector.tabChronicle') : 'Life Chronicle',
+              count: data?.events?.length,
+            },
+          ] as Array<{ key: TabKey; icon: string; short: string; full: string; count?: number }>
+        ).map((tab) => (
           <button
-            key={k}
-            onClick={() => setActiveTab(k)}
-            style={{
-              flex: 1,
-              minWidth: 64,
-              padding: '6px 8px',
-              fontSize: 11,
-              fontWeight: activeTab === k ? 700 : 500,
-              background: activeTab === k ? '#1f6feb' : '#21262d',
-              color: activeTab === k ? '#fff' : '#8b949e',
-              border: `1px solid ${activeTab === k ? '#1f6feb' : '#30363d'}`,
-              borderRadius: 6,
-              cursor: 'pointer',
-            }}
+            key={tab.key}
+            type="button"
+            className={activeTab === tab.key ? 'active' : ''}
+            onClick={() => setActiveTab(tab.key)}
+            title={tab.full}
+            aria-selected={activeTab === tab.key}
           >
-            {label}
+            <span className="tab-icon">{tab.icon}</span>
+            <span className="tab-label">{tab.short}</span>
+            {typeof tab.count === 'number' && tab.count > 0 && (
+              <span className="tab-badge">{tab.count}</span>
+            )}
           </button>
         ))}
       </div>
@@ -493,7 +512,7 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
               </button>
             )}
             {e.trait && <span className="chip"> {e.trait === 'greedy' ? '⬔' : e.trait === 'peaceful' ? '◯' : e.trait === 'paranoid' ? '⬥' : e.trait === 'bold' ? '▲' : '•'} {e.trait}</span>}
-            {(e as any).archetype && <span className="chip" style={{ background: (e as any).archetype==='Apex Hunter' ? 'rgba(255,123,114,0.18)' : (e as any).archetype==='Nocturnal Forager' ? 'rgba(121,192,255,0.18)' : (e as any).archetype==='Granary Courier' ? 'rgba(63,185,80,0.16)' : 'rgba(210,168,255,0.16)', border: `1px solid ${(e as any).archetype==='Apex Hunter' ? '#ff7b72' : (e as any).archetype==='Nocturnal Forager' ? '#79c0ff' : (e as any).archetype==='Granary Courier' ? '#3fb950' : '#d2a8ff'}`, color: '#e6edf3', fontWeight: 700 }} >{(e as any).archetype==='Apex Hunter'?'⚔':(e as any).archetype==='Nocturnal Forager'?'🌙':(e as any).archetype==='Granary Courier'?'🧺':'🛡️'} {(e as any).archetype}</span>}
+            {(e as any).archetype && <span className="chip" style={{ gridColumn: '1 / -1', background: (e as any).archetype==='Apex Hunter' ? 'rgba(255,123,114,0.18)' : (e as any).archetype==='Nocturnal Forager' ? 'rgba(121,192,255,0.18)' : (e as any).archetype==='Granary Courier' ? 'rgba(63,185,80,0.16)' : 'rgba(210,168,255,0.16)', border: `1px solid ${(e as any).archetype==='Apex Hunter' ? '#ff7b72' : (e as any).archetype==='Nocturnal Forager' ? '#79c0ff' : (e as any).archetype==='Granary Courier' ? '#3fb950' : '#d2a8ff'}`, color: '#e6edf3', fontWeight: 700 }} >{(e as any).archetype==='Apex Hunter'?'⚔':(e as any).archetype==='Nocturnal Forager'?'🌙':(e as any).archetype==='Granary Courier'?'🧺':'🛡️'} {(e as any).archetype}</span>}
           </div>
           {/* §BG-9 Polar Radar & §BG-10 Biomech HUD */}
           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
@@ -586,7 +605,7 @@ export default function Inspector({ id, onClose, onNavigate, onSelectClan }: Pro
             {(fam?.children ?? []).length === 0 ? (
               <span className="chip" style={{ fontSize: 12 }}>{t('inspector.noOffspring')}</span>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 6, maxHeight: 220, overflowY: 'auto', minWidth: 0 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 6, maxHeight: 220, overflowY: 'auto', minWidth: 0 }}>
                 {fam!.children.map((k) => (
                   <KinCardView key={k.id} kin={k} role={t('inspector.child')} onNavigate={onNavigate} />
                 ))}
